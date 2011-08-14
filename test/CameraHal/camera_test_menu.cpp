@@ -1086,7 +1086,7 @@ int startPreview() {
         camera->setParameters(params.flatten());
         camera->setPreviewDisplay(previewSurface);
 
-        if(!hardwareActive) prevcnt = 0;
+        if(hardwareActive) prevcnt = 0;
 
         camera->startPreview();
 
