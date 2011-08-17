@@ -1366,6 +1366,7 @@ int functional_menu() {
         printf("   7. EV offset:      %4.1f\n", compensation);
         printf("   8. AWB mode:       %s\n", strawb_mode[awb_mode]);
         printf("   z. Zoom            %s\n", zoom[zoomIDX].zoom_description);
+        printf("   Z. Smooth Zoom     %s\n", zoom[zoomIDX].zoom_description);
         printf("   j. Exposure        %s\n", exposure[exposure_mode]);
         printf("   e. Effect:         %s\n", effects[effects_mode]);
         printf("   w. Scene:          %s\n", scene[scene_mode]);
@@ -1885,6 +1886,15 @@ int functional_menu() {
 
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
+
+            break;
+
+        case 'Z':
+            zoomIDX++;
+            zoomIDX %= ARRAY_SIZE(zoom);
+
+            if ( hardwareActive )
+                camera->sendCommand(CAMERA_CMD_START_SMOOTH_ZOOM, zoom[zoomIDX].idx, 0);
 
             break;
 
