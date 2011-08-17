@@ -728,11 +728,6 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'z':
-            case 'Z':
-
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
-                params.set(CameraParameters::KEY_ZOOM, atoi(cmd + 1));
-#else
 
                 for(i = 0; i < length_Zoom; i++)
                 {
@@ -744,10 +739,23 @@ int execute_functional_script(char *script) {
                 }
 
                 params.set(CameraParameters::KEY_ZOOM, zoom[zoomIDX].idx);
-#endif
 
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
+
+            case 'Z':
+
+                for(i = 0; i < length_Zoom; i++)
+                {
+                    if( strcmp((cmd + 1), zoom[i].zoom_description) == 0)
+                    {
+                        zoomIDX = i;
+                        break;
+                    }
+                }
+
+                if ( hardwareActive )
+                    camera->sendCommand(CAMERA_CMD_START_SMOOTH_ZOOM, zoom[zoomIDX].idx, 0);
 
                 break;
 
