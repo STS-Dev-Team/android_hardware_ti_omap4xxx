@@ -880,6 +880,11 @@ status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params
         }
     }
 
+    if ( strlen(supported) == 0 ) {
+        strncpy(supported, DEFAULT_FLASH_MODE, MAX_PROP_NAME_LENGTH);
+        strncat(supported, PARAM_SEP, 1);
+    }
+
     remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_FLASH_MODES, supported);
 
