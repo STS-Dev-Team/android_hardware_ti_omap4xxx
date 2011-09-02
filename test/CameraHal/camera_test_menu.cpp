@@ -394,7 +394,7 @@ const char *codingformat[] = {"yuv422i-yuyv", "yuv420sp", "rgb565", "jpeg", "raw
 const char *gbce[] = {"disable", "enable"};
 int pictureFormat = 3; // jpeg
 const char *exposure[] = {"auto", "macro", "portrait", "landscape", "sports", "night", "night-portrait", "backlighting", "manual"};
-const char *capture[] = { "high-performance", "high-quality", "video-mode" };
+const char *capture[] = { "high-performance", "high-quality", "high-quality-zsl", "video-mode" };
 const char *autoconvergencemode[] = { "mode-disable", "mode-frame", "mode-center", "mode-fft", "mode-manual" };
 const char *manualconvergencevalues[] = { "-100", "-50", "-30", "-25", "0", "25", "50", "100" };
 
