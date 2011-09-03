@@ -192,6 +192,7 @@ static const  char EXPOSURE_MODE_FACE[];
 static const  char FOCUS_MODE_PORTRAIT[];
 static const  char FOCUS_MODE_EXTENDED[];
 static const char  FOCUS_MODE_FACE[];
+static const char  FOCUS_MODE_OFF[];
 
 // TI extensions to add iso values
 static const char ISO_MODE_AUTO[];
@@ -239,4 +240,3 @@ static const char FACING_BACK[];
 };
 
 #endif
-

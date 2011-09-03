@@ -149,6 +149,7 @@ const char TICameraParameters::WHITE_BALANCE_FACE[] = "face-priority";
 const char TICameraParameters::FOCUS_MODE_PORTRAIT[] = "portrait";
 const char TICameraParameters::FOCUS_MODE_EXTENDED[] = "extended";
 const char TICameraParameters::FOCUS_MODE_FACE[] = "face-priority";
+const char TICameraParameters::FOCUS_MODE_OFF[] = "off";
 
 //  TI extensions to add  values for effect settings.
 const char TICameraParameters::EFFECT_NATURAL[] = "natural";
