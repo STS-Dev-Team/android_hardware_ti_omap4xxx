@@ -140,6 +140,7 @@ const userToOMX_LUT focus_UserToOMX [] = {
     { TICameraParameters::FOCUS_MODE_PORTRAIT, OMX_IMAGE_FocusControlPortrait },
     { TICameraParameters::FOCUS_MODE_EXTENDED, OMX_IMAGE_FocusControlExtended },
 #endif
+    { TICameraParameters::FOCUS_MODE_OFF , OMX_IMAGE_FocusControlOff }
 };
 
 const userToOMX_LUT exposure_UserToOMX [] = {
