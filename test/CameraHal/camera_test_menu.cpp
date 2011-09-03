@@ -384,6 +384,7 @@ const char *focus[] = {
     "continuous-picture",
     "extended",
     "portrait",
+    "off"
 };
 int focus_mode = 0;
 pixel_format pixelformat[] = {
