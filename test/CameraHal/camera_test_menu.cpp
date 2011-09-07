@@ -1106,7 +1106,6 @@ void stopPreview() {
 
         previewRunning  = false;
         reSizePreview = true;
-        closeCamera();
     }
 }
 
