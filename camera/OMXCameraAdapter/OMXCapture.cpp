@@ -142,13 +142,34 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         cap->mColorFormat = pixFormat;
         }
 
+    str = params.get(TICameraParameters::KEY_TEMP_BRACKETING);
+    if ( ( str != NULL ) &&
+         ( strcmp(str, TICameraParameters::BRACKET_ENABLE ) == 0 ) ) {
+
+        if ( !mBracketingSet ) {
+            mPendingCaptureSettings |= SetExpBracket;
+        }
+
+        mBracketingSet = true;
+    } else {
+
+        if ( mBracketingSet ) {
+            mPendingCaptureSettings |= SetExpBracket;
+        }
+
+        mBracketingSet = false;
+    }
+
     str = params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
     if ( NULL != str ) {
         parseExpRange(str, mExposureBracketingValues, EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
+        mPendingCaptureSettings |= SetExpBracket;
     } else {
         // if bracketing was previously set...we set again before capturing to clear
-        if (mExposureBracketingValidEntries) mPendingCaptureSettings |= SetExpBracket;
-        mExposureBracketingValidEntries = 0;
+        if (mExposureBracketingValidEntries) {
+            mPendingCaptureSettings |= SetExpBracket;
+            mExposureBracketingValidEntries = 0;
+        }
     }
 
     if ( params.getInt(CameraParameters::KEY_ROTATION) != -1 )
@@ -1102,12 +1123,21 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
 
     if (mPendingCaptureSettings & SetExpBracket) {
         mPendingCaptureSettings &= ~SetExpBracket;
-        ret = setExposureBracketing( mExposureBracketingValues,
-                                     mExposureBracketingValidEntries, mBurstFrames);
+        if ( mBracketingSet ) {
+            ret = setExposureBracketing(mExposureBracketingValues,
+                                        0,
+                                        0);
+        } else {
+            ret = setExposureBracketing(mExposureBracketingValues,
+                                        mExposureBracketingValidEntries,
+                                        mBurstFrames);
+        }
+
         if ( ret != NO_ERROR ) {
             CAMHAL_LOGEB("setExposureBracketing() failed %d", ret);
             goto EXIT;
         }
+
     }
 
     if (mPendingCaptureSettings & SetQuality) {
