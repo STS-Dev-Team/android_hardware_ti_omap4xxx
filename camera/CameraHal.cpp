@@ -916,14 +916,6 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         CameraParameters adapterParams = mParameters;
 
-        // Only send parameters to adapter if preview is already
-        // enabled or doesSetParameterNeedUpdate says so. Initial setParameters to camera adapter,
-        // will be called in startPreview()
-        // TODO(XXX): Need to identify other parameters that need update from camera adapter
-        if ( (NULL != mCameraAdapter) && (mPreviewEnabled || updateRequired) ) {
-            ret |= mCameraAdapter->setParameters(adapterParams);
-        }
-
         if( NULL != params.get(TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS) )
             {
             int posBracketRange = params.getInt(TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS);
@@ -946,41 +938,45 @@ int CameraHal::setParameters(const CameraParameters& params)
         CAMHAL_LOGDB("Negative bracketing range %d", mBracketRangeNegative);
 
         if( ( (valstr = params.get(TICameraParameters::KEY_TEMP_BRACKETING)) != NULL) &&
-            ( strcmp(valstr, TICameraParameters::BRACKET_ENABLE) == 0 ))
-            {
-            if ( !mBracketingEnabled )
-                {
+            ( strcmp(valstr, TICameraParameters::BRACKET_ENABLE) == 0 )) {
+            if ( !mBracketingEnabled ) {
                 CAMHAL_LOGDA("Enabling bracketing");
                 mBracketingEnabled = true;
 
                 //Wait for AF events to enable bracketing
-                if ( NULL != mCameraAdapter )
-                    {
+                if ( NULL != mCameraAdapter ) {
                     setEventProvider( CameraHalEvent::ALL_EVENTS, mCameraAdapter );
-                    }
                 }
-            else
-                {
+            } else {
                 CAMHAL_LOGDA("Bracketing already enabled");
-                }
             }
-        else if ( ( (valstr = params.get(TICameraParameters::KEY_TEMP_BRACKETING)) != NULL ) &&
-            ( strcmp(valstr, TICameraParameters::BRACKET_DISABLE) == 0 ))
-            {
+            adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
+        } else if ( ( (valstr = params.get(TICameraParameters::KEY_TEMP_BRACKETING)) != NULL ) &&
+            ( strcmp(valstr, TICameraParameters::BRACKET_DISABLE) == 0 )) {
             CAMHAL_LOGDA("Disabling bracketing");
 
+            adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
             mBracketingEnabled = false;
             stopImageBracketing();
 
             //Remove AF events subscription
-            if ( NULL != mEventProvider )
-                {
+            if ( NULL != mEventProvider ) {
                 mEventProvider->disableEventNotification( CameraHalEvent::ALL_EVENTS );
                 delete mEventProvider;
                 mEventProvider = NULL;
-                }
-
             }
+
+        } else {
+            adapterParams.remove(TICameraParameters::KEY_TEMP_BRACKETING);
+        }
+
+        // Only send parameters to adapter if preview is already
+        // enabled or doesSetParameterNeedUpdate says so. Initial setParameters to camera adapter,
+        // will be called in startPreview()
+        // TODO(XXX): Need to identify other parameters that need update from camera adapter
+        if ( (NULL != mCameraAdapter) && (mPreviewEnabled || updateRequired) ) {
+            ret |= mCameraAdapter->setParameters(adapterParams);
+        }
 
         if( ( (valstr = params.get(TICameraParameters::KEY_SHUTTER_ENABLE)) != NULL ) &&
             ( strcmp(valstr, TICameraParameters::SHUTTER_ENABLE) == 0 ))

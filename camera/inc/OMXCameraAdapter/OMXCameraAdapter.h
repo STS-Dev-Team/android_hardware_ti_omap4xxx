@@ -879,6 +879,7 @@ private:
     unsigned int mPendingCaptureSettings;
 
     //Temporal bracketing management data
+    bool mBracketingSet;
     mutable Mutex mBracketingLock;
     bool *mBracketingBuffersQueued;
     int mBracketingBuffersQueuedCount;
