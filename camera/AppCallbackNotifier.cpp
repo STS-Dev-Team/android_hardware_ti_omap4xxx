@@ -115,13 +115,11 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
                   (mCameraHal->msgTypeEnabled(CAMERA_MSG_COMPRESSED_IMAGE)))
     {
         Mutex::Autolock lock(mBurstLock);
-#if 0 //TODO: enable burst mode later
         if ( mBurst )
         {
-            `(CAMERA_MSG_BURST_IMAGE, JPEGPictureMemBase, mCallbackCookie);
+            mDataCb(CAMERA_MSG_COMPRESSED_BURST_IMAGE, picture, 0, NULL, mCallbackCookie);
         }
         else
-#endif
         {
             mDataCb(CAMERA_MSG_COMPRESSED_IMAGE, picture, 0, NULL, mCallbackCookie);
         }
@@ -930,13 +928,11 @@ void AppCallbackNotifier::notifyFrame()
 #ifdef COPY_IMAGE_BUFFER
                     {
                         Mutex::Autolock lock(mBurstLock);
-#if 0 //TODO: enable burst mode later
                         if ( mBurst )
                         {
-                            `(CAMERA_MSG_BURST_IMAGE, JPEGPictureMemBase, mCallbackCookie);
+                            copyAndSendPictureFrame(frame, CAMERA_MSG_COMPRESSED_BURST_IMAGE);
                         }
                         else
-#endif
                         {
                             copyAndSendPictureFrame(frame, CAMERA_MSG_COMPRESSED_IMAGE);
                         }
