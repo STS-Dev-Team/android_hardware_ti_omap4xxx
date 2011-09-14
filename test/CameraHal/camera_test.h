@@ -36,6 +36,7 @@
 #define KEY_STEREO_CAMERA "s3d-supported"
 #define KEY_EXIF_MODEL "exif-model"
 #define KEY_EXIF_MAKE "exif-make"
+#define KEY_AF_TIMEOUT "af-timeout"
 
 #define KEY_AUTO_EXPOSURE_LOCK "auto-exposure-lock"
 #define KEY_AUTO_WHITEBALANCE_LOCK "auto-whitebalance-lock"

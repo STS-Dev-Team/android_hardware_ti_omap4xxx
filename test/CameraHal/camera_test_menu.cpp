@@ -93,6 +93,7 @@ int prevcnt = 0;
 int videoFd = -1;
 int elockidx = 0;
 int wblockidx = 0;
+int afTimeoutIdx = 0;
 
 
 char dir_path[80] = SDCARD_PATH;
@@ -104,6 +105,7 @@ const char *expBracketingRange[] = {"", "-30,0,30,0,-30"};
 const char *tempBracketing[] = {"disable", "enable"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *lock[] = {"false", "true"};
+const char *afTimeout[] = {"enable", "disable" };
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
 const char *ipp_mode[] = { "off", "Chroma Suppression", "Edge Enhancement" };
@@ -1117,6 +1119,7 @@ void initDefaults() {
     antibanding_mode = 0;
     focus_mode = 0;
     fpsRangeIdx = 0;
+    afTimeoutIdx = 0;
     previewSizeIDX = 1;  /* Default resolution set to WVGA */
     captureSizeIDX = 3;  /* Default capture resolution is 8MP */
     frameRateIDX = ARRAY_SIZE(fpsConstRanges) - 1;      /* Default frame rate is 30 FPS */
@@ -1362,6 +1365,7 @@ int functional_menu() {
         printf("   T. Stop face detection \n");
         printf("   G. Touch/Focus area AF\n");
         printf("   f. Auto Focus/Half Press\n");
+        printf("   I. AF Timeout       %s\n", afTimeout[afTimeoutIdx]);
         printf("   J.Flash:              %s\n", flashModes[flashIdx]);
         printf("   7. EV offset:      %4.1f\n", compensation);
         printf("   8. AWB mode:       %s\n", strawb_mode[awb_mode]);
@@ -1732,6 +1736,16 @@ int functional_menu() {
         case 'F':
             if ( hardwareActive )
                 camera->sendCommand(CAMERA_CMD_START_FACE_DETECTION, 0, 0);
+
+            break;
+
+        case 'I':
+            afTimeoutIdx++;
+            afTimeoutIdx %= ARRAY_SIZE(afTimeout);
+            params.set(KEY_AF_TIMEOUT, afTimeout[afTimeoutIdx]);
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
 
             break;
 
