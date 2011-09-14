@@ -583,6 +583,14 @@ int execute_functional_script(char *script) {
 
                 break;
 
+            case 'I':
+                params.set(KEY_AF_TIMEOUT, (cmd + 1));
+
+                if ( hardwareActive )
+                    camera->setParameters(params.flatten());
+
+                break;
+
             case 'T':
 
                 if ( hardwareActive )
