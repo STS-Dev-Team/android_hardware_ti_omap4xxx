@@ -196,6 +196,7 @@ const CapU32 OMXCameraAdapter::mSensorNames [] = {
 // CapU32Pair = (max fps, min fps, string representation)
 const CapU32Pair OMXCameraAdapter::mVarFramerates [] = {
     { 15, 15, "(15000,15000)"},
+    { 27, 15, "(15000,27000)"},
     { 30, 15, "(15000,30000)" },
     { 30, 24, "(24000,30000)" },
 // TODO(XXX): Removing 30,30 range to limit 1080p at 24fps. Will put back soon.
@@ -256,8 +257,6 @@ status_t OMXCameraAdapter::encodeFramerateCap(OMX_U32 framerateMax,
                             char * buffer,
                             size_t bufferSize) {
     status_t ret = NO_ERROR;
-    bool minInserted = false;
-    bool maxInserted = false;
     char tmpBuffer[FRAMERATE_COUNT];
 
     LOG_FUNCTION_NAME;
@@ -267,35 +266,24 @@ status_t OMXCameraAdapter::encodeFramerateCap(OMX_U32 framerateMax,
         return -EINVAL;
     }
 
+    memset(tmpBuffer, 0, FRAMERATE_COUNT);
+    snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u,", ( unsigned int ) framerateMax);
+    strncat(buffer, tmpBuffer, bufferSize - 1);
+
     for ( unsigned int i = 0; i < capCount; i++ ) {
-        if ( (framerateMax >= cap[i].num) && (framerateMin <= cap[i].num) ) {
+        if ( (framerateMax > cap[i].num) && (framerateMin < cap[i].num) ) {
             strncat(buffer, cap[i].param, bufferSize - 1);
             strncat(buffer, PARAM_SEP, bufferSize - 1);
-
-            if ( cap[i].num ==  framerateMin ) {
-                minInserted = true;
-            }
-        }
-        if ( cap[i].num ==  framerateMax ) {
-            maxInserted = true;
         }
     }
 
-    if ( !maxInserted ) {
-        memset(tmpBuffer, 0, FRAMERATE_COUNT);
-        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u,", ( unsigned int ) framerateMax);
-        strncat(buffer, tmpBuffer, bufferSize - 1);
-        strncat(buffer, PARAM_SEP, bufferSize - 1);
+    memset(tmpBuffer, 0, FRAMERATE_COUNT);
+    if ( FPS_MIN < framerateMin ) {
+        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u", ( unsigned int ) framerateMin);
+    } else {
+        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u", ( unsigned int ) FPS_MIN);
     }
-
-    if ( !minInserted ) {
-        memset(tmpBuffer, 0, FRAMERATE_COUNT);
-        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u,", ( unsigned int ) framerateMin);
-        strncat(buffer, tmpBuffer, bufferSize - 1);
-        strncat(buffer, PARAM_SEP, bufferSize - 1);
-    }
-
-    remove_last_sep(buffer);
+    strncat(buffer, tmpBuffer, bufferSize - 1);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -702,9 +690,9 @@ status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* param
     } else {
         params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, supported);
         CAMHAL_LOGDB("framerate ranges %s", supported);
-        params->set(CameraProperties::FRAMERATE_RANGE, DEFAULT_FRAMERATE_RANGE_IMAGE);
-        params->set(CameraProperties::FRAMERATE_RANGE_VIDEO, DEFAULT_FRAMERATE_RANGE_VIDEO);
-        params->set(CameraProperties::FRAMERATE_RANGE_IMAGE, DEFAULT_FRAMERATE_RANGE_IMAGE);
+        params->set(CameraProperties::FRAMERATE_RANGE, defaultRange);
+        params->set(CameraProperties::FRAMERATE_RANGE_VIDEO, defaultRange);
+        params->set(CameraProperties::FRAMERATE_RANGE_IMAGE, defaultRange);
         CAMHAL_LOGDB("Default framerate range: [%s]", DEFAULT_FRAMERATE_RANGE_IMAGE);
     }
 
