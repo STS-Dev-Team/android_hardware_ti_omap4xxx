@@ -611,7 +611,7 @@ private:
 
     //Temporal Bracketing
     status_t doBracketing(OMX_BUFFERHEADERTYPE *pBuffHeader, CameraFrame::FrameType typeOfFrame);
-    status_t sendBracketFrames();
+    status_t sendBracketFrames(size_t &framesSent);
 
     // Image Capture Service
     status_t startImageCapture();
@@ -885,7 +885,7 @@ private:
     int mBracketingBuffersQueuedCount;
     int mLastBracetingBufferIdx;
     bool mBracketingEnabled;
-    int mBracketingRange;
+    size_t mBracketingRange;
 
     CameraParameters mParameters;
     OMXCameraAdapterComponentContext mCameraAdapterParameters;
