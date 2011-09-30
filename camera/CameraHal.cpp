@@ -951,11 +951,13 @@ int CameraHal::setParameters(const CameraParameters& params)
                 CAMHAL_LOGDA("Bracketing already enabled");
             }
             adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
+            mParameters.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
         } else if ( ( (valstr = params.get(TICameraParameters::KEY_TEMP_BRACKETING)) != NULL ) &&
             ( strcmp(valstr, TICameraParameters::BRACKET_DISABLE) == 0 )) {
             CAMHAL_LOGDA("Disabling bracketing");
 
             adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
+            mParameters.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
             mBracketingEnabled = false;
             stopImageBracketing();
 
@@ -968,6 +970,7 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         } else {
             adapterParams.remove(TICameraParameters::KEY_TEMP_BRACKETING);
+            mParameters.remove(TICameraParameters::KEY_TEMP_BRACKETING);
         }
 
         // Only send parameters to adapter if preview is already
