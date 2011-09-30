@@ -594,7 +594,7 @@ status_t OMXCameraAdapter::doBracketing(OMX_BUFFERHEADERTYPE *pBuffHeader,
     return ret;
 }
 
-status_t OMXCameraAdapter::sendBracketFrames()
+status_t OMXCameraAdapter::sendBracketFrames(size_t &framesSent)
 {
     status_t ret = NO_ERROR;
     int currentBufferIdx;
@@ -603,6 +603,7 @@ status_t OMXCameraAdapter::sendBracketFrames()
     LOG_FUNCTION_NAME;
 
     imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+    framesSent = 0;
 
     if ( OMX_StateExecuting != mComponentState )
         {
@@ -625,6 +626,7 @@ status_t OMXCameraAdapter::sendBracketFrames()
                               imgCaptureData->mBufferHeader[currentBufferIdx],
                               imgCaptureData->mImageType,
                               imgCaptureData);
+                framesSent++;
                 }
             } while ( currentBufferIdx != mLastBracetingBufferIdx );
 
@@ -747,6 +749,7 @@ status_t OMXCameraAdapter::startImageCapture()
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters * capData = NULL;
     OMX_CONFIG_BOOLEANTYPE bOMX;
+    size_t bracketingSent = 0;
 
     LOG_FUNCTION_NAME;
 
@@ -777,8 +780,18 @@ status_t OMXCameraAdapter::startImageCapture()
         {
         //Stop bracketing, activate normal burst for the remaining images
         mBracketingEnabled = false;
-        mCapturedFrames = mBracketingRange;
-        ret = sendBracketFrames();
+        ret = sendBracketFrames(bracketingSent);
+
+        // Check if we accumulated enough buffers
+        if ( bracketingSent < ( mBracketingRange - 1 ) )
+            {
+            mCapturedFrames = mBracketingRange + ( ( mBracketingRange - 1 ) - bracketingSent );
+            }
+        else
+            {
+            mCapturedFrames = mBracketingRange;
+            }
+
         if(ret != NO_ERROR)
             goto EXIT;
         else
