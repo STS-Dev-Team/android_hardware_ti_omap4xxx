@@ -501,12 +501,15 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         //Perform parameter validation
         if(!isParameterValid(valstr
-                        , mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED))
-                        || !isParameterValid(framerate,
-                                      mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES)))
+                        , mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED)))
         {
-            CAMHAL_LOGEA("Invalid frame rate range or frame rate");
-            return -EINVAL;
+            CAMHAL_LOGDA(" FPS Range is invalid. Ckeck the Frame Rate param ");
+            if(!isParameterValid(framerate,
+                                      mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES)))
+            {
+                CAMHAL_LOGEA("Invalid frame rate ");
+                return -EINVAL;
+            }
         }
 
         // Variable framerate ranges have higher priority over
