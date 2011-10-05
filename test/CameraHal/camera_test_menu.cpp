@@ -1450,14 +1450,12 @@ int functional_menu() {
             break;
 
         case '2':
-            stopPreview();
-
             if ( recordingMode ) {
+                stopRecording();
+                stopPreview();
+                closeRecorder();
                 camera->disconnect();
                 camera.clear();
-                stopRecording();
-                closeRecorder();
-
                 camera = Camera::connect(camera_index);
                   if ( NULL == camera.get() ) {
                       sleep(1);
@@ -1469,6 +1467,8 @@ int functional_menu() {
                   camera->setListener(new CameraHandler());
                   camera->setParameters(params.flatten());
                   recordingMode = false;
+            } else {
+                stopPreview();
             }
 
             break;
