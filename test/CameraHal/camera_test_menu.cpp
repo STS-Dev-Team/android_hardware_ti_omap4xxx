@@ -324,13 +324,13 @@ size_t length_V_bitRate = ARRAY_SIZE(VbitRate);
 
 Zoom zoom[] = {
   { 0,  "1x"  },
-  { 12, "1.5x"},
-  { 20, "2x"  },
-  { 27, "2.5x"},
-  { 32, "3x"  },
-  { 36, "3.5x"},
-  { 40, "4x"  },
-  { 60, "8x"  },
+  { 6,  "1.5x"},
+  { 10, "2x"  },
+  { 14, "2.5x"},
+  { 16, "3x"  },
+  { 18, "3.5x"},
+  { 20, "4x"  },
+  { 30, "8x"  },
 };
 
 size_t length_Zoom = ARRAY_SIZE(zoom);
