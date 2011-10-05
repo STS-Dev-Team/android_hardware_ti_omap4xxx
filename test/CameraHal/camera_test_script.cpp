@@ -234,28 +234,25 @@ int execute_functional_script(char *script) {
                 break;
 
             case '2':
-                stopPreview();
-
                 if ( recordingMode ) {
-
+                    stopRecording();
+                    stopPreview();
+                    closeRecorder();
                     camera->disconnect();
                     camera.clear();
-                    stopRecording();
-                    closeRecorder();
-
                     camera = Camera::connect(camera_index);
                       if ( NULL == camera.get() ) {
                           sleep(1);
                           camera = Camera::connect(camera_index);
-
                           if ( NULL == camera.get() ) {
                               return -1;
                           }
                       }
                       camera->setListener(new CameraHandler());
                       camera->setParameters(params.flatten());
-
                       recordingMode = false;
+                } else {
+                    stopPreview();
                 }
 
                 break;
