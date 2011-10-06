@@ -433,6 +433,7 @@ bool bLogSysLinkTrace = true;
 bool stressTest = false;
 bool stopScript = false;
 int restartCount = 0;
+bool firstTime = true;
 
 /** Calculate delay from a reference time */
 unsigned long long timeval_delay(const timeval *ref) {
@@ -1030,9 +1031,11 @@ int openCamera() {
         }
     }
 
-    params = camera->getParameters();
+    if ( firstTime ) {
+        params = camera->getParameters();
+        firstTime = false;
+    }
     camera->setParameters(params.flatten());
-
     camera->setListener(new CameraHandler());
 
     hardwareActive = true;
