@@ -3729,6 +3729,31 @@ public:
             return BAD_VALUE;
         }
 
+        OMX_CONFIG_CAMOPERATINGMODETYPE camMode;
+
+        OMX_INIT_STRUCT_PTR (&camMode, OMX_CONFIG_CAMOPERATINGMODETYPE);
+
+        if ( sensorId == 2 )
+        {
+            CAMHAL_LOGDA("Camera mode: STEREO");
+            camMode.eCamOperatingMode = OMX_CaptureStereoImageCapture;
+        }
+        else
+        {
+            CAMHAL_LOGDA("Camera mode: MONO");
+            camMode.eCamOperatingMode = OMX_CaptureImageHighSpeedTemporalBracketing;
+        }
+
+        const OMX_ERRORTYPE eError =  OMX_SetParameter(component(),
+                           ( OMX_INDEXTYPE ) OMX_IndexCameraOperatingMode,
+                           &camMode);
+
+        if ( OMX_ErrorNone != eError )
+        {
+            CAMHAL_LOGDB("Error while configuring camera mode in CameraAdapter_Capabilities 0x%x", eError);
+            return BAD_VALUE;
+        }
+
         const status_t idleSwitchError = switchToState(OMX_StateIdle);
         if ( idleSwitchError != NO_ERROR )
         {
