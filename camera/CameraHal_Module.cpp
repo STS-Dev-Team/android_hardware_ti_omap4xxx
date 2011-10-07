@@ -618,9 +618,6 @@ int camera_get_number_of_cameras(void)
 {
     int num_cameras = MAX_CAMERAS_SUPPORTED;
 
-    // TODO(XXX): Ducati is not loaded yet when camera service gets here
-    //  Lets revisit this later to see if we can somehow get this working
-#if 0
     // this going to be the first call from camera service
     // initialize camera properties here...
     if(gCameraProperties.initialize() != android::NO_ERROR)
@@ -630,7 +627,6 @@ int camera_get_number_of_cameras(void)
     }
 
     num_cameras = gCameraProperties.camerasSupported();
-#endif
 
     return num_cameras;
 }
@@ -691,8 +687,3 @@ int camera_get_camera_info(int camera_id, struct camera_info *info)
 end:
     return rv;
 }
-
-
-
-
-
