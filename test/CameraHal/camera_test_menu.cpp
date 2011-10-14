@@ -380,6 +380,7 @@ const char *focus[] = {
     "infinity",
     "macro",
     "continuous-video",
+    "continuous-picture",
     "extended",
     "portrait",
 };
