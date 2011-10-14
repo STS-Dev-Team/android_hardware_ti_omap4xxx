@@ -45,9 +45,10 @@ void* MemoryManager::allocateBuffer(int width, int height, const char* format, i
     if(mIonFd == 0)
         {
         mIonFd = ion_open();
-        if(mIonFd == 0)
+        if(mIonFd <= 0)
             {
             CAMHAL_LOGEA("ion_open failed!!!");
+            mIonFd = 0;
             return NULL;
             }
         }
@@ -61,8 +62,7 @@ void* MemoryManager::allocateBuffer(int width, int height, const char* format, i
     if(!bufsArr)
         {
         CAMHAL_LOGEB("Allocation failed when creating buffers array of %d uint32_t elements", numArrayEntriesC);
-        LOG_FUNCTION_NAME_EXIT;
-        return NULL;
+        goto error;
         }
 
     ///Initialize the array with zeros - this will help us while freeing the array in case of error
@@ -110,12 +110,19 @@ void* MemoryManager::allocateBuffer(int width, int height, const char* format, i
 
 error:
     LOGE("Freeing buffers already allocated after error occurred");
-    freeBuffer(bufsArr);
+    if(bufsArr)
+        freeBuffer(bufsArr);
 
     if ( NULL != mErrorNotifier.get() )
         {
         mErrorNotifier->errorNotify(-ENOMEM);
         }
+
+    if ( 0 < mIonFd )
+    {
+        ion_close(mIonFd);
+        mIonFd = 0;
+    }
 
     LOG_FUNCTION_NAME_EXIT;
     return NULL;
@@ -128,7 +135,6 @@ uint32_t * MemoryManager::getOffsets()
     LOG_FUNCTION_NAME;
 
     LOG_FUNCTION_NAME_EXIT;
-
     return NULL;
 }
 
