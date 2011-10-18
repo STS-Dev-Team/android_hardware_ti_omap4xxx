@@ -135,6 +135,7 @@ uint32_t * MemoryManager::getOffsets()
     LOG_FUNCTION_NAME;
 
     LOG_FUNCTION_NAME_EXIT;
+
     return NULL;
 }
 
