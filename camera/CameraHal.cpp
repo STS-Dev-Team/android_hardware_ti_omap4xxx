@@ -357,22 +357,6 @@ int CameraHal::setParameters(const CameraParameters& params)
                 orientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
                 }
 
-            if(orientation ==90 || orientation ==270)
-           {
-              if ( !isResolutionValid(h,w, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
-               {
-                CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
-                return -EINVAL;
-               }
-              else
-              {
-                mParameters.setPreviewSize(w, h);
-                mVideoWidth = w;
-                mVideoHeight = h;
-               }
-           }
-           else
-           {
             if ( !isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
                 {
                 CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
@@ -382,7 +366,6 @@ int CameraHal::setParameters(const CameraParameters& params)
                 {
                 mParameters.setPreviewSize(w, h);
                 }
-           }
 
             if ( ( oldWidth != w ) || ( oldHeight != h ) )
                 {
