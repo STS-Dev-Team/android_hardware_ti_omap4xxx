@@ -40,7 +40,7 @@ OMAP4_CAMERA_USB_SRC:= \
 	V4LCameraAdapter/V4LCameraAdapter.cpp
 
 #
-# OMX Camera HAL 
+# OMX Camera HAL
 #
 
 ifeq ($(OMAP4_CAMERA_HAL_USES),OMX)
@@ -62,8 +62,8 @@ LOCAL_C_INCLUDES += \
     hardware/ti/omap4xxx/ion \
     frameworks/base/include/ui \
     frameworks/base/include/utils \
-    hardware/ti/omap4xxx/domx/omx_core/inc \
-    hardware/ti/omap4xxx/domx/mm_osal/inc \
+    $(DOMX_PATH)/omx_core/inc \
+    $(DOMX_PATH)/mm_osal/inc \
     frameworks/base/include/media/stagefright \
     frameworks/base/include/media/stagefright/openmax \
     external/jpeg \
@@ -135,5 +135,5 @@ LOCAL_MODULE_TAGS:= optional
 
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 endif
-endif 
+endif
 endif
