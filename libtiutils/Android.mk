@@ -10,7 +10,7 @@ LOCAL_SRC_FILES:= \
     MessageQueue.cpp \
     Semaphore.cpp \
     ErrorUtils.cpp
-    
+
 LOCAL_SHARED_LIBRARIES:= \
     libdl \
     libui \
@@ -19,12 +19,12 @@ LOCAL_SHARED_LIBRARIES:= \
     libcutils
 
 LOCAL_C_INCLUDES += \
-	frameworks/base/include/utils \
-	bionic/libc/include \
-	hardware/ti/omap4xxx/domx/omx_core/inc \
-	hardware/ti/omap4xxx/domx/mm_osal/inc
-	
-LOCAL_CFLAGS += -fno-short-enums 
+    frameworks/base/include/utils \
+    bionic/libc/include \
+    $(DOMX_PATH)/omx_core/inc \
+    $(DOMX_PATH)/mm_osal/inc
+
+LOCAL_CFLAGS += -fno-short-enums
 
 # LOCAL_CFLAGS +=
 
