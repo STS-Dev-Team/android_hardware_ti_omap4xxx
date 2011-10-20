@@ -78,9 +78,6 @@ public:
     // API
     virtual status_t UseBuffersPreview(void* bufArr, int num);
 
-    //API to flush the buffers for preview
-    status_t flushBuffers();
-
 protected:
 
 //----------Parent class method implementation------------------------------------
