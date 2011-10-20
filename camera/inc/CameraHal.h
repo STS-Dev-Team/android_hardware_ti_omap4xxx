@@ -734,31 +734,32 @@ public:
 
     enum CameraCommands
         {
-        CAMERA_START_PREVIEW                        = 0,
-        CAMERA_STOP_PREVIEW                         = 1,
-        CAMERA_START_VIDEO                          = 2,
-        CAMERA_STOP_VIDEO                           = 3,
-        CAMERA_START_IMAGE_CAPTURE                  = 4,
-        CAMERA_STOP_IMAGE_CAPTURE                   = 5,
-        CAMERA_PERFORM_AUTOFOCUS                    = 6,
-        CAMERA_CANCEL_AUTOFOCUS                     = 7,
-        CAMERA_PREVIEW_FLUSH_BUFFERS                = 8,
-        CAMERA_START_SMOOTH_ZOOM                    = 9,
-        CAMERA_STOP_SMOOTH_ZOOM                     = 10,
-        CAMERA_USE_BUFFERS_PREVIEW                  = 11,
-        CAMERA_SET_TIMEOUT                          = 12,
-        CAMERA_CANCEL_TIMEOUT                       = 13,
-        CAMERA_START_BRACKET_CAPTURE                = 14,
-        CAMERA_STOP_BRACKET_CAPTURE                 = 15,
-        CAMERA_QUERY_RESOLUTION_PREVIEW             = 16,
-        CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE      = 17,
-        CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA       = 18,
-        CAMERA_USE_BUFFERS_IMAGE_CAPTURE            = 19,
-        CAMERA_USE_BUFFERS_PREVIEW_DATA             = 20,
-        CAMERA_TIMEOUT_EXPIRED                      = 21,
-        CAMERA_START_FD                             = 22,
-        CAMERA_STOP_FD                              = 23,
-        CAMERA_SWITCH_TO_EXECUTING                  = 24,
+        CAMERA_NULL_COMMAND = 0,
+        CAMERA_START_PREVIEW,
+        CAMERA_STOP_PREVIEW,
+        CAMERA_START_VIDEO,
+        CAMERA_STOP_VIDEO,
+        CAMERA_START_IMAGE_CAPTURE,
+        CAMERA_STOP_IMAGE_CAPTURE,
+        CAMERA_PERFORM_AUTOFOCUS,
+        CAMERA_CANCEL_AUTOFOCUS,
+        CAMERA_START_SMOOTH_ZOOM,
+        CAMERA_STOP_SMOOTH_ZOOM,
+        CAMERA_USE_BUFFERS_PREVIEW,
+        CAMERA_SET_TIMEOUT,
+        CAMERA_CANCEL_TIMEOUT,
+        CAMERA_START_BRACKET_CAPTURE,
+        CAMERA_STOP_BRACKET_CAPTURE,
+        CAMERA_QUERY_RESOLUTION_PREVIEW,
+        CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE,
+        CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA,
+        CAMERA_USE_BUFFERS_IMAGE_CAPTURE,
+        CAMERA_USE_BUFFERS_PREVIEW_DATA,
+        CAMERA_TIMEOUT_EXPIRED,
+        CAMERA_START_FD,
+        CAMERA_STOP_FD,
+        CAMERA_SWITCH_TO_EXECUTING,
+        CAMERA_USE_BUFFERS_VIDEO_CAPTURE
         };
 
     enum CameraMode
@@ -807,12 +808,6 @@ public:
     //APIs to configure Camera adapter and get the current parameter set
     virtual int setParameters(const CameraParameters& params) = 0;
     virtual void getParameters(CameraParameters& params) = 0;
-
-    //API to flush the buffers from Camera
-     status_t flushBuffers()
-        {
-        return sendCommand(CameraAdapter::CAMERA_PREVIEW_FLUSH_BUFFERS);
-        }
 
     //Registers callback for returning image buffers back to CameraHAL
     virtual int registerImageReleaseCallback(release_image_buffers_callback callback, void *user_data) = 0;
