@@ -658,32 +658,6 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
             }
 
-        case CameraAdapter::CAMERA_PREVIEW_FLUSH_BUFFERS:
-            {
-
-            if ( ret == NO_ERROR )
-                {
-                ret = setState(operation);
-                }
-
-            if ( ret == NO_ERROR )
-                {
-                ret = flushBuffers();
-                }
-
-            if ( ret == NO_ERROR )
-                {
-                ret = commitState();
-                }
-            else
-                {
-                ret |= rollbackState();
-                }
-
-            break;
-
-            }
-
         case CameraAdapter::CAMERA_START_IMAGE_CAPTURE:
             {
 
