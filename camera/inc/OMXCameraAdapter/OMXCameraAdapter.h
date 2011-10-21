@@ -785,6 +785,7 @@ private:
     static const char DEFAULT_VIDEO_SNAPSHOT_SUPPORTED[];
     static const char DEFAULT_VIDEO_SIZE[];
     static const char DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[];
+    static const char DEFAULT_SENSOR_ORIENTATION[];
     static const size_t MAX_FOCUS_AREAS;
 
     OMX_VERSIONTYPE mCompRevision;
