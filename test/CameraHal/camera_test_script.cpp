@@ -610,8 +610,12 @@ int execute_functional_script(char *script) {
                     ippIDX_old = ippIDX;
                     ippIDX = 3;
                     params.set(KEY_IPP, ipp_mode[ippIDX]);
+                    params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+                } else if ( !strcmp((cmd + 1), "video-mode") ) {
+                    params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::TRUE);
                 } else {
                     ippIDX = ippIDX_old;
+                    params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
                 }
 
                 params.set(KEY_MODE, (cmd + 1));

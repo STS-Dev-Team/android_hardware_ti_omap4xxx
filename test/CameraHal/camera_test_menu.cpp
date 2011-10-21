@@ -1804,8 +1804,12 @@ int functional_menu() {
                 ippIDX_old = ippIDX;
                 ippIDX = 3;
                 params.set(KEY_IPP, ipp_mode[ippIDX]);
+                params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
+            } else if ( !strcmp(capture[capture_mode], "video-mode") ) {
+                params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::TRUE);
             } else {
                 ippIDX = ippIDX_old;
+                params.set(CameraParameters::KEY_RECORDING_HINT, CameraParameters::FALSE);
             }
 
             params.set(KEY_MODE, (capture[capture_mode]));
