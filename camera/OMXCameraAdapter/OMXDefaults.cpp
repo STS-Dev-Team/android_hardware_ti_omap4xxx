@@ -79,5 +79,6 @@ const char OMXCameraAdapter::DEFAULT_LOCK_UNSUPPORTED[] = "false";
 const char OMXCameraAdapter::DEFAULT_VIDEO_SNAPSHOT_SUPPORTED[] = "true";
 const char OMXCameraAdapter::DEFAULT_VIDEO_SIZE[] = "1920x1080";
 const char OMXCameraAdapter::DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "1920x1080";
+const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 };
 

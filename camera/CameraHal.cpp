@@ -352,7 +352,11 @@ int CameraHal::setParameters(const CameraParameters& params)
             int orientation =0;
             if((valstr = params.get(TICameraParameters::KEY_SENSOR_ORIENTATION)) != NULL)
                 {
+                doesSetParameterNeedUpdate(valstr,
+                                           mParameters.get(TICameraParameters::KEY_SENSOR_ORIENTATION),
+                                           updateRequired);
                 CAMHAL_LOGDB("Sensor Orientation is set to %s", params.get(TICameraParameters::KEY_SENSOR_ORIENTATION));
+
                 mParameters.set(TICameraParameters::KEY_SENSOR_ORIENTATION, valstr);
                 orientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
                 }

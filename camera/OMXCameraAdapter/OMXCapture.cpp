@@ -189,7 +189,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     // Read Sensor Orientation and set it based on perating mode
 
-     if (( params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION) != -1 ) && (mCapMode == OMXCameraAdapter::VIDEO_MODE))
+     if ( params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION) != -1 )
         {
          mSensorOrientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
          if (mSensorOrientation == 270 ||mSensorOrientation==90)
