@@ -759,6 +759,9 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
 
 status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &portParams)
 {
+    size_t overclockWidth;
+    size_t overclockHeight;
+
     size_t bufferCount;
 
     LOG_FUNCTION_NAME;
@@ -784,16 +787,22 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         portCheck.format.video.nFrameHeight     = portParams.mHeight;
         portCheck.format.video.eColorFormat     = portParams.mColorFormat;
         portCheck.format.video.nStride          = portParams.mStride;
-        if( ( portCheck.format.video.nFrameWidth >= 1920 ) &&
-            ( portCheck.format.video.nFrameHeight >= 1080 ) &&
-            ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) )
-            {
+
+        if ( ( mSensorOrientation == 90 ) || ( mSensorOrientation == 270 ) ) {
+            overclockWidth = 1080;
+            overclockHeight = 1920;
+        } else {
+            overclockWidth = 1920;
+            overclockHeight = 1080;
+        }
+
+        if( ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+            ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
+            ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) {
             setSensorOverclock(true);
-            }
-        else
-            {
+        } else {
             setSensorOverclock(false);
-            }
+        }
 
         portCheck.format.video.xFramerate       = portParams.mFrameRate<<16;
         portCheck.nBufferSize                   = portParams.mStride * portParams.mHeight;
