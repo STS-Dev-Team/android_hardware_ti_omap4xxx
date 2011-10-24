@@ -62,6 +62,10 @@
 #define MODEL "camera_test"
 #define MAKE "camera_test"
 
+#define BLAZE 0
+#define BLAZE_TABLET1 1
+#define BLAZE_TABLET2 2
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 namespace android {

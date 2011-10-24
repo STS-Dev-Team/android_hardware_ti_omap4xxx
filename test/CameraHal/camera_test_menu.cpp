@@ -94,7 +94,7 @@ int videoFd = -1;
 int elockidx = 0;
 int wblockidx = 0;
 int afTimeoutIdx = 0;
-
+int platformID = BLAZE_TABLET2;
 
 char dir_path[80] = SDCARD_PATH;
 
@@ -364,6 +364,7 @@ fpsConst_RangesSec fpsConstRangesSec[] = {
   { "20000,20000", "[20:20]", 20 },
   { "25000,25000", "[25:25]", 25 },
   { "27000,27000", "[27:27]", 27 },
+  { "30000,30000", "[30:30]", 30 },
 };
 
 size_t length_fpsConst_RangesSec = ARRAY_SIZE(fpsConstRangesSec);
@@ -2128,7 +2129,7 @@ int functional_menu() {
 }
 
 void print_usage() {
-    printf(" USAGE: camera_test  <param>  <script>\n");
+    printf(" USAGE: camera_test  <param>  <script> <target_board>\n");
     printf(" <param>\n-----------\n\n");
     printf(" F or f -> Functional tests \n");
     printf(" A or a -> API tests \n");
@@ -2137,6 +2138,10 @@ void print_usage() {
     printf(" SN or sn -> Stress tests; No syslink trace \n\n");
     printf(" <script>\n----------\n");
     printf("Script name (Only for stress tests)\n\n");
+    printf(" <target_board> (Only for stress tests)\n----------------\n");
+    printf(" blaze or B    -> for BLAZE \n");
+    printf(" tablet1 or T1 -> for Blaze TABLET-1 \n");
+    printf(" tablet2 or T2 -> for Blaze TABLET-2.[default] \n\n");
     return;
 }
 
@@ -2458,10 +2463,27 @@ int main(int argc, char *argv[]) {
 
                 break;
         }
-    } else if ( ( argc == 3) && ( ( *argv[1] == 'S' ) || ( *argv[1] == 's') ) ) {
+    } else if ( ( argc <= 4) && ( ( *argv[1] == 'S' ) || ( *argv[1] == 's') ) ) {
 
         if((argv[1][1] == 'N') || (argv[1][1] == 'n')) {
             bLogSysLinkTrace = false;
+        }
+
+        platformID = BLAZE_TABLET2;
+        if( argc == 4 ) {
+            if( strcasecmp(argv[3],"blaze") == 0 || strcasecmp(argv[3],"B") == 0 ){
+                platformID = BLAZE;
+            }
+            else if( (strcasecmp(argv[3],"tablet1") == 0) || (strcasecmp(argv[3],"T1") == 0) ) {
+                platformID = BLAZE_TABLET1;
+            }
+            else if( (strcasecmp(argv[3],"tablet2") == 0) || (strcasecmp(argv[3],"T2") == 0) ) {
+                platformID = BLAZE_TABLET2;
+            }
+            else {
+                printf("Error: Unknown argument for platformID.\n");
+                return -1;
+            }
         }
 
         ProcessState::self()->startThreadPool();

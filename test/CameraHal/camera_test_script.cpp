@@ -101,7 +101,7 @@ extern size_t length_Zoom;
 extern size_t length_fps_ranges;
 extern size_t length_fpsConst_Ranges;
 extern size_t length_fpsConst_RangesSec;
-
+extern int platformID;
 
 int execute_functional_script(char *script) {
     char *cmd, *ctx, *cycle_cmd, *temp_cmd;
@@ -808,23 +808,25 @@ int execute_functional_script(char *script) {
 
                 if (camera_index == 0) {
                     for (i = 0; i < length_fpsConst_Ranges; i++) {
-                        if (frameR == fpsConstRanges[i].constFramerate)
+                        if (frameR == fpsConstRanges[i].constFramerate) {
                             frameRateIndex = i;
-
+                            break;
+                        }
                     }
+                    params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fpsConstRanges[frameRateIndex].range);
                 } else {
                     for (i = 0; i < length_fpsConst_RangesSec; i++) {
-                        if (frameR == fpsConstRangesSec[i].constFramerate)
+                        if (frameR == fpsConstRangesSec[i].constFramerate) {
                             frameRateIndex = i;
+                            break;
+                        }
                     }
-                }
-
-
-                if (camera_index == 0)
-                    params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fpsConstRanges[frameRateIndex].range);
-                else
+                    if ( (platformID == BLAZE_TABLET2 || platformID == BLAZE_TABLET1) &&
+                         (fpsConstRangesSec[frameRateIndex].constFramerate == 27) ) {
+                        frameRateIndex++;
+                    }
                     params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fpsConstRangesSec[frameRateIndex].range);
-
+                }
 
                 if ( hardwareActive && previewRunning ) {
                     camera->stopPreview();
