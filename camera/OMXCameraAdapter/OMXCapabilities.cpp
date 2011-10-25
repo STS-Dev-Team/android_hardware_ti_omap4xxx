@@ -69,7 +69,6 @@ const CapResolution OMXCameraAdapter::mImageCapRes [] = {
 };
 
 const CapResolution OMXCameraAdapter::mPreviewRes [] = {
-    { 1920, 1088, "1920x1088" }, // Required for Potrait 1080p Resolution
     { 1920, 1080, "1920x1080" },
     { 1280, 720, "1280x720" },
     { 960, 720, "960x720" },
@@ -83,6 +82,19 @@ const CapResolution OMXCameraAdapter::mPreviewRes [] = {
     { 240, 160, "240x160" },
     { 176, 144, "176x144" },
     { 128, 96, "128x96" },
+    //Portait resolutions
+    { 1088, 1920, "1088x1920" },
+    { 720, 1280, "720x1280" },
+    { 480, 800, "480x800" },
+    { 576, 720, "576x720" },
+    { 576, 768, "576x768" },
+    { 480, 720, "480x720" },
+    { 480, 640, "480x640" },
+    { 288, 352, "288x352" },
+    { 240, 320, "240x320" },
+    { 160, 240, "240x160" },
+    { 144, 176, "144x176" },
+    { 96, 128, "96x128" }
 };
 
 const CapResolution OMXCameraAdapter::mThumbRes [] = {
