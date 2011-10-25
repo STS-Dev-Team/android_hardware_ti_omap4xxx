@@ -69,7 +69,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         }
     else
         {
-        capMode = OMXCameraAdapter::HIGH_QUALITY_ZSL;
+        capMode = OMXCameraAdapter::HIGH_QUALITY;
 
         }
 
