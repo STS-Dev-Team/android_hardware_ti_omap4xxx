@@ -200,6 +200,7 @@ const CapISO OMXCameraAdapter::mISOStages [] = {
 const CapU32 OMXCameraAdapter::mSensorNames [] = {
     { 300, "IMX060" },
     { 301, "OV5650" },
+    { 302, "OV5640" },
     { 305, "S5K4E1GA"},
     { 306, "S5K6A1GX03" }
     // TODO(XXX): need to account for S3D camera later
