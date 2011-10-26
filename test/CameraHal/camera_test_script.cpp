@@ -884,6 +884,20 @@ int execute_functional_script(char *script) {
 
                 params.remove(CameraParameters::KEY_FOCUS_AREAS);
 
+                break;
+
+            case 'y':
+
+                params.set(CameraParameters::KEY_METERING_AREAS, (cmd + 1));
+
+                if ( hardwareActive ) {
+                    camera->setParameters(params.flatten());
+                }
+
+                params.remove(CameraParameters::KEY_METERING_AREAS);
+
+                break;
+
             case 'f':
                 gettimeofday(&autofocus_start, 0);
 
