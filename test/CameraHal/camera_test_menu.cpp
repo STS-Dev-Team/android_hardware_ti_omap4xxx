@@ -795,6 +795,7 @@ void printSupportedParams()
     printf("\n\r\tSupported Antibanding Options: %s", params.get(CameraParameters::KEY_SUPPORTED_ANTIBANDING));
     printf("\n\r\tSupported Flash Modes: %s", params.get(CameraParameters::KEY_SUPPORTED_FLASH_MODES));
     printf("\n\r\tSupported Focus Areas: %d", params.getInt(CameraParameters::KEY_MAX_NUM_FOCUS_AREAS));
+    printf("\n\r\tSupported Metering Areas: %d", params.getInt(CameraParameters::KEY_MAX_NUM_METERING_AREAS));
 
     if ( NULL != params.get(CameraParameters::KEY_FOCUS_DISTANCES) ) {
         printf("\n\r\tFocus Distances: %s \n", params.get(CameraParameters::KEY_FOCUS_DISTANCES));
@@ -1366,6 +1367,7 @@ int functional_menu() {
         printf("   F. Start face detection \n");
         printf("   T. Stop face detection \n");
         printf("   G. Touch/Focus area AF\n");
+        printf("   y. Metering area\n");
         printf("   f. Auto Focus/Half Press\n");
         printf("   I. AF Timeout       %s\n", afTimeout[afTimeoutIdx]);
         printf("   J.Flash:              %s\n", flashModes[flashIdx]);
@@ -2038,6 +2040,20 @@ int functional_menu() {
                 camera->setParameters(params.flatten());
 
             params.remove(CameraParameters::KEY_FOCUS_AREAS);
+
+            break;
+
+        case 'y':
+
+            params.set(CameraParameters::KEY_METERING_AREAS, TEST_METERING_AREA);
+
+            if ( hardwareActive ) {
+                camera->setParameters(params.flatten());
+            }
+
+            params.remove(CameraParameters::KEY_METERING_AREAS);
+
+            break;
 
         case 'f':
 
