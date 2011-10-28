@@ -84,7 +84,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mCameraAdapterParameters.mImagePortIndex = OMX_CAMERA_PORT_IMAGE_OUT_IMAGE;
     mCameraAdapterParameters.mMeasurementPortIndex = OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT;
     //currently not supported use preview port instead
-    mCameraAdapterParameters.mVideoPortIndex = OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW;
+    mCameraAdapterParameters.mVideoPortIndex = OMX_CAMERA_PORT_VIDEO_OUT_VIDEO;
 
     eError = OMX_Init();
     if (eError != OMX_ErrorNone) {
@@ -168,6 +168,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mLastBracetingBufferIdx = 0;
     mOMXStateSwitch = false;
     mBracketingSet = false;
+    mRawCapture = false;
 
     mCaptureSignalled = false;
     mCaptureConfigured = false;
@@ -283,7 +284,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex], 0, sizeof(OMXCameraPortParameters));
-
+    memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex], 0, sizeof(OMXCameraPortParameters));
     //Initialize 3A defaults
     ret = apply3ADefaults(mParameters3A);
     if ( NO_ERROR != ret ) {
@@ -323,8 +324,10 @@ OMXCameraAdapter::OMXCameraPortParameters *OMXCameraAdapter::getPortParams(Camer
     switch ( frameType )
     {
     case CameraFrame::IMAGE_FRAME:
-    case CameraFrame::RAW_FRAME:
         ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+        break;
+    case CameraFrame::RAW_FRAME:
+        ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
         break;
     case CameraFrame::PREVIEW_FRAME_SYNC:
     case CameraFrame::SNAPSHOT_FRAME:
@@ -765,14 +768,12 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     eError = OMX_GetParameter (mCameraAdapterParameters.mHandleComp,
                                 OMX_IndexParamPortDefinition, &portCheck);
-    if(eError!=OMX_ErrorNone)
-        {
+    if (eError!=OMX_ErrorNone) {
         CAMHAL_LOGEB("OMX_GetParameter - %x", eError);
-        }
+    }
     GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
 
-    if ( OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW == port )
-        {
+    if (OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW == port) {
         portCheck.format.video.nFrameWidth      = portParams.mWidth;
         portCheck.format.video.nFrameHeight     = portParams.mHeight;
         portCheck.format.video.eColorFormat     = portParams.mColorFormat;
@@ -798,104 +799,107 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         portCheck.nBufferSize                   = portParams.mStride * portParams.mHeight;
         portCheck.nBufferCountActual = portParams.mNumBufs;
         mFocusThreshold = FOCUS_THRESHOLD * portParams.mFrameRate;
-        }
-    else if ( OMX_CAMERA_PORT_IMAGE_OUT_IMAGE == port )
-        {
+        // Used for RAW capture
+    } else if (OMX_CAMERA_PORT_VIDEO_OUT_VIDEO == port) {
+        portCheck.format.video.nFrameWidth      = portParams.mWidth;
+        portCheck.format.video.nFrameHeight     = portParams.mHeight;
+        portCheck.format.video.eColorFormat     = OMX_COLOR_FormatRawBayer10bit;//portParams.mColorFormat;
+        portCheck.nBufferCountActual            = 1;//portParams.mNumBufs;
+    } else if (OMX_CAMERA_PORT_IMAGE_OUT_IMAGE == port) {
         portCheck.format.image.nFrameWidth      = portParams.mWidth;
         portCheck.format.image.nFrameHeight     = portParams.mHeight;
-        if ( OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingNone )
-            {
+        if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingNone) {
             portCheck.format.image.eColorFormat     = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
-            }
-        else if ( OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingJPS )
-            {
+        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingJPS) {
             portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = (OMX_IMAGE_CODINGTYPE) OMX_TI_IMAGE_CodingJPS;
-            }
-        else if ( OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingMPO )
-            {
+        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingMPO) {
             portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = (OMX_IMAGE_CODINGTYPE) OMX_TI_IMAGE_CodingMPO;
-            }
-        else if ( OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWJPEG )
-            {
+        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWJPEG) {
             //TODO: OMX_IMAGE_CodingJPEG should be changed to OMX_IMAGE_CodingRAWJPEG when
             // RAW format is supported
             portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
-            }
-        else if ( OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWMPO )
-            {
+        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWMPO) {
             //TODO: OMX_IMAGE_CodingJPEG should be changed to OMX_IMAGE_CodingRAWMPO when
             // RAW format is supported
             portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
-            }
-        else
-            {
+        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWJPS) {
+            //TODO: OMX_IMAGE_CodingJPEG should be changed to OMX_IMAGE_CodingRAWMPO when
+            // RAW format is supported
+            portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
+            portCheck.format.image.eCompressionFormat = (OMX_IMAGE_CODINGTYPE) OMX_TI_IMAGE_CodingJPS;
+        } else {
             portCheck.format.image.eColorFormat     = portParams.mColorFormat;
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
-            }
+        }
 
         //Stride for 1D tiler buffer is zero
         portCheck.format.image.nStride          =  0;
         portCheck.nBufferSize                   =  portParams.mStride * portParams.mWidth * portParams.mHeight;
         portCheck.nBufferCountActual = portParams.mNumBufs;
-        }
-    else
-        {
+    } else {
         CAMHAL_LOGEB("Unsupported port index 0x%x", (unsigned int)port);
-        }
+    }
 
     eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
-                            OMX_IndexParamPortDefinition, &portCheck);
-    if(eError!=OMX_ErrorNone)
-        {
+            OMX_IndexParamPortDefinition, &portCheck);
+    if (eError!=OMX_ErrorNone) {
         CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
-        }
+    }
     GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
 
     /* check if parameters are set correctly by calling GetParameter() */
     eError = OMX_GetParameter(mCameraAdapterParameters.mHandleComp,
-                                        OMX_IndexParamPortDefinition, &portCheck);
-    if(eError!=OMX_ErrorNone)
-        {
+            OMX_IndexParamPortDefinition, &portCheck);
+    if (eError!=OMX_ErrorNone) {
         CAMHAL_LOGEB("OMX_GetParameter - %x", eError);
-        }
+    }
     GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
 
     portParams.mBufSize = portCheck.nBufferSize;
     portParams.mStride = portCheck.format.image.nStride;
 
-    if ( OMX_CAMERA_PORT_IMAGE_OUT_IMAGE == port )
-        {
+    if (OMX_CAMERA_PORT_IMAGE_OUT_IMAGE == port) {
         CAMHAL_LOGDB("\n *** IMG Width = %ld", portCheck.format.image.nFrameWidth);
         CAMHAL_LOGDB("\n ***IMG Height = %ld", portCheck.format.image.nFrameHeight);
 
         CAMHAL_LOGDB("\n ***IMG IMG FMT = %x", portCheck.format.image.eColorFormat);
         CAMHAL_LOGDB("\n ***IMG portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
         CAMHAL_LOGDB("\n ***IMG portCheck.nBufferCountMin = %ld\n",
-                                                portCheck.nBufferCountMin);
+                portCheck.nBufferCountMin);
         CAMHAL_LOGDB("\n ***IMG portCheck.nBufferCountActual = %ld\n",
-                                                portCheck.nBufferCountActual);
+                portCheck.nBufferCountActual);
         CAMHAL_LOGDB("\n ***IMG portCheck.format.image.nStride = %ld\n",
-                                                portCheck.format.image.nStride);
-        }
-    else
-        {
+                portCheck.format.image.nStride);
+    } else if (OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW == port) {
         CAMHAL_LOGDB("\n *** PRV Width = %ld", portCheck.format.video.nFrameWidth);
         CAMHAL_LOGDB("\n ***PRV Height = %ld", portCheck.format.video.nFrameHeight);
 
         CAMHAL_LOGDB("\n ***PRV IMG FMT = %x", portCheck.format.video.eColorFormat);
         CAMHAL_LOGDB("\n ***PRV portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
         CAMHAL_LOGDB("\n ***PRV portCheck.nBufferCountMin = %ld\n",
-                                                portCheck.nBufferCountMin);
+                portCheck.nBufferCountMin);
         CAMHAL_LOGDB("\n ***PRV portCheck.nBufferCountActual = %ld\n",
-                                                portCheck.nBufferCountActual);
+                portCheck.nBufferCountActual);
         CAMHAL_LOGDB("\n ***PRV portCheck.format.video.nStride = %ld\n",
-                                                portCheck.format.video.nStride);
-        }
+                portCheck.format.video.nStride);
+    } else {
+        CAMHAL_LOGDB("\n *** VID Width = %ld", portCheck.format.video.nFrameWidth);
+        CAMHAL_LOGDB("\n *** VID Height = %ld", portCheck.format.video.nFrameHeight);
+
+        CAMHAL_LOGDB("\n *** VID IMG FMT = %x", portCheck.format.video.eColorFormat);
+        CAMHAL_LOGDB("\n *** VID portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
+        CAMHAL_LOGDB("\n *** VID portCheck.nBufferCountMin = %ld\n",
+                portCheck.nBufferCountMin);
+        CAMHAL_LOGDB("\n *** VID portCheck.nBufferCountActual = %ld\n",
+                portCheck.nBufferCountActual);
+        CAMHAL_LOGDB("\n *** VID portCheck.format.video.nStride = %ld\n",
+                portCheck.format.video.nStride);
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1014,15 +1018,15 @@ status_t OMXCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, si
             break;
 
         case CAMERA_VIDEO:
-            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex].mNumBufs =  num;
-            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex].mMaxQueueable = queueable;
-            ret = UseBuffersPreview(bufArr, num);
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex].mNumBufs =  num;
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex].mMaxQueueable = queueable;
+            ret = UseBuffersRawCapture(bufArr, num);
             break;
 
         case CAMERA_MEASUREMENT:
             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex].mNumBufs = num;
             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex].mMaxQueueable = queueable;
-            ret = UseBuffersPreviewData(bufArr, num);
+            ret = UseBuffersPreview(bufArr, num);
             break;
 
         }
@@ -3102,8 +3106,21 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
 
         }
-    else
-        {
+        else if (pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_VIDEO) {
+            typeOfFrame = CameraFrame::RAW_FRAME;
+            pPortParam->mImageType = typeOfFrame;
+            {
+                Mutex::Autolock lock(mLock);
+                if( ( CAPTURE_ACTIVE & state ) != CAPTURE_ACTIVE ) {
+                    goto EXIT;
+                }
+            }
+
+            CAMHAL_LOGEB ("RAW buffer done on video port, length = %d", pBuffHeader->nFilledLen);
+
+            mask = (unsigned int) CameraFrame::RAW_FRAME;
+            stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+        } else {
         CAMHAL_LOGEA("Frame received for non-(preview/capture/measure) port. This is yet to be supported");
         goto EXIT;
         }

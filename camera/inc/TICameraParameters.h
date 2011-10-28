@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) Texas Instruments - http://www.ti.com/
  *
@@ -128,6 +129,10 @@ static const char  KEY_GPS_MAPDATUM[];
 static const char  KEY_GPS_VERSION[];
 static const char  KEY_GPS_DATESTAMP[];
 
+static const char  RAW_WIDTH[];
+static const char  RAW_HEIGHT[];
+static const char  KEY_FILENAME_TIMESTAMP[];
+
 //TI extensions for enabling/disabling shutter sound
 static const char SHUTTER_ENABLE[];
 static const char SHUTTER_DISABLE[];
@@ -155,6 +160,7 @@ static const char PIXEL_FORMAT_JPS[];
 static const char PIXEL_FORMAT_MPO[];
 static const char PIXEL_FORMAT_RAW_JPEG[];
 static const char PIXEL_FORMAT_RAW_MPO[];
+static const char PIXEL_FORMAT_RAW_JPS[];
 
 // TI extensions to standard android scene mode settings
 static const  char SCENE_MODE_SPORT[];
