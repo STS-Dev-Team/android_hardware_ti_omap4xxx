@@ -927,7 +927,7 @@ void AppCallbackNotifier::notifyFrame()
                     // who registers a raw callback should receive one
                     // as well. This is  not always the case with
                     // CameraAdapters though.
-                    if (!mRawAvailable) {
+                    if (!mCameraHal->msgTypeEnabled(CAMERA_MSG_RAW_IMAGE)) {
                         dummyRaw();
                     } else {
                         mRawAvailable = false;
@@ -1668,6 +1668,10 @@ status_t AppCallbackNotifier::enableMsgType(int32_t msgType)
         mFrameProvider->enableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
     }
 
+    if(msgType & CAMERA_MSG_RAW_IMAGE) {
+        mFrameProvider->enableFrameNotification(CameraFrame::RAW_FRAME);
+    }
+
     return NO_ERROR;
 }
 
@@ -1675,6 +1679,10 @@ status_t AppCallbackNotifier::disableMsgType(int32_t msgType)
 {
     if( msgType & (CAMERA_MSG_PREVIEW_FRAME | CAMERA_MSG_POSTVIEW_FRAME) ) {
         mFrameProvider->disableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    }
+
+    if(msgType & CAMERA_MSG_RAW_IMAGE) {
+        mFrameProvider->disableFrameNotification(CameraFrame::RAW_FRAME);
     }
 
     return NO_ERROR;

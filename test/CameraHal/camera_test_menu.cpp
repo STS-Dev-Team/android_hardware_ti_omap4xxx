@@ -395,7 +395,7 @@ pixel_format pixelformat[] = {
   { -1, "raw" },
   };
 
-const char *codingformat[] = {"yuv422i-yuyv", "yuv420sp", "rgb565", "jpeg", "raw", "jps", "mpo", "raw+jpeg", "raw+mpo"};
+const char *codingformat[] = {"yuv422i-yuyv", "yuv420sp", "rgb565", "jpeg", "raw+jpeg", "raw", "jps", "mpo", "raw+mpo"};
 const char *gbce[] = {"disable", "enable"};
 int pictureFormat = 3; // jpeg
 const char *exposure[] = {"auto", "macro", "portrait", "landscape", "sports", "night", "night-portrait", "backlighting", "manual"};

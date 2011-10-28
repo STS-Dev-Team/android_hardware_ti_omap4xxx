@@ -454,7 +454,23 @@ int CameraHal::setParameters(const CameraParameters& params)
                 CAMHAL_LOGEB("ERROR: Invalid picture format: %s",valstr);
                 ret = -EINVAL;
             }
+        }
+
+        if ( 0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW) ||
+                0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW_JPEG) ||
+                0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW_JPS) ||
+                0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW_MPO) ) {
+
+            mRawCapture = true; // RawCapture flag
+
+            if ( (valstr = params.get(TICameraParameters::KEY_FILENAME_TIMESTAMP)) != NULL ) {
+                CAMHAL_LOGEB("FILENAME TIMESTAMP Value = %s", valstr);
+                mParameters.set(TICameraParameters::KEY_FILENAME_TIMESTAMP, valstr);
             }
+
+        } else {
+            mRawCapture = false;
+        }
 
         params.getPictureSize(&w, &h);
         if ( isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIZES))) {
@@ -521,7 +537,7 @@ int CameraHal::setParameters(const CameraParameters& params)
 
           }
         else
-          {
+        {
               if ( framerate != atoi(mCameraProperties->get(CameraProperties::PREVIEW_FRAME_RATE)) )
               {
 
@@ -546,7 +562,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                     framerate = maxFPS / CameraHal::VFR_SCALE;
                 }
 
-          }
+        }
 
         CAMHAL_LOGDB("FPS Range = %s", valstr);
         CAMHAL_LOGDB("DEFAULT FPS Range = %s", mCameraProperties->get(CameraProperties::FRAMERATE_RANGE));
@@ -900,6 +916,16 @@ int CameraHal::setParameters(const CameraParameters& params)
             CAMHAL_LOGI("Metering areas position set %s", params.get(CameraParameters::KEY_METERING_AREAS));
             mParameters.set(CameraParameters::KEY_METERING_AREAS, valstr);
             }
+
+        if( (valstr = params.get(TICameraParameters::RAW_WIDTH)) != NULL ) {
+            CAMHAL_LOGDB("Raw image width set %s", params.get(TICameraParameters::RAW_WIDTH));
+            mParameters.set(TICameraParameters::RAW_WIDTH, valstr);
+        }
+
+        if( (valstr = params.get(TICameraParameters::RAW_HEIGHT)) != NULL ) {
+            CAMHAL_LOGDB("Raw image height set %s", params.get(TICameraParameters::RAW_HEIGHT));
+            mParameters.set(TICameraParameters::RAW_HEIGHT, valstr);
+        }
 
         CameraParameters adapterParams = mParameters;
 
@@ -1263,6 +1289,46 @@ status_t CameraHal::allocVideoBufs(uint32_t width, uint32_t height, uint32_t buf
   return ret;
 }
 
+status_t CameraHal::allocRawBufs(int width, int height, const char* previewFormat, int bufferCount)
+{
+   status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME
+
+
+    ///@todo Enhance this method allocImageBufs() to take in a flag for burst capture
+    ///Always allocate the buffers for image capture using MemoryManager
+    if (NO_ERROR == ret) {
+        if(( NULL != mVideoBufs )) {
+            ret = freeRawBufs();
+        }
+    }
+
+    if ( NO_ERROR == ret ) {
+        mVideoLength = 0;
+        mVideoLength = (((width * height * 2) + 4095)/4096)*4096;
+        mVideoBufs = (int32_t *)mMemoryManager->allocateBuffer(width, height, previewFormat, mVideoLength, bufferCount);
+
+        CAMHAL_LOGDB("Size of Video cap buffer (used for RAW capture) %d", mVideoLength);
+        if( NULL == mVideoBufs ) {
+            CAMHAL_LOGEA("Couldn't allocate Video buffers using memory manager");
+            ret = -NO_MEMORY;
+        }
+    }
+
+    if ( NO_ERROR == ret ) {
+        mVideoFd = mMemoryManager->getFd();
+        mVideoOffsets = mMemoryManager->getOffsets();
+    } else {
+        mVideoFd = -1;
+        mVideoOffsets = NULL;
+    }
+
+    LOG_FUNCTION_NAME
+
+    return ret;
+}
+
 void endImageCapture( void *userData)
 {
     LOG_FUNCTION_NAME;
@@ -1363,6 +1429,27 @@ status_t CameraHal::freeVideoBufs(void *bufs)
   LOG_FUNCTION_NAME_EXIT;
 
   return ret;
+}
+
+status_t CameraHal::freeRawBufs()
+{
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME
+
+    if ( NO_ERROR == ret ) {
+        if( NULL != mVideoBufs ) {
+            ///@todo Pluralise the name of this method to freeBuffers
+            ret = mMemoryManager->freeBuffer(mVideoBufs);
+            mVideoBufs = NULL;
+        } else {
+            ret = -EINVAL;
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return ret;
 }
 
 /**
@@ -2416,6 +2503,7 @@ status_t CameraHal::takePicture( )
     int burst;
     const char *valstr = NULL;
     unsigned int bufferCount = 1;
+    unsigned int rawBufferCount = 1;
 
     Mutex::Autolock lock(mLock);
 
@@ -2452,7 +2540,7 @@ status_t CameraHal::takePicture( )
     }
 
     if ( !mBracketingRunning )
-        {
+    {
 
          if ( NO_ERROR == ret )
             {
@@ -2545,10 +2633,31 @@ status_t CameraHal::takePicture( )
             ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_IMAGE_CAPTURE,
                                               ( int ) &desc);
             }
-        }
+        if (mRawCapture) {
+            if ( NO_ERROR == ret ) {
+                CAMHAL_LOGDB("Raw capture buffers setup - %s", mParameters.getPictureFormat());
+                ret = allocRawBufs(mRawWidth, mRawHeight, TICameraParameters::PIXEL_FORMAT_RAW, rawBufferCount);
 
-    if ( ( NO_ERROR == ret ) && ( NULL != mCameraAdapter ) )
-        {
+                if ( NO_ERROR != ret ) {
+                    CAMHAL_LOGEB("allocRawBufs (for RAW capture) returned error 0x%x", ret);
+                }
+            }
+
+            if ((NO_ERROR == ret) && ( NULL != mCameraAdapter )) {
+                desc.mBuffers = mVideoBufs;
+                desc.mOffsets = mVideoOffsets;
+                desc.mFd = mVideoFd;
+                desc.mLength = mVideoLength;
+                desc.mCount = ( size_t ) rawBufferCount;
+                desc.mMaxQueueable = ( size_t ) rawBufferCount;
+
+                ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_VIDEO_CAPTURE,
+                        ( int ) &desc);
+            }
+        }
+    }
+
+    if ((NO_ERROR == ret) && (NULL != mCameraAdapter)) {
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
@@ -2561,7 +2670,7 @@ status_t CameraHal::takePicture( )
 
 #endif
 
-        }
+    }
 
     return ret;
 }
@@ -2805,6 +2914,11 @@ CameraHal::CameraHal(int cameraId)
     mSensorListener = NULL;
     mVideoWidth = 0;
     mVideoHeight = 0;
+
+    //These values depends on the sensor characteristics
+    mRawWidth = 4032;
+    mRawHeight = 3024;
+    mRawCapture = false;
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
@@ -3333,7 +3447,8 @@ void CameraHal::initDefaultParameters()
     p.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK, mCameraProperties->get(CameraProperties::AUTO_EXPOSURE_LOCK));
     p.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK, mCameraProperties->get(CameraProperties::AUTO_WHITEBALANCE_LOCK));
     p.set(CameraParameters::KEY_MAX_NUM_METERING_AREAS, mCameraProperties->get(CameraProperties::MAX_NUM_METERING_AREAS));
-
+    p.set(TICameraParameters::RAW_WIDTH, mRawWidth);
+    p.set(TICameraParameters::RAW_HEIGHT, mRawHeight);
     LOG_FUNCTION_NAME_EXIT;
 }
 

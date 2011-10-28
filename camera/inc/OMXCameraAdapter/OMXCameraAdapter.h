@@ -231,6 +231,7 @@ public:
         CodingMPO,
         CodingRAWJPEG,
         CodingRAWMPO,
+        CodingRAWJPS,
         };
 
     enum Algorithm3A
@@ -616,6 +617,7 @@ private:
     status_t setCaptureMode(OMXCameraAdapter::CaptureMode mode);
     status_t UseBuffersCapture(void* bufArr, int num);
     status_t UseBuffersPreviewData(void* bufArr, int num);
+    status_t UseBuffersRawCapture(void* bufArr, int num);
 
     //Used for calculation of the average frame rate during preview
     status_t recalculateFPS();
@@ -938,6 +940,7 @@ private:
     OMX_BOOL mUserSetExpLock;
     OMX_BOOL mUserSetWbLock;
 
+    bool mRawCapture;
 };
 }; //// namespace
 #endif //OMX_CAMERA_ADAPTER_H

@@ -636,6 +636,8 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
     if ( NO_ERROR == ret ) {
         //jpeg is not supported in OMX capabilies yet
         strncat(supported, CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
+        strcat(supported, ",");
+        strncat(supported, TICameraParameters::PIXEL_FORMAT_RAW_JPEG, MAX_PROP_VALUE_LENGTH - 1);
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
     }
 

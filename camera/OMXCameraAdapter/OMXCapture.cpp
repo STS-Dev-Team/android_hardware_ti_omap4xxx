@@ -62,85 +62,70 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     CAMHAL_LOGVB("Image: cap.mWidth = %d", (int)cap->mWidth);
     CAMHAL_LOGVB("Image: cap.mHeight = %d", (int)cap->mHeight);
 
-    if ( (valstr = params.getPictureFormat()) != NULL )
-        {
-        if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-            {
+    if ((valstr = params.getPictureFormat()) != NULL) {
+        mRawCapture = false;
+        if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
             pixFormat = OMX_COLOR_FormatCbYCrY;
-            }
-        else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0)
-            {
+        } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
-            }
-        else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-            {
+        } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             CAMHAL_LOGDA("RGB565 format selected");
             pixFormat = OMX_COLOR_Format16bitRGB565;
-            }
-        else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_JPEG) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_JPEG) == 0) {
             CAMHAL_LOGDA("JPEG format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             mCodingMode = CodingNone;
-            }
-        else if(strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_JPS) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_JPS) == 0) {
             CAMHAL_LOGDA("JPS format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             mCodingMode = CodingJPS;
-            }
-        else if(strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_MPO) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_MPO) == 0) {
             CAMHAL_LOGDA("MPO format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             mCodingMode = CodingMPO;
-            }
-        else if(strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_JPEG) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_JPEG) == 0) {
             CAMHAL_LOGDA("RAW + JPEG format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             mCodingMode = CodingRAWJPEG;
-            }
-        else if(strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_MPO) == 0)
-            {
+            mRawCapture = true;
+        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_MPO) == 0) {
             CAMHAL_LOGDA("RAW + MPO format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             mCodingMode = CodingRAWMPO;
-            }
-        else if(strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW) == 0)
-            {
+            mRawCapture = true;
+        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_JPS) == 0) {
+            CAMHAL_LOGDA("RAW + JPS format selected");
+            pixFormat = OMX_COLOR_FormatUnused;
+            mCodingMode = CodingRAWJPS;
+            mRawCapture = true;
+        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
-            }
-        else
-            {
+        } else {
             CAMHAL_LOGEA("Invalid format, JPEG format selected as default");
             pixFormat = OMX_COLOR_FormatUnused;
-            }
         }
-    else
-        {
+    } else {
         CAMHAL_LOGEA("Picture format is NULL, defaulting to JPEG");
         pixFormat = OMX_COLOR_FormatUnused;
-        }
+    }
 
     // JPEG capture is not supported in video mode by OMX Camera
     // Set capture format to yuv422i...jpeg encode will
     // be done on A9
     valstr = params.get(TICameraParameters::KEY_CAP_MODE);
     if ( (valstr && !strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE)) &&
-         (pixFormat == OMX_COLOR_FormatUnused) ) {
+            (pixFormat == OMX_COLOR_FormatUnused) ) {
         CAMHAL_LOGDA("Capturing in video mode...selecting yuv422i");
         pixFormat = OMX_COLOR_FormatCbYCrY;
     }
 
-    if ( pixFormat != cap->mColorFormat )
-        {
+    if (pixFormat != cap->mColorFormat) {
         mPendingCaptureSettings |= SetFormat;
         cap->mColorFormat = pixFormat;
-        }
+    }
 
     str = params.get(TICameraParameters::KEY_TEMP_BRACKETING);
     if ( ( str != NULL ) &&
@@ -842,6 +827,18 @@ status_t OMXCameraAdapter::startImageCapture()
             GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
+        if (mRawCapture) {
+            capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+
+            ///Queue all the buffers on capture port
+            for ( int index = 0 ; index < capData->mNumBufs ; index++ ) {
+                CAMHAL_LOGDB("Queuing buffer on Video port (for RAW capture) - 0x%x", ( unsigned int ) capData->mBufferHeader[index]->pBuffer);
+                eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
+                        (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
+
+                GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+            }
+        }
         mWaitingForSnapshot = true;
         mCaptureSignalled = false;
 
@@ -1013,6 +1010,7 @@ status_t OMXCameraAdapter::disableImagePort(){
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters *imgCaptureData = NULL;
+    OMXCameraPortParameters *imgRawCaptureData = NULL;
 
     if (!mCaptureConfigured) {
         return NO_ERROR;
@@ -1020,6 +1018,7 @@ status_t OMXCameraAdapter::disableImagePort(){
 
     mCaptureConfigured = false;
     imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+    imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex]; // for RAW capture
 
     ///Register for Image port Disable event
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
@@ -1069,7 +1068,41 @@ status_t OMXCameraAdapter::disableImagePort(){
         goto EXIT;
     }
 
- EXIT:
+    if (mRawCapture) {
+
+        ///Register for Video port Disable event
+        ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
+                OMX_EventCmdComplete,
+                OMX_CommandPortDisable,
+                mCameraAdapterParameters.mVideoPortIndex,
+                mStopCaptureSem);
+        ///Disable RawCapture Port
+        eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
+                OMX_CommandPortDisable,
+                mCameraAdapterParameters.mVideoPortIndex,
+                NULL);
+
+        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+
+        ///Free all the buffers on RawCapture port
+        if (imgRawCaptureData) {
+            CAMHAL_LOGDB("Freeing buffer on Capture port - %d", imgRawCaptureData->mNumBufs);
+            for ( int index = 0 ; index < imgRawCaptureData->mNumBufs ; index++) {
+                CAMHAL_LOGDB("Freeing buffer on Capture port - 0x%x", ( unsigned int ) imgRawCaptureData->mBufferHeader[index]->pBuffer);
+                eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                        mCameraAdapterParameters.mVideoPortIndex,
+                        (OMX_BUFFERHEADERTYPE*)imgRawCaptureData->mBufferHeader[index]);
+
+                GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+            }
+        }
+        CAMHAL_LOGDA("Waiting for Video port disable");
+        //Wait for the image port enable event
+        mStopCaptureSem.WaitTimeout(OMX_CMD_TIMEOUT);
+        CAMHAL_LOGDA("Video Port disabled");
+    }
+
+EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
@@ -1189,7 +1222,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
                                &pBufferHdr,
                                mCameraAdapterParameters.mImagePortIndex,
                                0,
-                               mCaptureBuffersLength,
+                               imgCaptureData->mBufSize,
                                (OMX_U8*)buffers[index]);
 
         CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
@@ -1254,6 +1287,125 @@ EXIT:
     LOG_FUNCTION_NAME_EXIT;
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
+}
+status_t OMXCameraAdapter::UseBuffersRawCapture(void* bufArr, int num)
+{
+    LOG_FUNCTION_NAME
+    status_t ret;
+    OMX_ERRORTYPE eError;
+    OMXCameraPortParameters * imgRawCaptureData = NULL;
+    uint32_t *buffers = (uint32_t*)bufArr;
+    Semaphore camSem;
+    OMXCameraPortParameters cap;
+
+    imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+
+    camSem.Create();
+
+    // mWaitingForSnapshot is true only when we're in the process of capturing
+    if (mWaitingForSnapshot) {
+        ///Register for Video port Disable event
+        ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
+                (OMX_EVENTTYPE) OMX_EventCmdComplete,
+                OMX_CommandPortDisable,
+                mCameraAdapterParameters.mVideoPortIndex,
+                camSem);
+
+        ///Disable Capture Port
+        eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
+                OMX_CommandPortDisable,
+                mCameraAdapterParameters.mVideoPortIndex,
+                NULL);
+
+        CAMHAL_LOGDA("Waiting for port disable");
+        //Wait for the image port enable event
+        camSem.Wait();
+        CAMHAL_LOGDA("Port disabled");
+    }
+
+    imgRawCaptureData->mNumBufs = num;
+
+    // Comming from mRawWidth/Height in CameraHal. Should come from Ducati max sensor resolution. Only for raw capture.
+    imgRawCaptureData->mWidth = mParams.getInt(TICameraParameters::RAW_WIDTH);
+    imgRawCaptureData->mHeight = mParams.getInt(TICameraParameters::RAW_HEIGHT);
+
+    CAMHAL_LOGDB("RAW Max sensor width = %d", (int)imgRawCaptureData->mWidth);
+    CAMHAL_LOGDB("RAW Max sensor height = %d", (int)imgRawCaptureData->mHeight);
+
+    ret = setFormat(OMX_CAMERA_PORT_VIDEO_OUT_VIDEO, *imgRawCaptureData);
+
+    if (ret != NO_ERROR) {
+        CAMHAL_LOGEB("setFormat() failed %d", ret);
+        LOG_FUNCTION_NAME_EXIT
+        return ret;
+    }
+
+    ///Register for Video port ENABLE event
+    ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
+                                (OMX_EVENTTYPE) OMX_EventCmdComplete,
+                                OMX_CommandPortEnable,
+                                mCameraAdapterParameters.mVideoPortIndex,
+                                camSem);
+
+    ///Enable Video Capture Port
+    eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
+                                OMX_CommandPortEnable,
+                                mCameraAdapterParameters.mVideoPortIndex,
+                                NULL);
+
+    mCaptureBuffersLength = (int)imgRawCaptureData->mBufSize;
+    for ( int index = 0 ; index < imgRawCaptureData->mNumBufs ; index++ ) {
+        OMX_BUFFERHEADERTYPE *pBufferHdr;
+
+        eError = OMX_UseBuffer( mCameraAdapterParameters.mHandleComp,
+                                &pBufferHdr,
+                                mCameraAdapterParameters.mVideoPortIndex,
+                                0,
+                                mCaptureBuffersLength,
+                                (OMX_U8*)buffers[index]);
+        if (eError != OMX_ErrorNone) {
+            CAMHAL_LOGEB("OMX_UseBuffer = 0x%x", eError);
+        }
+
+        GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
+
+        pBufferHdr->pAppPrivate = (OMX_PTR) index;
+        pBufferHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
+        pBufferHdr->nVersion.s.nVersionMajor = 1 ;
+        pBufferHdr->nVersion.s.nVersionMinor = 1 ;
+        pBufferHdr->nVersion.s.nRevision = 0;
+        pBufferHdr->nVersion.s.nStep =  0;
+        imgRawCaptureData->mBufferHeader[index] = pBufferHdr;
+
+    }
+
+    //Wait for the image port enable event
+    CAMHAL_LOGDA("Waiting for port enable");
+    camSem.Wait();
+    CAMHAL_LOGDA("Port enabled");
+
+    if (NO_ERROR == ret) {
+        ret = setupEXIF();
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error configuring EXIF Buffer %x", ret);
+        }
+    }
+
+    mCapturedFrames = mBurstFrames;
+    mCaptureConfigured = true;
+
+    EXIT:
+
+    if (eError != OMX_ErrorNone) {
+        if ( NULL != mErrorNotifier )
+        {
+            mErrorNotifier->errorNotify(eError);
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return ret;
 }
 
 };

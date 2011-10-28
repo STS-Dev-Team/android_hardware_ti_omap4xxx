@@ -71,6 +71,10 @@ const char TICameraParameters::KEY_MAXFRAMERATE[] = "max-framerate";
 const char TICameraParameters::KEY_RECORDING_HINT[] = "internal-recording-hint";
 const char TICameraParameters::KEY_AUTO_FOCUS_LOCK[] = "auto-focus-lock";
 
+const char TICameraParameters::RAW_WIDTH[] = "raw-width";
+const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
+const char TICameraParameters::KEY_FILENAME_TIMESTAMP[] = "captured-filename";
+
 //TI extensions for enabling/disabling GLBCE
 const char TICameraParameters::GLBCE_ENABLE[] = "enable";
 const char TICameraParameters::GLBCE_DISABLE[] = "disable";
@@ -125,6 +129,7 @@ const char TICameraParameters::PIXEL_FORMAT_JPS[] = "jps";
 const char TICameraParameters::PIXEL_FORMAT_MPO[] = "mpo";
 const char TICameraParameters::PIXEL_FORMAT_RAW_JPEG[] = "raw+jpeg";
 const char TICameraParameters::PIXEL_FORMAT_RAW_MPO[] = "raw+mpo";
+const char TICameraParameters::PIXEL_FORMAT_RAW_JPS[] = "raw+jps";
 
 // TI extensions to standard android scene mode settings
 const char TICameraParameters::SCENE_MODE_SPORT[] = "sport";
