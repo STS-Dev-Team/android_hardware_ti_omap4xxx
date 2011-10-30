@@ -370,10 +370,10 @@ fpsConst_RangesSec fpsConstRangesSec[] = {
 size_t length_fpsConst_RangesSec = ARRAY_SIZE(fpsConstRangesSec);
 
 const char *antibanding[] = {
-    "off",
     "auto",
     "50hz",
     "60hz",
+    "off",
 };
 int antibanding_mode = 0;
 const char *focus[] = {
