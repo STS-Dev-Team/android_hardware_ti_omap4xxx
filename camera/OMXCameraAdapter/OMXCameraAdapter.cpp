@@ -918,9 +918,6 @@ status_t OMXCameraAdapter::flushBuffers()
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
-    TIMM_OSAL_ERRORTYPE err;
-    TIMM_OSAL_U32 uRequestedEvents = OMXCameraAdapter::CAMERA_PORT_FLUSH;
-    TIMM_OSAL_U32 pRetrievedEvents;
 
     if ( 0 != mFlushSem.Count() )
         {
