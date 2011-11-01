@@ -207,13 +207,6 @@ public:
     ///Five second timeout
     static const int CAMERA_ADAPTER_TIMEOUT = 5000*1000;
 
-    enum OMXCameraEvents
-        {
-        CAMERA_PORT_ENABLE  = 0x1,
-        CAMERA_PORT_FLUSH   = 0x2,
-        CAMERA_PORT_DISABLE = 0x4,
-        };
-
     enum CaptureMode
         {
         HIGH_SPEED = 1,
