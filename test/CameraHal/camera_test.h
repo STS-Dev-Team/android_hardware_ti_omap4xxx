@@ -1,3 +1,4 @@
+
 #ifndef CAMERA_TEST_H
 #define CAMERA_TEST_H
 
@@ -88,24 +89,6 @@ namespace android {
 
 using namespace android;
 
-char * get_cycle_cmd(const char *aSrc);
-int execute_functional_script(char *script);
-status_t dump_mem_status();
-int openCamera();
-int closeCamera();
-void initDefaults();
-int startPreview();
-void stopPreview();
-int startRecording();
-int stopRecording();
-int closeRecorder();
-int openRecorder();
-int configureRecorder();
-void printSupportedParams();
-char *load_script(char *config);
-int start_logging(char *config, int &pid);
-int stop_logging(int &pid);
-int execute_error_script(char *script);
 
 typedef struct pixel_format_t {
     int32_t pixelFormatDesc;
@@ -117,20 +100,15 @@ typedef struct output_format_t {
     const char *desc;
 } outformat;
 
-typedef struct preview_size_t {
-    int width, height;
-    const char *desc;
-} preview_size;
-
 typedef struct Vcapture_size_t {
     int width, height;
     const char *desc;
 } Vcapture_size;
 
-typedef struct capture_Size_t {
+typedef struct param_Array_t {
     int width, height;
-    const char *name;
-} capture_Size;
+    char name[60];
+} param_Array;
 
 typedef struct video_Codecs_t {
     video_encoder type;
@@ -153,20 +131,46 @@ typedef struct zoom_t {
 } Zoom;
 
 typedef struct fps_ranges_t {
-    const char *range;
-    const char *rangeDescription;
-} fps_ranges;
+    int rangeMin;
+    int rangeMax;
+} fps_Array;
 
-typedef struct fpsConst_Ranges_t {
-    const char *range;
-    const char *rangeDescription;
-    int constFramerate;
-} fpsConst_Ranges;
+char * get_cycle_cmd(const char *aSrc);
+int execute_functional_script(char *script);
+status_t dump_mem_status();
+int openCamera();
+int closeCamera();
+void initDefaults();
+int startPreview();
+void stopPreview();
+int startRecording();
+int stopRecording();
+int closeRecorder();
+int openRecorder();
+int configureRecorder();
+void printSupportedParams();
+char *load_script(char *config);
+int start_logging(char *config, int &pid);
+int stop_logging(int &pid);
+int execute_error_script(char *script);
+int getParametersFromCapabilities();
+int getSupportedParameters(char* parameters, int* optionsCount, char ***elem);
+int getSupportedParametersCaptureSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
+int getSupportedParametersVideoCaptureSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
+int getSupportedParametersPreviewSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
+int getSupportedParametersThumbnailSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
+int getSupportedParametersNames(int width, int height, param_Array array[], int arraySize);
+int checkSupportedParamScript(char **array, int size, char *param);
+int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num);
+int getSupportedParametersfps(char* parameters, int *optionsCount);
+int checkSupportedParamScriptfpsConst(int *array, int size, char *param, int *num);
+int checkSupportedParamScriptfpsRange(char **array, int size, char *param, int *num);
+int trySetVideoStabilization(bool toggle);
+int trySetVideoNoiseFilter(bool toggle);
+int trySetAutoExposureLock(bool toggle);
+int trySetAutoWhiteBalanceLock(bool toggle);
+int deleteAllocatedMemory();
+void initDefaultsSec();
 
-typedef struct fpsConst_RangesSec_t {
-    const char *range;
-    const char *rangeDescription;
-    int constFramerate;
-} fpsConst_RangesSec;
 
 #endif
