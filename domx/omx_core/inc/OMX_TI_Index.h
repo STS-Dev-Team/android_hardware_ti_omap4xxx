@@ -236,6 +236,19 @@ typedef enum OMX_TI_INDEXTYPE {
     OMX_TI_IndexConfigAVCEnableNextLTR,                 /**< 0x7F000093 reference: OMX_TI_VIDEO_CONFIG_AVC_LTRP*/
     OMX_TI_IndexConfigAVCUpdateLTRInterval,             /**< 0x7F000094 reference: OMX_TI_VIDEO_CONFIG_AVC_LTRP_INTERVAL*/
     OMX_TI_IndexParamTimeStampInDecodeOrder,            /**< 0x7F000095 reference: OMX_TI_PARAM_TIMESTAMP_IN_DECODE_ORDER */
+    OMX_TI_IndexConfigSystemTime,                       /**< 0x7F000096 reference: OMX_TI_CONFIG_SYSTEMTIME */
+    OMX_TI_IndexConfigPortTapPoint,                     /**< 0x7F000097 reference: OMX_TI_CONFIG_PORTTAPPOINTTYPE */
+
+    OMX_TI_IndexConfigDisableNSF1,                      /**< 0x7F000098 reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableNSF2,                      /**< 0x7F000099 reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableSharpening,                /**< 0x7F00009A reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigFixedGamma,                       /**< 0x7F00009B reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableThreeLinColorMap,          /**< 0x7F00009C reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigDisableGIC,                       /**< 0x7F00009D reference: OMX_CONFIG_BOOLEANTYPE */
+    OMX_TI_IndexConfigEnqueueShotConfigs,               /**< 0x7F00009E reference: OMX_TI_CONFIG_ENQUEUESHOTCONFIGS */
+    OMX_TI_IndexConfigQueryAvailableShots,              /**< 0x7F00009F reference: OMX_TI_CONFIG_QUERYAVAILABLESHOTS */
+    OMX_TI_IndexConfigVectShotStopMethod,               /**< 0x7F0000A0 reference: OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE */
+    OMX_TI_IndexParamComponentBufferAllocation,         /**< 0x7F0000A1 reference: OMX_TI_PARAM_COMPONENTBUFALLOCTYPE */
 
     OMX_TI_IndexConfigStreamInterlaceFormats = ((OMX_INDEXTYPE)OMX_IndexVendorStartUnused + 0x100) /**< 0x7F000100 reference: OMX_STREAMINTERLACEFORMATTYPE */
 } OMX_TI_INDEXTYPE;
