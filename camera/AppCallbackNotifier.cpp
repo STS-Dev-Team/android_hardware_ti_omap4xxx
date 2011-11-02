@@ -819,6 +819,7 @@ void AppCallbackNotifier::notifyFrame()
                     unsigned int current_snapshot = 0;
                     Encoder_libjpeg::params *main_jpeg = NULL, *tn_jpeg = NULL;
                     void* exif_data = NULL;
+                    const char *previewFormat = NULL;
                     camera_memory_t* raw_picture = mRequestMemory(-1, frame->mLength, 1, NULL);
 
                     if(raw_picture) {
@@ -871,8 +872,9 @@ void AppCallbackNotifier::notifyFrame()
 
                     tn_width = parameters.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
                     tn_height = parameters.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+                    previewFormat = parameters.getPreviewFormat();
 
-                    if ((tn_width > 0) && (tn_height > 0)) {
+                    if ((tn_width > 0) && (tn_height > 0) && ( NULL != previewFormat )) {
                         tn_jpeg = (Encoder_libjpeg::params*)
                                       malloc(sizeof(Encoder_libjpeg::params));
                         // if malloc fails just keep going and encode main jpeg
@@ -887,8 +889,10 @@ void AppCallbackNotifier::notifyFrame()
                         current_snapshot = (mPreviewBufCount + MAX_BUFFERS - 1) % MAX_BUFFERS;
                         tn_jpeg->src = (uint8_t*) mPreviewBufs[current_snapshot];
                         tn_jpeg->src_size = mPreviewMemory->size / MAX_BUFFERS;
-                        tn_jpeg->dst = (uint8_t*) malloc(tn_jpeg->src_size);
-                        tn_jpeg->dst_size = tn_jpeg->src_size;
+                        tn_jpeg->dst_size = calculateBufferSize(tn_width,
+                                                                tn_height,
+                                                                previewFormat);
+                        tn_jpeg->dst = (uint8_t*) malloc(tn_jpeg->dst_size);
                         tn_jpeg->quality = tn_quality;
                         tn_jpeg->in_width = width;
                         tn_jpeg->in_height = height;
@@ -1353,6 +1357,25 @@ void AppCallbackNotifier::setFrameProvider(FrameNotifier *frameNotifier)
     LOG_FUNCTION_NAME_EXIT;
 }
 
+size_t AppCallbackNotifier::calculateBufferSize(size_t width, size_t height, const char *pixelFormat)
+{
+    size_t res = 0;
+
+    LOG_FUNCTION_NAME
+
+    if(strcmp(pixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        res = width*height*2;
+    } else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
+           strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+        res = (width*height*3)/2;
+    } else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+        res = width*height*2;
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return res;
+}
 status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, void *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
 {
     sp<MemoryHeapBase> heap;
@@ -1382,23 +1405,7 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
 
     //Get the preview pixel format
     mPreviewPixelFormat = params.getPreviewFormat();
-
-     if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-        {
-        size = w*h*2;
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_YUV422I;
-        }
-    else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-            strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
-        {
-        size = (w*h*3)/2;
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-    else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-        {
-        size = w*h*2;
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_RGB565;
-        }
+    size = calculateBufferSize(w, h, mPreviewPixelFormat);
 
     mPreviewMemory = mRequestMemory(-1, size, AppCallbackNotifier::MAX_BUFFERS, NULL);
     if (!mPreviewMemory) {
