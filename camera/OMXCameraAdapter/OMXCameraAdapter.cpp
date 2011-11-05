@@ -222,7 +222,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     {
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("command handler thread already runnning!!");
-            ret = NO_ERROR;
+	    ret = NO_ERROR;
         } else
         {
             CAMHAL_LOGEA("Couldn't run command handlerthread");
@@ -245,7 +245,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     {
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("omx callback handler thread already runnning!!");
-            ret = NO_ERROR;
+	    ret = NO_ERROR;
         }else
         {
             CAMHAL_LOGEA("Couldn't run omx callback handler thread");
@@ -1883,12 +1883,6 @@ status_t OMXCameraAdapter::startPreview()
 
     if ( mPending3Asettings )
         apply3Asettings(mParameters3A);
-
-    // enable focus callbacks just once here
-    // fixes an issue with slow callback registration in Ducati
-    if ( NO_ERROR == ret ) {
-        ret = setFocusCallback(true);
-    }
 
     //reset frame rate estimates
     mFPS = 0.0f;
@@ -3654,3 +3648,4 @@ extern "C" int CameraAdapter_Capabilities(CameraProperties::Properties* properti
 
 
 /*--------------------Camera Adapter Class ENDS here-----------------------------*/
+
