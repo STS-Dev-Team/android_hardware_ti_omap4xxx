@@ -223,10 +223,7 @@ const CapU32Pair OMXCameraAdapter::mVarFramerates [] = {
     { 27, 27, "(27000,27000)"},
     { 30, 15, "(15000,30000)"},
     { 30, 24, "(24000,30000)"},
-// TODO(XXX): Removing 30,30 range to limit 1080p at 24fps. Will put back soon.
-#if 0
     { 30, 30, "(30000,30000)" },
-#endif
 };
 /************************************
  * static helper functions
