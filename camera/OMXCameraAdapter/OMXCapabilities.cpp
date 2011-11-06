@@ -508,7 +508,19 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
                         MAX_PROP_VALUE_LENGTH);
 
     if ( NO_ERROR != ret ) {
-        CAMHAL_LOGEB("Error inserting supported preview sizes 0x%x", ret);
+        CAMHAL_LOGEB("Error inserting supported Landscape preview sizes 0x%x", ret);
+        return ret;
+    }
+
+    /* Insert Portait Resolutions by verifying Potrait Capability Support */
+    ret = encodeSizeCap(caps.tRotatedPreviewResRange,
+                        mPreviewRes,
+                        ARRAY_SIZE(mPreviewRes),
+                        supported,
+                        MAX_PROP_VALUE_LENGTH);
+
+    if ( NO_ERROR != ret ) {
+        CAMHAL_LOGEB("Error inserting supported Potrait preview sizes 0x%x", ret);
     } else {
         remove_last_sep(supported);
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
