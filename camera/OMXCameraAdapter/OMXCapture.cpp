@@ -683,7 +683,7 @@ status_t OMXCameraAdapter::startBracketing(int range)
     if ( NO_ERROR == ret )
         {
 
-        ret = startImageCapture();
+        ret = startImageCapture(true);
             {
             Mutex::Autolock lock(mBracketingLock);
 
@@ -728,7 +728,7 @@ status_t OMXCameraAdapter::stopBracketing()
     return ret;
 }
 
-status_t OMXCameraAdapter::startImageCapture()
+status_t OMXCameraAdapter::startImageCapture(bool bracketing)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -750,9 +750,11 @@ status_t OMXCameraAdapter::startImageCapture()
         return NO_INIT;
         }
 
-    if ((getNextState() & (CAPTURE_ACTIVE|BRACKETING_ACTIVE)) == 0) {
-        CAMHAL_LOGDA("trying starting capture when already canceled");
-        return NO_ERROR;
+    if ( !bracketing ) {
+        if ((getNextState() & (CAPTURE_ACTIVE|BRACKETING_ACTIVE)) == 0) {
+            CAMHAL_LOGDA("trying starting capture when already canceled");
+            return NO_ERROR;
+        }
     }
 
     // Camera framework doesn't expect face callbacks once capture is triggered
