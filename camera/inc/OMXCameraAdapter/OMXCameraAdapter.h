@@ -607,7 +607,7 @@ private:
     status_t sendBracketFrames(size_t &framesSent);
 
     // Image Capture Service
-    status_t startImageCapture();
+    status_t startImageCapture(bool bracketing);
     status_t disableImagePort();
 
     //Shutter callback notifications
