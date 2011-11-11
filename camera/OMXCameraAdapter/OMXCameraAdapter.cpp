@@ -632,9 +632,7 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
     if( mParameters3A.SceneMode != OMX_Manual ) {
        const char *valstr_supported = NULL;
 
-       // if preview is not started...we still need to feedback the proper params
-       // look up the settings in the LUT
-       if (((state & PREVIEW_ACTIVE) == 0) && mCapabilities) {
+       if (mCapabilities) {
            const SceneModesEntry* entry = NULL;
            entry = getSceneModeEntry(mCapabilities->get(CameraProperties::CAMERA_NAME),
                                     (OMX_SCENEMODETYPE) mParameters3A.SceneMode);
