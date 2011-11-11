@@ -453,7 +453,7 @@ static void copy2Dto1D(void *dst,
     unsigned int *y_uv = (unsigned int *)src;
 
     CAMHAL_LOGVB("copy2Dto1D() y= %p ; uv=%p.",y_uv[0], y_uv[1]);
-    CAMHAL_LOGVB("pixelFormat,= %d; offset=%d",*pixelFormat,offset);
+    CAMHAL_LOGVB("pixelFormat = %s; offset=%d",pixelFormat,offset);
 
     if (pixelFormat!=NULL) {
         if (strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
@@ -1365,16 +1365,35 @@ size_t AppCallbackNotifier::calculateBufferSize(size_t width, size_t height, con
 
     if(strcmp(pixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
         res = width*height*2;
-    } else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-           strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+    } else if(strcmp(pixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
+           strcmp(pixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
         res = (width*height*3)/2;
-    } else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+    } else if(strcmp(pixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
         res = width*height*2;
     }
 
     LOG_FUNCTION_NAME_EXIT;
 
     return res;
+}
+
+const char* AppCallbackNotifier::getContstantForPixelFormat(const char *pixelFormat) {
+    if (!pixelFormat) {
+        // returning NV12 as default
+        return CameraParameters::PIXEL_FORMAT_YUV420SP;
+    }
+
+    if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        return CameraParameters::PIXEL_FORMAT_YUV422I;
+    } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
+              strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+        return CameraParameters::PIXEL_FORMAT_YUV420SP;
+    } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+        return CameraParameters::PIXEL_FORMAT_RGB565;
+    } else {
+        // returning NV12 as default
+        return CameraParameters::PIXEL_FORMAT_YUV420SP;
+    }
 }
 status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, void *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
 {
@@ -1404,7 +1423,7 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
     params.getPreviewSize(&w, &h);
 
     //Get the preview pixel format
-    mPreviewPixelFormat = params.getPreviewFormat();
+    mPreviewPixelFormat = getContstantForPixelFormat(params.getPreviewFormat());
     size = calculateBufferSize(w, h, mPreviewPixelFormat);
 
     mPreviewMemory = mRequestMemory(-1, size, AppCallbackNotifier::MAX_BUFFERS, NULL);
