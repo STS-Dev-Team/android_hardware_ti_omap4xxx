@@ -618,6 +618,7 @@ private:
     void copyAndSendPictureFrame(CameraFrame* frame, int32_t msgType);
     void copyAndSendPreviewFrame(CameraFrame* frame, int32_t msgType);
     size_t calculateBufferSize(size_t width, size_t height, const char *pixelFormat);
+    const char* getContstantForPixelFormat(const char *pixelFormat);
 
 private:
     mutable Mutex mLock;
