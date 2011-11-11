@@ -3332,7 +3332,7 @@ bool OMXCameraAdapter::CommandHandler::Handler()
         switch ( msg.command ) {
             case CommandHandler::CAMERA_START_IMAGE_CAPTURE:
             {
-                stat = mCameraAdapter->startImageCapture();
+                stat = mCameraAdapter->startImageCapture(false);
                 break;
             }
             case CommandHandler::CAMERA_PERFORM_AUTOFOCUS:
