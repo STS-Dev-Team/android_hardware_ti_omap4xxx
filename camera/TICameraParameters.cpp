@@ -40,6 +40,7 @@ const char TICameraParameters::KEY_BURST[] = "burst-capture";
 const char TICameraParameters::KEY_CAP_MODE[] = "mode";
 const char TICameraParameters::KEY_CAP_MODE_VALUES[] = "mode-values";
 const char TICameraParameters::KEY_VNF[] = "vnf";
+const char TICameraParameters::KEY_VNF_SUPPORTED[] = "vnf-supported";
 const char TICameraParameters::KEY_SATURATION[] = "saturation";
 const char TICameraParameters::KEY_BRIGHTNESS[] = "brightness";
 const char TICameraParameters::KEY_EXPOSURE_MODE[] = "exposure";

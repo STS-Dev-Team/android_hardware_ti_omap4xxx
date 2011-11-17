@@ -37,6 +37,7 @@ static const char  KEY_BURST[];
 static const  char KEY_CAP_MODE[];
 static const  char KEY_CAP_MODE_VALUES[];
 static const  char KEY_VNF[];
+static const  char KEY_VNF_SUPPORTED[];
 static const  char KEY_SATURATION[];
 static const  char KEY_BRIGHTNESS[];
 static const  char KEY_EXPOSURE_MODE[];

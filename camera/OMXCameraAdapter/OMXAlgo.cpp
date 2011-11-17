@@ -207,7 +207,8 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
     ///Set VNF Configuration
     bool vnfEnabled = false;
-    if ( params.getInt(TICameraParameters::KEY_VNF)  > 0 )
+    valstr = params.get(TICameraParameters::KEY_VNF);
+    if (valstr && strcmp(valstr, CameraParameters::TRUE) == 0)
         {
         CAMHAL_LOGDA("VNF Enabled");
         vnfEnabled = true;
