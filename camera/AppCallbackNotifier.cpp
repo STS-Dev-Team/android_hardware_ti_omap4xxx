@@ -965,7 +965,7 @@ void AppCallbackNotifier::notifyFrame()
                              ( NULL != mDataCb) &&
                              ( mCameraHal->msgTypeEnabled(CAMERA_MSG_VIDEO_FRAME)  ) )
                     {
-                    mRecordingLock.lock();
+                    AutoMutex locker(mRecordingLock);
                     if(mRecording)
                         {
                         if(mUseMetaDataBufferMode)
@@ -1044,8 +1044,6 @@ void AppCallbackNotifier::notifyFrame()
                             fakebuf->release(fakebuf);
                             }
                         }
-                    mRecordingLock.unlock();
-
                     }
                 else if(( CameraFrame::SNAPSHOT_FRAME == frame->mFrameType ) &&
                              ( NULL != mCameraHal ) &&
