@@ -1380,6 +1380,38 @@ status_t OMXCameraAdapter::insertAreas(CameraProperties::Properties* params, OMX
     return ret;
 }
 
+status_t OMXCameraAdapter::insertVNFSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME
+
+    if ( OMX_TRUE == caps.bVideoNoiseFilterSupported ) {
+        params->set(CameraProperties::VNF_SUPPORTED, CameraParameters::TRUE);
+    } else {
+        params->set(CameraProperties::VNF_SUPPORTED, CameraParameters::FALSE);
+    }
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return ret;
+}
+
+status_t OMXCameraAdapter::insertVSTABSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME
+
+    if ( OMX_TRUE == caps.bVideoStabilizationSupported ) {
+        params->set(CameraProperties::VSTAB_SUPPORTED, CameraParameters::TRUE);
+    } else {
+        params->set(CameraProperties::VSTAB_SUPPORTED, CameraParameters::FALSE);
+    }
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1730,7 +1762,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SCENE_MODE, DEFAULT_SCENE_MODE);
     params->set(CameraProperties::SHARPNESS, DEFAULT_SHARPNESS);
     params->set(CameraProperties::VSTAB, DEFAULT_VSTAB);
-    params->set(CameraProperties::VSTAB_SUPPORTED, DEFAULT_VSTAB_SUPPORTED);
+    params->set(CameraProperties::VNF, DEFAULT_VNF);
     params->set(CameraProperties::WHITEBALANCE, DEFAULT_WB);
     params->set(CameraProperties::ZOOM, DEFAULT_ZOOM);
     params->set(CameraProperties::MAX_FD_HW_FACES, DEFAULT_MAX_FD_HW_FACES);
@@ -1871,6 +1903,14 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret) {
         ret = insertVideoSnapshotSupported(params, caps);
+    }
+
+    if ( NO_ERROR == ret ) {
+        ret = insertVSTABSupported(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertVNFSupported(params, caps);
     }
 
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities

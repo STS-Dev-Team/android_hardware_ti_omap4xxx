@@ -95,6 +95,8 @@ const char CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "prop-supporte
 const char CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "prop-supported-manual-convergence-step";
 const char CameraProperties::VSTAB[] = "prop-vstab-default";
 const char CameraProperties::VSTAB_SUPPORTED[] = "prop-vstab-supported";
+const char CameraProperties::VNF[] = "prop-vnf-default";
+const char CameraProperties::VNF_SUPPORTED[] = "prop-vnf-supported";
 const char CameraProperties::REVISION[] = "prop-revision";
 const char CameraProperties::FOCAL_LENGTH[] = "prop-focal-length";
 const char CameraProperties::HOR_ANGLE[] = "prop-horizontal-angle";
@@ -121,7 +123,6 @@ const char CameraProperties::VIDEO_SNAPSHOT_SUPPORTED[] = "prop-video-snapshot-s
 const char CameraProperties::VIDEO_SIZE[] = "video-size";
 const char CameraProperties::SUPPORTED_VIDEO_SIZES[] = "video-size-values";
 const char CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "preferred-preview-size-for-video";
-
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION[] = "prop-mechanical-misalignment-correction";
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] = "prop-mechanical-misalignment-correction-values";
 const char CameraProperties::CAP_MODE_VALUES[] = "prop-mode-values";
