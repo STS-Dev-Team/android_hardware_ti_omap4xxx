@@ -1238,11 +1238,224 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     return ret;
 }
 
+
+bool OMXCameraAdapter::_checkOmxTiCap(const OMX_TI_CAPTYPE & caps)
+{
+#define CAMHAL_CHECK_OMX_TI_CAP(countVar, arrayVar)              \
+    do {                                                         \
+        const int count = static_cast<int>(caps.countVar);  \
+        const int maxSize = CAMHAL_SIZE_OF_ARRAY(caps.arrayVar); \
+        if ( count < 0 || count > maxSize )                      \
+        {                                                        \
+            CAMHAL_LOGE("OMX_TI_CAPTYPE verification failed");   \
+            CAMHAL_LOGE("  variable: OMX_TI_CAPTYPE::" #countVar \
+                    ", value: %d, max allowed: %d",              \
+                    count, maxSize);                             \
+            return false;                                        \
+        }                                                        \
+    } while (0)
+
+    CAMHAL_CHECK_OMX_TI_CAP(ulPreviewFormatCount, ePreviewFormats);
+    CAMHAL_CHECK_OMX_TI_CAP(ulImageFormatCount, eImageFormats);
+    CAMHAL_CHECK_OMX_TI_CAP(ulWhiteBalanceCount, eWhiteBalanceModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulColorEffectCount, eColorEffects);
+    CAMHAL_CHECK_OMX_TI_CAP(ulFlickerCount, eFlicker);
+    CAMHAL_CHECK_OMX_TI_CAP(ulExposureModeCount, eExposureModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulFocusModeCount, eFocusModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulSceneCount, eSceneModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulFlashCount, eFlashModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulPrvVarFPSModesCount, tPrvVarFPSModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulCapVarFPSModesCount, tCapVarFPSModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulAutoConvModesCount, eAutoConvModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulBracketingModesCount, eBracketingModes);
+    CAMHAL_CHECK_OMX_TI_CAP(ulImageCodingFormatCount, eImageCodingFormat);
+    CAMHAL_CHECK_OMX_TI_CAP(ulPrvFrameLayoutCount, ePrvFrameLayout);
+    CAMHAL_CHECK_OMX_TI_CAP(ulCapFrameLayoutCount, eCapFrameLayout);
+
+#undef CAMHAL_CHECK_OMX_TI_CAP
+
+    return true;
+}
+
+
+bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & caps)
+{
+    if ( !_checkOmxTiCap(caps) )
+    {
+        CAMHAL_LOGE("OMX_TI_CAPTYPE structure is invalid");
+        return false;
+    }
+
+    CAMHAL_LOGD("===================================================");
+    CAMHAL_LOGD("---- Dumping OMX capabilities for sensor id: %d ----", sensorId);
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulPreviewFormatCount = %d", int(caps.ulPreviewFormatCount));
+    for ( int i = 0; i < int(caps.ulPreviewFormatCount); ++i )
+        CAMHAL_LOGD("  ePreviewFormats[%2d] = %d", i, int(caps.ePreviewFormats[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulImageFormatCount = %d", int(caps.ulImageFormatCount));
+    for ( int i = 0; i < int(caps.ulImageFormatCount); ++i )
+        CAMHAL_LOGD("  eImageFormats[%2d] = %d", i, int(caps.eImageFormats[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("tPreviewResRange.nWidthMin  = %d", int(caps.tPreviewResRange.nWidthMin));
+    CAMHAL_LOGD("tPreviewResRange.nHeightMin = %d", int(caps.tPreviewResRange.nHeightMin));
+    CAMHAL_LOGD("tPreviewResRange.nWidthMax  = %d", int(caps.tPreviewResRange.nWidthMax));
+    CAMHAL_LOGD("tPreviewResRange.nHeightMax = %d", int(caps.tPreviewResRange.nHeightMax));
+    CAMHAL_LOGD("tPreviewResRange.nMaxResInPixels = %d", int(caps.tPreviewResRange.nMaxResInPixels));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("tRotatedPreviewResRange.nWidthMin  = %d", int(caps.tRotatedPreviewResRange.nWidthMin));
+    CAMHAL_LOGD("tRotatedPreviewResRange.nHeightMin = %d", int(caps.tRotatedPreviewResRange.nHeightMin));
+    CAMHAL_LOGD("tRotatedPreviewResRange.nWidthMax  = %d", int(caps.tRotatedPreviewResRange.nWidthMax));
+    CAMHAL_LOGD("tRotatedPreviewResRange.nHeightMax = %d", int(caps.tRotatedPreviewResRange.nHeightMax));
+    CAMHAL_LOGD("tRotatedPreviewResRange.nMaxResInPixels = %d", int(caps.tRotatedPreviewResRange.nMaxResInPixels));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("tImageResRange.nWidthMin  = %d", int(caps.tImageResRange.nWidthMin));
+    CAMHAL_LOGD("tImageResRange.nHeightMin = %d", int(caps.tImageResRange.nHeightMin));
+    CAMHAL_LOGD("tImageResRange.nWidthMax  = %d", int(caps.tImageResRange.nWidthMax));
+    CAMHAL_LOGD("tImageResRange.nHeightMax = %d", int(caps.tImageResRange.nHeightMax));
+    CAMHAL_LOGD("tImageResRange.nMaxResInPixels = %d", int(caps.tImageResRange.nMaxResInPixels));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("tThumbResRange.nWidthMin  = %d", int(caps.tThumbResRange.nWidthMin));
+    CAMHAL_LOGD("tThumbResRange.nHeightMin = %d", int(caps.tThumbResRange.nHeightMin));
+    CAMHAL_LOGD("tThumbResRange.nWidthMax  = %d", int(caps.tThumbResRange.nWidthMax));
+    CAMHAL_LOGD("tThumbResRange.nHeightMax = %d", int(caps.tThumbResRange.nHeightMax));
+    CAMHAL_LOGD("tThumbResRange.nMaxResInPixels = %d", int(caps.tThumbResRange.nMaxResInPixels));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulWhiteBalanceCount = %d", int(caps.ulWhiteBalanceCount));
+    for ( int i = 0; i < int(caps.ulWhiteBalanceCount); ++i )
+        CAMHAL_LOGD("  eWhiteBalanceModes[%2d] = 0x%08x", i, int(caps.eWhiteBalanceModes[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulColorEffectCount = %d", int(caps.ulColorEffectCount));
+    for ( int i = 0; i < int(caps.ulColorEffectCount); ++i )
+        CAMHAL_LOGD("  eColorEffects[%2d] = 0x%08x", i, int(caps.eColorEffects[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("xMaxWidthZoom  = %d", int(caps.xMaxWidthZoom));
+    CAMHAL_LOGD("xMaxHeightZoom = %d", int(caps.xMaxHeightZoom));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulFlickerCount = %d", int(caps.ulFlickerCount));
+    for ( int i = 0; i < int(caps.ulFlickerCount); ++i )
+        CAMHAL_LOGD("  eFlicker[%2d] = %d", i, int(caps.eFlicker[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulExposureModeCount = %d", int(caps.ulExposureModeCount));
+    for ( int i = 0; i < int(caps.ulExposureModeCount); ++i )
+        CAMHAL_LOGD("  eExposureModes[%2d] = 0x%08x", i, int(caps.eExposureModes[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("bLensDistortionCorrectionSupported = %d", int(caps.bLensDistortionCorrectionSupported));
+    CAMHAL_LOGD("bISONoiseFilterSupported = %d", int(caps.bISONoiseFilterSupported));
+    CAMHAL_LOGD("xEVCompensationMin = %d", int(caps.xEVCompensationMin));
+    CAMHAL_LOGD("xEVCompensationMax = %d", int(caps.xEVCompensationMax));
+    CAMHAL_LOGD("nSensitivityMax = %d", int(caps.nSensitivityMax));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulFocusModeCount = %d", int(caps.ulFocusModeCount));
+    for ( int i = 0; i < int(caps.ulFocusModeCount); ++i )
+        CAMHAL_LOGD("  eFocusModes[%2d] = 0x%08x", i, int(caps.eFocusModes[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulSceneCount = %d", int(caps.ulSceneCount));
+    for ( int i = 0; i < int(caps.ulSceneCount); ++i )
+        CAMHAL_LOGD("  eSceneModes[%2d] = %d", i, int(caps.eSceneModes[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulFlashCount = %d", int(caps.ulFlashCount));
+    for ( int i = 0; i < int(caps.ulFlashCount); ++i )
+        CAMHAL_LOGD("  eFlashModes[%2d] = %d", i, int(caps.eFlashModes[i]));
+
+    CAMHAL_LOGD("xFramerateMin = %d", int(caps.xFramerateMin));
+    CAMHAL_LOGD("xFramerateMax = %d", int(caps.xFramerateMax));
+    CAMHAL_LOGD("bContrastSupported = %d", int(caps.bContrastSupported));
+    CAMHAL_LOGD("bSaturationSupported = %d", int(caps.bSaturationSupported));
+    CAMHAL_LOGD("bBrightnessSupported = %d", int(caps.bBrightnessSupported));
+    CAMHAL_LOGD("bProcessingLevelSupported = %d", int(caps.bProcessingLevelSupported));
+    CAMHAL_LOGD("bQFactorSupported = %d", int(caps.bQFactorSupported));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulPrvVarFPSModesCount = %d", int(caps.ulPrvVarFPSModesCount));
+    for ( int i = 0; i < int(caps.ulPrvVarFPSModesCount); ++i )
+    {
+        CAMHAL_LOGD("  tPrvVarFPSModes[%d].nVarFPSMin = %d", i, int(caps.tPrvVarFPSModes[i].nVarFPSMin));
+        CAMHAL_LOGD("  tPrvVarFPSModes[%d].nVarFPSMax = %d", i, int(caps.tPrvVarFPSModes[i].nVarFPSMax));
+    }
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulCapVarFPSModesCount = %d", int(caps.ulCapVarFPSModesCount));
+    for ( int i = 0; i < int(caps.ulCapVarFPSModesCount); ++i )
+    {
+        CAMHAL_LOGD("  tCapVarFPSModes[%d].nVarFPSMin = %d", i, int(caps.tCapVarFPSModes[i].nVarFPSMin));
+        CAMHAL_LOGD("  tCapVarFPSModes[%d].nVarFPSMax = %d", i, int(caps.tCapVarFPSModes[i].nVarFPSMax));
+    }
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("tSenMounting.nSenId    = %d", int(caps.tSenMounting.nSenId));
+    CAMHAL_LOGD("tSenMounting.nRotation = %d", int(caps.tSenMounting.nRotation));
+    CAMHAL_LOGD("tSenMounting.bMirror   = %d", int(caps.tSenMounting.bMirror));
+    CAMHAL_LOGD("tSenMounting.bFlip     = %d", int(caps.tSenMounting.bFlip));
+    CAMHAL_LOGD("tSenMounting.eFacing   = %d", int(caps.tSenMounting.eFacing));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulAutoConvModesCount = %d", int(caps.ulAutoConvModesCount));
+    for ( int i = 0; i < int(caps.ulAutoConvModesCount); ++i )
+        CAMHAL_LOGD("  eAutoConvModes[%2d] = %d", i, int(caps.eAutoConvModes[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulBracketingModesCount = %d", int(caps.ulBracketingModesCount));
+    for ( int i = 0; i < int(caps.ulBracketingModesCount); ++i )
+        CAMHAL_LOGD("  eBracketingModes[%2d] = %d", i, int(caps.eBracketingModes[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("bVidStabSupported = %d", int(caps.bVidStabSupported));
+	CAMHAL_LOGD("bGbceSupported    = %d", int(caps.bGbceSupported));
+    CAMHAL_LOGD("bRawJpegSupported = %d", int(caps.bRawJpegSupported));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulImageCodingFormatCount = %d", int(caps.ulImageCodingFormatCount));
+    for ( int i = 0; i < int(caps.ulImageCodingFormatCount); ++i )
+        CAMHAL_LOGD("  eImageCodingFormat[%2d] = %d", i, int(caps.eImageCodingFormat[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("uSenNativeResWidth       = %d", int(caps.uSenNativeResWidth));
+    CAMHAL_LOGD("uSenNativeResHeight      = %d", int(caps.uSenNativeResHeight));
+    CAMHAL_LOGD("ulAlgoAreasFocusCount    = %d", int(caps.ulAlgoAreasFocusCount));
+    CAMHAL_LOGD("ulAlgoAreasExposureCount = %d", int(caps.ulAlgoAreasExposureCount));
+    CAMHAL_LOGD("bAELockSupported         = %d", int(caps.bAELockSupported));
+    CAMHAL_LOGD("bAWBLockSupported        = %d", int(caps.bAWBLockSupported));
+    CAMHAL_LOGD("bAFLockSupported         = %d", int(caps.bAFLockSupported));
+    CAMHAL_LOGD("nFocalLength             = %d", int(caps.nFocalLength));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulPrvFrameLayoutCount = %d", int(caps.ulPrvFrameLayoutCount));
+    for ( int i = 0; i < int(caps.ulPrvFrameLayoutCount); ++i )
+        CAMHAL_LOGD("  ePrvFrameLayout[%2d] = %d", i, int(caps.ePrvFrameLayout[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("ulCapFrameLayoutCount = %d", int(caps.ulCapFrameLayoutCount));
+    for ( int i = 0; i < int(caps.ulCapFrameLayoutCount); ++i )
+        CAMHAL_LOGD("  eCapFrameLayout[%2d] = %d", i, int(caps.eCapFrameLayout[i]));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("------------------- end of dump -------------------");
+    CAMHAL_LOGD("===================================================");
+
+    return true;
+}
+
 /*****************************************
  * public exposed function declarations
  *****************************************/
 
-status_t OMXCameraAdapter::getCaps(CameraProperties::Properties* params, OMX_HANDLETYPE handle) {
+status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Properties* params, OMX_HANDLETYPE handle) {
     status_t ret = NO_ERROR;
     int caps_size = 0;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -1280,6 +1493,10 @@ status_t OMXCameraAdapter::getCaps(CameraProperties::Properties* params, OMX_HAN
     } else {
         CAMHAL_LOGDA("OMX capability query success");
     }
+
+#ifdef CAMERAHAL_DEBUG
+    _dumpOmxTiCap(sensorId, *caps[0]);
+#endif
 
     // Translate and insert Ducati capabilities to CameraProperties
     if ( NO_ERROR == ret ) {
