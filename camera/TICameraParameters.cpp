@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-
-
-
-#define LOG_TAG "CameraHAL"
 #include <utils/Log.h>
 
 #include <string.h>

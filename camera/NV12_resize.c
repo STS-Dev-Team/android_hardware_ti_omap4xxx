@@ -4,7 +4,11 @@
 #define LOG_NIDEBUG 0
 #define LOG_NDDEBUG 0
 
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
 #define LOG_TAG "NV12_resize"
+
 #define STRIDE 4096
 #include <utils/Log.h>
 

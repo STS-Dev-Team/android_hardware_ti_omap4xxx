@@ -48,10 +48,6 @@ static int mDebugFps = 0;
 
 namespace android {
 
-#undef LOG_TAG
-///Maintain a separate tag for V4LCameraAdapter logs to isolate issues OMX specific
-#define LOG_TAG "CameraHAL"
-
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
 

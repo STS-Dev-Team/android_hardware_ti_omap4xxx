@@ -21,10 +21,6 @@
 *
 */
 
-#undef LOG_TAG
-
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
@@ -330,8 +326,6 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
         CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE parameter");
         return EINVAL;
     }
-
-    LOG_FUNCTION_NAME
 
     hRange = CameraFDResult::RIGHT - CameraFDResult::LEFT;
     vRange = CameraFDResult::BOTTOM - CameraFDResult::TOP;
