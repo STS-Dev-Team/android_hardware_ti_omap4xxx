@@ -3631,7 +3631,7 @@ extern "C" int CameraAdapter_Capabilities(CameraProperties::Properties* properti
 
         // get and fill capabilities
         properties = properties_array + starting_camera + num_cameras_supported;
-        OMXCameraAdapter::getCaps(properties, handle);
+        OMXCameraAdapter::getCaps(num_cameras_supported, properties, handle);
 
         // need to fill facing information
         // assume that only sensor 0 is back facing
