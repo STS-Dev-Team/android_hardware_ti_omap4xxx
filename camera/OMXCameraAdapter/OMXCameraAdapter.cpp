@@ -1760,6 +1760,8 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
     ///If there is any failure, we reach here.
     ///Here, we do any resource freeing and convert from OMX error code to Camera Hal error code
 EXIT:
+    mStateSwitchLock.unlock();
+
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     performCleanupAfterError();
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
@@ -1782,8 +1784,8 @@ status_t OMXCameraAdapter::startPreview()
     if( 0 != mStartPreviewSem.Count() )
         {
         CAMHAL_LOGEB("Error mStartPreviewSem semaphore count %d", mStartPreviewSem.Count());
-        LOG_FUNCTION_NAME_EXIT;
-        return NO_INIT;
+        ret = NO_INIT;
+        goto EXIT;
         }
 
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];

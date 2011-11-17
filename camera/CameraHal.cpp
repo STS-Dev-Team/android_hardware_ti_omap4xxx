@@ -1660,6 +1660,16 @@ status_t CameraHal::startPreview()
         if ( ret != NO_ERROR )
             {
             CAMHAL_LOGEA("Couldn't enable display");
+
+            // FIXME: At this stage mStateSwitchLock is locked and unlock is supposed to be called
+            //        only from mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_PREVIEW)
+            //        below. But this will never happen because of goto error. Thus at next
+            //        startPreview() call CameraHAL will be deadlocked.
+            //        Need to revisit mStateSwitch lock, for now just abort the process.
+            CAMHAL_ASSERT_X(false,
+                    "At this stage mCameraAdapter->mStateSwitchLock is still locked, "
+                    "deadlock is guaranteed");
+
             goto error;
             }
 
