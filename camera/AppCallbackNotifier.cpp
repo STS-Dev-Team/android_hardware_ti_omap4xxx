@@ -171,6 +171,8 @@ status_t AppCallbackNotifier::initialize()
 
     mMeasurementEnabled = false;
 
+    mNotifierState = NOTIFIER_STOPPED;
+
     ///Create the app notifier thread
     mNotificationThread = new NotificationThread(this);
     if(!mNotificationThread.get())
@@ -190,6 +192,9 @@ status_t AppCallbackNotifier::initialize()
 
     mUseMetaDataBufferMode = true;
     mRawAvailable = false;
+
+    mRecording = false;
+    mPreviewing = false;
 
     LOG_FUNCTION_NAME_EXIT;
 
