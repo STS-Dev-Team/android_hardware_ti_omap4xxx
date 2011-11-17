@@ -2785,6 +2785,7 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
             case CAMERA_CMD_STOP_SMOOTH_ZOOM:
 
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_SMOOTH_ZOOM);
+                break;
 
             case CAMERA_CMD_START_FACE_DETECTION:
 
