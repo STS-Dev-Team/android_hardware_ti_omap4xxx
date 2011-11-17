@@ -1,4 +1,5 @@
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifeq ($(TI_OMAP4_CAMERAHAL_VARIANT),)
 
 LOCAL_PATH:= $(call my-dir)
 
@@ -226,6 +227,7 @@ LOCAL_MODULE_TAGS:= optional
 
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
+endif
 endif
 endif
 endif
