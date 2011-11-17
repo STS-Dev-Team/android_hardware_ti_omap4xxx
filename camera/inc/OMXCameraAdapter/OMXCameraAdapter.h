@@ -365,7 +365,7 @@ public:
     virtual void getParameters(CameraParameters& params);
 
     // API
-    virtual status_t UseBuffersPreview(void* bufArr, int num);
+    status_t UseBuffersPreview(void* bufArr, int num);
 
     status_t flushBuffers();
 
