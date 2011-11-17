@@ -272,7 +272,7 @@ status_t ExifElementsTable::insertExifThumbnailImage(const char* thumb, int len)
     status_t ret = NO_ERROR;
 
     if ((len > 0) && jpeg_opened) {
-        ret = ReplaceThumbnailFromBuffer(thumb, len);
+        ret = ReplaceThumbnailFromBuffer(thumb, len) ? NO_ERROR : UNKNOWN_ERROR;
         CAMHAL_LOGDB("insertExifThumbnailImage. ReplaceThumbnail(). ret=%d", ret);
     }
 
