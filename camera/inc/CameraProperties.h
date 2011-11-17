@@ -184,7 +184,7 @@ public:
 
 private:
 
-    uint32_t mCamerasSupported;
+    int mCamerasSupported;
     int mInitialized;
     mutable Mutex mLock;
 
