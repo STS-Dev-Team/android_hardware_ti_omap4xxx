@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-
-
-
-#define LOG_TAG "CameraHAL"
-
-
 #include "CameraHal.h"
 #include "VideoMetadata.h"
 #include "Encoder_libjpeg.h"
@@ -1128,6 +1122,8 @@ void AppCallbackNotifier::frameCallback(CameraFrame* caFrame)
 
 void AppCallbackNotifier::flushAndReturnFrames()
 {
+    LOG_FUNCTION_NAME;
+
     TIUTILS::Message msg;
     CameraFrame *frame;
 
@@ -1443,7 +1439,7 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
 
     mPreviewing = true;
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return NO_ERROR;
 }

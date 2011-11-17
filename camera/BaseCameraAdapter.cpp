@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-
-
-#define LOG_TAG "CameraHAL"
-
 #include "BaseCameraAdapter.h"
 
 namespace android {
@@ -311,7 +307,7 @@ void BaseCameraAdapter::returnFrame(void* frameBuf, CameraFrame::FrameType frame
         //check if someone is holding this buffer
         if ( 0 == refCount )
             {
-#ifdef DEBUG_LOG
+#ifdef CAMERAHAL_DEBUG
             if(mBuffersWithDucati.indexOfKey((int)frameBuf)>=0)
                 {
                 LOGE("Buffer already with Ducati!! 0x%x", frameBuf);
@@ -1080,7 +1076,7 @@ status_t BaseCameraAdapter::notifyShutterSubscribers()
 
     shutterEvent.mEventData.clear();
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }

@@ -21,8 +21,6 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
 #include "SensorListener.h"
 #include "CameraHal.h"
 

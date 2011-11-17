@@ -23,8 +23,6 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "Encoder_libjpeg.h"
 #include "NV12_resize.h"

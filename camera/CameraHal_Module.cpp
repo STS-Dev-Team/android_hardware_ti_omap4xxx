@@ -21,8 +21,6 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
 #include <utils/threads.h>
 
 #include "CameraHal.h"

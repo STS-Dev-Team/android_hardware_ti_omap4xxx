@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-
-
-#define LOG_TAG "CameraHAL"
-
-
 #include "CameraHal.h"
 #include "TICameraParameters.h"
 
