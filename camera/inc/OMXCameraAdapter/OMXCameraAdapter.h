@@ -360,7 +360,7 @@ public:
     virtual status_t setFormat(OMX_U32 port, OMXCameraPortParameters &cap);
 
     // Function to get and populate caps from handle
-    static status_t getCaps(CameraProperties::Properties* props, OMX_HANDLETYPE handle);
+    static status_t getCaps(int sensorId, CameraProperties::Properties* props, OMX_HANDLETYPE handle);
     static const char* getLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT);
     static int getLUTvalue_HALtoOMX(const char * HalValue, LUTtype LUT);
 
@@ -559,6 +559,9 @@ private:
     status_t setSensorOverclock(bool enable);
 
     // Utility methods for OMX Capabilities
+    static bool _checkOmxTiCap(const OMX_TI_CAPTYPE & caps);
+    static bool _dumpOmxTiCap(int sensorId, const OMX_TI_CAPTYPE & caps);
+
     static status_t insertCapabilities(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t encodeSizeCap(OMX_TI_CAPRESTYPE&, const CapResolution *, size_t, char *, size_t);
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
