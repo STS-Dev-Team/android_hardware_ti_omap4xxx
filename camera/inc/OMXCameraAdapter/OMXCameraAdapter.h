@@ -617,6 +617,8 @@ private:
     static status_t insertManualConvergenceRange(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertLayout(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVideoSnapshotSupported(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertVNFSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
+    static status_t insertVSTABSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -818,7 +820,7 @@ private:
     static const char DEFAULT_SCENE_MODE[];
     static const char DEFAULT_SHARPNESS[];
     static const char DEFAULT_VSTAB[];
-    static const char DEFAULT_VSTAB_SUPPORTED[];
+    static const char DEFAULT_VNF[];
     static const char DEFAULT_WB[];
     static const char DEFAULT_ZOOM[];
     static const char DEFAULT_MAX_FD_HW_FACES[];

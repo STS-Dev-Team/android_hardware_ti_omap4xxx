@@ -29,6 +29,10 @@
 
 extern "C" {
 #include "jhead.h"
+
+#undef TRUE
+#undef FALSE
+
 }
 namespace android {
 /**
