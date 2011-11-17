@@ -7,6 +7,7 @@ include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
 LOCAL_SRC_FILES:= \
+    DebugUtils.cpp \
     MessageQueue.cpp \
     Semaphore.cpp \
     ErrorUtils.cpp
@@ -26,7 +27,15 @@ LOCAL_C_INCLUDES += \
 
 LOCAL_CFLAGS += -fno-short-enums
 
-# LOCAL_CFLAGS +=
+ifdef TI_UTILS_MESSAGE_QUEUE_DEBUG_ENABLED
+    # Enable debug logs
+    LOCAL_CFLAGS += -DMSGQ_DEBUG
+endif
+
+ifdef TI_UTILS_MESSAGE_QUEUE_DEBUG_FUNCTION_NAMES
+    # Enable function enter/exit logging
+    LOCAL_CFLAGS += -DTI_UTILS_FUNCTION_LOGGER_ENABLE
+endif
 
 LOCAL_MODULE:= libtiutils
 LOCAL_MODULE_TAGS:= optional

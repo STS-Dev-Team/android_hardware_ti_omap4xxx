@@ -21,10 +21,6 @@
 *
 */
 
-#undef LOG_TAG
-
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 #include <math.h>

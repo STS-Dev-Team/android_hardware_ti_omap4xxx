@@ -38,10 +38,6 @@ static int mDebugFcs = 0;
 
 namespace android {
 
-#undef LOG_TAG
-///Maintain a separate tag for OMXCameraAdapter logs to isolate issues OMX specific
-#define LOG_TAG "CameraHAL"
-
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
 
@@ -343,6 +339,8 @@ OMXCameraAdapter::OMXCameraPortParameters *OMXCameraAdapter::getPortParams(Camer
 
 status_t OMXCameraAdapter::fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType)
 {
+    LOG_FUNCTION_NAME;
+
     status_t ret = NO_ERROR;
     OMXCameraPortParameters *port = NULL;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -910,6 +908,8 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
 status_t OMXCameraAdapter::flushBuffers()
 {
+    LOG_FUNCTION_NAME;
+
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
 
@@ -919,8 +919,6 @@ status_t OMXCameraAdapter::flushBuffers()
         LOG_FUNCTION_NAME_EXIT;
         return NO_INIT;
         }
-
-    LOG_FUNCTION_NAME;
 
     OMXCameraPortParameters * mPreviewData = NULL;
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -1156,7 +1154,7 @@ status_t OMXCameraAdapter::switchToExecuting()
   msg.arg1 = mErrorNotifier;
   ret = mCommandHandler->put(&msg);
 
-  LOG_FUNCTION_NAME;
+  LOG_FUNCTION_NAME_EXIT;
 
   return ret;
 }
@@ -2269,7 +2267,7 @@ status_t OMXCameraAdapter::autoFocus()
 
  EXIT:
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -3001,7 +2999,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         mFramesWithDucati--;
 
-#ifdef DEBUG_LOG
+#ifdef CAMERAHAL_DEBUG
         if(mBuffersWithDucati.indexOfKey((int)pBuffHeader->pBuffer)<0)
             {
             LOGE("Buffer was never with Ducati!! 0x%x", pBuffHeader->pBuffer);

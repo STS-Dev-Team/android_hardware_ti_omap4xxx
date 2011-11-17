@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-
-
-
-#define LOG_TAG "CameraHAL"
-
 #include "ANativeWindowDisplayAdapter.h"
 #include <OMX_IVCommon.h>
 #include <ui/GraphicBuffer.h>

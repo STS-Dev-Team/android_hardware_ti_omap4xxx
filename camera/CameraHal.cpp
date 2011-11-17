@@ -21,8 +21,6 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "ANativeWindowDisplayAdapter.h"
 #include "TICameraParameters.h"
@@ -1137,7 +1135,7 @@ status_t CameraHal::allocPreviewDataBufs(size_t size, size_t bufferCount)
         mPreviewDataOffsets = NULL;
         }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1210,7 +1208,7 @@ status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size
         mImageOffsets = NULL;
         }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1258,7 +1256,7 @@ status_t CameraHal::allocVideoBufs(uint32_t width, uint32_t height, uint32_t buf
   }
 
  exit:
-  LOG_FUNCTION_NAME;
+  LOG_FUNCTION_NAME_EXIT;
 
   return ret;
 }

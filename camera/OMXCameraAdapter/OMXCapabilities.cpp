@@ -28,11 +28,6 @@
 
 namespace android {
 
-#undef LOG_TAG
-
-// Maintain a separate tag for OMXCameraAdapter logs to isolate issues OMX specific
-#define LOG_TAG "CameraHAL"
-
 /************************************
  * global constants and variables
  *************************************/
@@ -490,7 +485,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
         params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -528,7 +523,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -554,7 +549,7 @@ status_t OMXCameraAdapter::insertVideoSizes(CameraProperties::Properties* params
       params->set(CameraProperties::SUPPORTED_VIDEO_SIZES, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -581,7 +576,7 @@ status_t OMXCameraAdapter::insertThumbSizes(CameraProperties::Properties* params
         params->set(CameraProperties::SUPPORTED_THUMBNAIL_SIZES, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -613,7 +608,7 @@ status_t OMXCameraAdapter::insertZoomStages(CameraProperties::Properties* params
         params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, TICameraParameters::ZOOM_SUPPORTED);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -644,7 +639,7 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -676,7 +671,7 @@ status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
         params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -702,7 +697,7 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
         params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -734,7 +729,7 @@ status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* param
         CAMHAL_LOGDB("Default framerate range: [%s]", DEFAULT_FRAMERATE_RANGE_IMAGE);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -753,7 +748,7 @@ status_t OMXCameraAdapter::insertEVs(CameraProperties::Properties* params, OMX_T
     snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", ( int ) ( caps.xEVCompensationMax * 10 ));
     params->set(CameraProperties::SUPPORTED_EV_MAX, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -777,7 +772,7 @@ status_t OMXCameraAdapter::insertISOModes(CameraProperties::Properties* params, 
         params->set(CameraProperties::SUPPORTED_ISO_VALUES, supported);
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -812,7 +807,7 @@ status_t OMXCameraAdapter::insertIPPModes(CameraProperties::Properties* params, 
     remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_IPP_MODES, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -836,7 +831,7 @@ status_t OMXCameraAdapter::insertWBModes(CameraProperties::Properties* params, O
 
     params->set(CameraProperties::SUPPORTED_WHITE_BALANCE, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -860,7 +855,7 @@ status_t OMXCameraAdapter::insertEffects(CameraProperties::Properties* params, O
     remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_EFFECTS, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -884,7 +879,7 @@ status_t OMXCameraAdapter::insertExpModes(CameraProperties::Properties* params, 
 
     params->set(CameraProperties::SUPPORTED_EXPOSURE_MODES, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -914,7 +909,7 @@ status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params
     remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_FLASH_MODES, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -939,7 +934,7 @@ status_t OMXCameraAdapter::insertSceneModes(CameraProperties::Properties* params
     remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_SCENE_MODES, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -975,7 +970,7 @@ status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params
 
     params->set(CameraProperties::SUPPORTED_FOCUS_MODES, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -999,7 +994,7 @@ status_t OMXCameraAdapter::insertFlickerModes(CameraProperties::Properties* para
     remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_ANTIBANDING, supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1022,7 +1017,7 @@ status_t OMXCameraAdapter::insertAreas(CameraProperties::Properties* params, OMX
     params->set(CameraProperties::MAX_NUM_METERING_AREAS, supported);
     CAMHAL_LOGDB("Maximum supported exposure areas %s", supported);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1035,7 +1030,7 @@ status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX
     params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
     params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
 
-    LOG_FUNCTION_NAME
+    LOG_FUNCTION_NAME_EXIT
 
     return ret;
 }
@@ -1100,7 +1095,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO, DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO);
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1133,7 +1128,7 @@ status_t OMXCameraAdapter::insertSenMount(CameraProperties::Properties* params, 
     // 2) Assign mounting rotation
     params->set(CameraProperties::ORIENTATION_INDEX, caps.tSenMounting.nRotation);
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }

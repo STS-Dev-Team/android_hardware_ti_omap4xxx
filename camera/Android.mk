@@ -5,6 +5,28 @@ LOCAL_PATH:= $(call my-dir)
 OMAP4_CAMERA_HAL_USES:= OMX
 # OMAP4_CAMERA_HAL_USES:= USB
 
+ifdef TI_CAMERAHAL_DEBUG_ENABLED
+    # Enable CameraHAL debug logs
+    CAMERAHAL_CFLAGS += -DCAMERAHAL_DEBUG
+endif
+
+ifdef TI_CAMERAHAL_VERBOSE_DEBUG_ENABLED
+    # Enable CameraHAL verbose debug logs
+    CAMERAHAL_CFLAGS += -DCAMERAHAL_DEBUG_VERBOSE
+endif
+
+ifdef TI_CAMERAHAL_DEBUG_FUNCTION_NAMES
+    # Enable CameraHAL function enter/exit logging
+    CAMERAHAL_CFLAGS += -DTI_UTILS_FUNCTION_LOGGER_ENABLE
+endif
+
+ifdef TI_CAMERAHAL_DEBUG_TIMESTAMPS
+    # Enable timestamp logging
+    CAMERAHAL_CFLAGS += -DTI_UTILS_DEBUG_USE_TIMESTAMPS
+endif
+
+CAMERAHAL_CFLAGS += -DLOG_TAG=\"CameraHal\"
+
 OMAP4_CAMERA_HAL_SRC := \
 	CameraHal_Module.cpp \
 	CameraHal.cpp \
@@ -84,7 +106,7 @@ LOCAL_SHARED_LIBRARIES:= \
     libjpeg \
     libexif
 
-LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER
+LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE:= camera.$(TARGET_BOARD_PLATFORM)
@@ -127,7 +149,7 @@ LOCAL_SHARED_LIBRARIES:= \
     libcamera_client \
     libion \
 
-LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER
+LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE:= camera.$(TARGET_BOARD_PLATFORM)
