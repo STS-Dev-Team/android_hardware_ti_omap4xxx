@@ -696,6 +696,12 @@ private:
     FILE * fopenCameraDCC(const char *dccFolderPath);
     FILE * parseDCCsubDir(DIR *pDir, char *path);
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    status_t storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader);
+
+#endif
+
     class CommandHandler : public Thread {
         public:
             CommandHandler(OMXCameraAdapter* ca)
@@ -871,6 +877,13 @@ private:
     static const char DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE[];
 
     static const size_t MAX_FOCUS_AREAS;
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    static const char DEFAULT_PROFILE_PATH[];
+    int mDebugProfile;
+
+#endif
 
     OMX_VERSIONTYPE mCompRevision;
 

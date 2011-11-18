@@ -37,6 +37,12 @@ static int mDebugFcs = 0;
 
 namespace android {
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+const char OMXCameraAdapter::DEFAULT_PROFILE_PATH[] = "/data/dbg/profile_data.bin";
+
+#endif
+
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
 
@@ -52,6 +58,13 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mDebugFps = atoi(value);
     property_get("debug.camera.framecounts", value, "0");
     mDebugFcs = atoi(value);
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    property_get("debug.camera.profile", value, "0");
+    mDebugProfile = atoi(value);
+
+#endif
 
     TIMM_OSAL_ERRORTYPE osalError = OMX_ErrorNone;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -3057,6 +3070,48 @@ OMX_ERRORTYPE OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLETYPE hComponent,
     return eError;
 }
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+status_t OMXCameraAdapter::storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader) {
+    OMX_TI_PLATFORMPRIVATE *platformPrivate = NULL;
+    OMX_OTHER_EXTRADATATYPE *extraData = NULL;
+    FILE *fd = NULL;
+
+    LOG_FUNCTION_NAME
+
+    if ( UNLIKELY( mDebugProfile ) ) {
+
+        platformPrivate =  static_cast<OMX_TI_PLATFORMPRIVATE *> (pBuffHeader->pPlatformPrivate);
+        extraData = getExtradata(static_cast<OMX_OTHER_EXTRADATATYPE *> (platformPrivate->pMetaDataBuffer),
+                platformPrivate->nMetaDataSize,
+                static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData));
+
+        if ( NULL != extraData ) {
+            if( extraData->eType == static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData) ) {
+
+                fd = fopen(DEFAULT_PROFILE_PATH, "ab");
+                if ( NULL != fd ) {
+                    fwrite(extraData->data, 1, extraData->nDataSize, fd);
+                    fclose(fd);
+                } else {
+                    return -errno;
+                }
+
+            } else {
+                return NOT_ENOUGH_DATA;
+            }
+        } else {
+            return NOT_ENOUGH_DATA;
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return NO_ERROR;
+}
+
+#endif
+
 /*========================================================*/
 /* @ fn SampleTest_FillBufferDone ::  Application callback*/
 /*========================================================*/
@@ -3080,6 +3135,16 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     OMX_OTHER_EXTRADATATYPE *extraData;
     OMX_TI_ANCILLARYDATATYPE *ancillaryData;
     bool snapshotFrame = false;
+
+    if ( NULL == pBuffHeader ) {
+        return OMX_ErrorBadParameter;
+    }
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    storeProfilingData(pBuffHeader);
+
+#endif
 
     res1 = res2 = NO_ERROR;
     pPortParam = &(mCameraAdapterParameters.mCameraPortParams[pBuffHeader->nOutputPortIndex]);
@@ -3668,6 +3733,12 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    mDebugProfile = 0;
+
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 }
