@@ -148,9 +148,17 @@ status_t OMXCameraAdapter::doAutoFocus()
         }
     }
 
-    if ( ( focusControl.eFocusControl != OMX_IMAGE_FocusControlAuto ) &&
-         ( focusControl.eFocusControl != ( OMX_IMAGE_FOCUSCONTROLTYPE )
-                 OMX_IMAGE_FocusControlAutoInfinity ) ) {
+    if ( (focusControl.eFocusControl == OMX_IMAGE_FocusControlAuto
+            && focusStatus.eFocusStatus == OMX_FocusStatusRequest) ||
+            (mParameters3A.Focus !=  (OMX_IMAGE_FOCUSCONTROLTYPE)OMX_IMAGE_FocusControlAuto) )
+        {
+        OMX_INIT_STRUCT_PTR (&bOMX, OMX_CONFIG_BOOLEANTYPE);
+        bOMX.bEnabled = OMX_TRUE;
+
+        //Enable focus scanning
+        eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                               (OMX_INDEXTYPE)OMX_TI_IndexConfigAutofocusEnable,
+                               &bOMX);
 
         ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
                                     (OMX_EVENTTYPE) OMX_EventIndexSettingChanged,
