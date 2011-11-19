@@ -3261,23 +3261,6 @@ status_t OMXCameraAdapter::recalculateFDSkip(uint32_t &skip, uint32_t currentFPS
     return NO_ERROR;
 }
 
-status_t OMXCameraAdapter::sendFrame(CameraFrame &frame)
-{
-    status_t ret = NO_ERROR;
-
-    LOG_FUNCTION_NAME;
-
-
-    if ( NO_ERROR == ret )
-        {
-        ret = sendFrameToSubscribers(&frame);
-        }
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
-}
-
 status_t OMXCameraAdapter::sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, unsigned int mask, OMXCameraPortParameters *port)
 {
   status_t ret = NO_ERROR;
@@ -3330,57 +3313,6 @@ status_t OMXCameraAdapter::sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEA
   LOG_FUNCTION_NAME_EXIT;
 
   return ret;
-}
-
-status_t OMXCameraAdapter::initCameraFrame( CameraFrame &frame,
-                                            OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader,
-                                            int typeOfFrame,
-                                            OMXCameraPortParameters *port)
-{
-    status_t ret = NO_ERROR;
-
-    LOG_FUNCTION_NAME;
-
-    if ( NULL == port)
-        {
-        CAMHAL_LOGEA("Invalid portParam");
-        return -EINVAL;
-        }
-
-    if ( NULL == pBuffHeader )
-        {
-        CAMHAL_LOGEA("Invalid Buffer header");
-        return -EINVAL;
-        }
-
-    frame.mFrameType = typeOfFrame;
-    frame.mBuffer = pBuffHeader->pBuffer;
-    frame.mLength = pBuffHeader->nFilledLen;
-    frame.mAlignment = port->mStride;
-    frame.mOffset = pBuffHeader->nOffset;
-    frame.mWidth = port->mWidth;
-    frame.mHeight = port->mHeight;
-
-    // Timestamp in pBuffHeader->nTimeStamp is derived on DUCATI side, which is
-    // is not  same time value as derived using systemTime. It would be ideal to use
-    // exactly same time source across Android and Ducati, which is limited by
-    // system now. So, workaround for now is to find the time offset between the two
-    // time sources and compensate the difference, along with the latency involved
-    // in camera buffer reaching CameraHal. Also, Do timeset offset calculation only
-    // when recording is in progress, when nTimestamp will be populated by Camera
-    if ( onlyOnce && mRecording )
-        {
-        mTimeSourceDelta = (pBuffHeader->nTimeStamp * 1000) - systemTime(SYSTEM_TIME_MONOTONIC);
-        mTimeSourceDelta += kCameraBufferLatencyNs;
-        onlyOnce = false;
-        }
-
-    // Calculating the new video timestamp based on offset from ducati source.
-    frame.mTimestamp = (pBuffHeader->nTimeStamp * 1000) - mTimeSourceDelta;
-
-        LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
 }
 
 bool OMXCameraAdapter::CommandHandler::Handler()
