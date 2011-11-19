@@ -658,12 +658,7 @@ private:
     //Used for calculation of the average frame rate during preview
     status_t recalculateFPS();
 
-    //Helper method for initializing a CameFrame object
-    status_t initCameraFrame(CameraFrame &frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, int typeOfFrame, OMXCameraPortParameters *port);
-
     //Sends the incoming OMX buffer header to subscribers
-    status_t sendFrame(CameraFrame &frame);
-
     status_t sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, unsigned int mask, OMXCameraPortParameters *port);
 
     status_t apply3Asettings( Gen3A_settings& Gen3A );
