@@ -56,6 +56,7 @@ OMAP4_CAMERA_OMX_SRC:= \
 	OMXCameraAdapter/OMXFD.cpp \
 	OMXCameraAdapter/OMXFocus.cpp \
 	OMXCameraAdapter/OMXZoom.cpp \
+	OMXCameraAdapter/OMXDccDataSave.cpp \
 
 OMAP4_CAMERA_USB_SRC:= \
 	BaseCameraAdapter.cpp \

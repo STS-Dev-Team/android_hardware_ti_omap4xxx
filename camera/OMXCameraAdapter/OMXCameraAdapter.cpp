@@ -99,6 +99,8 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mComponentState = OMX_StateLoaded;
 
     CAMHAL_LOGVB("OMX_GetHandle -0x%x sensor_index = %lu", eError, mSensorIndex);
+    initDccFileDataSave(&mCameraAdapterParameters.mHandleComp, mCameraAdapterParameters.mPrevPortIndex);
+
     eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
                                   OMX_CommandPortDisable,
                                   OMX_ALL,
@@ -2087,6 +2089,8 @@ status_t OMXCameraAdapter::stopPreview()
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
 
+    saveDccFileDataSave();
+
     LOG_FUNCTION_NAME_EXIT;
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
@@ -2954,6 +2958,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             }
         }
 
+        sniffDccFileDataSave(pBuffHeader);
+
         if ( (nextState & CAPTURE_ACTIVE) )
             {
             mPending3Asettings |= SetFocus;
@@ -3397,7 +3403,7 @@ OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE 
 {
   if ( NULL != extraData )
       {
-      while ( extraData->nDataSize != 0 )
+      while ( extraData->eType && extraData->nDataSize && extraData->data )
           {
           if ( type == extraData->eType )
               {
@@ -3421,6 +3427,7 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
     // Initial values
     mTimeSourceDelta = 0;
     onlyOnce = true;
+    mDccData.pData = NULL;
 
     mDoAFSem.Create(0);
     mInitSem.Create(0);
@@ -3459,6 +3466,7 @@ OMXCameraAdapter::~OMXCameraAdapter()
         // return to OMX Loaded state
         switchToLoaded();
 
+        closeDccFileDataSave();
         // deinit the OMX
         if ( mComponentState == OMX_StateLoaded || mComponentState == OMX_StateInvalid ) {
             // free the handle for the Camera component
