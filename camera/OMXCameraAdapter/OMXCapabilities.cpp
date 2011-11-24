@@ -38,7 +38,6 @@ namespace android {
 #define FPS_RANGE_STEP 5
 
 static const char PARAM_SEP[] = ",";
-static const int PARAM_SEP_CHAR = ',';
 static const uint32_t VFR_OFFSET = 8;
 static const char VFR_BACKET_START[] = "(";
 static const char VFR_BRACKET_END[] = ")";
@@ -117,6 +116,7 @@ const CapResolution OMXCameraAdapter::mThumbRes [] = {
 };
 
 const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
+    { OMX_COLOR_FormatUnused, TICameraParameters::PIXEL_FORMAT_UNUSED },
     { OMX_COLOR_FormatCbYCrY, CameraParameters::PIXEL_FORMAT_YUV422I },
     { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420SP },
     { OMX_COLOR_Format16bitRGB565, CameraParameters::PIXEL_FORMAT_RGB565 },
@@ -228,19 +228,12 @@ const CapU32Pair OMXCameraAdapter::mVarFramerates [] = {
     { 30, 24, "(24000,30000)"},
     { 30, 30, "(30000,30000)" },
 };
-/************************************
- * static helper functions
- *************************************/
 
-// utility function to remove last seperator
-void remove_last_sep(char* buffer) {
-    char* last_sep = NULL;
-    last_sep = strrchr(buffer, PARAM_SEP_CHAR);
-    if (last_sep != NULL) {
-        last_sep[0] = '\0';
-    }
-}
-
+// values for supported camera facing direction
+const CapU32 OMXCameraAdapter::mFacing [] = {
+    { OMX_TI_SENFACING_BACK , TICameraParameters::FACING_BACK },
+    { OMX_TI_SENFACING_FRONT, TICameraParameters::FACING_FRONT},
+};
 
 /*****************************************
  * internal static function declarations
@@ -252,7 +245,8 @@ status_t OMXCameraAdapter::encodePixelformatCap(OMX_COLOR_FORMATTYPE format,
                               const CapPixelformat *cap,
                               size_t capCount,
                               char * buffer,
-                              size_t bufferSize) {
+                              size_t bufferSize)
+{
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
@@ -262,12 +256,17 @@ status_t OMXCameraAdapter::encodePixelformatCap(OMX_COLOR_FORMATTYPE format,
         return -EINVAL;
     }
 
-    for ( unsigned int i = 0; i < capCount; i++ ) {
-        if ( format == cap[i].pixelformat ) {
+
+    for ( unsigned int i = 0 ; i < capCount ; i++ )
+        {
+        if ( format == cap[i].pixelformat )
+            {
+            if (buffer[0] != '\0') {
+                strncat(buffer, PARAM_SEP, bufferSize - 1);
+            }
             strncat(buffer, cap[i].param, bufferSize - 1);
-            strncat(buffer, PARAM_SEP, bufferSize - 1);
+            }
         }
-    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -279,7 +278,8 @@ status_t OMXCameraAdapter::encodeFramerateCap(OMX_U32 framerateMax,
                             const CapFramerate *cap,
                             size_t capCount,
                             char * buffer,
-                            size_t bufferSize) {
+                            size_t bufferSize)
+{
     status_t ret = NO_ERROR;
     char tmpBuffer[FRAMERATE_COUNT];
 
@@ -290,23 +290,24 @@ status_t OMXCameraAdapter::encodeFramerateCap(OMX_U32 framerateMax,
         return -EINVAL;
     }
 
-    memset(tmpBuffer, 0, FRAMERATE_COUNT);
-    snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u,", ( unsigned int ) framerateMax);
+    memset(tmpBuffer, '\0', FRAMERATE_COUNT);
+    snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%lu", framerateMax);
     strncat(buffer, tmpBuffer, bufferSize - 1);
 
     for ( unsigned int i = 0; i < capCount; i++ ) {
         if ( (framerateMax > cap[i].num) && (framerateMin < cap[i].num) ) {
-            strncat(buffer, cap[i].param, bufferSize - 1);
             strncat(buffer, PARAM_SEP, bufferSize - 1);
+            strncat(buffer, cap[i].param, bufferSize - 1);
         }
     }
 
-    memset(tmpBuffer, 0, FRAMERATE_COUNT);
+    memset(tmpBuffer, '\0', FRAMERATE_COUNT);
     if ( FPS_MIN < framerateMin ) {
-        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u", ( unsigned int ) framerateMin);
+        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%lu", framerateMin);
     } else {
-        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%u", ( unsigned int ) FPS_MIN);
+        snprintf(tmpBuffer, FRAMERATE_COUNT - 1, "%d", FPS_MIN);
     }
+    strncat(buffer, PARAM_SEP, bufferSize - 1);
     strncat(buffer, tmpBuffer, bufferSize - 1);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -319,14 +320,15 @@ status_t OMXCameraAdapter::encodeVFramerateCap(OMX_TI_CAPTYPE &caps,
                                                size_t capCount,
                                                char *buffer,
                                                char *defaultRange,
-                                               size_t bufferSize) {
+                                               size_t bufferSize)
+{
     status_t ret = NO_ERROR;
     uint32_t minVFR, maxVFR;
     int default_index = -1;
 
     LOG_FUNCTION_NAME;
 
-    if ( (NULL == buffer) || (NULL == cap) ) {
+    if ( (NULL == buffer) || (NULL == defaultRange) || (NULL == cap) ) {
         CAMHAL_LOGEA("Invalid input arguments");
         return -EINVAL;
     }
@@ -362,18 +364,22 @@ status_t OMXCameraAdapter::encodeVFramerateCap(OMX_TI_CAPTYPE &caps,
     // just use the min and max
     if (buffer[0] == '\0') {
         snprintf(buffer, bufferSize - 1,
-             "(%u,%u)",
+             "(%u%s%u)",
              minVFR * CameraHal::VFR_SCALE,
+             PARAM_SEP,
              maxVFR * CameraHal::VFR_SCALE);
     }
 
     if (default_index != -1) {
-        snprintf(defaultRange, (MAX_PROP_VALUE_LENGTH - 1), "%lu,%lu",
+        snprintf(defaultRange, (MAX_PROP_VALUE_LENGTH - 1), "%lu%s%lu",
                  cap[default_index].num2 * CameraHal::VFR_SCALE,
+                 PARAM_SEP,
                  cap[default_index].num1 * CameraHal::VFR_SCALE);
     } else {
-        snprintf(defaultRange, (MAX_PROP_VALUE_LENGTH - 1), "%u,%u",
-                 minVFR * CameraHal::VFR_SCALE, maxVFR * CameraHal::VFR_SCALE);
+        snprintf(defaultRange, (MAX_PROP_VALUE_LENGTH - 1), "%u%s%u",
+                 minVFR * CameraHal::VFR_SCALE,
+                 PARAM_SEP,
+                 maxVFR * CameraHal::VFR_SCALE);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -385,7 +391,8 @@ size_t OMXCameraAdapter::encodeZoomCap(OMX_S32 maxZoom,
                      const CapZoom *cap,
                      size_t capCount,
                      char * buffer,
-                     size_t bufferSize) {
+                     size_t bufferSize)
+{
     status_t res = NO_ERROR;
     size_t ret = 0;
 
@@ -399,12 +406,13 @@ size_t OMXCameraAdapter::encodeZoomCap(OMX_S32 maxZoom,
 
     for ( unsigned int i = 0; i < capCount; i++ ) {
         if ( cap[i].num <= maxZoom ) {
+            if (buffer[0] != '\0') {
+                strncat(buffer, PARAM_SEP, bufferSize - 1);
+            }
             strncat(buffer, cap[i].param, bufferSize - 1);
-            strncat(buffer, PARAM_SEP, bufferSize - 1);
             ret++;
         }
     }
-    remove_last_sep(buffer);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -415,7 +423,8 @@ status_t OMXCameraAdapter::encodeISOCap(OMX_U32 maxISO,
                       const CapISO *cap,
                       size_t capCount,
                       char * buffer,
-                      size_t bufferSize) {
+                      size_t bufferSize)
+{
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
@@ -427,11 +436,12 @@ status_t OMXCameraAdapter::encodeISOCap(OMX_U32 maxISO,
 
     for ( unsigned int i = 0; i < capCount; i++ ) {
         if ( cap[i].num <= maxISO) {
+            if (buffer[0] != '\0') {
+                strncat(buffer, PARAM_SEP, bufferSize - 1);
+            }
             strncat(buffer, cap[i].param, bufferSize - 1);
-            strncat(buffer, PARAM_SEP, bufferSize - 1);
         }
     }
-    remove_last_sep(buffer);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -442,7 +452,8 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
                        const CapResolution *cap,
                        size_t capCount,
                        char * buffer,
-                       size_t bufferSize) {
+                       size_t bufferSize)
+{
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
@@ -457,8 +468,10 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
              (cap[i].height <= res.nHeightMax) &&
              (cap[i].width >= res.nWidthMin) &&
              (cap[i].height >= res.nHeightMin) ) {
+                if (buffer[0] != '\0') {
+                    strncat(buffer, PARAM_SEP, bufferSize - 1);
+                }
                 strncat(buffer, cap[i].param, bufferSize -1);
-                strncat(buffer, PARAM_SEP, bufferSize - 1);
         }
     }
 
@@ -467,7 +480,8 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
     return ret;
 }
 
-status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -484,7 +498,6 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
     if ( NO_ERROR != ret ) {
         CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
     } else {
-        remove_last_sep(supported);
         params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
     }
 
@@ -493,7 +506,8 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -522,7 +536,6 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
     if ( NO_ERROR != ret ) {
         CAMHAL_LOGEB("Error inserting supported Potrait preview sizes 0x%x", ret);
     } else {
-        remove_last_sep(supported);
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
     }
 
@@ -531,7 +544,8 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
     return ret;
 }
 
-status_t OMXCameraAdapter::insertVideoSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertVideoSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -548,7 +562,6 @@ status_t OMXCameraAdapter::insertVideoSizes(CameraProperties::Properties* params
     if ( NO_ERROR != ret ) {
       CAMHAL_LOGEB("Error inserting supported video sizes 0x%x", ret);
     } else {
-      remove_last_sep(supported);
       params->set(CameraProperties::SUPPORTED_VIDEO_SIZES, supported);
     }
 
@@ -557,7 +570,8 @@ status_t OMXCameraAdapter::insertVideoSizes(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertThumbSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertThumbSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -575,6 +589,9 @@ status_t OMXCameraAdapter::insertThumbSizes(CameraProperties::Properties* params
         CAMHAL_LOGEB("Error inserting supported thumbnail sizes 0x%x", ret);
     } else {
         //CTS Requirement: 0x0 should always be supported
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat(supported, "0x0", MAX_PROP_NAME_LENGTH);
         params->set(CameraProperties::SUPPORTED_THUMBNAIL_SIZES, supported);
     }
@@ -616,7 +633,8 @@ status_t OMXCameraAdapter::insertZoomStages(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -638,6 +656,9 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret ) {
         //jpeg is not supported in OMX capabilies yet
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat(supported, CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
         strcat(supported, ",");
         strncat(supported, TICameraParameters::PIXEL_FORMAT_RAW_JPEG, MAX_PROP_VALUE_LENGTH - 1);
@@ -649,7 +670,8 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
     return ret;
 }
 
-status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -672,6 +694,9 @@ status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
     if ( NO_ERROR == ret ) {
         // need to advertise we support YV12 format
         // We will program preview port with NV21 when we see application set YV12
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat(supported, CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
         params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     }
@@ -681,7 +706,8 @@ status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
     return ret;
 }
 
-status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -707,7 +733,8 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     char defaultRange[MAX_PROP_VALUE_LENGTH];
@@ -715,6 +742,7 @@ status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* param
     LOG_FUNCTION_NAME;
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+    memset(defaultRange, '\0', MAX_PROP_VALUE_LENGTH);
 
     ret = encodeVFramerateCap(caps,
                               mVarFramerates,
@@ -727,11 +755,11 @@ status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* param
         CAMHAL_LOGEB("Error inserting supported preview framerate ranges 0x%x", ret);
     } else {
         params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, supported);
-        CAMHAL_LOGDB("framerate ranges %s", supported);
+        CAMHAL_LOGDB("Supported framerate ranges: %s", supported);
         params->set(CameraProperties::FRAMERATE_RANGE, defaultRange);
         params->set(CameraProperties::FRAMERATE_RANGE_VIDEO, defaultRange);
         params->set(CameraProperties::FRAMERATE_RANGE_IMAGE, defaultRange);
-        CAMHAL_LOGDB("Default framerate range: [%s]", DEFAULT_FRAMERATE_RANGE_IMAGE);
+        CAMHAL_LOGDB("Default framerate range: [%s]", defaultRange);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -739,7 +767,8 @@ status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* param
     return ret;
 }
 
-status_t OMXCameraAdapter::insertEVs(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertEVs(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -758,7 +787,8 @@ status_t OMXCameraAdapter::insertEVs(CameraProperties::Properties* params, OMX_T
     return ret;
 }
 
-status_t OMXCameraAdapter::insertISOModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertISOModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -782,7 +812,8 @@ status_t OMXCameraAdapter::insertISOModes(CameraProperties::Properties* params, 
     return ret;
 }
 
-status_t OMXCameraAdapter::insertIPPModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertIPPModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
 
@@ -792,24 +823,22 @@ status_t OMXCameraAdapter::insertIPPModes(CameraProperties::Properties* params, 
 
     //Off is always supported
     strncat(supported, TICameraParameters::IPP_NONE, MAX_PROP_NAME_LENGTH);
-    strncat(supported, PARAM_SEP, 1);
 
     if ( caps.bLensDistortionCorrectionSupported ) {
-        strncat(supported, TICameraParameters::IPP_LDC, MAX_PROP_NAME_LENGTH);
         strncat(supported, PARAM_SEP, 1);
+        strncat(supported, TICameraParameters::IPP_LDC, MAX_PROP_NAME_LENGTH);
     }
 
     if ( caps.bISONoiseFilterSupported ) {
-        strncat(supported, TICameraParameters::IPP_NSF, MAX_PROP_NAME_LENGTH);
         strncat(supported, PARAM_SEP, 1);
+        strncat(supported, TICameraParameters::IPP_NSF, MAX_PROP_NAME_LENGTH);
     }
 
     if ( caps.bISONoiseFilterSupported && caps.bLensDistortionCorrectionSupported ) {
-        strncat(supported, TICameraParameters::IPP_LDCNSF, MAX_PROP_NAME_LENGTH);
         strncat(supported, PARAM_SEP, 1);
+        strncat(supported, TICameraParameters::IPP_LDCNSF, MAX_PROP_NAME_LENGTH);
     }
 
-    remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_IPP_MODES, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -817,7 +846,8 @@ status_t OMXCameraAdapter::insertIPPModes(CameraProperties::Properties* params, 
     return ret;
 }
 
-status_t OMXCameraAdapter::insertWBModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertWBModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -829,8 +859,10 @@ status_t OMXCameraAdapter::insertWBModes(CameraProperties::Properties* params, O
     for ( unsigned int i = 0 ; i < caps.ulWhiteBalanceCount ; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eWhiteBalanceModes[i], WBalLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
     }
 
@@ -841,7 +873,8 @@ status_t OMXCameraAdapter::insertWBModes(CameraProperties::Properties* params, O
     return ret;
 }
 
-status_t OMXCameraAdapter::insertEffects(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertEffects(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -853,11 +886,13 @@ status_t OMXCameraAdapter::insertEffects(CameraProperties::Properties* params, O
     for ( unsigned int i = 0 ; i < caps.ulColorEffectCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eColorEffects[i], EffLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
     }
-    remove_last_sep(supported);
+
     params->set(CameraProperties::SUPPORTED_EFFECTS, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -865,7 +900,8 @@ status_t OMXCameraAdapter::insertEffects(CameraProperties::Properties* params, O
     return ret;
 }
 
-status_t OMXCameraAdapter::insertExpModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertExpModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -877,8 +913,10 @@ status_t OMXCameraAdapter::insertExpModes(CameraProperties::Properties* params, 
     for ( unsigned int i = 0 ; i < caps.ulExposureModeCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eExposureModes[i], ExpLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
     }
 
@@ -889,7 +927,8 @@ status_t OMXCameraAdapter::insertExpModes(CameraProperties::Properties* params, 
     return ret;
 }
 
-status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -901,17 +940,17 @@ status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params
     for ( unsigned int i = 0 ; i < caps.ulFlashCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eFlashModes[i], FlashLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
     }
 
     if ( strlen(supported) == 0 ) {
         strncpy(supported, DEFAULT_FLASH_MODE, MAX_PROP_NAME_LENGTH);
-        strncat(supported, PARAM_SEP, 1);
     }
 
-    remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_FLASH_MODES, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -919,7 +958,8 @@ status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertSceneModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertSceneModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -931,12 +971,13 @@ status_t OMXCameraAdapter::insertSceneModes(CameraProperties::Properties* params
     for ( unsigned int i = 0 ; i < caps.ulSceneCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eSceneModes[i], SceneLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
     }
 
-    remove_last_sep(supported);
     params->set(CameraProperties::SUPPORTED_SCENE_MODES, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -944,7 +985,8 @@ status_t OMXCameraAdapter::insertSceneModes(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -956,9 +998,15 @@ status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params
     for ( unsigned int i = 0 ; i < caps.ulFocusModeCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eFocusModes[i], FocusLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
+    }
+
+    if (supported[0] != '\0') {
+        strncat(supported, PARAM_SEP, 1);
     }
 
     // Check if focus is supported by camera
@@ -980,7 +1028,8 @@ status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params
     return ret;
 }
 
-status_t OMXCameraAdapter::insertFlickerModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertFlickerModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -992,11 +1041,13 @@ status_t OMXCameraAdapter::insertFlickerModes(CameraProperties::Properties* para
     for ( unsigned int i = 0 ; i < caps.ulFlickerCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eFlicker[i], FlickerLUT);
         if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
             strncat(supported, p, MAX_PROP_NAME_LENGTH);
-            strncat(supported, PARAM_SEP, 1);
         }
     }
-    remove_last_sep(supported);
+
     params->set(CameraProperties::SUPPORTED_ANTIBANDING, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1004,7 +1055,8 @@ status_t OMXCameraAdapter::insertFlickerModes(CameraProperties::Properties* para
     return ret;
 }
 
-status_t OMXCameraAdapter::insertAreas(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertAreas(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
     const char *p;
@@ -1027,22 +1079,113 @@ status_t OMXCameraAdapter::insertAreas(CameraProperties::Properties* params, OMX
     return ret;
 }
 
-status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME
 
-    params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
-    params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
+    if ( caps.bAELockSupported ) {
+        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
+    }
+
+    if ( caps.bAWBLockSupported ) {
+        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
+    }
 
     LOG_FUNCTION_NAME_EXIT
 
     return ret;
 }
 
-status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertSenMount(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
+    const char *p;
+    unsigned int i = 0;
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+
+    // 1) Look up and assign sensor name
+    for (i = 0; i < ARRAY_SIZE(mSensorNames); i++) {
+        if(mSensorNames[i].num == caps.tSenMounting.nSenId) {
+            // sensor found
+            break;
+        }
+    }
+    if ( i == ARRAY_SIZE(mSensorNames) ) {
+        p = "UNKNOWN_SENSOR";
+    } else {
+        p = mSensorNames[i].param;
+    }
+    strncat(supported, p, REMAINING_BYTES(supported));
+    params->set(CameraProperties::CAMERA_NAME, supported);
+    params->set(CameraProperties::CAMERA_SENSOR_ID, caps.tSenMounting.nSenId);
+
+    // 2) Assign mounting rotation
+    params->set(CameraProperties::ORIENTATION_INDEX, caps.tSenMounting.nRotation);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+status_t OMXCameraAdapter::insertFacing(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+    const char *p;
+    unsigned int i = 0;
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+
+    for (i = 0; i < ARRAY_SIZE(mFacing); i++) {
+        if((OMX_TI_SENFACING_TYPE)mFacing[i].num == caps.tSenMounting.eFacing) {
+            break;
+        }
+    }
+    if ( i == ARRAY_SIZE(mFacing) ) {
+        p = "UNKNOWN_FACING";
+    } else {
+        p = mFacing[i].param;
+    }
+    strncat(supported, p, REMAINING_BYTES(supported));
+    params->set(CameraProperties::FACING_INDEX, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+status_t OMXCameraAdapter::insertFocalLength(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+
+    sprintf(supported, "%d", caps.nFocalLength / 100);
+    strncat(supported, ".", REMAINING_BYTES(supported));
+    sprintf(supported+(strlen(supported)*sizeof(char)), "%d", caps.nFocalLength % 100);
+
+    params->set(CameraProperties::FOCAL_LENGTH, supported);
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return ret;
+}
+
+
+status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
     const char *p;
 
     LOG_FUNCTION_NAME;
@@ -1088,11 +1231,6 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::MAX_FD_SW_FACES, DEFAULT_MAX_FD_SW_FACES);
     params->set(CameraProperties::AUTO_EXPOSURE_LOCK, DEFAULT_AE_LOCK);
     params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK, DEFAULT_AWB_LOCK);
-    if(caps.tSenMounting.nSenId == 305) {
-        params->set(CameraProperties::FOCAL_LENGTH, DEFAULT_FOCAL_LENGTH_PRIMARY);
-    } else {
-        params->set(CameraProperties::FOCAL_LENGTH, DEFAULT_FOCAL_LENGTH_SECONDARY);
-    }
     params->set(CameraProperties::HOR_ANGLE, DEFAULT_HOR_ANGLE);
     params->set(CameraProperties::VER_ANGLE, DEFAULT_VER_ANGLE);
     params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, DEFAULT_VIDEO_SNAPSHOT_SUPPORTED);
@@ -1105,43 +1243,9 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     return ret;
 }
 
-status_t OMXCameraAdapter::insertSenMount(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
     status_t ret = NO_ERROR;
-    char supported[MAX_PROP_VALUE_LENGTH];
-    const char *p;
-    unsigned int i = 0;
-
-    LOG_FUNCTION_NAME;
-
-    memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
-
-    // 1) Look up and assign sensor name
-    for (i = 0; i < ARRAY_SIZE(mSensorNames); i++) {
-        if(mSensorNames[i].num == caps.tSenMounting.nSenId) {
-            // sensor found
-            break;
-        }
-    }
-    if ( i == ARRAY_SIZE(mSensorNames) ) {
-        p = "UNKNOWN_SENSOR";
-    } else {
-        p = mSensorNames[i].param;
-    }
-    strncat(supported, p, MAX_PROP_NAME_LENGTH);
-    params->set(CameraProperties::CAMERA_NAME, supported);
-    params->set(CameraProperties::CAMERA_SENSOR_ID, caps.tSenMounting.nSenId);
-
-    // 2) Assign mounting rotation
-    params->set(CameraProperties::ORIENTATION_INDEX, caps.tSenMounting.nRotation);
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
-}
-
-status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
-    status_t ret = NO_ERROR;
-    char supported[MAX_PROP_VALUE_LENGTH];
 
     LOG_FUNCTION_NAME;
 
@@ -1224,9 +1328,17 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     if ( NO_ERROR == ret ) {
         ret = insertLocks(params, caps);
     }
+
     if ( NO_ERROR == ret) {
         ret = insertAreas(params, caps);
+    }
 
+    if ( NO_ERROR == ret) {
+        ret = insertFacing(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertFocalLength(params, caps);
     }
 
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities
@@ -1239,8 +1351,6 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     if ( NO_ERROR == ret ) {
         ret = insertDefaults(params, caps);
     }
-
-
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1454,6 +1564,28 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
         CAMHAL_LOGD("  eCapFrameLayout[%2d] = %d", i, int(caps.eCapFrameLayout[i]));
 
     CAMHAL_LOGD("");
+    CAMHAL_LOGD("bVideoNoiseFilterSupported         = %d", int(caps.bVideoNoiseFilterSupported      ));
+    CAMHAL_LOGD("bVideoStabilizationSupported       = %d", int(caps.bVideoStabilizationSupported    ));
+    CAMHAL_LOGD("bStillCapDuringVideoSupported      = %d", int(caps.bStillCapDuringVideoSupported   ));
+    CAMHAL_LOGD("bMechanicalMisalignmentSupported   = %d", int(caps.bMechanicalMisalignmentSupported));
+    CAMHAL_LOGD("bFacePrioritySupported             = %d", int(caps.bFacePrioritySupported          ));
+    CAMHAL_LOGD("bRegionPrioritySupported           = %d", int(caps.bRegionPrioritySupported        ));
+
+    CAMHAL_LOGD("");
+    CAMHAL_LOGD("nManualConvMin     = %d", int(caps.nManualConvMin     ));
+    CAMHAL_LOGD("nManualConvMax     = %d", int(caps.nManualConvMax     ));
+    CAMHAL_LOGD("nManualExpMin      = %d", int(caps.nManualExpMin      ));
+    CAMHAL_LOGD("nManualExpMax      = %d", int(caps.nManualExpMax      ));
+    CAMHAL_LOGD("nBrightnessMin     = %d", int(caps.nBrightnessMin     ));
+    CAMHAL_LOGD("nBrightnessMax     = %d", int(caps.nBrightnessMax     ));
+    CAMHAL_LOGD("nContrastMin       = %d", int(caps.nContrastMin       ));
+    CAMHAL_LOGD("nContrastMax       = %d", int(caps.nContrastMax       ));
+    CAMHAL_LOGD("nSharpnessMin      = %d", int(caps.nSharpnessMin      ));
+    CAMHAL_LOGD("nSharpnessMax      = %d", int(caps.nSharpnessMax      ));
+    CAMHAL_LOGD("nSaturationMin     = %d", int(caps.nSaturationMin     ));
+    CAMHAL_LOGD("nSaturationMax     = %d", int(caps.nSaturationMax     ));
+
+    CAMHAL_LOGD("");
     CAMHAL_LOGD("------------------- end of dump -------------------");
     CAMHAL_LOGD("===================================================");
 
@@ -1464,7 +1596,8 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
  * public exposed function declarations
  *****************************************/
 
-status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Properties* params, OMX_HANDLETYPE handle) {
+status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Properties* params, OMX_HANDLETYPE handle)
+{
     status_t ret = NO_ERROR;
     int caps_size = 0;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -1513,7 +1646,7 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     }
 
     CAMHAL_LOGDB("sen mount id=%u", (unsigned int)caps[0]->tSenMounting.nSenId);
-
+    CAMHAL_LOGDB("facing id=%u", (unsigned int)caps[0]->tSenMounting.eFacing);
 
  EXIT:
     if (caps) {
@@ -1526,4 +1659,3 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
 }
 
 };
-

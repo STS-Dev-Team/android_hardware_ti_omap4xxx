@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Texas Instruments - http://www.ti.com/
  *
@@ -14,9 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-
 
 #ifndef TI_CAMERA_PARAMETERS_H
 #define TI_CAMERA_PARAMETERS_H
@@ -155,6 +151,8 @@ static const char VIDEO_MODE[];
 
 
 // TI extensions to standard android pixel formats
+static const char PIXEL_FORMAT_UNUSED[];
+static const char PIXEL_FORMAT_JPEG[];
 static const char PIXEL_FORMAT_RAW[];
 static const char PIXEL_FORMAT_JPS[];
 static const char PIXEL_FORMAT_MPO[];

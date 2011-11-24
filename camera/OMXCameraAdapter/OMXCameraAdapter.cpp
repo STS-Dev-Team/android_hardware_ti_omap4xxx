@@ -3764,14 +3764,6 @@ public:
         // get and fill capabilities
         OMXCameraAdapter::getCaps(sensorId, properties, component());
 
-        // need to fill facing information
-        // assume that only sensor 0 is back facing
-        if (sensorId == 0) {
-            properties->set(CameraProperties::FACING_INDEX, TICameraParameters::FACING_BACK);
-        } else {
-            properties->set(CameraProperties::FACING_INDEX, TICameraParameters::FACING_FRONT);
-        }
-
         const status_t loadedSwitchError = switchToState(OMX_StateLoaded);
         if ( loadedSwitchError != NO_ERROR )
         {

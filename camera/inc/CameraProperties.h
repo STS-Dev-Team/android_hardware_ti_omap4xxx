@@ -40,6 +40,9 @@ namespace android {
 #define EXIF_MAKE_DEFAULT "default_make"
 #define EXIF_MODEL_DEFAULT "default_model"
 
+#define REMAINING_BYTES(buff) ((((int)sizeof(buff) - 1 - (int)strlen(buff)) < 0) ? 0 : (sizeof(buff) - 1 - strlen(buff)))
+
+
 // Class that handles the Camera Properties
 class CameraProperties
 {
