@@ -645,6 +645,15 @@ private:
 
     OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type);
 
+    // DCC file data save
+    status_t initDccFileDataSave(OMX_HANDLETYPE* omxHandle, int portIndex);
+    status_t sniffDccFileDataSave(OMX_BUFFERHEADERTYPE* pBuffHeader);
+    status_t saveDccFileDataSave();
+    status_t closeDccFileDataSave();
+    status_t fseekDCCuseCasePos(FILE *pFile);
+    FILE * fopenCameraDCC(const char *dccFolderPath);
+    FILE * parseDCCsubDir(DIR *pDir, char *path);
+
     class CommandHandler : public Thread {
         public:
             CommandHandler(OMXCameraAdapter* ca)
@@ -953,7 +962,9 @@ private:
     OMX_BOOL mUserSetWbLock;
 
     bool mRawCapture;
+
+    OMX_TI_DCCDATATYPE mDccData;
+    Mutex mDccDataLock;
 };
 }; //// namespace
 #endif //OMX_CAMERA_ADAPTER_H
-
