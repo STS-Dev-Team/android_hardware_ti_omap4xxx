@@ -743,6 +743,7 @@ private:
     //OMX Capabilities data
     static const CapResolution mImageCapRes [];
     static const CapResolution mPreviewRes [];
+    static const CapResolution mPreviewPortraitRes [];
     static const CapResolution mThumbRes [];
     static const CapPixelformat mPixelformats [];
     static const CapFramerate mFramerates [];

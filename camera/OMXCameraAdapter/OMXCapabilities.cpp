@@ -88,7 +88,10 @@ const CapResolution OMXCameraAdapter::mPreviewRes [] = {
     { 176, 144, "176x144" },
     { 160, 120, "160x120" },
     { 128, 96, "128x96" },
-    //Portait resolutions
+};
+
+const CapResolution OMXCameraAdapter::mPreviewPortraitRes [] = {
+    //Portrait resolutions
     { 1088, 1920, "1088x1920" },
     { 720, 1280, "720x1280" },
     { 480, 800, "480x800" },
@@ -561,8 +564,8 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 
     /* Insert Portait Resolutions by verifying Potrait Capability Support */
     ret = encodeSizeCap(caps.tRotatedPreviewResRange,
-                        mPreviewRes,
-                        ARRAY_SIZE(mPreviewRes),
+                        mPreviewPortraitRes,
+                        ARRAY_SIZE(mPreviewPortraitRes),
                         supported,
                         MAX_PROP_VALUE_LENGTH);
 
