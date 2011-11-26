@@ -600,6 +600,8 @@ private:
     static status_t insertVideoSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFacing(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFocalLength(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertAutoConvergenceModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertManualConvergenceRange(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -640,8 +642,7 @@ private:
     status_t apply3ADefaults(Gen3A_settings &Gen3A);
 
     // AutoConvergence
-    status_t setAutoConvergence(OMX_TI_AUTOCONVERGENCEMODETYPE pACMode, OMX_S32 pManualConverence);
-    status_t getAutoConvergence(OMX_TI_AUTOCONVERGENCEMODETYPE *pACMode, OMX_S32 *pManualConverence);
+    status_t setAutoConvergence(const char *valstr,const CameraParameters &params);
 
     OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type);
 
@@ -751,6 +752,8 @@ private:
     static const int SENSORID_S5K4E1GA;
     static const int SENSORID_S5K6A1GX03;
     static const CapU32 mFacing [];
+    static const userToOMX_LUT mAutoConvergence [];
+    static const LUTtype mAutoConvergenceLUT;
 
     // OMX Camera defaults
     static const char DEFAULT_ANTIBANDING[];
@@ -800,6 +803,8 @@ private:
     static const char DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[];
     static const char DEFAULT_SENSOR_ORIENTATION[];
     static const char DEFAULT_FACING_SUPPORTED[];
+    static const char DEFAULT_AUTOCONVERGENCE_MODE[];
+    static const char DEFAULT_MANUAL_CONVERGENCE[];
 
     static const size_t MAX_FOCUS_AREAS;
 
@@ -817,6 +822,10 @@ private:
     // Current Focus areas
     Vector< sp<CameraArea> > mFocusAreas;
     mutable Mutex mFocusAreasLock;
+
+    // Current Touch convergence areas
+    Vector< sp<CameraArea> > mTouchAreas;
+    mutable Mutex mTouchAreasLock;
 
     // Current Metering areas
     Vector< sp<CameraArea> > mMeteringAreas;

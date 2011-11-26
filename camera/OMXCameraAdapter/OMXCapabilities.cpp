@@ -229,6 +229,19 @@ const CapU32Pair OMXCameraAdapter::mVarFramerates [] = {
     { 30, 30, "(30000,30000)" },
 };
 
+const userToOMX_LUT OMXCameraAdapter::mAutoConvergence [] = {
+    { TICameraParameters::AUTOCONVERGENCE_MODE_DISABLE, OMX_TI_AutoConvergenceModeDisable },
+    { TICameraParameters::AUTOCONVERGENCE_MODE_FRAME,   OMX_TI_AutoConvergenceModeFrame },
+    { TICameraParameters::AUTOCONVERGENCE_MODE_CENTER,  OMX_TI_AutoConvergenceModeCenter },
+    { TICameraParameters::AUTOCONVERGENCE_MODE_TOUCH,   OMX_TI_AutoConvergenceModeFocusFaceTouch },
+    { TICameraParameters::AUTOCONVERGENCE_MODE_MANUAL,  OMX_TI_AutoConvergenceModeManual },
+};
+
+const LUTtype OMXCameraAdapter::mAutoConvergenceLUT = {
+    ARRAY_SIZE(mAutoConvergence),
+    mAutoConvergence
+};
+
 // values for supported camera facing direction
 const CapU32 OMXCameraAdapter::mFacing [] = {
     { OMX_TI_SENFACING_BACK , TICameraParameters::FACING_BACK },
@@ -1182,6 +1195,53 @@ status_t OMXCameraAdapter::insertFocalLength(CameraProperties::Properties* param
     return ret;
 }
 
+status_t OMXCameraAdapter::insertAutoConvergenceModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+    const char *p;
+    unsigned int i = 0;
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+
+    for ( unsigned int i = 0 ; i < caps.ulAutoConvModesCount; i++ ) {
+        p = getLUTvalue_OMXtoHAL(caps.eAutoConvModes[i], mAutoConvergenceLUT);
+        if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+            }
+            strncat(supported, p, REMAINING_BYTES(supported));
+        }
+    }
+    params->set(CameraProperties::AUTOCONVERGENCE_MODE_VALUES, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+status_t OMXCameraAdapter::insertManualConvergenceRange(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+
+    LOG_FUNCTION_NAME;
+
+    snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", ( int ) ( caps.nManualConvMin ));
+    params->set(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MIN, supported);
+
+    snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", ( int ) ( caps.nManualConvMax ));
+    params->set(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MAX, supported);
+
+    snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", ( int ) ( caps.nManualConvMax != caps.nManualConvMin ));
+    params->set(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_STEP, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
 
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
@@ -1237,6 +1297,8 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::VIDEO_SIZE, DEFAULT_VIDEO_SIZE);
     params->set(CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO, DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO);
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
+    params->set(CameraProperties::AUTOCONVERGENCE_MODE, DEFAULT_AUTOCONVERGENCE_MODE);
+    params->set(CameraProperties::MANUAL_CONVERGENCE, DEFAULT_MANUAL_CONVERGENCE);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1341,11 +1403,19 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
         ret = insertFocalLength(params, caps);
     }
 
+    if ( NO_ERROR == ret) {
+        ret = insertAutoConvergenceModes(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertManualConvergenceRange(params, caps);
+    }
+
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities
     //as there are checks inside insertDefaults to make sure a certain default is supported
     // or not
     if ( NO_ERROR == ret ) {
-      ret = insertVideoSizes(params, caps);
+        ret = insertVideoSizes(params, caps);
     }
 
     if ( NO_ERROR == ret ) {
