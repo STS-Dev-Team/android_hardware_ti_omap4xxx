@@ -234,12 +234,22 @@ const userToOMX_LUT OMXCameraAdapter::mAutoConvergence [] = {
     { TICameraParameters::AUTOCONVERGENCE_MODE_FRAME,   OMX_TI_AutoConvergenceModeFrame },
     { TICameraParameters::AUTOCONVERGENCE_MODE_CENTER,  OMX_TI_AutoConvergenceModeCenter },
     { TICameraParameters::AUTOCONVERGENCE_MODE_TOUCH,   OMX_TI_AutoConvergenceModeFocusFaceTouch },
-    { TICameraParameters::AUTOCONVERGENCE_MODE_MANUAL,  OMX_TI_AutoConvergenceModeManual },
+    { TICameraParameters::AUTOCONVERGENCE_MODE_MANUAL,  OMX_TI_AutoConvergenceModeManual }
 };
 
 const LUTtype OMXCameraAdapter::mAutoConvergenceLUT = {
     ARRAY_SIZE(mAutoConvergence),
     mAutoConvergence
+};
+
+const userToOMX_LUT OMXCameraAdapter::mMechanicalMisalignmentCorrection [] = {
+    { TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE, OMX_FALSE },
+    { TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE,  OMX_TRUE }
+};
+
+const LUTtype OMXCameraAdapter::mMechanicalMisalignmentCorrectionLUT = {
+    ARRAY_SIZE(mMechanicalMisalignmentCorrection),
+    mMechanicalMisalignmentCorrection
 };
 
 // values for supported camera facing direction
@@ -1243,6 +1253,29 @@ status_t OMXCameraAdapter::insertManualConvergenceRange(CameraProperties::Proper
     return ret;
 }
 
+status_t OMXCameraAdapter::insertMechanicalMisalignmentCorrection(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+
+    if (caps.bMechanicalMisalignmentSupported)
+    {
+        strncat(supported, TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE, REMAINING_BYTES(supported));
+    }
+
+    params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1299,6 +1332,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
     params->set(CameraProperties::AUTOCONVERGENCE_MODE, DEFAULT_AUTOCONVERGENCE_MODE);
     params->set(CameraProperties::MANUAL_CONVERGENCE, DEFAULT_MANUAL_CONVERGENCE);
+    params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION, DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1409,6 +1443,10 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret) {
         ret = insertManualConvergenceRange(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertMechanicalMisalignmentCorrection(params, caps);
     }
 
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities

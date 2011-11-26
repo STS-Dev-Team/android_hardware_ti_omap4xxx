@@ -251,6 +251,14 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
             CAMHAL_LOGDB("AutoConvergenceMode %s", valstr);
         }
 
+    //Set Mechanical Misalignment Correction
+    valstr = params.get((const char *) TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
+    if ( valstr != NULL )
+        {
+        setMechanicalMisalignmentCorrection(valstr);
+        CAMHAL_LOGDB("Mechanical Misalignment Correction %s", valstr);
+        }
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
@@ -1194,5 +1202,31 @@ status_t OMXCameraAdapter::setVFramerate(OMX_U32 minFrameRate, OMX_U32 maxFrameR
 
     return ret;
  }
+
+status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const char *mode)
+{
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_TI_CONFIG_MM mm;
+
+    LOG_FUNCTION_NAME;
+
+    mm.nVersion = mLocalVersionParam;
+    mm.nSize = sizeof(OMX_TI_CONFIG_MM);
+    mm.bMM = (OMX_BOOL)getLUTvalue_HALtoOMX(mode, mMechanicalMisalignmentCorrectionLUT);
+
+    eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                           (OMX_INDEXTYPE)OMX_TI_IndexConfigMechanicalMisalignment,
+                           &mm);
+
+    if(OMX_ErrorNone != eError) {
+        CAMHAL_LOGEB("Error while enabling mechanical misalignment correction. error = 0x%x", eError);
+        ret = -1;
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
 
 };

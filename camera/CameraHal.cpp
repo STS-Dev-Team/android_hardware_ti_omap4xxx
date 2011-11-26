@@ -606,6 +606,12 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, valstr);
              }
 
+        if( (valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION)) != NULL)
+            {
+            CAMHAL_LOGDB("Mechanical Mialignment Correction is %s", valstr);
+            mParameters.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION, valstr);
+            }
+
         if ((valstr = params.get(TICameraParameters::KEY_EXPOSURE_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_EXPOSURE_MODES))) {
                 CAMHAL_LOGDB("Exposure set = %s", valstr);
@@ -3342,6 +3348,7 @@ void CameraHal::insertSupportedParams()
     p.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED));
     p.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED));
     p.set(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED, mCameraProperties->get(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED));
+    p.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES, mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES));
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -3434,7 +3441,7 @@ void CameraHal::initDefaultParameters()
     p.set(CameraParameters::KEY_VIDEO_FRAME_FORMAT, "OMX_TI_COLOR_FormatYUV420PackedSemiPlanar");
     p.set(CameraParameters::KEY_MAX_NUM_DETECTED_FACES_HW, mCameraProperties->get(CameraProperties::MAX_FD_HW_FACES));
     p.set(CameraParameters::KEY_MAX_NUM_DETECTED_FACES_SW, mCameraProperties->get(CameraProperties::MAX_FD_SW_FACES));
-
+    p.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION, mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION));
     // Only one area a.k.a Touch AF for now.
     // TODO: Add support for multiple focus areas.
     p.set(CameraParameters::KEY_MAX_NUM_FOCUS_AREAS, mCameraProperties->get(CameraProperties::MAX_FOCUS_AREAS));

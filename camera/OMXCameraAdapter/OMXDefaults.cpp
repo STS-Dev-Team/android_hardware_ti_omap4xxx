@@ -77,5 +77,6 @@ const char OMXCameraAdapter::DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "1920x
 const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 const char OMXCameraAdapter::DEFAULT_AUTOCONVERGENCE_MODE[] = "frame";
 const char OMXCameraAdapter::DEFAULT_MANUAL_CONVERGENCE[] = "0";
+const char OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE[] = "enable";
 };
 
