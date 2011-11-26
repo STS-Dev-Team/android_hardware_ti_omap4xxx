@@ -206,5 +206,10 @@ const char TICameraParameters::ORIENTATION_SENSOR_90[] = "90";
 const char TICameraParameters::ORIENTATION_SENSOR_180[] = "180";
 const char TICameraParameters::ORIENTATION_SENSOR_270[] = "270";
 
+const char TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION[] = "mechanical-misalignment-correction";
+const char TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] = "mechanical-misalignment-correction-values";
+
+const char TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE[] = "enable";
+const char TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE[] = "disable";
 };
 
