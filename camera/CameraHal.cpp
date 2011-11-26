@@ -330,12 +330,6 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_S3D2D_PREVIEW, valstr);
                 }
 
-            if((valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE)) != NULL)
-                {
-                CAMHAL_LOGDB("AutoConvergence mode is %s", params.get(TICameraParameters::KEY_AUTOCONVERGENCE));
-                mParameters.set(TICameraParameters::KEY_AUTOCONVERGENCE, valstr);
-                }
-
             }
 
             params.getPreviewSize(&w, &h);
@@ -600,24 +594,24 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
 
         ///Update the current parameter set
-        if( (valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE)) != NULL)
+        if ( (valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE_MODE)) != NULL )
             {
-            CAMHAL_LOGDB("AutoConvergence Mode is set = %s", params.get(TICameraParameters::KEY_AUTOCONVERGENCE));
-            mParameters.set(TICameraParameters::KEY_AUTOCONVERGENCE, valstr);
-            }
+            CAMHAL_LOGDB("AutoConvergence mode set = %s", valstr);
+            mParameters.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE, valstr);
+             }
 
-        if( (valstr = params.get(TICameraParameters::KEY_MANUALCONVERGENCE_VALUES)) !=NULL )
+        if ( (valstr = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE)) != NULL )
             {
-            CAMHAL_LOGDB("ManualConvergence Value = %s", params.get(TICameraParameters::KEY_MANUALCONVERGENCE_VALUES));
-            mParameters.set(TICameraParameters::KEY_MANUALCONVERGENCE_VALUES, valstr);
-            }
+            CAMHAL_LOGDB("ManualConvergence Value = %s", valstr);
+            mParameters.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, valstr);
+             }
 
         if ((valstr = params.get(TICameraParameters::KEY_EXPOSURE_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_EXPOSURE_MODES))) {
                 CAMHAL_LOGDB("Exposure set = %s", valstr);
                 mParameters.set(TICameraParameters::KEY_EXPOSURE_MODE, valstr);
             } else {
-                CAMHAL_LOGEB("ERROR: Invalid Exposure  = %s", valstr);
+                CAMHAL_LOGEB("ERROR: Invalid Exposure = %s", valstr);
                 ret = -EINVAL;
             }
         }
@@ -694,7 +688,7 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         if( (valstr = params.get(CameraParameters::KEY_FOCUS_AREAS)) != NULL )
             {
-            CAMHAL_LOGI("Focus areas position set %s", params.get(CameraParameters::KEY_FOCUS_AREAS));
+            CAMHAL_LOGDB("Focus areas position set %s", params.get(CameraParameters::KEY_FOCUS_AREAS));
             mParameters.set(CameraParameters::KEY_FOCUS_AREAS, valstr);
             }
 
@@ -911,7 +905,7 @@ int CameraHal::setParameters(const CameraParameters& params)
           }
         if( (valstr = params.get(CameraParameters::KEY_METERING_AREAS)) != NULL )
             {
-            CAMHAL_LOGI("Metering areas position set %s", params.get(CameraParameters::KEY_METERING_AREAS));
+            CAMHAL_LOGDB("Metering areas position set %s", params.get(CameraParameters::KEY_METERING_AREAS));
             mParameters.set(CameraParameters::KEY_METERING_AREAS, valstr);
             }
 
@@ -3337,8 +3331,10 @@ void CameraHal::insertSupportedParams()
     p.set(TICameraParameters::KEY_SUPPORTED_IPP, mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES));
     p.set(TICameraParameters::KEY_S3D_SUPPORTED,mCameraProperties->get(CameraProperties::S3D_SUPPORTED));
     p.set(TICameraParameters::KEY_S3D2D_PREVIEW_MODE,mCameraProperties->get(CameraProperties::S3D2D_PREVIEW_MODES));
-    p.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE_MODE));
-    p.set(TICameraParameters::KEY_MANUALCONVERGENCE_VALUES, mCameraProperties->get(CameraProperties::MANUALCONVERGENCE_VALUES));
+    p.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE_VALUES, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE_MODE_VALUES));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MIN));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MAX));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_STEP));
     p.set(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED, mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
     p.set(TICameraParameters::KEY_SENSOR_ORIENTATION, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION));
@@ -3423,8 +3419,8 @@ void CameraHal::initDefaultParameters()
     p.set(TICameraParameters::KEY_IPP, mCameraProperties->get(CameraProperties::IPP));
     p.set(TICameraParameters::KEY_GBCE, mCameraProperties->get(CameraProperties::GBCE));
     p.set(TICameraParameters::KEY_S3D2D_PREVIEW, mCameraProperties->get(CameraProperties::S3D2D_PREVIEW));
-    p.set(TICameraParameters::KEY_AUTOCONVERGENCE, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE));
-    p.set(TICameraParameters::KEY_MANUALCONVERGENCE_VALUES, mCameraProperties->get(CameraProperties::MANUALCONVERGENCE_VALUES));
+    p.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE_MODE));
+    p.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, mCameraProperties->get(CameraProperties::MANUAL_CONVERGENCE));
     p.set(CameraParameters::KEY_VIDEO_STABILIZATION, mCameraProperties->get(CameraProperties::VSTAB));
     p.set(CameraParameters::KEY_FOCAL_LENGTH, mCameraProperties->get(CameraProperties::FOCAL_LENGTH));
     p.set(CameraParameters::KEY_HORIZONTAL_VIEW_ANGLE, mCameraProperties->get(CameraProperties::HOR_ANGLE));
@@ -3651,5 +3647,3 @@ void CameraHal::resetPreviewRes(CameraParameters *mParams, int width, int height
 }
 
 };
-
-

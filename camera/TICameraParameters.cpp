@@ -92,9 +92,12 @@ const char TICameraParameters::KEY_S3D2D_PREVIEW[] = "s3d2d-preview";
 const char TICameraParameters::KEY_S3D2D_PREVIEW_MODE[] = "s3d2d-preview-values";
 
 //TI extensions for SAC/SMC
-const char TICameraParameters::KEY_AUTOCONVERGENCE[] = "auto-convergence";
 const char TICameraParameters::KEY_AUTOCONVERGENCE_MODE[] = "auto-convergence-mode";
-const char TICameraParameters::KEY_MANUALCONVERGENCE_VALUES[] = "manual-convergence-values";
+const char TICameraParameters::KEY_AUTOCONVERGENCE_MODE_VALUES[] = "auto-convergence-mode-values";
+const char TICameraParameters::KEY_MANUAL_CONVERGENCE[] = "manual-convergence";
+const char TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "supported-manual-convergence-min";
+const char TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "supported-manual-convergence-max";
+const char TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "supported-manual-convergence-step";
 
 //TI extensions for setting EXIF tags
 const char TICameraParameters::KEY_EXIF_MODEL[] = "exif-model";
@@ -184,11 +187,11 @@ const char TICameraParameters::ISO_MODE_1200[] = "1200";
 const char TICameraParameters::ISO_MODE_1600[] = "1600";
 
 //  TI extensions to add auto convergence values
-const char TICameraParameters::AUTOCONVERGENCE_MODE_DISABLE[] = "mode-disable";
-const char TICameraParameters::AUTOCONVERGENCE_MODE_FRAME[] = "mode-frame";
-const char TICameraParameters::AUTOCONVERGENCE_MODE_CENTER[] = "mode-center";
-const char TICameraParameters::AUTOCONVERGENCE_MODE_FFT[] = "mode-fft";
-const char TICameraParameters::AUTOCONVERGENCE_MODE_MANUAL[] = "mode-manual";
+const char TICameraParameters::AUTOCONVERGENCE_MODE_DISABLE[] = "disable";
+const char TICameraParameters::AUTOCONVERGENCE_MODE_FRAME[] = "frame";
+const char TICameraParameters::AUTOCONVERGENCE_MODE_CENTER[] = "center";
+const char TICameraParameters::AUTOCONVERGENCE_MODE_TOUCH[] = "touch";
+const char TICameraParameters::AUTOCONVERGENCE_MODE_MANUAL[] = "manual";
 
 //TI values for camera direction
 const char TICameraParameters::FACING_FRONT[]="front";
@@ -202,5 +205,6 @@ const char TICameraParameters::ORIENTATION_SENSOR_NONE[] = "0";
 const char TICameraParameters::ORIENTATION_SENSOR_90[] = "90";
 const char TICameraParameters::ORIENTATION_SENSOR_180[] = "180";
 const char TICameraParameters::ORIENTATION_SENSOR_270[] = "270";
+
 };
 
