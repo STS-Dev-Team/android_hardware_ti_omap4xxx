@@ -597,6 +597,7 @@ private:
     static status_t insertDefaults(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertLocks(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertAreas(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertMechanicalMisalignmentCorrection(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVideoSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFacing(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFocalLength(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
@@ -645,6 +646,9 @@ private:
     status_t setAutoConvergence(const char *valstr,const CameraParameters &params);
 
     OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type);
+
+    // Mechanical Misalignment Correction
+    status_t setMechanicalMisalignmentCorrection(const char *mode);
 
     // DCC file data save
     status_t initDccFileDataSave(OMX_HANDLETYPE* omxHandle, int portIndex);
@@ -754,6 +758,8 @@ private:
     static const CapU32 mFacing [];
     static const userToOMX_LUT mAutoConvergence [];
     static const LUTtype mAutoConvergenceLUT;
+    static const userToOMX_LUT mMechanicalMisalignmentCorrection[];
+    static const LUTtype mMechanicalMisalignmentCorrectionLUT;
 
     // OMX Camera defaults
     static const char DEFAULT_ANTIBANDING[];
@@ -805,6 +811,7 @@ private:
     static const char DEFAULT_FACING_SUPPORTED[];
     static const char DEFAULT_AUTOCONVERGENCE_MODE[];
     static const char DEFAULT_MANUAL_CONVERGENCE[];
+    static const char DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE[];
 
     static const size_t MAX_FOCUS_AREAS;
 

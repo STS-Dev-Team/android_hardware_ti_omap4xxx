@@ -41,6 +41,8 @@
 #define KEY_AUTO_EXPOSURE_LOCK "auto-exposure-lock"
 #define KEY_AUTO_WHITEBALANCE_LOCK "auto-whitebalance-lock"
 
+#define KEY_MECHANICAL_MISALIGNMENT_CORRECTION "mechanical-misalignment-correction"
+
 #define SDCARD_PATH "/sdcard/"
 
 #define MAX_BURST   15

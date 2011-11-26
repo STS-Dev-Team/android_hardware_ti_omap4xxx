@@ -96,6 +96,8 @@ int wblockidx = 0;
 int afTimeoutIdx = 0;
 int platformID = BLAZE_TABLET2;
 
+int enableMisalignmentCorrectionIdx = 0;
+
 char dir_path[80] = SDCARD_PATH;
 
 const char *cameras[] = {"Primary Camera", "Secondary Camera 1", "Stereo Camera", "USB Camera", "Fake Camera"};
@@ -106,6 +108,8 @@ const char *tempBracketing[] = {"disable", "enable"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *lock[] = {"false", "true"};
 const char *afTimeout[] = {"enable", "disable" };
+
+const char *misalignmentCorrection[] = {"enable", "disable" };
 
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
 const char *ipp_mode[] = { "off", "Chroma Suppression", "Edge Enhancement" };
@@ -1388,6 +1392,8 @@ int functional_menu() {
         printf("   m. Metering mode:     %s\n" , metering[meter_mode]);
         printf("   <. Exposure Lock:     %s\n", lock[elockidx]);
         printf("   >. WhiteBalance Lock:  %s\n",lock[wblockidx]);
+        printf("   ). Mechanical Misalignment Correction:  %s\n",misalignmentCorrection[enableMisalignmentCorrectionIdx]);
+
         printf("\n");
         printf("   Choice: ");
     }
@@ -2140,10 +2146,18 @@ int functional_menu() {
         camera->setParameters(params.flatten());
       break;
 
-        default:
-            print_menu = 0;
+    case ')':
+      enableMisalignmentCorrectionIdx++;
+      enableMisalignmentCorrectionIdx %= ARRAY_SIZE(misalignmentCorrection);
+      params.set(KEY_MECHANICAL_MISALIGNMENT_CORRECTION, misalignmentCorrection[enableMisalignmentCorrectionIdx]);
+      if ( hardwareActive )
+        camera->setParameters(params.flatten());
+      break;
 
-            break;
+    default:
+      print_menu = 0;
+
+      break;
     }
 
     return 0;

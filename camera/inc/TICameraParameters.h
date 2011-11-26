@@ -242,6 +242,11 @@ static const char ORIENTATION_SENSOR_270[];
 static const char FACING_FRONT[];
 static const char FACING_BACK[];
 
+static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION[];
+static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[];
+
+static const char MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE[];
+static const char MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE[];
 };
 
 };
