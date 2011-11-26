@@ -84,9 +84,12 @@ static const char MEASUREMENT_ENABLE[];
 static const char MEASUREMENT_DISABLE[];
 
 //  TI extensions to add values for ManualConvergence and AutoConvergence mode
-static const char KEY_AUTOCONVERGENCE[];
 static const char KEY_AUTOCONVERGENCE_MODE[];
-static const char KEY_MANUALCONVERGENCE_VALUES[];
+static const char KEY_AUTOCONVERGENCE_MODE_VALUES[];
+static const char KEY_MANUAL_CONVERGENCE[];
+static const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[];
+static const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[];
+static const char KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[];
 
 //TI extensions for enabling/disabling GLBCE
 static const char GLBCE_ENABLE[];
@@ -221,7 +224,7 @@ static const char KEY_S3D2D_PREVIEW_MODE[];
 static const char AUTOCONVERGENCE_MODE_DISABLE[];
 static const char AUTOCONVERGENCE_MODE_FRAME[];
 static const char AUTOCONVERGENCE_MODE_CENTER[];
-static const char AUTOCONVERGENCE_MODE_FFT[];
+static const char AUTOCONVERGENCE_MODE_TOUCH[];
 static const char AUTOCONVERGENCE_MODE_MANUAL[];
 
 

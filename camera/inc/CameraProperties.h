@@ -101,9 +101,12 @@ public:
     static const char CONTRAST[];
     static const char IPP[];
     static const char GBCE[];
-    static const char AUTOCONVERGENCE[];
     static const char AUTOCONVERGENCE_MODE[];
-    static const char MANUALCONVERGENCE_VALUES[];
+    static const char AUTOCONVERGENCE_MODE_VALUES[];
+    static const char MANUAL_CONVERGENCE[];
+    static const char SUPPORTED_MANUAL_CONVERGENCE_MIN[];
+    static const char SUPPORTED_MANUAL_CONVERGENCE_MAX[];
+    static const char SUPPORTED_MANUAL_CONVERGENCE_STEP[];
     static const char SENSOR_ORIENTATION[];
     static const char SENSOR_ORIENTATION_VALUES[];
     static const char REVISION[];
