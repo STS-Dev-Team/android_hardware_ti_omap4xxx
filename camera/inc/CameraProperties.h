@@ -53,11 +53,14 @@ public:
     static const char CAMERA_SENSOR_ID[];
     static const char ORIENTATION_INDEX[];
     static const char FACING_INDEX[];
-    static const char S3D_SUPPORTED[];
     static const char SUPPORTED_PREVIEW_SIZES[];
+    static const char SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[];
+    static const char SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
     static const char SUPPORTED_PREVIEW_FORMATS[];
     static const char SUPPORTED_PREVIEW_FRAME_RATES[];
     static const char SUPPORTED_PICTURE_SIZES[];
+    static const char SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
+    static const char SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[];
     static const char SUPPORTED_PICTURE_FORMATS[];
     static const char SUPPORTED_THUMBNAIL_SIZES[];
     static const char SUPPORTED_WHITE_BALANCE[];
@@ -122,8 +125,10 @@ public:
 
     static const char PARAMS_DELIMITER [];
 
-    static const char S3D2D_PREVIEW[];
-    static const char S3D2D_PREVIEW_MODES[];
+    static const char S3D_PRV_FRAME_LAYOUT[];
+    static const char S3D_PRV_FRAME_LAYOUT_VALUES[];
+    static const char S3D_CAP_FRAME_LAYOUT[];
+    static const char S3D_CAP_FRAME_LAYOUT_VALUES[];
     static const char VSTAB[];
     static const char VSTAB_SUPPORTED[];
     static const char FRAMERATE_RANGE[];

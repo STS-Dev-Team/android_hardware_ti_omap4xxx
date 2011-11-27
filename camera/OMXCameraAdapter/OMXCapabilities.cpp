@@ -63,14 +63,42 @@ const CapResolution OMXCameraAdapter::mImageCapRes [] = {
     { 2240, 1344, "2240x1344" },
     { 2160, 1440, "2160x1440" },
     { 2112, 1728, "2112x1728" },
+    { 2048, 1536, "2016x1512" },
     { 2016, 1512, "2016x1512" },
     { 2000, 1600, "2000x1600" },
     { 1600, 1200, "1600x1200" },
     { 1280, 1024, "1280x1024" },
-    { 1152, 864, "1152x864" },
-    { 1280, 960, "1280x960" },
-    { 640, 480, "640x480" },
-    { 320, 240, "320x240" },
+    { 1152,  864, "1152x864" },
+    { 1280,  960, "1280x960" },
+    { 1024,  768, "1024x768" },
+    {  640,  480, "640x480" },
+    {  320,  240, "320x240" },
+};
+
+const CapResolution OMXCameraAdapter::mImageCapResSS [] = {
+   { 4032*2, 3024, "8064x3024" },
+   { 3648*2, 2736, "7296x2736" },
+   { 3264*2, 2448, "6528x2448" },
+   { 2592*2, 1944, "5184x1944" },
+   { 2048*2, 1536, "4096x1536" },
+   { 1600*2, 1200, "3200x1200" },
+   { 1280*2,  960, "2560x960" },
+   { 1024*2,  768, "2048x768" },
+   {  640*2,  480, "1280x480" },
+   {  320*2,  240, "640x240" },
+};
+
+const CapResolution OMXCameraAdapter::mImageCapResTB [] = {
+   { 4032, 3024*2, "4032x6048" },
+   { 3648, 2736*2, "3648x5472" },
+   { 3264, 2448*2, "3264x4896" },
+   { 2592, 1944*2, "2592x3888" },
+   { 2048, 1536*2, "2048x3072" },
+   { 1600, 1200*2, "1600x2400" },
+   { 1280,  960*2, "1280x1920" },
+   { 1024,  768*2, "1024x1536" },
+   {  640,  480*2, "640x960" },
+   {  320,  240*2, "320x480" },
 };
 
 const CapResolution OMXCameraAdapter::mPreviewRes [] = {
@@ -107,6 +135,36 @@ const CapResolution OMXCameraAdapter::mPreviewPortraitRes [] = {
     { 96, 128, "96x128" }
 };
 
+const CapResolution OMXCameraAdapter::mPreviewResSS [] = {
+   { 1920*2, 1080, "3840x1080" },
+   { 1280*2,  720, "2560x720" },
+   {  800*2,  480, "1600x480" },
+   {  720*2,  576, "1440x576" },
+   {  720*2,  480, "1440x480" },
+   {  768*2,  576, "1536x576" },
+   {  640*2,  480, "1280x480" },
+   {  320*2,  240, "640x240" },
+   {  352*2,  288, "704x288" },
+   {  240*2,  160, "480x160" },
+   {  176*2,  144, "352x144" },
+   {  128*2,   96, "256x96" }
+};
+
+const CapResolution OMXCameraAdapter::mPreviewResTB [] = {
+   { 1920, 1080*2, "1920x2160" },
+   { 1280,  720*2, "1280x1440" },
+   {  800,  480*2, "800x960" },
+   {  720,  576*2, "720x1152" },
+   {  720,  480*2, "720x960" },
+   {  768,  576*2, "768x1152" },
+   {  640,  480*2, "640x960" },
+   {  320,  240*2, "320x480" },
+   {  352,  288*2, "352x576" },
+   {  240,  160*2, "240x320" },
+   {  176,  144*2, "176x288" },
+   {  128,   96*2, "128x192" },
+};
+
 const CapResolution OMXCameraAdapter::mThumbRes [] = {
     { 640, 480, "640x480" },
     { 160, 120, "160x120" },
@@ -125,6 +183,19 @@ const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
     { OMX_COLOR_Format16bitRGB565, CameraParameters::PIXEL_FORMAT_RGB565 },
     { OMX_COLOR_FormatRawBayer10bit, TICameraParameters::PIXEL_FORMAT_RAW },
     { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420P },
+};
+
+const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
+   { TICameraParameters::S3D_NONE,          OMX_TI_StereoFrameLayout2D },
+   { TICameraParameters::S3D_TB_FULL,       OMX_TI_StereoFrameLayoutTopBottom },
+   { TICameraParameters::S3D_SS_FULL,       OMX_TI_StereoFrameLayoutLeftRight },
+   { TICameraParameters::S3D_TB_SUBSAMPLED, OMX_TI_StereoFrameLayoutTopBottomSubsample },
+   { TICameraParameters::S3D_SS_SUBSAMPLED, OMX_TI_StereoFrameLayoutLeftRightSubsample },
+};
+
+const LUTtype OMXCameraAdapter::mLayoutLUT = {
+   ARRAY_SIZE(mFrameLayout),
+   mFrameLayout
 };
 
 const CapFramerate OMXCameraAdapter::mFramerates [] = {
@@ -516,25 +587,144 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
     return ret;
 }
 
+status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
+                      const CapResolution *cap,
+                      size_t capCount,
+                      char * buffer,
+                      size_t bufferSize)
+{
+   status_t ret = NO_ERROR;
+
+   LOG_FUNCTION_NAME;
+
+   if ( (NULL == buffer) || (NULL == cap) ) {
+       CAMHAL_LOGEA("Invalid input arguments");
+       return -EINVAL;
+   }
+
+   for ( unsigned int i = 0 ; i < capCount ; i++ ) {
+       if ( (cap[i].width <= res.nWidthMax) &&
+            (cap[i].height <= res.nHeightMax) &&
+            (cap[i].width >= res.nWidthMin) &&
+            (cap[i].height >= res.nHeightMin)  &&
+            (cap[i].width * cap[i].height <= res.nMaxResInPixels))  {
+               if (buffer[0] != '\0') {
+                   strncat(buffer, PARAM_SEP, bufferSize - 1);
+               }
+               strncat(buffer, cap[i].param, bufferSize -1);
+       }
+   }
+
+   LOG_FUNCTION_NAME_EXIT;
+
+   return ret;
+}
+
 status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
+    int s3d_detected = 0;
+    int s3d_ss_detected = 0;
+    int s3d_tb_detected = 0;
 
     LOG_FUNCTION_NAME;
 
+    for ( unsigned int i = 0 ; i < caps.ulCapFrameLayoutCount; i++ ) {
+        if (caps.eCapFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottom)
+        {
+            s3d_tb_detected = 1;
+        }
+        else if (caps.eCapFrameLayout[i] == OMX_TI_StereoFrameLayoutLeftRight)
+        {
+            s3d_ss_detected = 1;
+        }
+        else if ( (caps.eCapFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottomSubsample)
+                   || (caps.eCapFrameLayout[i] == OMX_TI_StereoFrameLayoutLeftRightSubsample) )
+        {
+            s3d_detected = 1;
+        }
+    }
+
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
-    ret = encodeSizeCap(caps.tImageResRange,
+    // Check if we are in 2d mode
+    if (!s3d_ss_detected && !s3d_tb_detected && !s3d_detected)
+    {
+        ret = encodeSizeCap(caps.tImageResRange,
                         mImageCapRes,
                         ARRAY_SIZE(mImageCapRes),
                         supported,
                         MAX_PROP_VALUE_LENGTH);
 
-    if ( NO_ERROR != ret ) {
-        CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
-    } else {
-        params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
+        } else {
+            params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+        }
+    }
+    else // 3d mode
+    {
+        if (s3d_tb_detected)
+        {
+            ret = encodeSizeCap3D(caps.tImageResRange,
+                            mImageCapResTB,
+                            ARRAY_SIZE(mImageCapResTB),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
+
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
+            } else {
+                params->set(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES, supported);
+            }
+        }
+        else
+        {
+            params->set(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES, supported);
+        }
+
+        memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+
+        if (s3d_ss_detected)
+        {
+            ret = encodeSizeCap3D(caps.tImageResRange,
+                            mImageCapResSS,
+                            ARRAY_SIZE(mImageCapResSS),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
+
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
+            } else {
+                params->set(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES, supported);
+            }
+        }
+        else
+        {
+            params->set(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES, supported);
+        }
+
+        memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+
+        if (s3d_detected)
+        {
+            ret = encodeSizeCap3D(caps.tImageResRange,
+                            mImageCapRes,
+                            ARRAY_SIZE(mImageCapRes),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
+
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
+            } else {
+                params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+            }
+        }
+        else
+        {
+            params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+        }
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -546,34 +736,121 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 {
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
+    int s3d_detected = 0;
+    int s3d_ss_detected = 0;
+    int s3d_tb_detected = 0;
 
     LOG_FUNCTION_NAME;
 
+    for ( unsigned int i = 0 ; i < caps.ulPrvFrameLayoutCount; i++ ) {
+        if (caps.ePrvFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottom)
+        {
+            s3d_tb_detected = 1;
+        }
+        else if (caps.ePrvFrameLayout[i] == OMX_TI_StereoFrameLayoutLeftRight)
+        {
+            s3d_ss_detected = 1;
+        }
+        else if ( (caps.ePrvFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottomSubsample)
+                    || (caps.ePrvFrameLayout[i] == OMX_TI_StereoFrameLayoutLeftRightSubsample) )
+        {
+            s3d_detected = 1;
+        }
+    }
+
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
-    ret = encodeSizeCap(caps.tPreviewResRange,
+    // Check if we are in 2d mode
+    if (!s3d_ss_detected && !s3d_tb_detected && !s3d_detected)
+    {
+        ret = encodeSizeCap(caps.tPreviewResRange,
                         mPreviewRes,
                         ARRAY_SIZE(mPreviewRes),
                         supported,
                         MAX_PROP_VALUE_LENGTH);
 
-    if ( NO_ERROR != ret ) {
-        CAMHAL_LOGEB("Error inserting supported Landscape preview sizes 0x%x", ret);
-        return ret;
-    }
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error inserting supported Landscape preview sizes 0x%x", ret);
+            return ret;
+        }
 
-    /* Insert Portait Resolutions by verifying Potrait Capability Support */
-    ret = encodeSizeCap(caps.tRotatedPreviewResRange,
-                        mPreviewPortraitRes,
-                        ARRAY_SIZE(mPreviewPortraitRes),
-                        supported,
-                        MAX_PROP_VALUE_LENGTH);
+        /* Insert Portait Resolutions by verifying Potrait Capability Support */
+        ret = encodeSizeCap(caps.tRotatedPreviewResRange,
+                            mPreviewPortraitRes,
+                            ARRAY_SIZE(mPreviewPortraitRes),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
 
-    if ( NO_ERROR != ret ) {
-        CAMHAL_LOGEB("Error inserting supported Potrait preview sizes 0x%x", ret);
-    } else {
-        params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error inserting supported Potrait preview sizes 0x%x", ret);
+        } else {
+            params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+        }
     }
+    else // 3d mode
+    {
+        if (s3d_tb_detected)
+        {
+            ret = encodeSizeCap3D(caps.tPreviewResRange,
+                            mPreviewResTB,
+                            ARRAY_SIZE(mPreviewResTB),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error inserting supported 3D TB preview sizes 0x%x", ret);
+                return ret;
+            } else {
+                params->set(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, supported);
+            }
+        }
+        else
+        {
+            params->set(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, supported);
+        }
+
+        memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+
+        if (s3d_ss_detected)
+        {
+            ret = encodeSizeCap3D(caps.tPreviewResRange,
+                            mPreviewResSS,
+                            ARRAY_SIZE(mPreviewResSS),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error inserting supported 3D SS preview sizes 0x%x", ret);
+                return ret;
+            } else {
+                params->set(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, supported);
+            }
+        }
+        else
+        {
+            params->set(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, supported);
+        }
+
+        memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+
+        if (s3d_detected)
+        {
+            ret = encodeSizeCap3D(caps.tPreviewResRange,
+                            mPreviewRes,
+                            ARRAY_SIZE(mPreviewRes),
+                            supported,
+                            MAX_PROP_VALUE_LENGTH);
+
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error inserting supported preview sizes 0x%x", ret);
+                return ret;
+            } else {
+                params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+            }
+        }
+        else
+        {
+            params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+        }
+     }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1334,12 +1611,63 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
     return ret;
 }
 
+status_t OMXCameraAdapter::insertLayout(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+    const char *p;
+    unsigned int i = 0;
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+    for ( unsigned int i = 0 ; i < caps.ulPrvFrameLayoutCount; i++ ) {
+        p = getLUTvalue_OMXtoHAL(caps.ePrvFrameLayout[i], mLayoutLUT);
+        if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
+            strncat(supported, p, MAX_PROP_NAME_LENGTH);
+        }
+    }
+    params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES, supported);
+
+    memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+    for ( unsigned int i = 0 ; i < caps.ulCapFrameLayoutCount; i++ ) {
+        p = getLUTvalue_OMXtoHAL(caps.eCapFrameLayout[i], mLayoutLUT);
+        if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
+            strncat(supported, p, MAX_PROP_NAME_LENGTH);
+        }
+    }
+    params->set(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
-    const char *p;
+    char temp[MAX_PROP_VALUE_LENGTH];
+    char *pos;
 
     LOG_FUNCTION_NAME;
+    strncpy(temp, params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES),
+                MAX_PROP_VALUE_LENGTH - 1);
+    if ((pos = strstr(temp, PARAM_SEP))) {
+        *pos = '\0';
+    }
+    params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, temp);
+    strncpy(temp, params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES),
+                MAX_PROP_VALUE_LENGTH - 1);
+    if ((pos = strstr(temp, PARAM_SEP))) {
+        *pos = '\0';
+    }
+    params->set(CameraProperties::S3D_CAP_FRAME_LAYOUT, temp);
 
     params->set(CameraProperties::ANTIBANDING, DEFAULT_ANTIBANDING);
     params->set(CameraProperties::BRIGHTNESS, DEFAULT_BRIGHTNESS);
@@ -1349,7 +1677,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SUPPORTED_EV_STEP, DEFAULT_EV_STEP);
     params->set(CameraProperties::EXPOSURE_MODE, DEFAULT_EXPOSURE_MODE);
     params->set(CameraProperties::FLASH_MODE, DEFAULT_FLASH_MODE);
-    char *pos = strstr(params->get(CameraProperties::SUPPORTED_FOCUS_MODES), DEFAULT_FOCUS_MODE_PREFERRED);
+    pos = strstr(params->get(CameraProperties::SUPPORTED_FOCUS_MODES), DEFAULT_FOCUS_MODE_PREFERRED);
     if ( NULL != pos )
         {
         params->set(CameraProperties::FOCUS_MODE, DEFAULT_FOCUS_MODE_PREFERRED);
@@ -1365,10 +1693,29 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, DEFAULT_THUMBNAIL_QUALITY);
     params->set(CameraProperties::JPEG_THUMBNAIL_SIZE, DEFAULT_THUMBNAIL_SIZE);
     params->set(CameraProperties::PICTURE_FORMAT, DEFAULT_PICTURE_FORMAT);
-    params->set(CameraProperties::PICTURE_SIZE, DEFAULT_PICTURE_SIZE);
+
+    if (!strcmp(params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT),
+                TICameraParameters::S3D_TB_FULL)) {
+        params->set(CameraProperties::PICTURE_SIZE, DEFAULT_PICTURE_TB_SIZE);
+    } else if (!strcmp(params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT),
+                TICameraParameters::S3D_SS_FULL)) {
+        params->set(CameraProperties::PICTURE_SIZE, DEFAULT_PICTURE_SS_SIZE);
+    } else {
+        params->set(CameraProperties::PICTURE_SIZE, DEFAULT_PICTURE_SIZE);
+    }
+
+    if (!strcmp(params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT),
+                TICameraParameters::S3D_TB_FULL)) {
+        params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_TB_SIZE);
+    } else if (!strcmp(params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT),
+                TICameraParameters::S3D_SS_FULL)) {
+        params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_SS_SIZE);
+    } else {
+        params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_SIZE);
+    }
+
     params->set(CameraProperties::PREVIEW_FORMAT, DEFAULT_PREVIEW_FORMAT);
     params->set(CameraProperties::PREVIEW_FRAME_RATE, DEFAULT_FRAMERATE);
-    params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_SIZE);
     params->set(CameraProperties::REQUIRED_PREVIEW_BUFS, DEFAULT_NUM_PREV_BUFS);
     params->set(CameraProperties::REQUIRED_IMAGE_BUFS, DEFAULT_NUM_PIC_BUFS);
     params->set(CameraProperties::SATURATION, DEFAULT_SATURATION);
@@ -1509,6 +1856,10 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret) {
         ret = insertCaptureModes(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertLayout(params, caps);
     }
 
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities

@@ -421,17 +421,53 @@ EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
+void OMXCameraAdapter::setParamS3D(OMX_U32 port, const char *valstr)
+{
+    OMXCameraPortParameters *cap;
+
+    LOG_FUNCTION_NAME;
+
+    cap = &mCameraAdapterParameters.mCameraPortParams[port];
+    if (valstr != NULL)
+        {
+        if (strcmp(valstr, TICameraParameters::S3D_TB_FULL) == 0)
+            {
+            cap->mFrameLayoutType = OMX_TI_StereoFrameLayoutTopBottom;
+            }
+        else if (strcmp(valstr, TICameraParameters::S3D_SS_FULL) == 0)
+            {
+            cap->mFrameLayoutType = OMX_TI_StereoFrameLayoutLeftRight;
+            }
+        else if (strcmp(valstr, TICameraParameters::S3D_TB_SUBSAMPLED) == 0)
+            {
+            cap->mFrameLayoutType = OMX_TI_StereoFrameLayoutTopBottomSubsample;
+            }
+        else if (strcmp(valstr, TICameraParameters::S3D_SS_SUBSAMPLED) == 0)
+            {
+            cap->mFrameLayoutType = OMX_TI_StereoFrameLayoutLeftRightSubsample;
+            }
+        else
+            {
+            cap->mFrameLayoutType = OMX_TI_StereoFrameLayout2D;
+            }
+        }
+    else
+        {
+        cap->mFrameLayoutType = OMX_TI_StereoFrameLayout2D;
+        }
+
+    LOG_FUNCTION_NAME_EXIT;
+}
+
 status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
 {
     LOG_FUNCTION_NAME;
 
-    const char * str = NULL;
     int mode = 0;
     status_t ret = NO_ERROR;
     bool updateImagePortParams = false;
     int minFramerate, maxFramerate, frameRate;
     const char *valstr = NULL;
-    const char *oldstr = NULL;
     int w, h;
     OMX_COLOR_FORMATTYPE pixFormat;
     BaseCameraAdapter::AdapterState state;
@@ -563,6 +599,9 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
         //Disable measurement data by default
         mMeasurementEnabled = false;
         }
+
+    setParamS3D(mCameraAdapterParameters.mPrevPortIndex,
+               params.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT));
 
     ret |= setParametersCapture(params, state);
 
@@ -760,6 +799,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
     size_t overclockHeight;
     int sensorID = -1;
     size_t bufferCount;
+    status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
 
@@ -851,8 +891,17 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         portCheck.nBufferSize                   =  portParams.mStride * portParams.mWidth * portParams.mHeight;
         portCheck.nBufferCountActual = portParams.mNumBufs;
     } else {
-        CAMHAL_LOGEB("Unsupported port index 0x%x", (unsigned int)port);
+        CAMHAL_LOGEB("Unsupported port index (%lu)", port);
     }
+
+    if ( mSensorIndex == OMX_TI_StereoSensor ) {
+        ret = setS3DFrameLayout(port);
+        if ( NO_ERROR != ret )
+            {
+            CAMHAL_LOGEA("Error configuring stereo 3D frame layout");
+            return ret;
+            }
+        }
 
     eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
             OMX_IndexParamPortDefinition, &portCheck);
@@ -874,25 +923,25 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     if (OMX_CAMERA_PORT_IMAGE_OUT_IMAGE == port) {
         CAMHAL_LOGDB("\n *** IMG Width = %ld", portCheck.format.image.nFrameWidth);
-        CAMHAL_LOGDB("\n ***IMG Height = %ld", portCheck.format.image.nFrameHeight);
+        CAMHAL_LOGDB("\n *** IMG Height = %ld", portCheck.format.image.nFrameHeight);
 
-        CAMHAL_LOGDB("\n ***IMG IMG FMT = %x", portCheck.format.image.eColorFormat);
-        CAMHAL_LOGDB("\n ***IMG portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
-        CAMHAL_LOGDB("\n ***IMG portCheck.nBufferCountMin = %ld\n",
+        CAMHAL_LOGDB("\n *** IMG IMG FMT = %x", portCheck.format.image.eColorFormat);
+        CAMHAL_LOGDB("\n *** IMG portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
+        CAMHAL_LOGDB("\n *** IMG portCheck.nBufferCountMin = %ld\n",
                 portCheck.nBufferCountMin);
-        CAMHAL_LOGDB("\n ***IMG portCheck.nBufferCountActual = %ld\n",
+        CAMHAL_LOGDB("\n *** IMG portCheck.nBufferCountActual = %ld\n",
                 portCheck.nBufferCountActual);
-        CAMHAL_LOGDB("\n ***IMG portCheck.format.image.nStride = %ld\n",
+        CAMHAL_LOGDB("\n *** IMG portCheck.format.image.nStride = %ld\n",
                 portCheck.format.image.nStride);
     } else if (OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW == port) {
         CAMHAL_LOGDB("\n *** PRV Width = %ld", portCheck.format.video.nFrameWidth);
-        CAMHAL_LOGDB("\n ***PRV Height = %ld", portCheck.format.video.nFrameHeight);
+        CAMHAL_LOGDB("\n *** PRV Height = %ld", portCheck.format.video.nFrameHeight);
 
-        CAMHAL_LOGDB("\n ***PRV IMG FMT = %x", portCheck.format.video.eColorFormat);
-        CAMHAL_LOGDB("\n ***PRV portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
-        CAMHAL_LOGDB("\n ***PRV portCheck.nBufferCountMin = %ld\n",
+        CAMHAL_LOGDB("\n *** PRV IMG FMT = %x", portCheck.format.video.eColorFormat);
+        CAMHAL_LOGDB("\n *** PRV portCheck.nBufferSize = %ld\n",portCheck.nBufferSize);
+        CAMHAL_LOGDB("\n *** PRV portCheck.nBufferCountMin = %ld\n",
                 portCheck.nBufferCountMin);
-        CAMHAL_LOGDB("\n ***PRV portCheck.nBufferCountActual = %ld\n",
+        CAMHAL_LOGDB("\n *** PRV portCheck.nBufferCountActual = %ld\n",
                 portCheck.nBufferCountActual);
         CAMHAL_LOGDB("\n ***PRV portCheck.format.video.nStride = %ld\n",
                 portCheck.format.video.nStride);
@@ -916,7 +965,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     EXIT:
 
-    CAMHAL_LOGEB("Exiting function %s because of eError=%x", __FUNCTION__, eError);
+    CAMHAL_LOGEB("Exiting function %s because of eError = 0x%x", __FUNCTION__, eError);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1471,13 +1520,6 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
 
     LOG_FUNCTION_NAME;
 
-    ///Flag to determine whether it is 3D camera or not
-    bool isS3d = false;
-    const char *valstr = NULL;
-    if ( (valstr = mParams.get(TICameraParameters::KEY_S3D_SUPPORTED)) != NULL) {
-        isS3d = (strcmp(valstr, "true") == 0);
-    }
-
     if(!bufArr)
         {
         CAMHAL_LOGEA("NULL pointer passed for buffArr");
@@ -1538,7 +1580,7 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
         CAMHAL_LOGDB("Camera Mode = %d", mCapMode);
 
         if( ( mCapMode == OMXCameraAdapter::VIDEO_MODE ) ||
-            ( isS3d && (mCapMode == OMXCameraAdapter::HIGH_QUALITY)) )
+            (mSensorIndex == OMX_TI_StereoSensor) )
             {
             ///Enable/Disable Video Noise Filter
             ret = enableVideoNoiseFilter(mVnfEnabled);
@@ -2258,6 +2300,61 @@ status_t OMXCameraAdapter::printComponentVersion(OMX_HANDLETYPE handle)
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
+}
+
+status_t OMXCameraAdapter::setS3DFrameLayout(OMX_U32 port) const
+{
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_TI_FRAMELAYOUTTYPE frameLayout;
+    const OMXCameraPortParameters *cap =
+        &mCameraAdapterParameters.mCameraPortParams[port];
+
+    LOG_FUNCTION_NAME;
+
+    OMX_INIT_STRUCT_PTR (&frameLayout, OMX_TI_FRAMELAYOUTTYPE);
+    frameLayout.nPortIndex = port;
+    eError = OMX_GetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE)OMX_TI_IndexParamStereoFrmLayout, &frameLayout);
+    if (eError != OMX_ErrorNone)
+        {
+        CAMHAL_LOGEB("Error while getting S3D frame layout: 0x%x", eError);
+        return -EINVAL;
+        }
+
+    if (cap->mFrameLayoutType == OMX_TI_StereoFrameLayoutTopBottomSubsample)
+        {
+        frameLayout.eFrameLayout = OMX_TI_StereoFrameLayoutTopBottom;
+        frameLayout.nSubsampleRatio = 2;
+        }
+    else if (cap->mFrameLayoutType ==
+                OMX_TI_StereoFrameLayoutLeftRightSubsample)
+        {
+        frameLayout.eFrameLayout = OMX_TI_StereoFrameLayoutLeftRight;
+        frameLayout.nSubsampleRatio = 2;
+        }
+    else
+        {
+        frameLayout.eFrameLayout = cap->mFrameLayoutType;
+        frameLayout.nSubsampleRatio = 1;
+        }
+    frameLayout.nSubsampleRatio = frameLayout.nSubsampleRatio << 7;
+
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE)OMX_TI_IndexParamStereoFrmLayout, &frameLayout);
+    if (eError != OMX_ErrorNone)
+        {
+        CAMHAL_LOGEB("Error while setting S3D frame layout: 0x%x", eError);
+        return -EINVAL;
+        }
+    else
+        {
+        CAMHAL_LOGDB("S3D frame layout %d applied successfully on port %lu",
+                        frameLayout.eFrameLayout, port);
+        }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return NO_ERROR;
 }
 
 status_t OMXCameraAdapter::autoFocus()

@@ -324,6 +324,7 @@ public:
             OMX_S32                         mMinFrameRate;
             OMX_S32                         mMaxFrameRate;
             CameraFrame::FrameType mImageType;
+            OMX_TI_STEREOFRAMELAYOUTTYPE    mFrameLayoutType;
     };
 
     ///Context of the OMX Camera component
@@ -515,6 +516,10 @@ private:
     status_t setWhiteBalanceLock(Gen3A_settings& Gen3A);
     status_t set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_BOOL toggleFocus);
 
+    //Stereo 3D
+    void setParamS3D(OMX_U32 port, const char *valstr);
+    status_t setS3DFrameLayout(OMX_U32 port) const;
+
     //API to set FrameRate using VFR interface
     status_t setVFramerate(OMX_U32 minFrameRate,OMX_U32 maxFrameRate);
 
@@ -575,6 +580,11 @@ private:
                                          size_t,
                                          char*,
                                          size_t);
+    static status_t encodeSizeCap3D(OMX_TI_CAPRESTYPE&,
+                                    const CapResolution*,
+                                    size_t ,
+                                    char * ,
+                                    size_t);
     static status_t insertImageSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertPreviewSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertThumbSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
@@ -604,6 +614,7 @@ private:
     static status_t insertFocalLength(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertAutoConvergenceModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertManualConvergenceRange(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertLayout(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -742,10 +753,16 @@ private:
 
     //OMX Capabilities data
     static const CapResolution mImageCapRes [];
+    static const CapResolution mImageCapResSS [];
+    static const CapResolution mImageCapResTB [];
     static const CapResolution mPreviewRes [];
+    static const CapResolution mPreviewResSS [];
+    static const CapResolution mPreviewResTB [];
     static const CapResolution mPreviewPortraitRes [];
     static const CapResolution mThumbRes [];
     static const CapPixelformat mPixelformats [];
+    static const userToOMX_LUT mFrameLayout [];
+    static const LUTtype mLayoutLUT;
     static const CapFramerate mFramerates [];
     static const CapU32 mSensorNames[] ;
     static const CapZoom mZoomStages [];
@@ -786,9 +803,13 @@ private:
     static const char DEFAULT_THUMBNAIL_SIZE[];
     static const char DEFAULT_PICTURE_FORMAT[];
     static const char DEFAULT_PICTURE_SIZE[];
+    static const char DEFAULT_PICTURE_SS_SIZE[];
+    static const char DEFAULT_PICTURE_TB_SIZE[];
     static const char DEFAULT_PREVIEW_FORMAT[];
     static const char DEFAULT_FRAMERATE[];
     static const char DEFAULT_PREVIEW_SIZE[];
+    static const char DEFAULT_PREVIEW_SS_SIZE[];
+    static const char DEFAULT_PREVIEW_TB_SIZE[];
     static const char DEFAULT_NUM_PREV_BUFS[];
     static const char DEFAULT_NUM_PIC_BUFS[];
     static const char DEFAULT_MAX_FOCUS_AREAS[];

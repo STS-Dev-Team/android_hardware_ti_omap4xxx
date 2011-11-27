@@ -58,7 +58,6 @@ const char TICameraParameters::KEY_EXP_BRACKETING_RANGE[] = "exp-bracketing-rang
 const char TICameraParameters::KEY_TEMP_BRACKETING[] = "temporal-bracketing";
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS[] = "temporal-bracketing-range-positive";
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_NEG[] = "temporal-bracketing-range-negative";
-const char TICameraParameters::KEY_S3D_SUPPORTED[] = "s3d-supported";
 const char TICameraParameters::KEY_MEASUREMENT_ENABLE[] = "measurement";
 const char TICameraParameters::KEY_GBCE[] = "gbce";
 const char TICameraParameters::KEY_GLBCE[] = "glbce";
@@ -90,9 +89,17 @@ const char TICameraParameters::MEASUREMENT_DISABLE[] = "disable";
 const char TICameraParameters::ZOOM_SUPPORTED[] = "true";
 const char TICameraParameters::ZOOM_UNSUPPORTED[] = "false";
 
-// TI extensions for 2D Preview in Stereo Mode
-const char TICameraParameters::KEY_S3D2D_PREVIEW[] = "s3d2d-preview";
-const char TICameraParameters::KEY_S3D2D_PREVIEW_MODE[] = "s3d2d-preview-values";
+// TI extensions for Stereo Mode
+const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT[] = "s3d-prv-frame-layout";
+const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT_VALUES[] = "s3d-prv-frame-layout-values";
+const char TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT[] = "s3d-cap-frame-layout";
+const char TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT_VALUES[] = "s3d-cap-frame-layout-values";
+
+//TI extentions fo 3D resolutions
+const char TICameraParameters::KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[] = "supported-picture-topbottom-size-values";
+const char TICameraParameters::KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "supported-picture-sidebyside-size-values";
+const char TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[] = "supported-preview-topbottom-size-values";
+const char TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[] = "supported-preview-sidebyside-size-values";
 
 //TI extensions for SAC/SMC
 const char TICameraParameters::KEY_AUTOCONVERGENCE_MODE[] = "auto-convergence-mode";
@@ -188,6 +195,13 @@ const char TICameraParameters::ISO_MODE_800[] = "800";
 const char TICameraParameters::ISO_MODE_1000[] = "1000";
 const char TICameraParameters::ISO_MODE_1200[] = "1200";
 const char TICameraParameters::ISO_MODE_1600[] = "1600";
+
+//TI extensions for stereo frame layouts
+const char TICameraParameters::S3D_NONE[] = "none";
+const char TICameraParameters::S3D_TB_FULL[] = "tb-full";
+const char TICameraParameters::S3D_SS_FULL[] = "ss-full";
+const char TICameraParameters::S3D_TB_SUBSAMPLED[] = "tb-subsampled";
+const char TICameraParameters::S3D_SS_SUBSAMPLED[] = "ss-subsampled";
 
 //  TI extensions to add auto convergence values
 const char TICameraParameters::AUTOCONVERGENCE_MODE_DISABLE[] = "disable";
