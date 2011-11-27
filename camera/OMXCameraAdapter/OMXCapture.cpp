@@ -36,11 +36,19 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     int w, h;
     OMX_COLOR_FORMATTYPE pixFormat;
     const char *valstr = NULL;
+    OMX_TI_STEREOFRAMELAYOUTTYPE capFrmLayout;
 
     LOG_FUNCTION_NAME;
 
     OMXCameraPortParameters *cap;
     cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+
+    capFrmLayout = cap->mFrameLayoutType;
+    setParamS3D(mCameraAdapterParameters.mImagePortIndex,
+        params.get(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT));
+    if (capFrmLayout != cap->mFrameLayoutType) {
+        mPendingCaptureSettings |= SetFormat;
+    }
 
     params.getPictureSize(&w, &h);
 
@@ -155,7 +163,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     if ( params.getInt(CameraParameters::KEY_ROTATION) != -1 )
         {
-        if (params.getInt(CameraParameters::KEY_ROTATION) != mPictureRotation) {
+        if (params.getInt(CameraParameters::KEY_ROTATION) != (int) mPictureRotation) {
             mPendingCaptureSettings |= SetRotation;
         }
         mPictureRotation = params.getInt(CameraParameters::KEY_ROTATION);
@@ -170,26 +178,26 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     // Read Sensor Orientation and set it based on perating mode
 
-     if ( params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION) != -1 )
+    if ( params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION) != -1 )
         {
-         mSensorOrientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
-         if (mSensorOrientation == 270 ||mSensorOrientation==90)
-             {
-             CAMHAL_LOGEA(" Orientation is 270/90. So setting counter rotation  to Ducati");
-             mSensorOrientation +=180;
-             mSensorOrientation%=360;
-              }
-         }
-     else
+        mSensorOrientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
+        if (mSensorOrientation == 270 ||mSensorOrientation==90)
+            {
+            CAMHAL_LOGEA(" Orientation is 270/90. So setting counter rotation to Ducati");
+            mSensorOrientation +=180;
+            mSensorOrientation%=360;
+            }
+        }
+    else
         {
-         mSensorOrientation = 0;
+        mSensorOrientation = 0;
         }
 
-     CAMHAL_LOGVB("Sensor Orientation  set : %d", mSensorOrientation);
+    CAMHAL_LOGVB("Sensor Orientation  set : %d", mSensorOrientation);
 
     if ( params.getInt(TICameraParameters::KEY_BURST)  >= 1 )
         {
-        if (params.getInt(TICameraParameters::KEY_BURST) != mBurstFrames) {
+        if (params.getInt(TICameraParameters::KEY_BURST) != (int) mBurstFrames) {
             mPendingCaptureSettings |= SetExpBracket;
         }
         mBurstFrames = params.getInt(TICameraParameters::KEY_BURST);
@@ -205,7 +213,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     if ( ( params.getInt(CameraParameters::KEY_JPEG_QUALITY)  >= MIN_JPEG_QUALITY ) &&
          ( params.getInt(CameraParameters::KEY_JPEG_QUALITY)  <= MAX_JPEG_QUALITY ) )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_QUALITY) != mPictureQuality) {
+        if (params.getInt(CameraParameters::KEY_JPEG_QUALITY) != (int) mPictureQuality) {
             mPendingCaptureSettings |= SetQuality;
         }
         mPictureQuality = params.getInt(CameraParameters::KEY_JPEG_QUALITY);
@@ -220,7 +228,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     if ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH)  >= 0 )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH) != mThumbWidth) {
+        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH) != (int) mThumbWidth) {
             mPendingCaptureSettings |= SetThumb;
         }
         mThumbWidth = params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
@@ -236,7 +244,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     if ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT)  >= 0 )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT) != mThumbHeight) {
+        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT) != (int) mThumbHeight) {
             mPendingCaptureSettings |= SetThumb;
         }
         mThumbHeight = params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
@@ -253,7 +261,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     if ( ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  >= MIN_JPEG_QUALITY ) &&
          ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  <= MAX_JPEG_QUALITY ) )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY) != mThumbQuality) {
+        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY) != (int) mThumbQuality) {
             mPendingCaptureSettings |= SetThumb;
         }
         mThumbQuality = params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
@@ -1144,7 +1152,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
     //TODO: Support more pixelformats
 
     CAMHAL_LOGDB("Params Width = %d", (int)imgCaptureData->mWidth);
-    CAMHAL_LOGDB("Params Height = %d", (int)imgCaptureData->mWidth);
+    CAMHAL_LOGDB("Params Height = %d", (int)imgCaptureData->mHeight);
 
     if (mPendingCaptureSettings & SetFormat) {
         mPendingCaptureSettings &= ~SetFormat;
