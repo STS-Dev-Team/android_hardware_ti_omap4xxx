@@ -33,7 +33,6 @@ static const  char KEY_SUPPORTED_CAMERAS[];
 // Select logical Camera index
 static const char KEY_CAMERA[];
 static const char KEY_CAMERA_NAME[];
-static const  char KEY_S3D_SUPPORTED[];
 static const char  KEY_BURST[];
 static const  char KEY_CAP_MODE[];
 static const  char KEY_CAP_MODE_VALUES[];
@@ -219,8 +218,24 @@ static const char EFFECT_VIVID[];
 static const char EFFECT_COLOR_SWAP[];
 static const char EFFECT_BLACKWHITE[];
 
-static const char KEY_S3D2D_PREVIEW[];
-static const char KEY_S3D2D_PREVIEW_MODE[];
+//TI extensions for stereo frame layouts
+static const char KEY_S3D_PRV_FRAME_LAYOUT[];
+static const char KEY_S3D_PRV_FRAME_LAYOUT_VALUES[];
+static const char KEY_S3D_CAP_FRAME_LAYOUT[];
+static const char KEY_S3D_CAP_FRAME_LAYOUT_VALUES[];
+
+//TI extensions for stereo frame layouts
+static const char S3D_NONE[];
+static const char S3D_TB_FULL[];
+static const char S3D_SS_FULL[];
+static const char S3D_TB_SUBSAMPLED[];
+static const char S3D_SS_SUBSAMPLED[];
+
+//TI extentions fo 3D resolutions
+static const char KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
+static const char KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[];
+static const char KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[];
+static const char KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
 
 //  TI extensions to add values for AutoConvergence settings.
 static const char AUTOCONVERGENCE_MODE_DISABLE[];
@@ -228,7 +243,6 @@ static const char AUTOCONVERGENCE_MODE_FRAME[];
 static const char AUTOCONVERGENCE_MODE_CENTER[];
 static const char AUTOCONVERGENCE_MODE_TOUCH[];
 static const char AUTOCONVERGENCE_MODE_MANUAL[];
-
 
 //TI extensions for flash mode settings
 static const char FLASH_MODE_FILL_IN[];
