@@ -513,7 +513,8 @@ int CameraHal::setParameters(const CameraParameters& params)
         // deprecated constant FPS. "KEY_PREVIEW_FPS_RANGE" should
         // be cleared by the client in order for constant FPS to get
         // applied.
-        if ( strcmp(valstr, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE))  != 0)
+        // If Port FPS needs to be used for configuring , then FPS RANGE should not be set by the APP.
+        if ( valstr != NULL)
           {
             // APP wants to set FPS range
             //Set framerate = MAXFPS
