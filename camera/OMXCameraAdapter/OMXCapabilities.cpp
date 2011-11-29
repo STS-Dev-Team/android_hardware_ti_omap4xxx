@@ -81,6 +81,7 @@ const CapResolution OMXCameraAdapter::mPreviewRes [] = {
     { 352, 288, "352x288" },
     { 240, 160, "240x160" },
     { 176, 144, "176x144" },
+    { 160, 120, "160x120" },
     { 128, 96, "128x96" },
     //Portait resolutions
     { 1088, 1920, "1088x1920" },
@@ -94,6 +95,7 @@ const CapResolution OMXCameraAdapter::mPreviewRes [] = {
     { 240, 320, "240x320" },
     { 160, 240, "240x160" },
     { 144, 176, "144x176" },
+    { 120, 160, "120x160"},
     { 96, 128, "96x128" }
 };
 
