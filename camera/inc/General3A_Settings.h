@@ -29,8 +29,6 @@
 #ifndef GENERAL_3A_SETTINGS_H
 #define GENERAL_3A_SETTINGS_H
 
-#define FOCUS_FACE_PRIORITY OMX_IMAGE_FocusControlMax -1
-#define FOCUS_REGION_PRIORITY OMX_IMAGE_FocusControlMax -2
 #define WB_FACE_PRIORITY OMX_WhiteBalControlMax -1
 #define EXPOSURE_FACE_PRIORITY OMX_ExposureControlMax - 1
 
@@ -136,7 +134,7 @@ const userToOMX_LUT focus_UserToOMX [] = {
     { CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO, OMX_IMAGE_FocusControlAuto },
     { CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE, OMX_IMAGE_FocusControlAuto },
 #ifdef OMAP_ENHANCEMENT
-    { TICameraParameters::FOCUS_MODE_FACE , FOCUS_FACE_PRIORITY },
+    { TICameraParameters::FOCUS_MODE_FACE , OMX_IMAGE_FocusControlContinousFacePriority },
     { TICameraParameters::FOCUS_MODE_PORTRAIT, OMX_IMAGE_FocusControlPortrait },
     { TICameraParameters::FOCUS_MODE_EXTENDED, OMX_IMAGE_FocusControlExtended },
 #endif

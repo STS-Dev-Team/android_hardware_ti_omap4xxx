@@ -34,6 +34,8 @@
 
 #define METERING_AREAS_RANGE 0xFF
 
+static const char PARAM_SEP[] = ",";
+
 namespace android {
 const SceneModesEntry* OMXCameraAdapter::getSceneModeEntry(const char* name,
                                                                   OMX_SCENEMODETYPE scene) {
@@ -378,6 +380,25 @@ const char* OMXCameraAdapter::getLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT)
             return LUT.Table[i].userDefinition;
 
     return NULL;
+}
+
+int OMXCameraAdapter::getMultipleLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT, char * supported)
+{
+    int num = 0;
+    int remaining_size;
+    int LUTsize = LUT.size;
+    for(int i = 0; i < LUTsize; i++)
+        if( LUT.Table[i].omxDefinition == OMXValue )
+        {
+            num++;
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
+            remaining_size = ((((int)MAX_PROP_VALUE_LENGTH - 1 - (int)strlen(supported)) < 0) ? 0 : (MAX_PROP_VALUE_LENGTH - 1 - strlen(supported)));
+            strncat(supported, LUT.Table[i].userDefinition, remaining_size);
+        }
+
+    return num;
 }
 
 status_t OMXCameraAdapter::apply3ADefaults(Gen3A_settings &Gen3A)

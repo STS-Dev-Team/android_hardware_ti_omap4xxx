@@ -424,7 +424,7 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         if ((valstr = params.get(CameraParameters::KEY_FOCUS_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_FOCUS_MODES))) {
-                CAMHAL_LOGDB("Focus mode set %s", params.get(CameraParameters::KEY_FOCUS_MODE));
+                CAMHAL_LOGDB("Focus mode set %s", valstr);
 
                 // we need to take a decision on the capture mode based on whether CAF picture or
                 // video is chosen so the behavior of each is consistent to the application
