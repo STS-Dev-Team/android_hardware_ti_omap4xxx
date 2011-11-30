@@ -44,6 +44,7 @@ extern "C" CameraAdapter* CameraAdapter_Factory(size_t);
 
 const int CameraHal::NO_BUFFERS_PREVIEW = MAX_CAMERA_BUFFERS;
 const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 2;
+const int CameraHal::SW_SCALING_FPS_LIMIT = 15;
 
 const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 0;
 const uint32_t MessageNotifier::FRAME_BIT_FIELD_POSITION = 0;
@@ -408,14 +409,9 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mVideoHeight = h;
                 CAMHAL_LOGVB("%s Video Width=%d Height=%d\n", __FUNCTION__, mVideoWidth, mVideoHeight);
 
-                setPreferredPreviewRes(w, h);
+                restartPreviewRequired = setPreferredPreviewRes(params, w, h);
                 mParameters.getPreviewSize(&w, &h);
                 CAMHAL_LOGVB("%s Preview Width=%d Height=%d\n", __FUNCTION__, w, h);
-                //Avoid restarting preview for MMS HACK
-                if ((w != mVideoWidth) && (h != mVideoHeight))
-                    {
-                    restartPreviewRequired = false;
-                    }
 
                 restartPreviewRequired |= setVideoModeParameters(params);
                 }
@@ -3475,18 +3471,70 @@ void CameraHal::selectFPSRange(int framerate, int *min_fps, int *max_fps)
 
 }
 
-void CameraHal::setPreferredPreviewRes(int width, int height)
+bool CameraHal::checkFramerateThr(const CameraParameters &params)
 {
-  LOG_FUNCTION_NAME;
+    static CameraParameters current_Params = mParameters;
+    int maxFPS, minFPS, current_maxFPS, current_minFPS;
+    int framerate, current_framerate;
+    bool ret = false;
 
-  if ( (width == 320) && (height == 240)){
-    mParameters.setPreviewSize(640,480);
-  }
-  if ( (width == 176) && (height == 144)){
-    mParameters.setPreviewSize(704,576);
-  }
+    LOG_FUNCTION_NAME;
 
-  LOG_FUNCTION_NAME_EXIT;
+    params.getPreviewFpsRange(&minFPS, &maxFPS);
+    maxFPS /= CameraHal::VFR_SCALE;
+    framerate = params.getPreviewFrameRate();
+
+    current_Params.getPreviewFpsRange(&current_minFPS, &current_maxFPS);
+    current_maxFPS /= CameraHal::VFR_SCALE;
+    current_framerate = current_Params.getPreviewFrameRate();
+
+    if ( current_framerate != framerate ) {
+        if ( ( ( current_framerate > SW_SCALING_FPS_LIMIT ) && ( framerate <= SW_SCALING_FPS_LIMIT ) ) ||
+             ( ( current_framerate <= SW_SCALING_FPS_LIMIT) && ( framerate > SW_SCALING_FPS_LIMIT) ) ) {
+            ret = true;
+        }
+    }
+
+    if ( current_maxFPS != maxFPS ) {
+        if ( ( ( current_maxFPS > SW_SCALING_FPS_LIMIT ) && ( maxFPS <= SW_SCALING_FPS_LIMIT ) ) ||
+             ( ( current_maxFPS <= SW_SCALING_FPS_LIMIT) && ( maxFPS > SW_SCALING_FPS_LIMIT) ) ) {
+            ret = true;
+        }
+    }
+
+    current_Params = params;
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+bool CameraHal::setPreferredPreviewRes(const CameraParameters &params, int width, int height)
+{
+    int maxFPS, minFPS, framerate;
+
+    LOG_FUNCTION_NAME;
+
+    params.getPreviewFpsRange(&minFPS, &maxFPS);
+    maxFPS /= CameraHal::VFR_SCALE;
+    framerate = params.getPreviewFrameRate();
+
+    if ( ( maxFPS > SW_SCALING_FPS_LIMIT ) ||
+         ( framerate > SW_SCALING_FPS_LIMIT ) ) {
+        mParameters.setPreviewSize(width, height);
+    } else {
+        if ( ( width == 320 ) && ( height == 240 ) ) {
+            mParameters.setPreviewSize(640, 480);
+
+        }
+        if ( ( width == 176 ) && ( height == 144 ) ) {
+            mParameters.setPreviewSize(704, 576);
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return checkFramerateThr(params);;
 }
 
 void CameraHal::resetPreviewRes(CameraParameters *mParams, int width, int height)

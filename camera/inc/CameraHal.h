@@ -1149,7 +1149,8 @@ private:
 
     void selectFPSRange(int framerate, int *min_fps, int *max_fps);
 
-    void setPreferredPreviewRes(int width, int height);
+    bool checkFramerateThr(const CameraParameters &params);
+    bool setPreferredPreviewRes(const CameraParameters &params, int width, int height);
     void resetPreviewRes(CameraParameters *mParams, int width, int height);
 
     //@}
@@ -1186,6 +1187,8 @@ public:
 
 
 ///static member vars
+
+    static const int SW_SCALING_FPS_LIMIT;
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
