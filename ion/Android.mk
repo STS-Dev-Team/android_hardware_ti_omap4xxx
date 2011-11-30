@@ -17,4 +17,11 @@ LOCAL_MODULE_TAGS := optional tests
 LOCAL_SHARED_LIBRARIES := liblog
 include $(BUILD_HEAPTRACKED_EXECUTABLE)
 
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := ion.c ion_test_2.c
+LOCAL_MODULE := iontest2
+LOCAL_MODULE_TAGS := optional tests
+LOCAL_SHARED_LIBRARIES := liblog
+include $(BUILD_HEAPTRACKED_EXECUTABLE)
+
 endif
