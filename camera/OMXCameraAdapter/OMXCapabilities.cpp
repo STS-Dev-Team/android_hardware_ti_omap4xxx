@@ -1302,24 +1302,13 @@ status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params
 {
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
-    const char *p;
 
     LOG_FUNCTION_NAME;
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
     for ( unsigned int i = 0 ; i < caps.ulFocusModeCount; i++ ) {
-        p = getLUTvalue_OMXtoHAL(caps.eFocusModes[i], FocusLUT);
-        if ( NULL != p ) {
-            if (supported[0] != '\0') {
-                strncat(supported, PARAM_SEP, 1);
-            }
-            strncat(supported, p, MAX_PROP_NAME_LENGTH);
-        }
-    }
-
-    if (supported[0] != '\0') {
-        strncat(supported, PARAM_SEP, 1);
+        getMultipleLUTvalue_OMXtoHAL(caps.eFocusModes[i], FocusLUT, supported);
     }
 
     // Check if focus is supported by camera
@@ -1327,11 +1316,10 @@ status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params
         caps.eFocusModes[0] == OMX_IMAGE_FocusControlOff) {
         // Focus is not supported by camera
         // Advertise this to app as infinitiy focus mode
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat(supported, CameraParameters::FOCUS_MODE_INFINITY, MAX_PROP_NAME_LENGTH);
-    } else {
-        // Focus is supported but these modes are not supported by the
-        // capability feature. Apply manually
-        strncat(supported, CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE, MAX_PROP_NAME_LENGTH);
     }
 
     params->set(CameraProperties::SUPPORTED_FOCUS_MODES, supported);

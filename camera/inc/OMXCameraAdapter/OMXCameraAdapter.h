@@ -364,6 +364,7 @@ public:
     // Function to get and populate caps from handle
     static status_t getCaps(int sensorId, CameraProperties::Properties* props, OMX_HANDLETYPE handle);
     static const char* getLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT);
+    static int getMultipleLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT, char * supported);
     static int getLUTvalue_HALtoOMX(const char * HalValue, LUTtype LUT);
 
  OMX_ERRORTYPE OMXCameraAdapterEventHandler(OMX_IN OMX_HANDLETYPE hComponent,
