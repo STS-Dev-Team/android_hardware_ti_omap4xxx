@@ -46,6 +46,10 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
             {
             capMode = OMXCameraAdapter::HIGH_SPEED;
             }
+        else if (strcmp(valstr, (const char *) TICameraParameters::EXPOSURE_BRACKETING) == 0)
+            {
+            capMode = OMXCameraAdapter::HIGH_SPEED;
+            }
         else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_MODE) == 0)
             {
             capMode = OMXCameraAdapter::HIGH_QUALITY;

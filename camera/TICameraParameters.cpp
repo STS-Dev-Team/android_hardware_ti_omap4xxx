@@ -28,6 +28,8 @@ const char TICameraParameters::HIGH_PERFORMANCE_MODE[] = "high-performance";
 const char TICameraParameters::HIGH_QUALITY_MODE[] = "high-quality";
 const char TICameraParameters::HIGH_QUALITY_ZSL_MODE[] = "high-quality-zsl";
 const char TICameraParameters::VIDEO_MODE[] = "video-mode";
+const char TICameraParameters::EXPOSURE_BRACKETING[] = "exposure-bracketing";
+const char TICameraParameters::TEMP_BRACKETING[] = "temporal-bracketing";
 
 // TI extensions to standard android Parameters
 const char TICameraParameters::KEY_SUPPORTED_CAMERAS[] = "camera-indexes";
@@ -36,6 +38,7 @@ const char TICameraParameters::KEY_SHUTTER_ENABLE[] = "shutter-enable";
 const char TICameraParameters::KEY_CAMERA_NAME[] = "camera-name";
 const char TICameraParameters::KEY_BURST[] = "burst-capture";
 const char TICameraParameters::KEY_CAP_MODE[] = "mode";
+const char TICameraParameters::KEY_CAP_MODE_VALUES[] = "mode-values";
 const char TICameraParameters::KEY_VNF[] = "vnf";
 const char TICameraParameters::KEY_SATURATION[] = "saturation";
 const char TICameraParameters::KEY_BRIGHTNESS[] = "brightness";
