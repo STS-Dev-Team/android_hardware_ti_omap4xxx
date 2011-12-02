@@ -3349,6 +3349,7 @@ void CameraHal::insertSupportedParams()
     p.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED));
     p.set(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED, mCameraProperties->get(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED));
     p.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES, mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES));
+    p.set(TICameraParameters::KEY_CAP_MODE_VALUES, mCameraProperties->get(CameraProperties::CAP_MODE_VALUES));
 
     LOG_FUNCTION_NAME_EXIT;
 

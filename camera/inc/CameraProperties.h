@@ -149,6 +149,7 @@ public:
 
     static const char MECHANICAL_MISALIGNMENT_CORRECTION[];
     static const char MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[];
+    static const char CAP_MODE_VALUES[];
 
     CameraProperties();
     ~CameraProperties();

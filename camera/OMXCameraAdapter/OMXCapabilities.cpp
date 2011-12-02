@@ -252,6 +252,16 @@ const LUTtype OMXCameraAdapter::mMechanicalMisalignmentCorrectionLUT = {
     mMechanicalMisalignmentCorrection
 };
 
+const userToOMX_LUT OMXCameraAdapter::mBracketingModes [] = {
+    { TICameraParameters::TEMP_BRACKETING       , OMX_BracketTemporal               },
+    { TICameraParameters::EXPOSURE_BRACKETING   , OMX_BracketExposureRelativeInEV   },
+};
+
+const LUTtype OMXCameraAdapter::mBracketingModesLUT = {
+    ARRAY_SIZE(mBracketingModes),
+    mBracketingModes
+};
+
 // values for supported camera facing direction
 const CapU32 OMXCameraAdapter::mFacing [] = {
     { OMX_TI_SENFACING_BACK , TICameraParameters::FACING_BACK },
@@ -1276,6 +1286,51 @@ status_t OMXCameraAdapter::insertMechanicalMisalignmentCorrection(CameraProperti
     return ret;
 }
 
+status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+    const char *p;
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+
+    // 3D mode detect: Misalignment is present only in 3d mode
+    if (caps.bMechanicalMisalignmentSupported)
+    {
+        strncat(supported, TICameraParameters::HIGH_QUALITY_MODE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::VIDEO_MODE, REMAINING_BYTES(supported));
+    }
+    else // 2D mode detect: Misalignment is present only in 3d mode
+    {
+        strncat(supported, TICameraParameters::HIGH_QUALITY_MODE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::VIDEO_MODE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::HIGH_PERFORMANCE_MODE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::HIGH_QUALITY_ZSL_MODE, REMAINING_BYTES(supported));
+    }
+
+    for ( unsigned int i = 0 ; i < caps.ulBracketingModesCount; i++ ) {
+        p = getLUTvalue_OMXtoHAL(caps.eBracketingModes[i], mBracketingModesLUT);
+        if ( NULL != p ) {
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+            }
+            strncat(supported, p, REMAINING_BYTES(supported));
+        }
+    }
+
+    params->set(CameraProperties::CAP_MODE_VALUES, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1447,6 +1502,10 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret) {
         ret = insertMechanicalMisalignmentCorrection(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertCaptureModes(params, caps);
     }
 
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities

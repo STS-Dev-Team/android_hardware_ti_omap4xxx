@@ -36,6 +36,7 @@ static const char KEY_CAMERA_NAME[];
 static const  char KEY_S3D_SUPPORTED[];
 static const char  KEY_BURST[];
 static const  char KEY_CAP_MODE[];
+static const  char KEY_CAP_MODE_VALUES[];
 static const  char KEY_VNF[];
 static const  char KEY_SATURATION[];
 static const  char KEY_BRIGHTNESS[];
@@ -151,7 +152,8 @@ static const char HIGH_PERFORMANCE_MODE[];
 static const char HIGH_QUALITY_MODE[];
 static const char HIGH_QUALITY_ZSL_MODE[];
 static const char VIDEO_MODE[];
-
+static const char EXPOSURE_BRACKETING[];
+static const char TEMP_BRACKETING[];
 
 // TI extensions to standard android pixel formats
 static const char PIXEL_FORMAT_UNUSED[];

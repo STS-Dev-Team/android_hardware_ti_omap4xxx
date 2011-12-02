@@ -598,6 +598,7 @@ private:
     static status_t insertLocks(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertAreas(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertMechanicalMisalignmentCorrection(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertCaptureModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVideoSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFacing(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFocalLength(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
@@ -760,6 +761,8 @@ private:
     static const LUTtype mAutoConvergenceLUT;
     static const userToOMX_LUT mMechanicalMisalignmentCorrection[];
     static const LUTtype mMechanicalMisalignmentCorrectionLUT;
+    static const userToOMX_LUT mBracketingModes[];
+    static const LUTtype mBracketingModesLUT;
 
     // OMX Camera defaults
     static const char DEFAULT_ANTIBANDING[];
