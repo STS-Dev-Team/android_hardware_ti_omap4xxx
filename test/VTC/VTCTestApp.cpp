@@ -235,12 +235,11 @@ int getMediaserverInfo(int *PID, int *VSIZE){
     return 0;
 }
 
-void my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int waitTimeInMilliSecs)
+int my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int waitTimeInMilliSecs)
 {
     if (waitTimeInMilliSecs == 0)
     {
-        pthread_cond_wait(cond, mutex);
-        return;
+        return pthread_cond_wait(cond, mutex);
     }
 
     struct timespec ts;
@@ -250,7 +249,7 @@ void my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, in
         ts.tv_sec += (waitTimeInMilliSecs/1000);
     else ts.tv_nsec += waitTimeInMilliSecs * 1000000;
 
-    pthread_cond_timedwait(cond, mutex, &ts);
+    return pthread_cond_timedwait(cond, mutex, &ts);
 }
 
 int startPlayback() {
@@ -798,10 +797,14 @@ int test_PlaybackAndRecord_PIP()
     startRecording();
 
     while (bPlaying && bRecording && !mMediaPlayerThrewError) {
+        int rc;
         pthread_mutex_lock(&mMutex);
-        my_pthread_cond_timedwait(&mCond, &mMutex, 100);
+        rc = my_pthread_cond_timedwait(&mCond, &mMutex, 100);
         pthread_mutex_unlock(&mMutex);
 
+        if (rc != ETIMEDOUT){
+            break; //exit while loop
+        }
         /* Move preview */
         cameraWinY +=2;
         if ((cameraWinY+ cameraSurfaceHeight) > panelheight) cameraWinY = 0;
@@ -1045,7 +1048,7 @@ int test_ALL()
     LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
-    mIFramesIntervalSec = 1;
+    mIFramesIntervalSec = 15;
     mDuration = 30;
     status = test_DEFAULT();
     updatePassRate(status, true);
@@ -1100,8 +1103,8 @@ int test_ALL()
     LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
-    mVideoFrameRate = 15;
-    mNewVideoFrameRate = 30;
+    mVideoFrameRate = 30;
+    mNewVideoFrameRate = 24;
     status = test_ChangeFrameRate();
     updatePassRate(status, true);
 
@@ -1109,7 +1112,7 @@ int test_ALL()
     LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
-    mVideoFrameRate = 24;
+    mVideoFrameRate = 15;
     mNewVideoFrameRate = 30;
     status = test_ChangeFrameRate();
     updatePassRate(status, true);
@@ -1127,8 +1130,8 @@ int test_ALL()
     LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
-    mVideoFrameRate = 15;
-    mNewVideoFrameRate = 30;
+    mVideoFrameRate = 30;
+    mNewVideoFrameRate = 24;
     status = test_ChangeFrameRate();
     updatePassRate(status, true);
 
@@ -1323,6 +1326,9 @@ int test_ALL()
     mVideoFrameRate = 15;
     status = test_DEFAULT();
     updatePassRate(status, true);
+    //Framerate and Bitrate change TC done, set default
+    mVideoFrameRate = 30;
+    mVideoBitRate = 1000000;
 
   if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d1_1080p_30fps_from-5Mbps-to-100kbps.3gp", mTestCount);
