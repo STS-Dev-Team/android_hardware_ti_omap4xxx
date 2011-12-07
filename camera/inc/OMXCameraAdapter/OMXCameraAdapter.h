@@ -734,6 +734,11 @@ private:
     static const CapEVComp mEVCompRanges [];
     static const CapISO mISOStages [];
     static const CapU32Pair mVarFramerates [];
+    static const int SENSORID_IMX060;
+    static const int SENSORID_OV5650;
+    static const int SENSORID_OV5640;
+    static const int SENSORID_S5K4E1GA;
+    static const int SENSORID_S5K6A1GX03;
 
     // OMX Camera defaults
     static const char DEFAULT_ANTIBANDING[];

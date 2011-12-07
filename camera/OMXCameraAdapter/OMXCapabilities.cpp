@@ -44,6 +44,12 @@ static const char VFR_BACKET_START[] = "(";
 static const char VFR_BRACKET_END[] = ")";
 static const char FRAMERATE_COUNT = 10;
 
+const int OMXCameraAdapter::SENSORID_IMX060 = 300;
+const int OMXCameraAdapter::SENSORID_OV5650 = 301;
+const int OMXCameraAdapter::SENSORID_OV5640 = 302;
+const int OMXCameraAdapter::SENSORID_S5K4E1GA = 305;
+const int OMXCameraAdapter::SENSORID_S5K6A1GX03 = 306;
+
 /**** look up tables to translate OMX Caps to Parameter ****/
 
 const CapResolution OMXCameraAdapter::mImageCapRes [] = {
@@ -201,11 +207,11 @@ const CapISO OMXCameraAdapter::mISOStages [] = {
 
 // mapped values have to match with new_sensor_MSP.h
 const CapU32 OMXCameraAdapter::mSensorNames [] = {
-    { 300, "IMX060" },
-    { 301, "OV5650" },
-    { 302, "OV5640" },
-    { 305, "S5K4E1GA"},
-    { 306, "S5K6A1GX03" }
+    { SENSORID_IMX060, "IMX060" },
+    { SENSORID_OV5650, "OV5650" },
+    { SENSORID_OV5640, "OV5640" },
+    { SENSORID_S5K4E1GA, "S5K4E1GA"},
+    { SENSORID_S5K6A1GX03, "S5K6A1GX03" }
     // TODO(XXX): need to account for S3D camera later
 };
 
@@ -1123,6 +1129,7 @@ status_t OMXCameraAdapter::insertSenMount(CameraProperties::Properties* params, 
     }
     strncat(supported, p, MAX_PROP_NAME_LENGTH);
     params->set(CameraProperties::CAMERA_NAME, supported);
+    params->set(CameraProperties::CAMERA_SENSOR_ID, caps.tSenMounting.nSenId);
 
     // 2) Assign mounting rotation
     params->set(CameraProperties::ORIENTATION_INDEX, caps.tSenMounting.nRotation);

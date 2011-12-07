@@ -47,6 +47,7 @@ public:
     static const char INVALID[];
     static const char CAMERA_NAME[];
     static const char CAMERA_SENSOR_INDEX[];
+    static const char CAMERA_SENSOR_ID[];
     static const char ORIENTATION_INDEX[];
     static const char FACING_INDEX[];
     static const char S3D_SUPPORTED[];
@@ -165,6 +166,7 @@ public:
             ssize_t set(const char *prop, const char *value);
             ssize_t set(const char *prop, int value);
             const char* get(const char * prop);
+            int getInt(const char * prop);
             void dump();
 
         protected:
