@@ -756,7 +756,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 {
     size_t overclockWidth;
     size_t overclockHeight;
-
+    int sensorID = -1;
     size_t bufferCount;
 
     LOG_FUNCTION_NAME;
@@ -789,9 +789,14 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
             overclockHeight = 1080;
         }
 
-        if( ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
-            ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
-            ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) {
+        sensorID = mCapabilities->getInt(CameraProperties::CAMERA_SENSOR_ID);
+        if( ( ( sensorID == SENSORID_IMX060 ) &&
+              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+              ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
+              ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) ||
+            ( ( sensorID == SENSORID_OV5640 ) &&
+              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+              ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ){
             setSensorOverclock(true);
         } else {
             setSensorOverclock(false);
