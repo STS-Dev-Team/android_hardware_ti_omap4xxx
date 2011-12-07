@@ -29,6 +29,7 @@ namespace android {
 const char CameraProperties::INVALID[]="prop-invalid-key";
 const char CameraProperties::CAMERA_NAME[]="prop-camera-name";
 const char CameraProperties::CAMERA_SENSOR_INDEX[]="prop-sensor-index";
+const char CameraProperties::CAMERA_SENSOR_ID[] = "prop-sensor-id";
 const char CameraProperties::ORIENTATION_INDEX[]="prop-orientation";
 const char CameraProperties::FACING_INDEX[]="prop-facing";
 const char CameraProperties::S3D_SUPPORTED[]="prop-s3d-supported";
@@ -159,6 +160,15 @@ const char* CameraProperties::Properties::get(const char * prop)
 {
     String8 value = mProperties->valueFor(String8(prop));
     return value.string();
+}
+
+int CameraProperties::Properties::getInt(const char * prop)
+{
+    String8 value = mProperties->valueFor(String8(prop));
+    if (value.isEmpty()) {
+        return -1;
+    }
+    return strtol(value, 0, 0);
 }
 
 void CameraProperties::Properties::dump()
