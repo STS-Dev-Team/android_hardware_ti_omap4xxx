@@ -228,5 +228,10 @@ const char TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] =
 
 const char TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE[] = "enable";
 const char TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE[] = "disable";
+
+//TI extensions for video snapshot
+const char TICameraParameters::VIDEO_SNAPSHOT_SUPPORTED[] = "true";
+const char TICameraParameters::VIDEO_SNAPSHOT_UNSUPPORTED[] = "false";
+
 };
 
