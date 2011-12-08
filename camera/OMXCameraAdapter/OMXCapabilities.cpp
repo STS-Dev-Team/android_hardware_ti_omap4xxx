@@ -1649,6 +1649,26 @@ status_t OMXCameraAdapter::insertLayout(CameraProperties::Properties* params, OM
     return ret;
 }
 
+status_t OMXCameraAdapter::insertVideoSnapshotSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+    if (caps.bStillCapDuringVideoSupported)
+    {
+        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, TICameraParameters::VIDEO_SNAPSHOT_SUPPORTED);
+    }
+    else
+    {
+        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, TICameraParameters::VIDEO_SNAPSHOT_UNSUPPORTED);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1731,7 +1751,6 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK, DEFAULT_AWB_LOCK);
     params->set(CameraProperties::HOR_ANGLE, DEFAULT_HOR_ANGLE);
     params->set(CameraProperties::VER_ANGLE, DEFAULT_VER_ANGLE);
-    params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, DEFAULT_VIDEO_SNAPSHOT_SUPPORTED);
     params->set(CameraProperties::VIDEO_SIZE, DEFAULT_VIDEO_SIZE);
     params->set(CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO, DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO);
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
@@ -1860,6 +1879,10 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret) {
         ret = insertLayout(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertVideoSnapshotSupported(params, caps);
     }
 
     //NOTE: Ensure that we always call insertDefaults after inserting the supported capabilities

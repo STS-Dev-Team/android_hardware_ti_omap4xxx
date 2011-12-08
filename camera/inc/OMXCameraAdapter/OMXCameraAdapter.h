@@ -615,6 +615,7 @@ private:
     static status_t insertAutoConvergenceModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertManualConvergenceRange(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertLayout(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertVideoSnapshotSupported(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -829,7 +830,6 @@ private:
     static const char DEFAULT_LOCK_UNSUPPORTED[];
     static const char DEFAULT_HOR_ANGLE[];
     static const char DEFAULT_VER_ANGLE[];
-    static const char DEFAULT_VIDEO_SNAPSHOT_SUPPORTED[];
     static const char DEFAULT_VIDEO_SIZE[];
     static const char DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[];
     static const char DEFAULT_SENSOR_ORIENTATION[];
