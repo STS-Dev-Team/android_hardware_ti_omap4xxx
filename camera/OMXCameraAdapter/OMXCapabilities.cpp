@@ -2066,8 +2066,7 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
         CAMHAL_LOGD("  eBracketingModes[%2d] = %d", i, int(caps.eBracketingModes[i]));
 
     CAMHAL_LOGD("");
-    CAMHAL_LOGD("bVidStabSupported = %d", int(caps.bVidStabSupported));
-	CAMHAL_LOGD("bGbceSupported    = %d", int(caps.bGbceSupported));
+    CAMHAL_LOGD("bGbceSupported    = %d", int(caps.bGbceSupported));
     CAMHAL_LOGD("bRawJpegSupported = %d", int(caps.bRawJpegSupported));
 
     CAMHAL_LOGD("");
@@ -2102,6 +2101,7 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
     CAMHAL_LOGD("bMechanicalMisalignmentSupported   = %d", int(caps.bMechanicalMisalignmentSupported));
     CAMHAL_LOGD("bFacePrioritySupported             = %d", int(caps.bFacePrioritySupported          ));
     CAMHAL_LOGD("bRegionPrioritySupported           = %d", int(caps.bRegionPrioritySupported        ));
+    CAMHAL_LOGD("bGlbceSupported                    = %d", int(caps.bGlbceSupported));
 
     CAMHAL_LOGD("");
     CAMHAL_LOGD("nManualConvMin     = %d", int(caps.nManualConvMin     ));
