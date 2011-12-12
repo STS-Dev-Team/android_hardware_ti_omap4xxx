@@ -810,6 +810,12 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
          for(unsigned int i = 0; i < mFramesWithCameraAdapterMap.size(); i++) {
              int value = mFramesWithCameraAdapterMap.valueAt(i);
 
+             // if buffer index is out of bounds skip
+             if ((value < 0) || (value >= mBufferCount)) {
+                 CAMHAL_LOGEA("Potential out bounds access to handle...skipping");
+                 continue;
+             }
+
              // unlock buffer before giving it up
              mapper.unlock((buffer_handle_t) mGrallocHandleMap[value]);
 
@@ -982,6 +988,12 @@ bool ANativeWindowDisplayAdapter::processHalMsg()
             ///mOverlay->setParameter("enabled", false);
             CAMHAL_LOGDA("Display thread received DISPLAY_STOP command from Camera HAL");
             mDisplayState = ANativeWindowDisplayAdapter::DISPLAY_STOPPED;
+
+            // flush frame message queue
+            while ( !mDisplayQ.isEmpty() ) {
+                TIUTILS::Message message;
+                mDisplayQ.get(&message);
+            }
 
             break;
 
