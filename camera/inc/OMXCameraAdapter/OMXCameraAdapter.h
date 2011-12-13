@@ -509,6 +509,7 @@ private:
 
     //Exposure Modes
     status_t setExposureMode(Gen3A_settings& Gen3A);
+    status_t setManualExposureVal(Gen3A_settings& Gen3A);
     status_t setEVCompensation(Gen3A_settings& Gen3A);
     status_t setWBMode(Gen3A_settings& Gen3A);
     status_t setFlicker(Gen3A_settings& Gen3A);
@@ -615,6 +616,7 @@ private:
     static status_t insertWBModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertEffects(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertExpModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+    static status_t insertManualExpRanges(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertSceneModes(CameraProperties::Properties*, OMX_TI_CAPTYPE &);
     static status_t insertFocusModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFlickerModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);

@@ -43,6 +43,10 @@ static const char VFR_BACKET_START[] = "(";
 static const char VFR_BRACKET_END[] = ")";
 static const char FRAMERATE_COUNT = 10;
 
+static const unsigned int MANUAL_EXPOSURE_STEP = 1;
+static const unsigned int MANUAL_GAIN_ISO_MIN = 100;
+static const unsigned int MANUAL_GAIN_ISO_STEP = 100;
+
 const int OMXCameraAdapter::SENSORID_IMX060 = 300;
 const int OMXCameraAdapter::SENSORID_OV5650 = 301;
 const int OMXCameraAdapter::SENSORID_OV5640 = 302;
@@ -1240,6 +1244,57 @@ status_t OMXCameraAdapter::insertExpModes(CameraProperties::Properties* params, 
     return ret;
 }
 
+status_t OMXCameraAdapter::insertManualExpRanges(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+
+    LOG_FUNCTION_NAME;
+
+    if (caps.nManualExpMin > caps.nManualExpMax) {
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) 0);
+        params->set(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MIN, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) 0);
+        params->set(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MAX, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) 0);
+        params->set(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_STEP, supported);
+    } else {
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) caps.nManualExpMin);
+        params->set(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MIN, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) caps.nManualExpMax);
+        params->set(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MAX, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) MANUAL_EXPOSURE_STEP);
+        params->set(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_STEP, supported);
+    }
+
+    if (MANUAL_GAIN_ISO_MIN > caps.nSensitivityMax) {
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) 0);
+        params->set(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MIN, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) 0);
+        params->set(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MAX, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) 0);
+        params->set(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_STEP, supported);    }
+    else {
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) MANUAL_GAIN_ISO_MIN);
+        params->set(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MIN, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) caps.nSensitivityMax);
+        params->set(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MAX, supported);
+
+        snprintf(supported, MAX_PROP_VALUE_LENGTH, "%d", (int) MANUAL_GAIN_ISO_STEP);
+        params->set(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_STEP, supported);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertFlashModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1884,6 +1939,10 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret ) {
         ret = insertExpModes(params, caps);
+    }
+
+    if ( NO_ERROR == ret ) {
+        ret = insertManualExpRanges(params, caps);
     }
 
     if ( NO_ERROR == ret ) {
