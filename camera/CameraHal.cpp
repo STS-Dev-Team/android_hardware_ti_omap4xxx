@@ -44,7 +44,7 @@ const int CameraHal::NO_BUFFERS_PREVIEW = MAX_CAMERA_BUFFERS;
 const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 2;
 const int CameraHal::SW_SCALING_FPS_LIMIT = 15;
 
-const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 0;
+const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 16;
 const uint32_t MessageNotifier::FRAME_BIT_FIELD_POSITION = 0;
 
 /******************************************************************************/
