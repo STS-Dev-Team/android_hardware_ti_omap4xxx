@@ -919,8 +919,8 @@ void AppCallbackNotifier::notifyFrame()
                                                       this,
                                                       raw_picture,
                                                       exif_data);
-                    encoder->run();
                     gEncoderQueue.add(frame->mBuffer, encoder);
+                    encoder->run();
                     encoder.clear();
                     if (params != NULL)
                       {
