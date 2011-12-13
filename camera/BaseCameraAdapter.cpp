@@ -16,6 +16,8 @@
 
 #include "BaseCameraAdapter.h"
 
+const int EVENT_MASK = 0xffff;
+
 namespace android {
 
 /*--------------------Camera Adapter Class STARTS here-----------------------------*/
@@ -130,36 +132,49 @@ void BaseCameraAdapter::enableMsgType(int32_t msgs, frame_callback callback, eve
 
     LOG_FUNCTION_NAME;
 
-    if ( CameraFrame::PREVIEW_FRAME_SYNC == msgs )
+    int32_t frameMsg = ((msgs >> MessageNotifier::FRAME_BIT_FIELD_POSITION) & EVENT_MASK);
+    int32_t eventMsg = ((msgs >> MessageNotifier::EVENT_BIT_FIELD_POSITION) & EVENT_MASK);
+
+    if ( frameMsg != 0 )
         {
-        mFrameSubscribers.add((int) cookie, callback);
+        CAMHAL_LOGVB("Frame message type id=0x%x subscription request", frameMsg);
+        switch ( frameMsg )
+            {
+            case CameraFrame::PREVIEW_FRAME_SYNC:
+                mFrameSubscribers.add((int) cookie, callback);
+                break;
+            case CameraFrame::FRAME_DATA_SYNC:
+                mFrameDataSubscribers.add((int) cookie, callback);
+                break;
+            case CameraFrame::IMAGE_FRAME:
+                mImageSubscribers.add((int) cookie, callback);
+                break;
+            case CameraFrame::RAW_FRAME:
+                mRawSubscribers.add((int) cookie, callback);
+                break;
+            case CameraFrame::VIDEO_FRAME_SYNC:
+                mVideoSubscribers.add((int) cookie, callback);
+                break;
+            default:
+                CAMHAL_LOGEA("Frame message type id=0x%x subscription no supported yet!", frameMsg);
+                break;
+            }
         }
-    else if ( CameraFrame::FRAME_DATA_SYNC == msgs )
+
+    if ( eventMsg != 0)
         {
-        mFrameDataSubscribers.add((int) cookie, callback);
-        }
-    else if ( CameraFrame::IMAGE_FRAME == msgs)
-        {
-        mImageSubscribers.add((int) cookie, callback);
-        }
-    else if ( CameraFrame::RAW_FRAME == msgs)
-        {
-        mRawSubscribers.add((int) cookie, callback);
-        }
-    else if ( CameraFrame::VIDEO_FRAME_SYNC == msgs)
-        {
-        mVideoSubscribers.add((int) cookie, callback);
-        }
-    else if ( CameraHalEvent::ALL_EVENTS == msgs)
-        {
-        mFocusSubscribers.add((int) cookie, eventCb);
-        mShutterSubscribers.add((int) cookie, eventCb);
-        mZoomSubscribers.add((int) cookie, eventCb);
-        mFaceSubscribers.add((int) cookie, eventCb);
-        }
-    else
-        {
-        CAMHAL_LOGEA("Message type subscription no supported yet!");
+        CAMHAL_LOGVB("Event message type id=0x%x subscription request", eventMsg);
+        if ( CameraHalEvent::ALL_EVENTS == eventMsg )
+            {
+            mFocusSubscribers.add((int) cookie, eventCb);
+            mShutterSubscribers.add((int) cookie, eventCb);
+            mZoomSubscribers.add((int) cookie, eventCb);
+            mFaceSubscribers.add((int) cookie, eventCb);
+            }
+        else
+            {
+            CAMHAL_LOGEA("Event message type id=0x%x subscription no supported yet!", eventMsg);
+            }
         }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -171,46 +186,57 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
 
     LOG_FUNCTION_NAME;
 
-    if ( CameraFrame::PREVIEW_FRAME_SYNC == msgs )
+    int32_t frameMsg = ((msgs >> MessageNotifier::FRAME_BIT_FIELD_POSITION) & EVENT_MASK);
+    int32_t eventMsg = ((msgs >> MessageNotifier::EVENT_BIT_FIELD_POSITION) & EVENT_MASK);
+
+    if ( frameMsg != 0 )
         {
-        mFrameSubscribers.removeItem((int) cookie);
+        CAMHAL_LOGVB("Frame message type id=0x%x remove subscription request", frameMsg);
+        switch ( frameMsg )
+            {
+            case CameraFrame::PREVIEW_FRAME_SYNC:
+                mFrameSubscribers.removeItem((int) cookie);
+                break;
+            case CameraFrame::FRAME_DATA_SYNC:
+                mFrameDataSubscribers.removeItem((int) cookie);
+                break;
+            case CameraFrame::IMAGE_FRAME:
+                mImageSubscribers.removeItem((int) cookie);
+                break;
+            case CameraFrame::RAW_FRAME:
+                mRawSubscribers.removeItem((int) cookie);
+                break;
+            case CameraFrame::VIDEO_FRAME_SYNC:
+                mVideoSubscribers.removeItem((int) cookie);
+                break;
+            case CameraFrame::ALL_FRAMES:
+                mFrameSubscribers.removeItem((int) cookie);
+                mFrameDataSubscribers.removeItem((int) cookie);
+                mImageSubscribers.removeItem((int) cookie);
+                mRawSubscribers.removeItem((int) cookie);
+                mVideoSubscribers.removeItem((int) cookie);
+                break;
+            default:
+                CAMHAL_LOGEA("Frame message type id=0x%x subscription remove not supported yet!", frameMsg);
+                break;
+            }
         }
-    else if ( CameraFrame::FRAME_DATA_SYNC == msgs )
+
+    if ( eventMsg != 0 )
         {
-        mFrameDataSubscribers.removeItem((int) cookie);
-        }
-    else if ( CameraFrame::IMAGE_FRAME == msgs)
-        {
-        mImageSubscribers.removeItem((int) cookie);
-        }
-    else if ( CameraFrame::RAW_FRAME == msgs)
-        {
-        mRawSubscribers.removeItem((int) cookie);
-        }
-    else if ( CameraFrame::VIDEO_FRAME_SYNC == msgs)
-        {
-        mVideoSubscribers.removeItem((int) cookie);
-        }
-    else if ( CameraFrame::ALL_FRAMES  == msgs )
-        {
-        mFrameSubscribers.removeItem((int) cookie);
-        mFrameDataSubscribers.removeItem((int) cookie);
-        mImageSubscribers.removeItem((int) cookie);
-        mRawSubscribers.removeItem((int) cookie);
-        mVideoSubscribers.removeItem((int) cookie);
-        }
-    else if ( CameraHalEvent::ALL_EVENTS == msgs)
-        {
-         //Subscribe only for focus
-         //TODO: Process case by case
-        mFocusSubscribers.removeItem((int) cookie);
-        mShutterSubscribers.removeItem((int) cookie);
-        mZoomSubscribers.removeItem((int) cookie);
-        mFaceSubscribers.removeItem((int) cookie);
-        }
-    else
-        {
-        CAMHAL_LOGEB("Message type 0x%x subscription no supported yet!", msgs);
+        CAMHAL_LOGVB("Event message type id=0x%x remove subscription request", eventMsg);
+        if ( CameraHalEvent::ALL_EVENTS == eventMsg)
+            {
+            //TODO: Process case by case
+            mFocusSubscribers.removeItem((int) cookie);
+            mShutterSubscribers.removeItem((int) cookie);
+            mZoomSubscribers.removeItem((int) cookie);
+            mFaceSubscribers.removeItem((int) cookie);
+            }
+        else
+            {
+            CAMHAL_LOGEA("Event message type id=0x%x subscription remove not supported yet!", eventMsg);
+            }
         }
 
     LOG_FUNCTION_NAME_EXIT;
