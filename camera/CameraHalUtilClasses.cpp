@@ -102,7 +102,7 @@ int EventProvider::disableEventNotification(int32_t frameTypes)
     LOG_FUNCTION_NAME;
     status_t ret = NO_ERROR;
 
-    mEventNotifier->disableMsgType(frameTypes<<MessageNotifier::FRAME_BIT_FIELD_POSITION
+    mEventNotifier->disableMsgType(frameTypes<<MessageNotifier::EVENT_BIT_FIELD_POSITION
                                     , mCookie
                                     );
 
