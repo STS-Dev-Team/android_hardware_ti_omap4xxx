@@ -40,15 +40,24 @@ static const  char KEY_VNF[];
 static const  char KEY_VNF_SUPPORTED[];
 static const  char KEY_SATURATION[];
 static const  char KEY_BRIGHTNESS[];
-static const  char KEY_EXPOSURE_MODE[];
 static const  char KEY_SUPPORTED_EXPOSURE[];
+static const  char KEY_EXPOSURE_MODE[];
+static const  char KEY_SUPPORTED_MANUAL_EXPOSURE_MIN[];
+static const  char KEY_SUPPORTED_MANUAL_EXPOSURE_MAX[];
+static const  char KEY_SUPPORTED_MANUAL_EXPOSURE_STEP[];
+static const  char KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN[];
+static const  char KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX[];
+static const  char KEY_SUPPORTED_MANUAL_GAIN_ISO_STEP[];
+static const  char KEY_MANUAL_EXPOSURE[];
+static const  char KEY_MANUAL_EXPOSURE_RIGHT[];
+static const  char KEY_MANUAL_GAIN_ISO[];
+static const  char KEY_MANUAL_GAIN_ISO_RIGHT[];
 static const  char KEY_CONTRAST[];
 static const  char KEY_SHARPNESS[];
 static const  char KEY_ISO[];
 static const  char KEY_SUPPORTED_ISO_VALUES[];
 static const  char KEY_SUPPORTED_IPP[];
 static const  char KEY_IPP[];
-static const  char KEY_MAN_EXPOSURE[];
 static const  char KEY_METERING_MODE[];
 static const  char KEY_PADDED_WIDTH[];
 static const  char KEY_PADDED_HEIGHT[];
@@ -103,16 +112,6 @@ static const char VIDEO_MINFRAMERATE_24[];
 static const char VIDEO_MINFRAMERATE_25[];
 static const char VIDEO_MINFRAMERATE_30[];
 static const char VIDEO_MINFRAMERATE_33[];
-
-//  TI extensions for Manual Gain and Manual Exposure
-static const char KEY_MANUAL_EXPOSURE_LEFT[];
-static const char KEY_MANUAL_EXPOSURE_RIGHT[];
-static const char KEY_MANUAL_EXPOSURE_MODES[];
-static const char KEY_MANUAL_GAIN_EV_RIGHT[];
-static const char KEY_MANUAL_GAIN_EV_LEFT[];
-static const char KEY_MANUAL_GAIN_ISO_RIGHT[];
-static const char KEY_MANUAL_GAIN_ISO_LEFT[];
-static const char KEY_MANUAL_GAIN_MODES[];
 
 //TI extensions for setting EXIF tags
 static const char KEY_EXIF_MODEL[];
@@ -179,7 +178,7 @@ static const  char WHITE_BALANCE_SUNSET[];
 static const  char WHITE_BALANCE_FACE[];
 
 // TI extensions to add exposure preset modes to android api
-static const  char EXPOSURE_MODE_OFF[];
+static const  char EXPOSURE_MODE_MANUAL[];
 static const  char EXPOSURE_MODE_AUTO[];
 static const  char EXPOSURE_MODE_NIGHT[];
 static const  char EXPOSURE_MODE_BACKLIGHT[];

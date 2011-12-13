@@ -657,10 +657,57 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         if ((valstr = params.get(TICameraParameters::KEY_EXPOSURE_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_EXPOSURE_MODES))) {
-                CAMHAL_LOGDB("Exposure set = %s", valstr);
+                CAMHAL_LOGDB("Exposure mode set = %s", valstr);
                 mParameters.set(TICameraParameters::KEY_EXPOSURE_MODE, valstr);
+                if (!strcmp(valstr, TICameraParameters::EXPOSURE_MODE_MANUAL)) {
+                    int manualVal;
+                    if ((valstr = params.get(TICameraParameters::KEY_MANUAL_EXPOSURE)) != NULL) {
+                        manualVal = params.getInt(TICameraParameters::KEY_MANUAL_EXPOSURE);
+                        if (manualVal < mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MIN) ||
+                                manualVal > mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MAX)) {
+                            CAMHAL_LOGEB("ERROR: Manual Exposure = %s is out of range - "
+                                            "setting minimum supported value", valstr);
+                            valstr = mParameters.get(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MIN);
+                        }
+                        CAMHAL_LOGDB("Manual Exposure = %s", valstr);
+                        mParameters.set(TICameraParameters::KEY_MANUAL_EXPOSURE, valstr);
+                    }
+                    if ((valstr = params.get(TICameraParameters::KEY_MANUAL_EXPOSURE_RIGHT)) != NULL) {
+                        manualVal = params.getInt(TICameraParameters::KEY_MANUAL_EXPOSURE_RIGHT);
+                        if (manualVal < mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MIN) ||
+                                manualVal > mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MAX)) {
+                            CAMHAL_LOGEB("ERROR: Manual Exposure right = %s is out of range - "
+                                            "setting minimum supported value", valstr);
+                            valstr = mParameters.get(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MIN);
+                        }
+                        CAMHAL_LOGDB("Manual Exposure right = %s", valstr);
+                        mParameters.set(TICameraParameters::KEY_MANUAL_EXPOSURE_RIGHT, valstr);
+                    }
+                    if ((valstr = params.get(TICameraParameters::KEY_MANUAL_GAIN_ISO)) != NULL) {
+                        manualVal = params.getInt(TICameraParameters::KEY_MANUAL_GAIN_ISO);
+                        if (manualVal < mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN) ||
+                                manualVal > mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX)) {
+                            CAMHAL_LOGEB("ERROR: Manual Gain = %s is out of range - "
+                                            "setting minimum supported value", valstr);
+                            valstr = mParameters.get(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN);
+                        }
+                        CAMHAL_LOGDB("Manual Gain = %s", valstr);
+                        mParameters.set(TICameraParameters::KEY_MANUAL_GAIN_ISO, valstr);
+                    }
+                    if ((valstr = params.get(TICameraParameters::KEY_MANUAL_GAIN_ISO_RIGHT)) != NULL) {
+                        manualVal = params.getInt(TICameraParameters::KEY_MANUAL_GAIN_ISO_RIGHT);
+                        if (manualVal < mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN) ||
+                                manualVal > mParameters.getInt(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX)) {
+                            CAMHAL_LOGEB("ERROR: Manual Gain right = %s is out of range - "
+                                            "setting minimum supported value", valstr);
+                            valstr = mParameters.get(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN);
+                        }
+                        CAMHAL_LOGDB("Manual Gain right = %s", valstr);
+                        mParameters.set(TICameraParameters::KEY_MANUAL_GAIN_ISO_RIGHT, valstr);
+                    }
+                }
             } else {
-                CAMHAL_LOGEB("ERROR: Invalid Exposure = %s", valstr);
+                CAMHAL_LOGEB("ERROR: Invalid Exposure mode = %s", valstr);
                 return BAD_VALUE;
             }
         }
@@ -3357,8 +3404,13 @@ void CameraHal::insertSupportedParams()
     p.set(CameraParameters::KEY_MAX_EXPOSURE_COMPENSATION, mCameraProperties->get(CameraProperties::SUPPORTED_EV_MAX));
     p.set(CameraParameters::KEY_MIN_EXPOSURE_COMPENSATION, mCameraProperties->get(CameraProperties::SUPPORTED_EV_MIN));
     p.set(CameraParameters::KEY_EXPOSURE_COMPENSATION_STEP, mCameraProperties->get(CameraProperties::SUPPORTED_EV_STEP));
-    p.set(CameraParameters::KEY_SUPPORTED_SCENE_MODES, mCameraProperties->get(CameraProperties::SUPPORTED_SCENE_MODES));
     p.set(TICameraParameters::KEY_SUPPORTED_EXPOSURE, mCameraProperties->get(CameraProperties::SUPPORTED_EXPOSURE_MODES));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MIN, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MIN));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_MAX, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MAX));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_EXPOSURE_STEP, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_STEP));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MIN));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MAX));
+    p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_GAIN_ISO_STEP, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_STEP));
     p.set(TICameraParameters::KEY_SUPPORTED_ISO_VALUES, mCameraProperties->get(CameraProperties::SUPPORTED_ISO_VALUES));
     p.set(CameraParameters::KEY_ZOOM_RATIOS, mCameraProperties->get(CameraProperties::SUPPORTED_ZOOM_RATIOS));
     p.set(CameraParameters::KEY_MAX_ZOOM, mCameraProperties->get(CameraProperties::SUPPORTED_ZOOM_STAGES));
@@ -3455,6 +3507,10 @@ void CameraHal::initDefaultParameters()
     p.set(TICameraParameters::KEY_BRIGHTNESS, mCameraProperties->get(CameraProperties::BRIGHTNESS));
     p.set(TICameraParameters::KEY_SHARPNESS, mCameraProperties->get(CameraProperties::SHARPNESS));
     p.set(TICameraParameters::KEY_EXPOSURE_MODE, mCameraProperties->get(CameraProperties::EXPOSURE_MODE));
+    p.set(TICameraParameters::KEY_MANUAL_EXPOSURE, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MIN));
+    p.set(TICameraParameters::KEY_MANUAL_EXPOSURE_RIGHT, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MIN));
+    p.set(TICameraParameters::KEY_MANUAL_GAIN_ISO, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MIN));
+    p.set(TICameraParameters::KEY_MANUAL_GAIN_ISO_RIGHT, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MIN));
     p.set(TICameraParameters::KEY_ISO, mCameraProperties->get(CameraProperties::ISO_MODE));
     p.set(TICameraParameters::KEY_IPP, mCameraProperties->get(CameraProperties::IPP));
     p.set(TICameraParameters::KEY_GBCE, mCameraProperties->get(CameraProperties::GBCE));
