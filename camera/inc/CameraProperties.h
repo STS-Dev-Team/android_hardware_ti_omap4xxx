@@ -67,6 +67,12 @@ public:
     static const char SUPPORTED_EFFECTS[];
     static const char SUPPORTED_ANTIBANDING[];
     static const char SUPPORTED_EXPOSURE_MODES[];
+    static const char SUPPORTED_MANUAL_EXPOSURE_MIN[];
+    static const char SUPPORTED_MANUAL_EXPOSURE_MAX[];
+    static const char SUPPORTED_MANUAL_EXPOSURE_STEP[];
+    static const char SUPPORTED_MANUAL_GAIN_ISO_MIN[];
+    static const char SUPPORTED_MANUAL_GAIN_ISO_MAX[];
+    static const char SUPPORTED_MANUAL_GAIN_ISO_STEP[];
     static const char SUPPORTED_EV_MIN[];
     static const char SUPPORTED_EV_MAX[];
     static const char SUPPORTED_EV_STEP[];

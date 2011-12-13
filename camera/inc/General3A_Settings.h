@@ -142,7 +142,7 @@ const userToOMX_LUT focus_UserToOMX [] = {
 };
 
 const userToOMX_LUT exposure_UserToOMX [] = {
-    { TICameraParameters::EXPOSURE_MODE_OFF, OMX_ExposureControlOff },
+    { TICameraParameters::EXPOSURE_MODE_MANUAL, OMX_ExposureControlOff },
     { TICameraParameters::EXPOSURE_MODE_AUTO, OMX_ExposureControlAuto },
     { TICameraParameters::EXPOSURE_MODE_NIGHT, OMX_ExposureControlNight },
     { TICameraParameters::EXPOSURE_MODE_BACKLIGHT, OMX_ExposureControlBackLight },
@@ -235,6 +235,10 @@ class Gen3A_settings{
     int Sharpness;
     int ISO;
     int FlashMode;
+    int ManualExposure;
+    int ManualExposureRight;
+    int ManualGain;
+    int ManualGainRight;
 
     unsigned int Brightness;
     OMX_BOOL ExposureLock;
@@ -264,6 +268,7 @@ enum E3ASettingsFlags
     SetExpLock              = 1 << 16,
     SetWBLock               = 1 << 17,
     SetMeteringAreas        = 1 << 18,
+    SetManualExposure       = 1 << 19,
 
     E3aSettingMax,
     E3AsettingsAll = ( ((E3aSettingMax -1 ) << 1) -1 ) /// all possible flags raised
