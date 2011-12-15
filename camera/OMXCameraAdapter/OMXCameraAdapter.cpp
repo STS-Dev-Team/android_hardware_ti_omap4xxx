@@ -281,12 +281,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex], 0, sizeof(OMXCameraPortParameters));
-    //Initialize 3A defaults
-    ret = apply3ADefaults(mParameters3A);
-    if ( NO_ERROR != ret ) {
-        CAMHAL_LOGEA("Couldn't apply 3A defaults!");
-        goto EXIT;
-    }
 
     LOG_FUNCTION_NAME_EXIT;
     return ErrorUtils::omxToAndroidError(eError);
