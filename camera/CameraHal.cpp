@@ -2470,22 +2470,21 @@ status_t CameraHal::takePicture( )
             burst = mParameters.getInt(TICameraParameters::KEY_BURST);
             }
 
-         //Allocate all buffers only in burst capture case
-         if ( burst > 1 )
-             {
+         if ( burst > 1 ) {
              bufferCount = CameraHal::NO_BUFFERS_IMAGE_CAPTURE;
-             if ( NULL != mAppCallbackNotifier.get() )
-                 {
+             if ( NULL != mAppCallbackNotifier.get() ) {
                  mAppCallbackNotifier->setBurst(true);
-                 }
              }
-         else
-             {
-             if ( NULL != mAppCallbackNotifier.get() )
-                 {
+         } else if ( mBracketingEnabled ) {
+             bufferCount = mBracketRangeNegative + 1;
+             if ( NULL != mAppCallbackNotifier.get() ) {
                  mAppCallbackNotifier->setBurst(false);
-                 }
              }
+         } else {
+             if ( NULL != mAppCallbackNotifier.get() ) {
+                 mAppCallbackNotifier->setBurst(false);
+             }
+         }
 
         // pause preview during normal image capture
         // do not pause preview if recording (video state)
