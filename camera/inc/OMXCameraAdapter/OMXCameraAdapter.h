@@ -665,7 +665,6 @@ private:
     status_t sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, unsigned int mask, OMXCameraPortParameters *port);
 
     status_t apply3Asettings( Gen3A_settings& Gen3A );
-    status_t apply3ADefaults(Gen3A_settings &Gen3A);
 
     // AutoConvergence
     status_t setAutoConvergence(const char *valstr,const CameraParameters &params);
