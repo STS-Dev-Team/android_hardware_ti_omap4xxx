@@ -16,6 +16,13 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := hwcomposer.omap4
 LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\"
 LOCAL_C_INCLUDES += external/libpng external/zlib
+
+ifdef OMAP_ENHANCEMENT_S3D
+LOCAL_C_INCLUDES += \
+    $(LOCAL_PATH)/../edid/inc
+LOCAL_SHARED_LIBRARIES += libedid
+endif
+
 # LOG_NDEBUG=0 means verbose logging enabled
 # LOCAL_CFLAGS += -DLOG_NDEBUG=0
 include $(BUILD_SHARED_LIBRARY)
