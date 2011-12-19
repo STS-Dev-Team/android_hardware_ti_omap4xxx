@@ -273,7 +273,7 @@ int startPlayback() {
     mMediaPlayerThrewError = false;
     player->setListener(mPlayerListener);
     player->setDataSource(mPlaybackFileName, NULL);
-    player->setVideoSurface(playbackSurface);
+    player->setVideoSurfaceTexture(playbackSurface->getSurfaceTexture());
     player->prepareAsync();
     bPlaying = true;
     return 0;
