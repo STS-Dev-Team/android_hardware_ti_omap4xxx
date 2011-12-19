@@ -30,5 +30,11 @@ BUILD_HEAPTRACKED_SHARED_LIBRARY:=$(BUILD_SHARED_LIBRARY)
 BUILD_HEAPTRACKED_EXECUTABLE:= $(BUILD_EXECUTABLE)
 endif
 
+ifeq ($(ENHANCED_DOMX),true)
+    DOMX_PATH:=hardware/ti/domx
+else
+    DOMX_PATH:=hardware/ti/omap4xxx/domx
+endif
+
 include $(call first-makefiles-under,$(LOCAL_PATH))
 endif
