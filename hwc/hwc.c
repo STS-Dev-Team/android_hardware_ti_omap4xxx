@@ -780,7 +780,7 @@ static int omap4_hwc_can_scale(__u32 src_w, __u32 src_h, __u32 dst_w, __u32 dst_
 
     /* for manual panels pclk is 0, and there are no pclk based scaling limits */
     if (!pclk)
-        return !(dst_w * limits->max_downscale < min_src_w);
+        return !(dst_w < src_w / limits->max_downscale / (is_2d ? limits->max_xdecim_2d : limits->max_xdecim_1d));
 
     /* :HACK: limit horizontal downscale well below theoretical limit as we saw display artifacts */
     if (dst_w * 4 < src_w)
