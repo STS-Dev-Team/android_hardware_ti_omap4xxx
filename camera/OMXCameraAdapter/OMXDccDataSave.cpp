@@ -38,7 +38,6 @@ status_t OMXCameraAdapter::initDccFileDataSave(OMX_HANDLETYPE* omxHandle, int po
     OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
     extraDataControl.nPortIndex = portIndex;
     extraDataControl.eExtraDataType = OMX_TI_DccData;
-    extraDataControl.eCameraView = OMX_2D;
     extraDataControl.bEnable = OMX_TRUE;
 
     eError =  OMX_SetConfig(*omxHandle,
