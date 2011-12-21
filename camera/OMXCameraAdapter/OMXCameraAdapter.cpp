@@ -3052,7 +3052,16 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             if ( NULL != extraData )
                 {
                 ancillaryData = (OMX_TI_ANCILLARYDATATYPE*) extraData->data;
-                snapshotFrame = ancillaryData->nDCCStatus;
+                if ((OMX_2D_Snap == ancillaryData->eCameraView)
+                    || (OMX_3D_Left_Snap == ancillaryData->eCameraView)
+                    || (OMX_3D_Right_Snap == ancillaryData->eCameraView))
+                    {
+                    snapshotFrame = OMX_TRUE;
+                    }
+                else
+                    {
+                    snapshotFrame = OMX_FALSE;
+                    }
                 }
             }
 

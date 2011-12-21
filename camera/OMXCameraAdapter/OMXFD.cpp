@@ -169,7 +169,6 @@ status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
         OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
         extraDataControl.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
         extraDataControl.eExtraDataType = OMX_FaceDetection;
-        extraDataControl.eCameraView = OMX_2D;
         if  ( enable )
             {
             extraDataControl.bEnable = OMX_TRUE;
