@@ -209,6 +209,7 @@ public:
 
     enum CaptureMode
         {
+        INITIAL_MODE = -1,
         HIGH_SPEED = 1,
         HIGH_QUALITY = 2,
         VIDEO_MODE = 3,
@@ -262,6 +263,16 @@ public:
         SetRotation             = 1 << 4,
         ECaptureSettingMax,
         ECapturesettingsAll = ( ((ECaptureSettingMax -1 ) << 1) -1 ) /// all possible flags raised
+    };
+
+    enum PreviewSettingsFlags {
+        SetLDC                  = 1 << 0,
+        SetNSF                  = 1 << 1,
+        SetCapMode              = 1 << 2,
+        SetVNF                  = 1 << 3,
+        SetVSTAB                = 1 << 4,
+        EPreviewSettingMax,
+        EPreviewSettingsAll = ( ((EPreviewSettingMax -1 ) << 1) -1 ) /// all possible flags raised
     };
 
     class GPSData
@@ -935,6 +946,7 @@ private:
     int mSnapshotCount;
     bool mCaptureConfigured;
     unsigned int mPendingCaptureSettings;
+    unsigned int mPendingPreviewSettings;
 
     //Temporal bracketing management data
     bool mBracketingSet;

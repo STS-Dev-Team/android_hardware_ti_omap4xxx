@@ -58,7 +58,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     status_t ret = NO_ERROR;
 
-
     mLocalVersionParam.s.nVersionMajor = 0x1;
     mLocalVersionParam.s.nVersionMinor = 0x1;
     mLocalVersionParam.s.nRevision = 0x0 ;
@@ -66,6 +65,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 
     mPending3Asettings = 0;//E3AsettingsAll;
     mPendingCaptureSettings = 0;
+    mPendingPreviewSettings = 0;
 
     if ( 0 != mInitSem.Count() )
         {
@@ -164,7 +164,11 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
         CAMHAL_LOGDB("Sensor %d selected successfully", mSensorIndex);
     }
 
+#ifdef CAMERAHAL_DEBUG
+
     printComponentVersion(mCameraAdapterParameters.mHandleComp);
+
+#endif
 
     mBracketingEnabled = false;
     mBracketingBuffersQueuedCount = 0;
@@ -180,7 +184,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mWaitingForSnapshot = false;
     mSnapshotCount = 0;
 
-    mCapMode = HIGH_QUALITY;
+    mCapMode = INITIAL_MODE;
     mIPP = IPP_NULL;
     mVstabEnabled = false;
     mVnfEnabled = false;
@@ -256,18 +260,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
             CAMHAL_LOGEA("Couldn't run omx callback handler thread");
             return ret;
         }
-    }
-
-    //Remove any unhandled events
-    if (!mEventSignalQ.isEmpty()) {
-        for (unsigned int i = 0 ;i < mEventSignalQ.size(); i++ ) {
-            TIUTILS::Message *msg = mEventSignalQ.itemAt(i);
-            //remove from queue and free msg
-            if ( NULL != msg ) {
-                free(msg);
-            }
-        }
-        mEventSignalQ.clear();
     }
 
     OMX_INIT_STRUCT_PTR (&mRegionPriority, OMX_TI_CONFIG_3A_REGION_PRIORITY);
@@ -1550,85 +1542,58 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
 
     mStateSwitchLock.lock();
 
-    if ( mComponentState == OMX_StateLoaded )
-        {
+    if ( mComponentState == OMX_StateLoaded ) {
 
-        ret = setLDC(mIPP);
-        if ( NO_ERROR != ret )
-            {
-            CAMHAL_LOGEB("setLDC() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            return ret;
-            }
-
-        ret = setNSF(mIPP);
-        if ( NO_ERROR != ret )
-            {
-            CAMHAL_LOGEB("setNSF() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            return ret;
-            }
-
-        ret = setCaptureMode(mCapMode);
-        if ( NO_ERROR != ret )
-            {
-            CAMHAL_LOGEB("setCaptureMode() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            return ret;
-            }
-
-        CAMHAL_LOGDB("Camera Mode = %d", mCapMode);
-
-        if( ( mCapMode == OMXCameraAdapter::VIDEO_MODE ) ||
-            (mSensorIndex == OMX_TI_StereoSensor) )
-            {
-            ///Enable/Disable Video Noise Filter
-            ret = enableVideoNoiseFilter(mVnfEnabled);
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VNF %x", ret);
-                return ret;
-                }
-
-            ///Enable/Disable Video Stabilization
-            ret = enableVideoStabilization(mVstabEnabled);
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VSTAB %x", ret);
-                return ret;
-                }
-            }
-        else
-            {
-            ret = enableVideoNoiseFilter(false);
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VNF %x", ret);
-                return ret;
-                }
-            ///Enable/Disable Video Stabilization
-            ret = enableVideoStabilization(false);
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VSTAB %x", ret);
-                return ret;
-                }
+        if (mPendingPreviewSettings & SetLDC) {
+            mPendingPreviewSettings &= ~SetLDC;
+            ret = setLDC(mIPP);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("setLDC() failed %d", ret);
             }
         }
+
+        if (mPendingPreviewSettings & SetNSF) {
+            mPendingPreviewSettings &= ~SetNSF;
+            ret = setNSF(mIPP);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("setNSF() failed %d", ret);
+            }
+        }
+
+        if (mPendingPreviewSettings & SetCapMode) {
+            mPendingPreviewSettings &= ~SetCapMode;
+            ret = setCaptureMode(mCapMode);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("setCaptureMode() failed %d", ret);
+            }
+        }
+
+        if(mCapMode == OMXCameraAdapter::VIDEO_MODE) {
+
+            if (mPendingPreviewSettings & SetVNF) {
+                mPendingPreviewSettings &= ~SetVNF;
+                ret = enableVideoNoiseFilter(mVnfEnabled);
+                if ( NO_ERROR != ret){
+                    CAMHAL_LOGEB("Error configuring VNF %x", ret);
+                }
+            }
+
+            if (mPendingPreviewSettings & SetVSTAB) {
+                mPendingPreviewSettings &= ~SetVSTAB;
+                ret = enableVideoStabilization(mVstabEnabled);
+                if ( NO_ERROR != ret) {
+                    CAMHAL_LOGEB("Error configuring VSTAB %x", ret);
+                }
+            }
+
+        }
+    }
 
     ret = setSensorOrientation(mSensorOrientation);
     if ( NO_ERROR != ret )
         {
         CAMHAL_LOGEB("Error configuring Sensor Orientation %x", ret);
         mSensorOrientation = 0;
-        }
-
-    ret = setVFramerate(mPreviewData->mMinFrameRate, mPreviewData->mMaxFrameRate);
-    if ( ret != NO_ERROR )
-        {
-        CAMHAL_LOGEB("VFR configuration failed 0x%x", ret);
-        LOG_FUNCTION_NAME_EXIT;
-        return ret;
         }
 
     if ( mComponentState == OMX_StateLoaded )
@@ -1885,7 +1850,6 @@ status_t OMXCameraAdapter::startPreview()
 
     mStateSwitchLock.unlock();
 
-    apply3Asettings(mParameters3A);
     //Queue all the buffers on preview port
     for(int index=0;index< mPreviewData->mMaxQueueable;index++)
         {
@@ -1934,10 +1898,6 @@ status_t OMXCameraAdapter::startPreview()
                                &extraDataControl);
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
-
-
-    if ( mPending3Asettings )
-        apply3Asettings(mParameters3A);
 
     //reset frame rate estimates
     mFPS = 0.0f;
@@ -2142,6 +2102,7 @@ status_t OMXCameraAdapter::stopPreview()
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
+    mPendingPreviewSettings = 0;
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
@@ -2456,78 +2417,54 @@ status_t OMXCameraAdapter::getFrameSize(size_t &width, size_t &height)
     if ( OMX_StateLoaded == mComponentState )
         {
 
-        ret = setLDC(mIPP);
-        if ( NO_ERROR != ret )
-            {
-            CAMHAL_LOGEB("setLDC() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            goto exit;
+        if (mPendingPreviewSettings & SetLDC) {
+            mPendingPreviewSettings &= ~SetLDC;
+            ret = setLDC(mIPP);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("setLDC() failed %d", ret);
+                LOG_FUNCTION_NAME_EXIT;
+                goto exit;
             }
+        }
 
-        ret = setNSF(mIPP);
-        if ( NO_ERROR != ret )
-            {
-            CAMHAL_LOGEB("setNSF() failed %d", ret);
-            LOG_FUNCTION_NAME_EXIT;
-            goto exit;
+        if (mPendingPreviewSettings & SetNSF) {
+            mPendingPreviewSettings &= ~SetNSF;
+            ret = setNSF(mIPP);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("setNSF() failed %d", ret);
+                LOG_FUNCTION_NAME_EXIT;
+                goto exit;
             }
+        }
 
-        ret = setCaptureMode(mCapMode);
-        if ( NO_ERROR != ret )
-            {
-            CAMHAL_LOGEB("setCaptureMode() failed %d", ret);
+        if (mPendingPreviewSettings & SetCapMode) {
+            mPendingPreviewSettings &= ~SetCapMode;
+            ret = setCaptureMode(mCapMode);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("setCaptureMode() failed %d", ret);
             }
+        }
 
-        if(mCapMode == OMXCameraAdapter::VIDEO_MODE)
-            {
-            if ( NO_ERROR == ret )
-                {
-                ///Enable/Disable Video Noise Filter
+        if(mCapMode == OMXCameraAdapter::VIDEO_MODE) {
+
+            if (mPendingPreviewSettings & SetVNF) {
+                mPendingPreviewSettings &= ~SetVNF;
                 ret = enableVideoNoiseFilter(mVnfEnabled);
+                if ( NO_ERROR != ret){
+                    CAMHAL_LOGEB("Error configuring VNF %x", ret);
                 }
+            }
 
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VNF %x", ret);
-                }
-
-            if ( NO_ERROR == ret )
-                {
-                ///Enable/Disable Video Stabilization
+            if (mPendingPreviewSettings & SetVSTAB) {
+                mPendingPreviewSettings &= ~SetVSTAB;
                 ret = enableVideoStabilization(mVstabEnabled);
-                }
-
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VSTAB %x", ret);
-                }
-             }
-        else
-            {
-            if ( NO_ERROR == ret )
-                {
-                ///Enable/Disable Video Noise Filter
-                ret = enableVideoNoiseFilter(false);
-                }
-
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VNF %x", ret);
-                }
-
-            if ( NO_ERROR == ret )
-                {
-                ///Enable/Disable Video Stabilization
-                ret = enableVideoStabilization(false);
-                }
-
-            if ( NO_ERROR != ret)
-                {
-                CAMHAL_LOGEB("Error configuring VSTAB %x", ret);
+                if ( NO_ERROR != ret) {
+                    CAMHAL_LOGEB("Error configuring VSTAB %x", ret);
                 }
             }
 
         }
+    }
 
     ret = setSensorOrientation(mSensorOrientation);
     if ( NO_ERROR != ret )
@@ -3065,22 +3002,6 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                 }
             }
 
-        recalculateFPS();
-
-        if ( 0 == ( mFrameCount % mFDSkip ) ) {
-            Mutex::Autolock lock(mFaceDetectionLock);
-            if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
-                detectFaces(pBuffHeader, fdResult, pPortParam->mWidth, pPortParam->mHeight);
-                if ( NULL != fdResult.get() ) {
-                    notifyFaceSubscribers(fdResult);
-                    fdResult.clear();
-                }
-                recalculateFDSkip(mFDSkip, mFPS, FD_PERIOD);
-            }
-        }
-
-        sniffDccFileDataSave(pBuffHeader);
-
         if ( (nextState & CAPTURE_ACTIVE) )
             {
             mPending3Asettings |= SetFocus;
@@ -3137,6 +3058,22 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         if(mDebugFcs)
             CAMHAL_LOGEB("C[%d] D[%d] E[%d]", mFramesWithDucati, mFramesWithDisplay, mFramesWithEncoder);
+
+        recalculateFPS();
+
+        if ( 0 == ( mFrameCount % mFDSkip ) ) {
+            Mutex::Autolock lock(mFaceDetectionLock);
+            if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
+                detectFaces(pBuffHeader, fdResult, pPortParam->mWidth, pPortParam->mHeight);
+                if ( NULL != fdResult.get() ) {
+                    notifyFaceSubscribers(fdResult);
+                    fdResult.clear();
+                }
+                recalculateFDSkip(mFDSkip, mFPS, FD_PERIOD);
+            }
+        }
+
+        sniffDccFileDataSave(pBuffHeader);
 
         stat |= advanceZoom();
 
