@@ -1527,7 +1527,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     if (ext->current.enabled && hwc_dev->ext_ovls) {
 #ifdef OMAP_ENHANCEMENT_S3D
         if (ext->current.docking && ix_s3d >= 0) {
-            if (clone_s3d_external_layer(hwc_dev, ix_docking) == 0) {
+            if (clone_s3d_external_layer(hwc_dev, ix_s3d) == 0) {
                 dsscomp->ovls[dsscomp->num_ovls - 2].cfg.zorder = z++;
                 dsscomp->ovls[dsscomp->num_ovls - 1].cfg.zorder = z++;
                 //For now, show only the left view of an S3D layer
