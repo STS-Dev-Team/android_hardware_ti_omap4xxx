@@ -997,6 +997,25 @@ static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *
         layer->compositionType = HWC_FRAMEBUFFER;
 
         if (omap4_hwc_is_valid_layer(hwc_dev, layer, handle)) {
+
+#ifdef OMAP_ENHANCEMENT_S3D
+            if (layer->type != eMono) {
+                //For now we can only handle 1 S3D layer, skip any additional ones
+                if (num->s3d > 1 || !hwc_dev->ext.dock.enabled || !hwc_dev->ext.s3d_capable) {
+                    layer->flags |= HWC_SKIP_LAYER;
+                    continue;
+                } else if (num->s3d == 0) {
+                    //For now, S3D layer is made a dockable layer to trigger docking logic.
+                    if (!dockable(layer)) {
+                        num->dockable++;
+                    }
+                    num->s3d++;
+                    hwc_dev->s3d_input_type = layer->type;
+                    hwc_dev->s3d_input_order = layer->viewOrder;
+                }
+            }
+#endif
+
             num->possible_overlay_layers++;
 
             /* NV12 layers can only be rendered on scaling overlays */
@@ -1015,23 +1034,6 @@ static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *
 
             if (is_protected(layer))
                 num->protected++;
-
-#ifdef OMAP_ENHANCEMENT_S3D
-            if (layer->type != eMono) {
-                //For now we can only handle 1 S3D layer, skip any additional ones
-                if (num->s3d > 1 || !hwc_dev->ext.dock.enabled || !hwc_dev->ext.s3d_capable) {
-                    layer->flags |= HWC_SKIP_LAYER;
-                } else if (num->s3d == 0) {
-                    //For now, S3D layer is made a dockable layer to trigger docking logic.
-                    if (!dockable(layer)) {
-                        num->dockable++;
-                    }
-                    num->s3d++;
-                    hwc_dev->s3d_input_type = layer->type;
-                    hwc_dev->s3d_input_order = layer->viewOrder;
-                }
-            }
-#endif
 
             num->mem += mem1d(handle);
         }
