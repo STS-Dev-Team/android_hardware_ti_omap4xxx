@@ -623,11 +623,15 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, valstr);
              }
 
-        if( (valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION)) != NULL)
-            {
-            CAMHAL_LOGDB("Mechanical Mialignment Correction is %s", valstr);
-            mParameters.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION, valstr);
+        if((valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION)) != NULL) {
+            if (isParameterValid(valstr,
+                    mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES))) {
+                CAMHAL_LOGDB("Mechanical Mialignment Correction is %s", valstr);
+                mParameters.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION, valstr);
+            } else {
+                mParameters.remove(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
             }
+        }
 
         if ((valstr = params.get(TICameraParameters::KEY_EXPOSURE_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_EXPOSURE_MODES))) {
