@@ -984,6 +984,8 @@ private:
 
     OMX_STATETYPE mComponentState;
 
+    OMX_TI_AUTOCONVERGENCEMODETYPE mAutoConv;
+    OMX_S32 mManualConv;
     bool mVnfEnabled;
     bool mVstabEnabled;
 
