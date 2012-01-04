@@ -255,11 +255,10 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
     //Set Auto Convergence Mode
     valstr = params.get((const char *) TICameraParameters::KEY_AUTOCONVERGENCE_MODE);
-    if ( valstr != NULL )
-        {
+    if ( valstr != NULL ) {
             setAutoConvergence(valstr, params);
             CAMHAL_LOGDB("AutoConvergenceMode %s", valstr);
-        }
+    }
 
     //Set Mechanical Misalignment Correction
     valstr = params.get((const char *) TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
@@ -283,106 +282,98 @@ status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const CameraP
     const char *str = NULL;
     Vector< sp<CameraArea> > tempAreas;
     OMX_S32 manualconvergence = 0;
+    int mode = 0;
 
     LOG_FUNCTION_NAME;
 
-    ACParams.nSize = (OMX_U32)sizeof(OMX_TI_CONFIG_CONVERGENCETYPE);
-    ACParams.nVersion = mLocalVersionParam;
-    ACParams.nPortIndex = OMX_ALL;
-
-    OMX_GetConfig(mCameraAdapterParameters.mHandleComp, (OMX_INDEXTYPE)OMX_TI_IndexConfigAutoConvergence, &ACParams);
-
-    OMXCameraPortParameters * mPreviewData;
-    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
-
-
-    if ( strcmp (pValstr, (const char *) TICameraParameters::AUTOCONVERGENCE_MODE_DISABLE) == 0 )
-        {
-        ACParams.eACMode = OMX_TI_AutoConvergenceModeDisable;
-        }
-    else if ( strcmp (pValstr, (const char *) TICameraParameters::AUTOCONVERGENCE_MODE_FRAME) == 0 )
-        {
-        ACParams.eACMode = OMX_TI_AutoConvergenceModeFrame;
-        }
-    else if ( strcmp (pValstr, (const char *) TICameraParameters::AUTOCONVERGENCE_MODE_CENTER) == 0 )
-        {
-        ACParams.eACMode = OMX_TI_AutoConvergenceModeCenter;
-        }
-    else if ( strcmp (pValstr, (const char *) TICameraParameters::AUTOCONVERGENCE_MODE_TOUCH) == 0 )
-        {
-        ACParams.eACMode = OMX_TI_AutoConvergenceModeFocusFaceTouch;
-
+    mode = getLUTvalue_HALtoOMX(pValstr, mAutoConvergenceLUT);
+    if ( OMX_TI_AutoConvergenceModeFocusFaceTouch == mode ) {
         Mutex::Autolock lock(mTouchAreasLock);
 
         str = params.get((const char *)CameraParameters::KEY_METERING_AREAS);
 
         if ( NULL != str ) {
             ret = CameraArea::parseAreas(str, ( strlen(str) + 1 ), tempAreas);
-        }
-        else {
-            CAMHAL_LOGEB("Touch areas not received in %s", CameraParameters::KEY_METERING_AREAS);
-            ret = -EINVAL;
+        } else {
+            CAMHAL_LOGEB("Touch areas not received in %s",
+                         CameraParameters::KEY_METERING_AREAS);
+            ret = BAD_VALUE;
         }
 
-        if ( (NO_ERROR == ret) && CameraArea::areAreasDifferent(mTouchAreas, tempAreas) )
-            {
+        if ( NO_ERROR != ret ) {
+            return ret;
+        } else if ( CameraArea::areAreasDifferent(mTouchAreas, tempAreas) ||
+                    ( mAutoConv != mode ) ) {
             mTouchAreas.clear();
             mTouchAreas = tempAreas;
-            if (1 == mTouchAreas.size())
-                {
-                // transform the coordinates to 3A-type coordinates
-                mTouchAreas.itemAt(0)->transfrom((size_t)mPreviewData->mWidth,
-                                                 (size_t)mPreviewData->mHeight,
-                                                 (size_t&) ACParams.nACProcWinStartY,
-                                                 (size_t&) ACParams.nACProcWinStartX,
-                                                 (size_t&) ACParams.nACProcWinWidth,
-                                                 (size_t&) ACParams.nACProcWinHeight);
-                }
-            }
+        } else {
+            return NO_ERROR;
         }
-    else if ( strcmp (pValstr, (const char *) TICameraParameters::AUTOCONVERGENCE_MODE_MANUAL) == 0 )
-        {
+
+    } else if ( OMX_TI_AutoConvergenceModeManual  == mode ) {
         str = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE);
-        if ( str != NULL )
-            {
+        if ( str != NULL ) {
             manualconvergence = (OMX_S32)params.getInt(TICameraParameters::KEY_MANUAL_CONVERGENCE);
+            if ( ( mAutoConv != mode ) || ( manualconvergence != mManualConv ) ) {
+                mManualConv = manualconvergence;
+            } else {
+                return NO_ERROR;
             }
-
-        ACParams.eACMode = OMX_TI_AutoConvergenceModeManual;
+        } else {
+            return BAD_VALUE;
         }
-    else
-        {
-        CAMHAL_LOGEB("Wrong AutoConvergence mode %s", pValstr);
-        ret = -EINVAL;
-        }
+    } else if ( mAutoConv == mode ) {
+        return NO_ERROR;
+    } else if ( NAME_NOT_FOUND == mode ) {
+        return mode;
+    }
 
-    if (ret != -EINVAL)
-        {
-        ACParams.nManualConverence = manualconvergence;
-        CAMHAL_LOGDB("nSize %d", (int)ACParams.nSize);
-        CAMHAL_LOGDB("nPortIndex %d", (int)ACParams.nPortIndex);
-        CAMHAL_LOGDB("nManualConverence %d", (int)ACParams.nManualConverence);
-        CAMHAL_LOGDB("eACMode %d", (int)ACParams.eACMode);
-        CAMHAL_LOGDB("nACProcWinStartX %d", (int)ACParams.nACProcWinStartX);
-        CAMHAL_LOGDB("nACProcWinStartY %d", (int)ACParams.nACProcWinStartY);
-        CAMHAL_LOGDB("nACProcWinWidth %d", (int)ACParams.nACProcWinWidth);
-        CAMHAL_LOGDB("nACProcWinHeight %d", (int)ACParams.nACProcWinHeight);
-        CAMHAL_LOGDB("bACStatus %d", (int)ACParams.bACStatus);
+    mAutoConv = static_cast<OMX_TI_AUTOCONVERGENCEMODETYPE> (mode);
 
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                                (OMX_INDEXTYPE)OMX_TI_IndexConfigAutoConvergence,
-                                &ACParams);
+    OMXCameraPortParameters * mPreviewData;
+    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
 
-        if ( eError != OMX_ErrorNone )
-            {
-            CAMHAL_LOGEB("Error while setting AutoConvergence 0x%x", eError);
-            ret = -EINVAL;
-            }
-        else
-            {
-            CAMHAL_LOGDA("AutoConvergence applied successfully");
-            }
-        }
+    ACParams.nSize = (OMX_U32)sizeof(OMX_TI_CONFIG_CONVERGENCETYPE);
+    ACParams.nVersion = mLocalVersionParam;
+    ACParams.nPortIndex = OMX_ALL;
+
+    OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
+                  (OMX_INDEXTYPE)OMX_TI_IndexConfigAutoConvergence,
+                  &ACParams);
+
+    ACParams.eACMode = mAutoConv;
+    ACParams.nManualConverence = mManualConv;
+
+    if (1 == mTouchAreas.size()) {
+        // transform the coordinates to 3A-type coordinates
+        mTouchAreas.itemAt(0)->transfrom((size_t)mPreviewData->mWidth,
+                                         (size_t)mPreviewData->mHeight,
+                                         (size_t&) ACParams.nACProcWinStartY,
+                                         (size_t&) ACParams.nACProcWinStartX,
+                                         (size_t&) ACParams.nACProcWinWidth,
+                                         (size_t&) ACParams.nACProcWinHeight);
+    }
+
+    CAMHAL_LOGDB("nSize %d", (int)ACParams.nSize);
+    CAMHAL_LOGDB("nPortIndex %d", (int)ACParams.nPortIndex);
+    CAMHAL_LOGDB("nManualConverence %d", (int)ACParams.nManualConverence);
+    CAMHAL_LOGDB("eACMode %d", (int)ACParams.eACMode);
+    CAMHAL_LOGDB("nACProcWinStartX %d", (int)ACParams.nACProcWinStartX);
+    CAMHAL_LOGDB("nACProcWinStartY %d", (int)ACParams.nACProcWinStartY);
+    CAMHAL_LOGDB("nACProcWinWidth %d", (int)ACParams.nACProcWinWidth);
+    CAMHAL_LOGDB("nACProcWinHeight %d", (int)ACParams.nACProcWinHeight);
+    CAMHAL_LOGDB("bACStatus %d", (int)ACParams.bACStatus);
+
+    eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                            (OMX_INDEXTYPE)OMX_TI_IndexConfigAutoConvergence,
+                            &ACParams);
+
+    if ( eError != OMX_ErrorNone ) {
+        CAMHAL_LOGEB("Error while setting AutoConvergence 0x%x", eError);
+        ret = BAD_VALUE;
+    } else {
+        CAMHAL_LOGDA("AutoConvergence applied successfully");
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
