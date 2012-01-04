@@ -1068,10 +1068,11 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
     }
 
     /* Set Temproary Port resolution.
-    * For resolution with height > 1008,resolution cannot be set without configuring orientation.
+    * For resolution with height >= 720,
+    * resolution cannot be set without configuring orientation.
     * So we first set a temp resolution. We have used VGA
     */
-    if ( mPreviewData->mHeight >= 1008 ) {
+    if ( mPreviewData->mHeight >= 720 ) {
         tmpHeight = mPreviewData->mHeight;
         tmpWidth = mPreviewData->mWidth;
         mPreviewData->mWidth = 640;
