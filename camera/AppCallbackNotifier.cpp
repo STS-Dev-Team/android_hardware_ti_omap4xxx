@@ -246,7 +246,9 @@ void AppCallbackNotifier::errorNotify(int error)
     CAMHAL_LOGEB("AppCallbackNotifier received error %d", error);
 
     // If it is a fatal error abort here!
-    if((error == CAMERA_ERROR_FATAL) || (error == CAMERA_ERROR_HARD)) {
+    // If TILER is Out of memory we notify Mediaserver so that Memory is cleared and we can restart usecase
+    if((error == CAMERA_ERROR_FATAL) || (error == CAMERA_ERROR_HARD) || (error == -ENOMEM))
+    {
         //We kill media server if we encounter these errors as there is
         //no point continuing and apps also don't handle errors other
         //than media server death always.
