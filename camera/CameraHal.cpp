@@ -2009,7 +2009,7 @@ bool CameraHal::setVideoModeParameters(const CameraParameters& params)
         // Set VNF
         if (params.get(TICameraParameters::KEY_VNF) == NULL) {
             CAMHAL_LOGDA("Enable VNF");
-            mParameters.set(TICameraParameters::KEY_VNF, "1");
+            mParameters.set(TICameraParameters::KEY_VNF, CameraParameters::TRUE);
             restartPreviewRequired = true;
         } else {
             valstr = mParameters.get(TICameraParameters::KEY_VNF);
@@ -2025,7 +2025,7 @@ bool CameraHal::setVideoModeParameters(const CameraParameters& params)
         valstr = mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION);
         if (valstr && (strcmp(valstr, CameraParameters::TRUE) == 0) && (mPreviewWidth == 1920)) {
             CAMHAL_LOGDA("Force Enable VNF for 1080p");
-            mParameters.set(TICameraParameters::KEY_VNF, "1");
+            mParameters.set(TICameraParameters::KEY_VNF, CameraParameters::TRUE);
             restartPreviewRequired = true;
         }
     }
