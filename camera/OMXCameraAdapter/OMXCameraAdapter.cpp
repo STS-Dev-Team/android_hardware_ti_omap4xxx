@@ -787,6 +787,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
     int sensorID = -1;
     size_t bufferCount;
     status_t ret = NO_ERROR;
+    status_t overclockStatus = NO_ERROR;
 
     LOG_FUNCTION_NAME;
 
@@ -826,9 +827,9 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
             ( ( sensorID == SENSORID_OV5640 ) &&
               ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
               ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ){
-            setSensorOverclock(true);
+            overclockStatus = setSensorOverclock(true);
         } else {
-            setSensorOverclock(false);
+            overclockStatus = setSensorOverclock(false);
         }
 
         portCheck.format.video.xFramerate       = portParams.mFrameRate<<16;
@@ -948,7 +949,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return ErrorUtils::omxToAndroidError(eError) | overclockStatus;
 
     EXIT:
 
@@ -956,7 +957,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return ErrorUtils::omxToAndroidError(eError) | overclockStatus;
 }
 
 status_t OMXCameraAdapter::flushBuffers()
@@ -2153,7 +2154,6 @@ status_t OMXCameraAdapter::setSensorOverclock(bool enable)
         if ( OMX_ErrorNone != eError )
             {
             CAMHAL_LOGEB("Error while setting Sensor overclock 0x%x", eError);
-            ret = BAD_VALUE;
             }
         else
             {
@@ -2163,7 +2163,7 @@ status_t OMXCameraAdapter::setSensorOverclock(bool enable)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ret;
+    return ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::printComponentVersion(OMX_HANDLETYPE handle)
