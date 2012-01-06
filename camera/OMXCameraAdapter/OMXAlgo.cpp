@@ -253,11 +253,13 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         mOMXStateSwitch = true;
         }
 
-    //Set Auto Convergence Mode
-    valstr = params.get((const char *) TICameraParameters::KEY_AUTOCONVERGENCE_MODE);
-    if ( valstr != NULL ) {
-            setAutoConvergence(valstr, params);
-            CAMHAL_LOGDB("AutoConvergenceMode %s", valstr);
+    if ( mSensorIndex == OMX_TI_StereoSensor ) {
+        //Set Auto Convergence Mode
+        valstr = params.get((const char *) TICameraParameters::KEY_AUTOCONVERGENCE_MODE);
+        if ( valstr != NULL ) {
+                setAutoConvergence(valstr, params);
+                CAMHAL_LOGDB("AutoConvergenceMode %s", valstr);
+        }
     }
 
     //Set Mechanical Misalignment Correction
