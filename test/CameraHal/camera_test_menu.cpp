@@ -1373,6 +1373,8 @@ int functional_menu() {
         printf("   T. Stop face detection \n");
         printf("   G. Touch/Focus area AF\n");
         printf("   y. Metering area\n");
+        printf("   Y. Metering area center\n");
+        printf("   N. Metering area average\n");
         printf("   f. Auto Focus/Half Press\n");
         printf("   I. AF Timeout       %s\n", afTimeout[afTimeoutIdx]);
         printf("   J.Flash:              %s\n", flashModes[flashIdx]);
@@ -2046,8 +2048,6 @@ int functional_menu() {
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
 
-            params.remove(CameraParameters::KEY_FOCUS_AREAS);
-
             break;
 
         case 'y':
@@ -2058,7 +2058,25 @@ int functional_menu() {
                 camera->setParameters(params.flatten());
             }
 
-            params.remove(CameraParameters::KEY_METERING_AREAS);
+            break;
+
+        case 'Y':
+
+            params.set(CameraParameters::KEY_METERING_AREAS, TEST_METERING_AREA_CENTER);
+
+            if ( hardwareActive ) {
+                camera->setParameters(params.flatten());
+            }
+
+            break;
+
+        case 'N':
+
+            params.set(CameraParameters::KEY_METERING_AREAS, TEST_METERING_AREA_AVERAGE);
+
+            if ( hardwareActive ) {
+                camera->setParameters(params.flatten());
+            }
 
             break;
 
