@@ -1071,6 +1071,13 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
         mPreviewData->mWidth = 640;
         mPreviewData->mHeight = 480;
         ret = setFormat(OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW, *mPreviewData);
+
+        // Handles one corner case in which sensor overclocking
+        // would incorrectly return an error.
+        if ( BAD_VALUE == ret ) {
+            ret = setFormat (OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW, *mPreviewData);
+        }
+
         if ( ret != NO_ERROR ) {
             CAMHAL_LOGEB("setFormat() failed %d", ret);
         }
@@ -1099,6 +1106,14 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
     if ( NO_ERROR == ret ) {
         ret = setFormat (mCameraAdapterParameters.mPrevPortIndex,
                          mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex]);
+
+        // Handles one corner case in which sensor overclocking
+        // would incorrectly return an error.
+        if ( BAD_VALUE == ret ) {
+            ret = setFormat (mCameraAdapterParameters.mPrevPortIndex,
+                             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex]);
+        }
+
         if ( NO_ERROR != ret ) {
             CAMHAL_LOGEB("setFormat() failed %d", ret);
         }
