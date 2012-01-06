@@ -882,8 +882,6 @@ int execute_functional_script(char *script) {
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
 
-                params.remove(CameraParameters::KEY_FOCUS_AREAS);
-
                 break;
 
             case 'y':
@@ -893,8 +891,6 @@ int execute_functional_script(char *script) {
                 if ( hardwareActive ) {
                     camera->setParameters(params.flatten());
                 }
-
-                params.remove(CameraParameters::KEY_METERING_AREAS);
 
                 break;
 
