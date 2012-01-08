@@ -2098,7 +2098,6 @@ status_t OMXCameraAdapter::stopPreview()
 
     mFirstTimeInit = true;
     mPendingCaptureSettings = 0;
-    mPendingPreviewSettings = 0;
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
