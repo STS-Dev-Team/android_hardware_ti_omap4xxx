@@ -273,7 +273,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 } else {
                     CAMHAL_LOGEB("Invalid preview format: %s. Supported: %s", valstr,
                         mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FORMATS));
-                    return -EINVAL;
+                    return BAD_VALUE;
                 }
             }
 
@@ -286,7 +286,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                                     params.get(TICameraParameters::KEY_VNF));
                 } else if (strcmp(valstr, CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGEB("ERROR: Invalid VNF: %s", valstr);
-                    ret = -EINVAL;
+                    return BAD_VALUE;
                 } else {
                     mParameters.set(TICameraParameters::KEY_VNF,
                                     CameraParameters::FALSE);
@@ -304,7 +304,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                                     params.get(CameraParameters::KEY_VIDEO_STABILIZATION));
                 } else if (strcmp(valstr, CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGEB("ERROR: Invalid VSTAB: %s", valstr);
-                    ret = -EINVAL;
+                    return BAD_VALUE;
                 } else {
                     mParameters.set(CameraParameters::KEY_VIDEO_STABILIZATION,
                                     CameraParameters::FALSE);
@@ -323,7 +323,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                     mParameters.set(TICameraParameters::KEY_IPP, valstr);
                 } else {
                     CAMHAL_LOGEB("ERROR: Invalid IPP mode: %s", valstr);
-                    ret = -EINVAL;
+                    return BAD_VALUE;
                 }
             }
 
@@ -342,7 +342,7 @@ int CameraHal::setParameters(const CameraParameters& params)
         params.getPreviewSize(&w, &h);
         if (w == -1 && h == -1) {
             CAMHAL_LOGEA("Unable to get preview size");
-            return -EINVAL;
+            return BAD_VALUE;
         }
 
         int oldWidth, oldHeight;
@@ -365,7 +365,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES))) )
             {
             CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
-            return -EINVAL;
+            return BAD_VALUE;
             }
         else
             {
@@ -443,7 +443,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(CameraParameters::KEY_FOCUS_MODE, valstr);
              } else {
                 CAMHAL_LOGEB("ERROR: Invalid FOCUS mode = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
              }
         }
 
@@ -453,7 +453,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.setPictureFormat(valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid picture format: %s",valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -486,7 +486,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.setPictureSize(w, h);
         } else {
             CAMHAL_LOGEB("ERROR: Invalid picture resolution %d x %d", w, h);
-            ret = -EINVAL;
+            return BAD_VALUE;
         }
 
         CAMHAL_LOGDB("Picture Size by App %d x %d", w, h);
@@ -497,7 +497,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_BURST, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Burst value: %s",valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -520,7 +520,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                                       mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES)))
             {
                 CAMHAL_LOGEA("Invalid frame rate ");
-                return -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -539,7 +539,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             if ( ( 0 > minFPS ) || ( 0 > maxFPS ) )
               {
                 CAMHAL_LOGEA("ERROR: FPS Range is negative!");
-                return -EINVAL;
+                return BAD_VALUE;
               }
 
             framerate = maxFPS /CameraHal::VFR_SCALE;
@@ -582,13 +582,13 @@ int CameraHal::setParameters(const CameraParameters& params)
         if ( ( 0 == minFPS ) || ( 0 == maxFPS ) )
           {
             CAMHAL_LOGEA("ERROR: FPS Range is invalid!");
-            ret = -EINVAL;
+            return BAD_VALUE;
           }
 
         if ( maxFPS < minFPS )
           {
             CAMHAL_LOGEA("ERROR: Max FPS is smaller than Min FPS!");
-            ret = -EINVAL;
+            return BAD_VALUE;
           }
         CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
         mParameters.setPreviewFrameRate(framerate);
@@ -639,7 +639,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_EXPOSURE_MODE, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Exposure = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -649,7 +649,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                mParameters.set(CameraParameters::KEY_WHITE_BALANCE, valstr);
             } else {
                CAMHAL_LOGEB("ERROR: Invalid white balance  = %s", valstr);
-               ret = -EINVAL;
+               return BAD_VALUE;
             }
         }
 
@@ -659,7 +659,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_CONTRAST, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Contrast  = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -669,7 +669,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_SHARPNESS, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Sharpness = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -679,7 +679,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_SATURATION, valstr);
              } else {
                 CAMHAL_LOGEB("ERROR: Invalid Saturation = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -689,7 +689,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_BRIGHTNESS, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Brightness = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
          }
 
@@ -699,7 +699,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(CameraParameters::KEY_ANTIBANDING, valstr);
              } else {
                 CAMHAL_LOGEB("ERROR: Invalid Antibanding = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
              }
          }
 
@@ -709,7 +709,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(TICameraParameters::KEY_ISO, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid ISO = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -754,7 +754,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(CameraParameters::KEY_SCENE_MODE, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Scene mode = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -764,7 +764,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(CameraParameters::KEY_FLASH_MODE, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Flash mode = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
@@ -774,7 +774,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(CameraParameters::KEY_EFFECT, valstr);
              } else {
                 CAMHAL_LOGEB("ERROR: Invalid Effect = %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
              }
         }
 
@@ -909,7 +909,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mParameters.set(CameraParameters::KEY_ZOOM, valstr);
              } else {
                 CAMHAL_LOGEB("ERROR: Invalid Zoom: %s", valstr);
-                ret = -EINVAL;
+                return BAD_VALUE;
             }
         }
 
