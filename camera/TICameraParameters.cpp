@@ -19,7 +19,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <TICameraParameters.h>
-#include "CameraHal.h"
 
 namespace android {
 
