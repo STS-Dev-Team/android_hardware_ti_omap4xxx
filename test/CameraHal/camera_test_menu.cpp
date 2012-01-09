@@ -56,8 +56,8 @@ int tempBracketIdx = 0;
 int measurementIdx = 0;
 int expBracketIdx = 0;
 int AutoConvergenceModeIDX = 0;
-int ManualConvergenceValuesIDX = 0;
-int ManualConvergenceDefaultValueIDX = 2;
+int ManualConvergenceValues = 0;
+int ManualConvergenceDefaultValue = 0;
 int gbceIDX = 0;
 int glbceIDX = 0;
 int rotation = 0;
@@ -131,6 +131,7 @@ char *effectssStr = 0;
 char *captureSizeStr  = 0;
 char *modevaluesstr = 0;
 char *videosnapshotstr = 0;
+char *autoconvergencestr = 0;
 char *VcaptureSizeStr  = 0;
 char *thumbnailSizeStr  = 0;
 char *vstabstr = 0;
@@ -170,9 +171,25 @@ fps_Array * fpsArray = 0;
 
 int enableMisalignmentCorrectionIdx = 0;
 
+char **autoconvergencemode = 0;
+int numAutoConvergence = 0;
+const char MeteringAreas[] = "(-656,-671,188,454,1)";
+
+char **stereoLayout;
+int numLay = 0;
+
+char **stereoCapLayout;
+int numCLay = 0;
+
+int stereoLayoutIDX = 0;
+int stereoCapLayoutIDX = 0;
+
+char *layoutstr =0;
+char *capturelayoutstr =0;
+
 char dir_path[80] = SDCARD_PATH;
 
-const char *cameras[] = {"Primary Camera", "Secondary Camera 1", "Stereo Camera", "USB Camera", "Fake Camera"};
+const char *cameras[] = {"Primary Camera", "Secondary Camera 1", "Stereo Camera"};
 const char *measurement[] = {"disable", "enable"};
 const char *expBracketing[] = {"disable", "enable"};
 const char *expBracketingRange[] = {"", "-30,0,30,0,-30"};
@@ -188,11 +205,6 @@ const char *ipp_mode[] = { "off", "Chroma Suppression", "Edge Enhancement" };
 const char *ipp_mode[] = { "off", "ldc", "nsf", "ldc-nsf" };
 #endif
 
-const char CameraParameters::FLASH_MODE_OFF[] = "off";
-const char CameraParameters::FLASH_MODE_AUTO[] = "auto";
-const char CameraParameters::FLASH_MODE_ON[] = "on";
-const char CameraParameters::FLASH_MODE_RED_EYE[] = "red-eye";
-const char CameraParameters::FLASH_MODE_TORCH[] = "torch";
 
 const char *caf [] = { "Off", "On" };
 
@@ -214,6 +226,31 @@ param_Array previewSize [] = {
   { 992, 560, "WVGA4"},
   { 1280, 720, "HD" },
   { 1920, 1080, "FULLHD"},
+  { 240, 160,"240x160"},
+  { 768, 576,  "768x576" },
+  { 960, 720, "960x720"},
+  { 256, 96,"SQCIF"},// stereo
+  { 128, 192, "SQCIF"},
+  { 352, 144,"QCIF"},
+  { 176, 288, "QCIF"},
+  { 480, 160, "240x160"},
+  { 240, 320, "240x160"},
+  { 704, 288, "CIF"},
+  { 352, 576, "CIF"},
+  { 640, 240,"QVGA"},
+  { 320, 480, "QVGA"},
+  { 1280, 480,"VGA"},
+  { 640, 960, "VGA"},
+  { 1536, 576,"768x576"},
+  { 768, 1152, "768x576"},
+  { 1440, 480,"NTSC"},
+  { 720, 960,"NTSC"},
+  { 1440, 576, "PAL"},
+  { 720, 1152, "PAL"},
+  { 1600, 480, "WVGA"},
+  { 800, 960,"WVGA"},
+  { 2560, 720, "HD"},
+  { 1280, 1440,  "HD"}
 };
 
 size_t length_previewSize =  ARRAY_SIZE(previewSize);
@@ -231,15 +268,15 @@ param_Array thumbnailSize [] = {
 size_t length_thumbnailSize =  ARRAY_SIZE(thumbnailSize);
 
 param_Array VcaptureSize [] = {
+  { 0,   0,  "NULL"},
   { 128, 96, "SQCIF" },
   { 176, 144, "QCIF" },
   { 352, 288, "CIF" },
   { 320, 240, "QVGA" },
+  { 352, 288, "CIF" },
   { 640, 480, "VGA" },
-  { 704, 480, "TVNTSC" },
-  { 704, 576, "TVPAL" },
-  { 720, 480, "D1NTSC" },
-  { 720, 576, "D1PAL" },
+  { 720, 480, "NTSC" },
+  { 720, 576, "PAL" },
   { 800, 480, "WVGA" },
   #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
   { 848, 480, "WVGA2"},
@@ -248,6 +285,31 @@ param_Array VcaptureSize [] = {
   #endif
   { 1280, 720, "HD" },
   { 1920, 1080, "FULLHD"},
+  { 240, 160,"240x160"},
+  { 768, 576,  "768x576" },
+  { 960, 720, "960x720"},
+  { 256, 96,"SQCIF"},// stereo
+  { 128, 192, "SQCIF"},
+  { 352, 144,"QCIF"},
+  { 176, 288, "QCIF"},
+  { 480, 160, "240x160"},
+  { 240, 320, "240x160"},
+  { 704, 288, "CIF"},
+  { 352, 576, "CIF"},
+  { 640, 240,"QVGA"},
+  { 320, 480, "QVGA"},
+  { 1280, 480,"VGA"},
+  { 640, 960, "VGA"},
+  { 1536, 576,"768x576"},
+  { 768, 1152, "768x576"},
+  { 1440, 480,"NTSC"},
+  { 720, 960,"NTSC"},
+  { 1440, 576, "PAL"},
+  { 720, 1152, "PAL"},
+  { 1600, 480, "WVGA"},
+  { 800, 960,"WVGA"},
+  { 2560, 720, "HD"},
+  { 1280, 1440,  "HD"}
 };
 
 size_t lenght_Vcapture_size = ARRAY_SIZE(VcaptureSize);
@@ -265,6 +327,20 @@ param_Array captureSize[] = {
   { 3264, 2448,  "8MP" },
   { 3648, 2736, "10MP"},
   { 4032, 3024, "12MP"},
+  { 640, 240,   "QVGA"},  //stereo
+  { 320, 480, "QVGA"},
+  { 1280, 480, "VGA"},
+  { 640, 960,  "VGA"},
+  { 2560, 960,  "1280x960"},
+  { 1280, 1920,  "1280x960"},
+  { 2304, 864,  "1MP"},
+  { 1152, 1728,   "1MP"},
+  { 2560, 1024,  "1.3MP"},
+  { 1280, 2048, "1.3MP"},
+  { 3200, 1200,   "2MP"},
+  { 1600, 2400,  "2MP"},
+  { 4096, 1536,  "3MP"},
+  { 2048, 3072,  "3MP"}
 };
 
 size_t length_capture_Size = ARRAY_SIZE(captureSize);
@@ -338,10 +414,6 @@ pixel_format pixelformat[] = {
   };
 
 const char *gbce[] = {"disable", "enable"};
-const char *autoconvergencemode[] = { "mode-disable", "mode-frame", "mode-center", "mode-fft", "mode-manual" };
-const char *manualconvergencevalues[] = { "-100", "-50", "-30", "-25", "0", "25", "50", "100" };
-
-
 
 int VbitRateIDX = ARRAY_SIZE(VbitRate) - 1;
 
@@ -706,7 +778,7 @@ void printSupportedParams()
 {
     printf("\n\r\tSupported Cameras: %s", params.get("camera-indexes"));
     printf("\n\r\tSupported Picture Sizes: %s", params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES));
-    printf("\n\r\tSupported Picture Formats: %s", params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS));
+    printf("\n\r\tSupported Picture Formats: %s", params.get(KEY_PICTURE_CODING_VALUES));
     printf("\n\r\tSupported Video Formats: %s", params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
     printf("\n\r\tSupported Preview Sizes: %s", params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
     printf("\n\r\tSupported Preview Formats: %s", params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS));
@@ -968,6 +1040,9 @@ int openCamera() {
     smoothzoomstr = new char[256];
     modevaluesstr = new char[256];
     videosnapshotstr = new char[256];
+    autoconvergencestr = new char[256];
+    layoutstr = new char[256];
+    capturelayoutstr = new char[256];
 
     printf("openCamera(camera_index=%d)\n", camera_index);
     camera = Camera::connect(camera_index);
@@ -994,22 +1069,7 @@ int openCamera() {
     hardwareActive = true;
 
     getParametersFromCapabilities();
-    getSupportedParameters(antibandStr, &numAntibanding, (char***)&antiband);
-    getSupportedParameters(effectssStr, &numEffects, (char***)&effectss);
-    getSupportedParameters(exposureModeStr, &numExposureMode, (char***)&exposureMode);
-    getSupportedParameters(isoModeStr, &numisoMode , (char***)&isoMode);
-    getSupportedParameters(modevaluesstr, &nummodevalues , (char***)&modevalues);
-    getSupportedParametersCaptureSize(captureSizeStr, &numcaptureSize, captureSize, length_capture_Size);
-    getSupportedParametersVideoCaptureSize(VcaptureSizeStr, &numVcaptureSize, VcaptureSize, lenght_Vcapture_size);
-    getSupportedParametersPreviewSize(previewSizeStr, &numpreviewSize, previewSize, length_previewSize);
-    getSupportedParametersThumbnailSize(thumbnailSizeStr, &numthumbnailSize, thumbnailSize, length_thumbnailSize);
-    getSupportedParameters(awbStr, &numawb, (char***)&awb);
-    getSupportedParameters(sceneStr, &numscene, (char***)&scene);
-    getSupportedParameters(focusStr, &numfocus, (char***)&focus);
-    getSupportedParameters(flashStr, &numflash, (char***)&flash);
-    getSupportedParametersfps(fpsstr, &numfps);
-    getSupportedParameters(previewFormatStr, &numpreviewFormat, (char ***)&previewFormatArray);
-    getSupportedParameters(pictureFormatStr, &numpictureFormat, (char ***)&pictureFormatArray);
+    getSizeParametersFromCapabilities();
 
     return 0;
 }
@@ -1075,122 +1135,259 @@ int startPreview() {
 int getParametersFromCapabilities() {
     params.unflatten(camera->getParameters());
 
+    if (params.get(KEY_AUTOCONVERGENCE_MODE_VALUES) != NULL) {
+        strcpy(autoconvergencestr, params.get(KEY_AUTOCONVERGENCE_MODE_VALUES));
+        getSupportedParameters(autoconvergencestr,&numAutoConvergence,(char***)&autoconvergencemode);
+    } else {
+        printf("no supported parameteters for autoconvergence\n\t");
+    }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_EFFECTS) != NULL) {
         strcpy(effectssStr, params.get(CameraParameters::KEY_SUPPORTED_EFFECTS));
+        getSupportedParameters(effectssStr, &numEffects, (char***)&effectss);
     } else {
         printf("Color effects are not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_ANTIBANDING) != NULL) {
         strcpy(antibandStr, params.get(CameraParameters::KEY_SUPPORTED_ANTIBANDING));
+        getSupportedParameters(antibandStr, &numAntibanding, (char***)&antiband);
     } else {
         printf("Antibanding not supported\n");
     }
-    if (params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES) != NULL) {
-        strcpy(captureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES));
-    } else {
-        printf("Picture sizes are not supported\n");
-    }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE) != NULL) {
         strcpy(awbStr, params.get(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE));
+        getSupportedParameters(awbStr, &numawb, (char***)&awb);
     } else {
         printf("White balance is not supported\n");
     }
+
+    if (strcmp(params.get(KEY_S3D_PRV_FRAME_LAYOUT_VALUES),"none") != 0) {
+        strcpy(layoutstr, params.get(KEY_S3D_PRV_FRAME_LAYOUT_VALUES));
+        getSupportedParameters(layoutstr,&numLay,(char***)&stereoLayout);
+    } else {
+        printf("layout is not supported\n");
+    }
+
+    if(strcmp(params.get(KEY_S3D_CAP_FRAME_LAYOUT_VALUES),"none") != 0) {
+        strcpy(capturelayoutstr, params.get(KEY_S3D_CAP_FRAME_LAYOUT_VALUES));
+        getSupportedParameters(capturelayoutstr,&numCLay,(char***)&stereoCapLayout);
+    } else {
+        printf("capture layout is not supported\n");
+    }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_SCENE_MODES) != NULL) {
         strcpy(sceneStr, params.get(CameraParameters::KEY_SUPPORTED_SCENE_MODES));
+        getSupportedParameters(sceneStr, &numscene, (char***)&scene);
     } else {
         printf("Scene modes are not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_FOCUS_MODES) != NULL) {
         strcpy(focusStr, params.get(CameraParameters::KEY_SUPPORTED_FOCUS_MODES));
+        getSupportedParameters(focusStr, &numfocus, (char***)&focus);
     } else {
         printf("Focus modes are not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_FLASH_MODES) != NULL) {
         strcpy(flashStr, params.get(CameraParameters::KEY_SUPPORTED_FLASH_MODES));
+        getSupportedParameters(flashStr, &numflash, (char***)&flash);
     } else {
         printf("Flash modes are not supported\n");
     }
-    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
-        strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
-    } else {
-        printf("Preview sizes are not supported\n");
-    }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
         strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+        getSupportedParametersVideoCaptureSize(VcaptureSizeStr, &numVcaptureSize, VcaptureSize, lenght_Vcapture_size);
     } else {
         printf("Preview sizes are not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE) != NULL) {
         strcpy(fpsstr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE));
+        getSupportedParametersfps(fpsstr, &numfps);
     } else {
         printf("Preview fps range is not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS) != NULL) {
         strcpy(previewFormatStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS));
+        getSupportedParameters(previewFormatStr, &numpreviewFormat, (char ***)&previewFormatArray);
     } else {
         printf("Preview formats are not supported\n");
     }
-    if (params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS) != NULL) {
-        strcpy(pictureFormatStr, params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS));
+
+    if (params.get(KEY_PICTURE_CODING_VALUES) != NULL) {
+        strcpy(pictureFormatStr, params.get(KEY_PICTURE_CODING_VALUES));
+        getSupportedParameters(pictureFormatStr, &numpictureFormat, (char ***)&pictureFormatArray);
+        pictureFormat = numpictureFormat -2;
     } else {
         printf("Picture formats are not supported\n");
     }
+
     if (params.get("exposure-mode-values") != NULL) {
         strcpy(exposureModeStr, params.get("exposure-mode-values"));
+        getSupportedParameters(exposureModeStr, &numExposureMode, (char***)&exposureMode);
     } else {
         printf("Exposure modes are not supported\n");
     }
+
     if (params.get("iso-mode-values") != NULL) {
         strcpy(isoModeStr, params.get("iso-mode-values"));
+        getSupportedParameters(isoModeStr, &numisoMode , (char***)&isoMode);
     } else {
         printf("iso modes are not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES) != NULL) {
         strcpy(thumbnailSizeStr, params.get(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES));
+        getSupportedParametersThumbnailSize(thumbnailSizeStr, &numthumbnailSize, thumbnailSize, length_thumbnailSize);
     } else {
         printf("Thumbnail sizes are not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED) != NULL) {
         strcpy(vstabstr, params.get(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED));
     } else {
         printf("VSTAB is not supported\n");
     }
+
     if (params.get("vnf-supported") != NULL) {
         strcpy(vnfstr, params.get("vnf-supported"));
     } else {
         printf("VNF is not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED) != NULL) {
         strcpy(AutoExposureLockstr, params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED));
     } else {
         printf("AutoExposureLock is not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED) != NULL) {
         strcpy(AutoWhiteBalanceLockstr, params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED));
     } else {
         printf("AutoWhiteBalanceLock is not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_ZOOM_SUPPORTED) != NULL) {
         strcpy(zoomstr, params.get(CameraParameters::KEY_ZOOM_SUPPORTED));
     } else {
         printf("Zoom is not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_SMOOTH_ZOOM_SUPPORTED) != NULL) {
         strcpy(smoothzoomstr, params.get(CameraParameters::KEY_SMOOTH_ZOOM_SUPPORTED));
     } else {
         printf("SmoothZoom is not supported\n");
     }
+
     if (params.get("mode-values") != NULL) {
         strcpy(modevaluesstr, params.get("mode-values"));
+        getSupportedParameters(modevaluesstr, &nummodevalues , (char***)&modevalues);
     } else {
         printf("Mode values is not supported\n");
     }
+
     if (params.get(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED) != NULL) {
         strcpy(videosnapshotstr, params.get(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED));
     } else {
         printf("Video Snapshot is not supported\n");
     }
+
     return 0;
+}
+
+void getSizeParametersFromCapabilities() {
+    if(camera_index != 2) {
+        if (params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES) != NULL) {
+            strcpy(captureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES));
+        } else {
+            printf("Picture sizes are not supported\n");
+        }
+
+        if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
+            strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+            strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+        } else {
+            printf("Preview sizes are not supported\n");
+        }
+    } else { //stereo
+        switch (stereoLayoutIDX) {
+                case 0: // tb_full
+                    if (params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES) != NULL) {
+                        strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
+                    } else {
+                        printf("Picture sizes are not supported\n");
+                    }
+
+                    if (params.get(KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES) != NULL) {
+                        strcpy(previewSizeStr, params.get(KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
+                        strcpy(VcaptureSizeStr, params.get(KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
+                    } else {
+                        printf("Preview sizes are not supported\n");
+                    }
+
+                    break;
+                case 1: // ss_full
+                    if (params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES) != NULL) {
+                        strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
+                    } else {
+                        printf("Picture sizes are not supported\n");
+                    }
+
+                    if (params.get(KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES) != NULL) {
+                        strcpy(previewSizeStr, params.get(KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
+                        strcpy(VcaptureSizeStr, params.get(KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
+                    } else {
+                        printf("Preview sizes are not supported\n");
+                    }
+
+                    break;
+
+                case 2: // tb_subsampled
+                    if (params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES) != NULL) {
+                        strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
+                    } else {
+                        printf("Picture sizes are not supported\n");
+                    }
+
+                    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
+                        strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+                        strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+                    } else {
+                        printf("Preview sizes are not supported\n");
+                    }
+
+                    break;
+
+                case 3: // ss_subsampled
+                    if (params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES) != NULL) {
+                        strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
+                    } else {
+                        printf("Picture sizes are not supported\n");
+                    }
+
+                    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
+                        strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+                        strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+                    } else {
+                        printf("Preview sizes are not supported\n");
+                    }
+
+                    break;
+
+                default:
+                    printf("Picture sizes are not supported\n");
+                    printf("Preview sizes are not supported\n");
+                    break;
+        }
+    }
+    getSupportedParametersCaptureSize(captureSizeStr, &numcaptureSize, captureSize, length_capture_Size);
+    getSupportedParametersPreviewSize(previewSizeStr, &numpreviewSize, previewSize, length_previewSize);
+    getSupportedParametersVideoCaptureSize(VcaptureSizeStr, &numVcaptureSize, VcaptureSize, lenght_Vcapture_size);
 }
 
 
@@ -1393,6 +1590,9 @@ int deleteAllocatedMemory() {
         delete [] antiband[i];
     }
 
+
+
+
     for (i=0; i<numEffects; i++){
         delete [] effectss[i];
     }
@@ -1457,6 +1657,19 @@ int deleteAllocatedMemory() {
         delete [] modevalues[i];
     }
 
+    if (numLay) {
+        for (i = 0; i < numLay; i++) {
+            delete [] stereoLayout[i];
+        }
+        numLay = 0;
+    }
+    if (numCLay) {
+        for (i = 0; i < numCLay; i++) {
+            delete [] stereoCapLayout[i];
+        }
+        numCLay = 0;
+    }
+
     delete [] antibandStr;
     delete [] effectssStr;
     delete [] exposureModeStr;
@@ -1481,6 +1694,10 @@ int deleteAllocatedMemory() {
     delete [] smoothzoomstr;
     delete [] modevaluesstr;
     delete [] videosnapshotstr;
+    delete [] autoconvergencestr;
+    delete [] layoutstr;
+    delete [] capturelayoutstr;
+
     return 0;
 }
 
@@ -1536,11 +1753,7 @@ void initDefaults() {
     previewSizeIDX = 1;  /* Default resolution set to HD */
     captureSizeIDX = 0;  /* Default capture resolution for primary is 12MP, for secondary is 5MP  */
     frameRateIDX = 3;      /* Default frame rate is 30 FPS */
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
-    VcaptureSizeIDX = ARRAY_SIZE(VcaptureSize) - 6;/* Default video record is WVGA */
-#else
-    VcaptureSizeIDX = 1;/* Default video record is HD */
-#endif
+    VcaptureSizeIDX = 1;
     VbitRateIDX = ARRAY_SIZE(VbitRate) - 4;        /*Default video bit rate is 4M */
     thumbSizeIDX = 0;
     compensation = 0.0;
@@ -1582,7 +1795,9 @@ void initDefaults() {
     bufferStarvationTest = 0;
     meter_mode = 0;
     previewFormat = 1;
-    pictureFormat = 6; // jpeg
+    pictureFormat = numpictureFormat - 2; // jpeg
+    stereoCapLayoutIDX = 0;
+    stereoLayoutIDX = 0;
 
     params.set(params.KEY_VIDEO_STABILIZATION, params.FALSE);
     params.set("vnf", params.FALSE);
@@ -1615,24 +1830,14 @@ void initDefaults() {
     params.set(KEY_METERING_MODE, metering[meter_mode]);
     params.set(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH, thumbnail_Array[thumbSizeIDX]->width);
     params.set(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT, thumbnail_Array[thumbSizeIDX]->height);
-    ManualConvergenceValuesIDX = ManualConvergenceDefaultValueIDX;
-    params.set(KEY_MANUALCONVERGENCE_VALUES, manualconvergencevalues[ManualConvergenceValuesIDX]);
+    ManualConvergenceValues = ManualConvergenceDefaultValue;
+    params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
     params.set(KEY_S3D2D_PREVIEW_MODE, "off");
     params.set(KEY_STEREO_CAMERA, "false");
     params.set(KEY_EXIF_MODEL, MODEL);
     params.set(KEY_EXIF_MAKE, MAKE);
 }
 
-void initDefaultsSec() {
-
-    pictureFormat = 5; // jpeg
-    vstabtoggle = false;
-    vnftoggle = false;
-    AutoExposureLocktoggle = false;
-    AutoWhiteBalanceLocktoggle = false;
-
-    params.setPreviewFormat(previewFormatArray[previewFormat]);
-}
 
 int menu_gps() {
     char ch;
@@ -1737,18 +1942,16 @@ int functional_menu() {
         printf("   1. Start Preview\n");
         printf("   2. Stop Preview\n");
         printf("   ~. Preview format %s\n", previewFormatArray[previewFormat]);
-#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
         printf("   4. Preview size:   %4d x %4d - %s\n",preview_Array[previewSizeIDX]->width,  preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
-#else
-        printf("   4. Preview size:   %4d x %4d - %s\n",preview_Array[previewSizeIDX]->width, camera_index == 2 ? preview_Array[previewSizeIDX]->height*2 : preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
-#endif
-
         printf("   R. Preview framerate range: %s\n", rangeDescription[fpsRangeIdx]);
         printf("   &. Dump a preview frame\n");
-        printf("   _. Auto Convergence mode: %s\n", autoconvergencemode[AutoConvergenceModeIDX]);
-        printf("   ^. Manual Convergence Value: %s\n", manualconvergencevalues[ManualConvergenceValuesIDX]);
-        printf("   {. 2D Preview in 3D Stereo Mode: %s\n", params.get(KEY_S3D2D_PREVIEW_MODE));
+        if (camera_index == 2) {
+            printf("   _. Auto Convergence mode: %s\n", autoconvergencemode[AutoConvergenceModeIDX]);
+            printf("   ^. Manual Convergence Value: %d\n", ManualConvergenceValues);
+            printf("   L. Stereo Layout: %s\n", stereoLayout[stereoLayoutIDX]);
+        }
 
+        printf("   {. 2D Preview in 3D Stereo Mode: %s\n", params.get(KEY_S3D2D_PREVIEW_MODE));
         printf(" \n\n IMAGE CAPTURE SUB MENU \n");
         printf(" -----------------------------\n");
         printf("   p. Take picture/Full Press\n");
@@ -1827,23 +2030,27 @@ int functional_menu() {
 
     case '_':
         AutoConvergenceModeIDX++;
-        AutoConvergenceModeIDX %= ARRAY_SIZE(autoconvergencemode);
+        AutoConvergenceModeIDX %= numAutoConvergence;
         params.set(KEY_AUTOCONVERGENCE, autoconvergencemode[AutoConvergenceModeIDX]);
-        if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], AUTOCONVERGENCE_MODE_MANUAL) == 0) {
-            params.set(KEY_MANUALCONVERGENCE_VALUES, manualconvergencevalues[ManualConvergenceValuesIDX]);
-        }
-        else {
-            params.set(KEY_MANUALCONVERGENCE_VALUES, manualconvergencevalues[ManualConvergenceDefaultValueIDX]);
-            ManualConvergenceValuesIDX = ManualConvergenceDefaultValueIDX;
+        if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], "manual") == 0) {
+            params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
+        } else {
+            if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], "touch") == 0) {
+                params.set(CameraParameters::KEY_METERING_AREAS, MeteringAreas);
+            }
+            ManualConvergenceValues = ManualConvergenceDefaultValue;
+            params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
         }
         camera->setParameters(params.flatten());
 
         break;
     case '^':
-        if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], AUTOCONVERGENCE_MODE_MANUAL) == 0) {
-            ManualConvergenceValuesIDX++;
-            ManualConvergenceValuesIDX %= ARRAY_SIZE(manualconvergencevalues);
-            params.set(KEY_MANUALCONVERGENCE_VALUES, manualconvergencevalues[ManualConvergenceValuesIDX]);
+        if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], "manual") == 0) {
+            ManualConvergenceValues = ManualConvergenceValues + params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP);
+            if( ManualConvergenceValues > params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX)) {
+               ManualConvergenceValues = params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX);
+            }
+            params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
             camera->setParameters(params.flatten());
         }
         break;
@@ -1860,9 +2067,6 @@ int functional_menu() {
 
         openCamera();
 
-        if (camera_index == 1) {
-            initDefaultsSec();
-        }
 
         break;
     case '[':
@@ -1922,13 +2126,8 @@ int functional_menu() {
         case '4':
             previewSizeIDX += 1;
             previewSizeIDX %= numpreviewSize;
-            if ( NULL != params.get(KEY_STEREO_CAMERA) ) {
-                if ( strcmp(params.get(KEY_STEREO_CAMERA), "false") == 0 ) {
-                    params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
-                } else {
-                    params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height*2);
-                }
-            }
+            params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
+
             reSizePreview = true;
 
             if ( hardwareActive && previewRunning ) {
@@ -1952,9 +2151,37 @@ int functional_menu() {
             break;
 
         case 'l':
-        case 'L':
+
             VcaptureSizeIDX++;
             VcaptureSizeIDX %= numVcaptureSize;
+            break;
+
+        case 'L' :
+            stereoLayoutIDX++;
+            stereoLayoutIDX %= numLay;
+
+            stereoCapLayoutIDX++;
+            stereoCapLayoutIDX %= numCLay;
+
+            if (camera_index == 2) {
+                params.set(KEY_STEREO_CAMERA, "true");
+                params.set(KEY_S3D_PRV_FRAME_LAYOUT, stereoLayout[stereoLayoutIDX]);
+                params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
+                printf("preview = %s, capture = %s",stereoLayout[stereoLayoutIDX],stereoCapLayout[stereoCapLayoutIDX]);
+            } else {
+                params.set(KEY_STEREO_CAMERA, "false");
+            }
+
+            getSizeParametersFromCapabilities();
+
+            if (hardwareActive && previewRunning) {
+                stopPreview();
+                camera->setParameters(params.flatten());
+                startPreview();
+            } else if (hardwareActive) {
+                camera->setParameters(params.flatten());
+            }
+
             break;
 
         case ']':
@@ -2037,8 +2264,8 @@ int functional_menu() {
         case '$':
             pictureFormat += 1;
             pictureFormat %= numpictureFormat;
-            printf("pictureFormat %d/n", pictureFormat);
-            printf("numpreviewFormat %d/n", numpictureFormat);
+            printf("pictureFormat %d\n", pictureFormat);
+            printf("numpreviewFormat %d\n", numpictureFormat);
             params.setPictureFormat(pictureFormatArray[pictureFormat]);
 
             if ( hardwareActive )
@@ -2531,8 +2758,9 @@ int functional_menu() {
             }
             gettimeofday(&picture_start, 0);
 
-            if ( hardwareActive )
-                camera->takePicture(CAMERA_MSG_COMPRESSED_IMAGE|CAMERA_MSG_RAW_IMAGE);
+            if (hardwareActive) {
+                camera->takePicture(CAMERA_MSG_POSTVIEW_FRAME | CAMERA_MSG_RAW_IMAGE_NOTIFY | CAMERA_MSG_COMPRESSED_IMAGE | CAMERA_MSG_SHUTTER);
+            }
 
             break;
 

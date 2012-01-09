@@ -1,4 +1,3 @@
-
 #ifndef CAMERA_TEST_H
 #define CAMERA_TEST_H
 
@@ -25,9 +24,8 @@
 
 #define KEY_BUFF_STARV      "buff-starvation"
 #define KEY_METERING_MODE   "meter-mode"
-#define KEY_AUTOCONVERGENCE "auto-convergence"
-#define KEY_MANUALCONVERGENCE_VALUES "manual-convergence-values"
-#define AUTOCONVERGENCE_MODE_MANUAL "mode-manual"
+#define KEY_AUTOCONVERGENCE "auto-convergence-mode"
+#define KEY_MANUAL_CONVERGENCE "manual-convergence"
 #define KEY_EXP_BRACKETING_RANGE "exp-bracketing-range"
 #define KEY_TEMP_BRACKETING "temporal-bracketing"
 #define KEY_TEMP_BRACKETING_POS "temporal-bracketing-range-positive"
@@ -35,6 +33,8 @@
 #define KEY_MEASUREMENT "measurement"
 #define KEY_S3D2D_PREVIEW_MODE "s3d2d-preview"
 #define KEY_STEREO_CAMERA "s3d-supported"
+#define KEY_S3D_PRV_FRAME_LAYOUT "s3d-prv-frame-layout"
+#define KEY_S3D_CAP_FRAME_LAYOUT "s3d-cap-frame-layout"
 #define KEY_EXIF_MODEL "exif-model"
 #define KEY_EXIF_MAKE "exif-make"
 #define KEY_AF_TIMEOUT "af-timeout"
@@ -154,6 +154,7 @@ int start_logging(char *config, int &pid);
 int stop_logging(int &pid);
 int execute_error_script(char *script);
 int getParametersFromCapabilities();
+void  getSizeParametersFromCapabilities();
 int getSupportedParameters(char* parameters, int* optionsCount, char ***elem);
 int getSupportedParametersCaptureSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
 int getSupportedParametersVideoCaptureSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
@@ -172,5 +173,17 @@ int trySetAutoWhiteBalanceLock(bool toggle);
 int deleteAllocatedMemory();
 void initDefaultsSec();
 
+const char KEY_S3D_PRV_FRAME_LAYOUT_VALUES[] = "s3d-prv-frame-layout-values";
+const char KEY_S3D_CAP_FRAME_LAYOUT_VALUES[] = "s3d-cap-frame-layout-values";
+const char KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[] = "supported-picture-topbottom-size-values";
+const char KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "supported-picture-sidebyside-size-values";
+const char KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[] = "supported-preview-topbottom-size-values";
+const char KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[] = "supported-preview-sidebyside-size-values";
+const char KEY_AUTOCONVERGENCE_MODE[] = "auto-convergence-mode";
+const char KEY_AUTOCONVERGENCE_MODE_VALUES[] = "auto-convergence-mode-values";
+const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "supported-manual-convergence-min";
+const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "supported-manual-convergence-max";
+const char KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "supported-manual-convergence-step";
+const char KEY_PICTURE_CODING_VALUES[] = "picture-coding-values";
 
 #endif
