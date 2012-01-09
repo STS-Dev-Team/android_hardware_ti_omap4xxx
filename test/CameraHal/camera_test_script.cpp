@@ -90,6 +90,8 @@ extern int rangeCnt;
 extern int * constFramerate;
 extern int frameRateIDX;
 extern int fpsRangeIdx;
+extern int stereoLayoutIDX;
+extern int stereoCapLayoutIDX;
 int resol_index = 0;
 int a = 0;
 extern char * vstabstr;
@@ -125,8 +127,7 @@ extern double altitude;
 extern char dir_path[80];
 extern int AutoConvergenceModeIDX;
 extern const char *autoconvergencemode[];
-extern const char *manualconvergencevalues[];
-extern const int ManualConvergenceDefaultValueIDX;
+extern const int ManualConvergenceDefaultValue;
 extern size_t length_cam;
 extern char script_name[];
 extern int restartCount;
@@ -145,6 +146,9 @@ extern size_t length_fps_ranges;
 extern size_t length_fpsConst_Ranges;
 extern size_t length_fpsConst_RangesSec;
 extern int platformID;
+extern char **stereoLayout;
+extern char **stereoCapLayout;
+extern void getSizeParametersFromCapabilities();
 
 
 int execute_functional_script(char *script) {
@@ -317,12 +321,17 @@ int execute_functional_script(char *script) {
                 printf("Setting resolution...");
                 a = checkSupportedParamScriptResol(preview_Array, numpreviewSize, cmd, &resol_index);
                 if (a > -1) {
-                    params.setPreviewSize(preview_Array[resol_index]->width, camera_index == 2? preview_Array[resol_index]->height*2 : preview_Array[resol_index]->height);
+                    params.setPreviewSize(preview_Array[resol_index]->width,  preview_Array[resol_index]->height);
                     previewSizeIDX = resol_index;
                     reSizePreview = true;
                 } else {
-                    printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
+                    int width, height;
+                    char *res = NULL;
+                    res = strtok(cmd + 1, "x");
+                    width = atoi(res);
+                    res = strtok(NULL, "x");
+                    height = atoi(res);
+                    params.setPreviewSize(width, height);
                 }
 
                 if ( hardwareActive && previewRunning ) {
@@ -340,8 +349,13 @@ int execute_functional_script(char *script) {
                     params.setPictureSize(capture_Array[resol_index]->width, capture_Array[resol_index]->height);
                     captureSizeIDX = resol_index;
                 } else {
-                    printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
+                    int widthC, heightC;
+                    char *resC = NULL;
+                    resC = strtok(cmd + 1, "x");
+                    widthC = atoi(resC);
+                    resC = strtok(NULL, "x");
+                    heightC = atoi(resC);
+                    params.setPictureSize(widthC,heightC);
                 }
 
                 if ( hardwareActive ) {
@@ -485,7 +499,6 @@ int execute_functional_script(char *script) {
                     params.set(KEY_STEREO_CAMERA, "false");
 
                 printf("%s selected.\n", cameras[camera_index]);
-                firstTime = true;
 
                 if ( hardwareActive ) {
                     stopPreview();
@@ -495,7 +508,6 @@ int execute_functional_script(char *script) {
                     closeCamera();
                     openCamera();
                 }
-                params.setPreviewFrameRate(30);
                 break;
 
             case 'a':
@@ -516,7 +528,6 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'l':
-            case 'L':
                 a = checkSupportedParamScriptResol(Vcapture_Array, numVcaptureSize, cmd, &resol_index);
                 if (a > -1) {
                     VcaptureSizeIDX = resol_index;
@@ -525,6 +536,39 @@ int execute_functional_script(char *script) {
                     return -1;
                 }
                 break;
+
+            case 'L':
+                    if (strcmp((cmd + 1),"tb-full") == 0) {
+                          stereoLayoutIDX = 0;     //tb-full
+                          stereoCapLayoutIDX = 0;   //tb-full
+                    } else if(strcmp((cmd + 1),"tb-subsampled") == 0) {
+                          stereoLayoutIDX = 2;        //tb-subsampled
+                          stereoCapLayoutIDX = 0;    //tb-full
+                    } else if(strcmp((cmd + 1),"ss-full") == 0) {
+                          stereoLayoutIDX = 1;        //ss-full
+                          stereoCapLayoutIDX = 1;     //ss-full
+                    } else if(strcmp((cmd + 1),"ss-subsampled") == 0) {
+                          stereoLayoutIDX = 3;        //ss-subsamped
+                          stereoCapLayoutIDX = 1;     //ss-full
+                    } else {
+                        printf(" invalid layout - the layout will receive the defauilt parameters");
+                        stereoLayoutIDX = 0;     //tb-full
+                        stereoCapLayoutIDX = 0;   //tb-full
+                    }
+
+                    params.set(KEY_S3D_PRV_FRAME_LAYOUT, stereoLayout[stereoLayoutIDX]);
+                    params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
+
+                    getSizeParametersFromCapabilities();
+                    if (hardwareActive && previewRunning) {
+                        stopPreview();
+                        camera->setParameters(params.flatten());
+                        startPreview();
+                    } else if (hardwareActive) {
+                        camera->setParameters(params.flatten());
+                    }
+                    break;
+
             case ']':
                 for(i = 0; i < length_V_bitRate; i++)
                 {
@@ -723,19 +767,16 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'B' :
-                if (strcmp(vnfstr, "true") == 0) {
+                if(strcmp(vnfstr, "true") == 0) {
                     if (strcmp(cmd + 1, "1") == 0) {
                         trySetVideoNoiseFilter(true);
                     }
                     else if (strcmp(cmd + 1, "0") == 0){
                         trySetVideoNoiseFilter(false);
-                    } else {
-                        printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                        return -1;
                     }
                 } else {
-                    printf("\nNot supported parameter vnf from sensor %d\n\n", camera_index);
-                    return -1;
+                    trySetVideoNoiseFilter(false);
+                    printf("\n VNF is not supported \n\n");
                 }
 
                 if ( hardwareActive ) {
@@ -777,12 +818,11 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'i':
-
-                a = checkSupportedParamScript(isoMode, numisoMode, cmd);
-                if (a > -1) {
-                    params.set(KEY_ISO, (cmd + 1));
+                iso_mode = atoi(cmd + 1);
+                if (iso_mode < numisoMode) {
+                    params.set(KEY_ISO, isoMode[iso_mode]);
                 } else {
-                    printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
+                    printf("\nNot supported parameter %s for iso mode from sensor %d\n\n", cmd + 1, camera_index);
                     return -1;
                 }
 
@@ -1017,8 +1057,9 @@ int execute_functional_script(char *script) {
                 }
                 gettimeofday(&picture_start, 0);
 
-                if ( hardwareActive )
-                    ret = camera->takePicture(CAMERA_MSG_COMPRESSED_IMAGE|CAMERA_MSG_RAW_IMAGE);
+                if (hardwareActive) {
+                    ret = camera->takePicture(CAMERA_MSG_POSTVIEW_FRAME | CAMERA_MSG_RAW_IMAGE_NOTIFY | CAMERA_MSG_COMPRESSED_IMAGE | CAMERA_MSG_SHUTTER);
+                }
 
                 if ( ret != NO_ERROR )
                     printf("Error returned while taking a picture");
@@ -1137,19 +1178,21 @@ int execute_functional_script(char *script) {
                 if ( AutoConvergenceModeIDX < 0 || AutoConvergenceModeIDX > 4 )
                     AutoConvergenceModeIDX = 0;
                 params.set(KEY_AUTOCONVERGENCE, autoconvergencemode[AutoConvergenceModeIDX]);
-                if ( AutoConvergenceModeIDX != 4 )
-                    params.set(KEY_MANUALCONVERGENCE_VALUES, manualconvergencevalues[ManualConvergenceDefaultValueIDX]);
-                if ( hardwareActive )
+                if (AutoConvergenceModeIDX != 4) {
+                    params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceDefaultValue);
+                }
+                if (hardwareActive) {
                     camera->setParameters(params.flatten());
+                }
                 break;
             }
 
             case '^':
             {
                 char strtmpval[7];
-                if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], AUTOCONVERGENCE_MODE_MANUAL) == 0) {
+                if (strcmp(autoconvergencemode[AutoConvergenceModeIDX], "manual") == 0) {
                     sprintf(strtmpval,"%d", atoi(cmd + 1));
-                    params.set(KEY_MANUALCONVERGENCE_VALUES, strtmpval);
+                    params.set(KEY_MANUAL_CONVERGENCE, strtmpval);
                     if ( hardwareActive )
                         camera->setParameters(params.flatten());
                 }
