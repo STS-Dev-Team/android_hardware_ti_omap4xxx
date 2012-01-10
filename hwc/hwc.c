@@ -2242,8 +2242,14 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         err = -errno;
         goto done;
     }
-    hwc_dev->ext.lcd_xpy = (float) hwc_dev->fb_dis.width_in_mm / hwc_dev->fb_dis.timings.x_res /
-                            hwc_dev->fb_dis.height_in_mm       * hwc_dev->fb_dis.timings.y_res;
+
+    /* use default value in case some of requested display parameters missing */
+    hwc_dev->ext.lcd_xpy = 1.0;
+    if (hwc_dev->fb_dis.timings.x_res && hwc_dev->fb_dis.height_in_mm) {
+        hwc_dev->ext.lcd_xpy = (float)
+            hwc_dev->fb_dis.width_in_mm / hwc_dev->fb_dis.timings.x_res /
+            hwc_dev->fb_dis.height_in_mm * hwc_dev->fb_dis.timings.y_res;
+    }
 
     if (pipe(hwc_dev->pipe_fds) == -1) {
             ALOGE("failed to event pipe (%d): %m", errno);
