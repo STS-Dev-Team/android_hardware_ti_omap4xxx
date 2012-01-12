@@ -36,6 +36,7 @@ extern CameraParameters params;
 extern bool recordingMode;
 extern int camera_index;
 extern int rotation;
+extern int previewRotation;
 extern const param_Array captureSize[];
 extern const param_Array VcaptureSize[];
 extern const outformat outputFormat[];
@@ -311,6 +312,15 @@ int execute_functional_script(char *script) {
             case '3':
                 rotation = atoi(cmd + 1);
                 params.set(CameraParameters::KEY_ROTATION, rotation);
+
+                if ( hardwareActive )
+                    camera->setParameters(params.flatten());
+
+                break;
+
+            case 'V':
+                previewRotation = atoi(cmd + 1);
+                params.set(KEY_SENSOR_ORIENTATION, previewRotation);
 
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
