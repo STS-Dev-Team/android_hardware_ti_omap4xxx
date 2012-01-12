@@ -19,6 +19,7 @@
 #define KEY_VNF             "vnf"
 #define KEY_VSTAB           "vstab"
 #define KEY_COMPENSATION    "exposure-compensation"
+#define KEY_SENSOR_ORIENTATION "sensor-orientation"
 
 #define KEY_IPP             "ipp"
 
