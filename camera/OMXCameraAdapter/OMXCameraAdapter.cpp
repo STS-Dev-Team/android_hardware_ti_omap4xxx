@@ -183,6 +183,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mRecording = false;
     mWaitingForSnapshot = false;
     mSnapshotCount = 0;
+    mPictureFormatFromClient = NULL;
 
     mCapMode = INITIAL_MODE;
     mIPP = IPP_NULL;
@@ -205,6 +206,10 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mCapabilities = caps;
     mZoomUpdating = false;
     mZoomUpdate = false;
+    mGBCE = BRIGHTNESS_OFF;
+    mGLBCE = BRIGHTNESS_OFF;
+    mParameters3A.ExposureLock = OMX_FALSE;
+    mParameters3A.WhiteBalanceLock = OMX_FALSE;
 
     mEXIFData.mGPSData.mAltitudeValid = false;
     mEXIFData.mGPSData.mDatestampValid = false;
@@ -764,18 +769,21 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
     }
 
     //Populate current lock status
-    if( (valstr = mParams.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK)) != NULL )
-      {
-        CAMHAL_LOGDB("Auto Exposure Lock get %s", mParams.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK));
-        params.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK, valstr);
-      }
+    if ( mUserSetExpLock || mParameters3A.ExposureLock ) {
+        params.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK,
+                CameraParameters::TRUE);
+    } else {
+        params.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK,
+                CameraParameters::FALSE);
+    }
 
-    if( (valstr = mParams.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK)) != NULL )
-      {
-        CAMHAL_LOGDB("Auto WhiteBalance Lock get %s", mParams.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK));
-        params.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK, valstr);
-      }
-
+    if ( mUserSetWbLock || mParameters3A.WhiteBalanceLock ) {
+        params.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK,
+                CameraParameters::TRUE);
+    } else {
+        params.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK,
+                CameraParameters::FALSE);
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 }
@@ -3124,17 +3132,16 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         const char *valstr = NULL;
 
         pixFormat = mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mColorFormat;
-        valstr = mParams.getPictureFormat();
 
         if ( OMX_COLOR_FormatUnused == pixFormat )
             {
             typeOfFrame = CameraFrame::IMAGE_FRAME;
             mask = (unsigned int) CameraFrame::IMAGE_FRAME;
-            }
-        else if ( pixFormat == OMX_COLOR_FormatCbYCrY &&
-                  ((valstr && !strcmp(valstr, CameraParameters::PIXEL_FORMAT_JPEG)) ||
-                   !valstr) )
-            {
+        } else if ( pixFormat == OMX_COLOR_FormatCbYCrY &&
+                  ((mPictureFormatFromClient &&
+                          !strcmp(mPictureFormatFromClient,
+                                  CameraParameters::PIXEL_FORMAT_JPEG)) ||
+                   !mPictureFormatFromClient) ) {
             // signals to callbacks that this needs to be coverted to jpeg
             // before returning to framework
             typeOfFrame = CameraFrame::IMAGE_FRAME;
@@ -3147,12 +3154,10 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             setupEXIF_libjpeg(exif);
             cameraFrame.mQuirks |= CameraFrame::HAS_EXIF_DATA;
             cameraFrame.mCookie2 = (void*) exif;
-            }
-        else
-          {
+        } else {
             typeOfFrame = CameraFrame::RAW_FRAME;
             mask = (unsigned int) CameraFrame::RAW_FRAME;
-          }
+        }
 
             pPortParam->mImageType = typeOfFrame;
 

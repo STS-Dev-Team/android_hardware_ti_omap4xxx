@@ -92,10 +92,14 @@ status_t OMXCameraAdapter::stopFaceDetection()
         goto out;
     }
 
-    // Reset 3A settings
-    ret = setParameters3A(mParams, state);
-    if (ret != NO_ERROR) {
-        goto out;
+    if ( mFaceDetectionRunning ) {
+        //Enable region priority and disable face priority for AF
+        setAlgoPriority(REGION_PRIORITY, FOCUS_ALGO, true);
+        setAlgoPriority(FACE_PRIORITY, FOCUS_ALGO , false);
+
+        //Enable Region priority and disable Face priority
+        setAlgoPriority(REGION_PRIORITY, EXPOSURE_ALGO, true);
+        setAlgoPriority(FACE_PRIORITY, EXPOSURE_ALGO, false);
     }
 
     if (mPending3Asettings) {

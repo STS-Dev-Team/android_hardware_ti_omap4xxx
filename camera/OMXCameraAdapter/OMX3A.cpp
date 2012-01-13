@@ -1528,7 +1528,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
             setExposureLock(mParameters3A);
         }
 
-        mParams.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK, lock_state_exp);
     }
 
     OMX_INIT_STRUCT_PTR (&lock, OMX_IMAGE_CONFIG_LOCKTYPE);
@@ -1575,7 +1574,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
             setWhiteBalanceLock(mParameters3A);
         }
 
-        mParams.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK, lock_state_wb);
     }
  EXIT:
     return ErrorUtils::omxToAndroidError(eError);
