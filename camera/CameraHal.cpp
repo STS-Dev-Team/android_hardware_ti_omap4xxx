@@ -47,6 +47,14 @@ const int CameraHal::SW_SCALING_FPS_LIMIT = 15;
 const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 16;
 const uint32_t MessageNotifier::FRAME_BIT_FIELD_POSITION = 0;
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+// HACK: Default path to directory where RAW images coming from video port will be saved to.
+//       If directory not exists the saving is skipped and video port frame is ignored.
+//       The directory name is choosed in so weird way to enable RAW images saving only when
+//       directory has been created explicitly by user.
+extern const char * const kRawImagesOutputDirPath = "/data/misc/camera/RaW_PiCtUrEs";
+#endif
+
 /******************************************************************************/
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
@@ -451,18 +459,20 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
         }
 
-        if ( 0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW) ) {
+        mRawCapture = false;
 
-            mRawCapture = true; // RawCapture flag
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+        valstr = params.get(TICameraParameters::KEY_CAP_MODE);
+        if ( (!valstr || strcmp(valstr, TICameraParameters::HIGH_QUALITY_MODE) == 0) &&
+                access(kRawImagesOutputDirPath, F_OK) != -1 ) {
+            mRawCapture = true;
 
             if ( (valstr = params.get(TICameraParameters::KEY_FILENAME_TIMESTAMP)) != NULL ) {
-                CAMHAL_LOGEB("FILENAME TIMESTAMP Value = %s", valstr);
+                CAMHAL_LOGD("FILENAME TIMESTAMP Value = %s", valstr);
                 mParameters.set(TICameraParameters::KEY_FILENAME_TIMESTAMP, valstr);
             }
-
-        } else {
-            mRawCapture = false;
         }
+#endif
 
         if ( (valstr = params.get(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT)) != NULL )
             {
@@ -2996,6 +3006,7 @@ CameraHal::~CameraHal()
     }
 
     freeImageBufs();
+    freeRawBufs();
 
     /// Free the memory manager
     mMemoryManager.clear();
