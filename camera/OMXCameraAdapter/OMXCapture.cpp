@@ -72,36 +72,45 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
             pixFormat = OMX_COLOR_FormatCbYCrY;
+            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_YUV422I;
         } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_YUV420SP;
         } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             CAMHAL_LOGDA("RGB565 format selected");
             pixFormat = OMX_COLOR_Format16bitRGB565;
+            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_RGB565;
         } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_JPEG) == 0) {
             CAMHAL_LOGDA("JPEG format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingJPEG;
+            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_JPEG;
         } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_JPS) == 0) {
             CAMHAL_LOGDA("JPS format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingJPS;
+            mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_JPS;
         } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_MPO) == 0) {
             CAMHAL_LOGDA("MPO format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingMPO;
+            mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_MPO;
         } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
+            mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_RAW;
         } else {
             CAMHAL_LOGEA("Invalid format, JPEG format selected as default");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingJPEG;
+            mPictureFormatFromClient = NULL;
         }
     } else {
         CAMHAL_LOGEA("Picture format is NULL, defaulting to JPEG");
         pixFormat = OMX_COLOR_FormatUnused;
         codingMode = CodingJPEG;
+        mPictureFormatFromClient = NULL;
     }
 
     // JPEG capture is not supported in video mode by OMX Camera
@@ -262,6 +271,10 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         }
 
     CAMHAL_LOGDB("Thumbnail Quality set %d", mThumbQuality);
+
+    cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+    cap->mWidth = params.getInt(TICameraParameters::RAW_WIDTH);
+    cap->mHeight = params.getInt(TICameraParameters::RAW_HEIGHT);
 
     if (mFirstTimeInit) {
         mPendingCaptureSettings = ECapturesettingsAll;
@@ -1328,10 +1341,6 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(void* bufArr, int num)
     }
 
     imgRawCaptureData->mNumBufs = num;
-
-    // Comming from mRawWidth/Height in CameraHal. Should come from Ducati max sensor resolution. Only for raw capture.
-    imgRawCaptureData->mWidth = mParams.getInt(TICameraParameters::RAW_WIDTH);
-    imgRawCaptureData->mHeight = mParams.getInt(TICameraParameters::RAW_HEIGHT);
 
     CAMHAL_LOGDB("RAW Max sensor width = %d", (int)imgRawCaptureData->mWidth);
     CAMHAL_LOGDB("RAW Max sensor height = %d", (int)imgRawCaptureData->mHeight);
