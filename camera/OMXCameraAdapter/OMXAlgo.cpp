@@ -37,6 +37,8 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
     const char *valManualStr = NULL;
     const char *oldstr = NULL;
     OMXCameraPortParameters *cap;
+    BrightnessMode gbce = BRIGHTNESS_OFF;
+    BrightnessMode glbce = BRIGHTNESS_OFF;
 
     LOG_FUNCTION_NAME;
 
@@ -119,85 +121,44 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
         CAMHAL_LOGVB("IPP Mode set %d", ipp);
 
-        if (((valstr = params.get(TICameraParameters::KEY_GBCE)) != NULL) )
-            {
-            // Configure GBCE only if the setting has changed since last time
-            oldstr = mParams.get(TICameraParameters::KEY_GBCE);
-            bool cmpRes = true;
-            if ( NULL != oldstr )
-                {
-                cmpRes = strcmp(valstr, oldstr) != 0;
-                }
-            else
-                {
-                cmpRes = true;
-                }
-
-
-            if( cmpRes )
-                {
-                if (strcmp(valstr, CameraParameters::TRUE ) == 0)
-                    {
-                    setGBCE(OMXCameraAdapter::BRIGHTNESS_ON);
-                    }
-                else if (strcmp(valstr, CameraParameters::FALSE ) == 0)
-                    {
-                    setGBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
-                    }
-                else
-                    {
-                    setGBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
-                    }
-                }
+        if (((valstr = params.get(TICameraParameters::KEY_GBCE)) != NULL) ) {
+            if (strcmp(valstr, CameraParameters::TRUE ) == 0) {
+                gbce = BRIGHTNESS_ON;
+            } else {
+                gbce = BRIGHTNESS_OFF;
             }
-        else if(mParams.get(TICameraParameters::KEY_GBCE) || mFirstTimeInit)
-            {
+
+            if ( gbce != mGBCE ) {
+                mGBCE = gbce;
+                setGBCE(mGBCE);
+            }
+
+        } else if(mFirstTimeInit) {
             //Disable GBCE by default
             setGBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
+        }
+
+        if ( ( valstr = params.get(TICameraParameters::KEY_GLBCE) ) != NULL ) {
+
+            if (strcmp(valstr, CameraParameters::TRUE) == 0) {
+                glbce = BRIGHTNESS_ON;
+            } else {
+                glbce = BRIGHTNESS_OFF;
             }
 
-        if ( ( valstr = params.get(TICameraParameters::KEY_GLBCE) ) != NULL )
-            {
-            // Configure GLBCE only if the setting has changed since last time
-
-            oldstr = mParams.get(TICameraParameters::KEY_GLBCE);
-            bool cmpRes = true;
-            if ( NULL != oldstr )
-                {
-                cmpRes = strcmp(valstr, oldstr) != 0;
-                }
-            else
-                {
-                cmpRes = true;
-                }
-
-
-            if( cmpRes )
-                {
-                if (strcmp(valstr, CameraParameters::TRUE ) == 0)
-                    {
-                    setGLBCE(OMXCameraAdapter::BRIGHTNESS_ON);
-                    }
-                else if (strcmp(valstr, CameraParameters::FALSE ) == 0)
-                    {
-                    setGLBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
-                    }
-                else
-                    {
-                    setGLBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
-                    }
-                }
+            if ( glbce != mGLBCE ) {
+                mGLBCE = glbce;
+                setGLBCE(mGLBCE);
             }
-        else if(mParams.get(TICameraParameters::KEY_GLBCE) || mFirstTimeInit)
-            {
+
+        } else if(mFirstTimeInit) {
             //Disable GLBCE by default
             setGLBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
-            }
         }
-    else
-        {
+
+    } else {
         ipp = OMXCameraAdapter::IPP_NONE;
-        }
+    }
 
     if ( mIPP != ipp )
         {

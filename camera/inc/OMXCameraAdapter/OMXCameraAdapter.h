@@ -307,6 +307,9 @@ public:
     {
         public:
             GPSData mGPSData;
+            char mMake[EXIF_MODEL_SIZE];
+            char mModel[EXIF_MAKE_SIZE];
+            unsigned int mFocalNum, mFocalDen;
             bool mMakeValid;
             bool mModelValid;
     };
@@ -955,6 +958,10 @@ private:
     unsigned int mPending3Asettings;
     Mutex m3ASettingsUpdateLock;
     Gen3A_settings mParameters3A;
+    const char *mPictureFormatFromClient;
+
+    BrightnessMode mGBCE;
+    BrightnessMode mGLBCE;
 
     OMX_TI_CONFIG_3A_FACE_PRIORITY mFacePriority;
     OMX_TI_CONFIG_3A_REGION_PRIORITY mRegionPriority;
