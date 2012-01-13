@@ -67,8 +67,17 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     CAMHAL_LOGVB("Image: cap.mWidth = %d", (int)cap->mWidth);
     CAMHAL_LOGVB("Image: cap.mHeight = %d", (int)cap->mHeight);
 
+    mRawCapture = false;
+
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+    valstr = params.get(TICameraParameters::KEY_CAP_MODE);
+    if ( (!valstr || strcmp(valstr, TICameraParameters::HIGH_QUALITY_MODE) == 0) &&
+            access(kRawImagesOutputDirPath, F_OK) != -1 ) {
+        mRawCapture = true;
+    }
+#endif
+
     if ((valstr = params.getPictureFormat()) != NULL) {
-        mRawCapture = false;
         if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
             pixFormat = OMX_COLOR_FormatCbYCrY;
@@ -1294,7 +1303,10 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
         }
 
     mCapturedFrames = mBurstFrames;
-    mCaptureConfigured = true;
+
+    if (!mRawCapture) {
+        mCaptureConfigured = true;
+    }
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
@@ -1320,6 +1332,10 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(void* bufArr, int num)
     OMXCameraPortParameters cap;
 
     imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+
+    if (mCaptureConfigured) {
+        return NO_ERROR;
+    }
 
     camSem.Create();
 
