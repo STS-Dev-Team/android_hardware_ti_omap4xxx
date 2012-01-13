@@ -120,6 +120,10 @@
 
 namespace android {
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+extern const char * const kRawImagesOutputDirPath;
+#endif
+
 ///Forward declarations
 class CameraHal;
 class CameraFrame;

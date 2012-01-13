@@ -33,7 +33,6 @@
 static int mDebugFps = 0;
 static int mDebugFcs = 0;
 
-
 #define HERE(Msg) {CAMHAL_LOGEB("--===line %d, %s===--\n", __LINE__, Msg);}
 
 namespace android {
@@ -657,6 +656,29 @@ void saveFile(unsigned char   *buff, int width, int height, int format) {
 
     LOG_FUNCTION_NAME_EXIT;
 }
+
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+static status_t saveRaw(const void *buf, unsigned int size, const char *filename)
+{
+   status_t ret = NO_ERROR;
+
+   const int fd = open(filename, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0644);
+   if (fd < 0) {
+       CAMHAL_LOGE("ERROR: %s, Unable to save raw file", strerror(fd));
+       return BAD_VALUE;
+   }
+
+   if (write(fd, buf, size) != (signed)size) {
+       CAMHAL_LOGE("ERROR: Unable to write to raw file");
+       ret = NO_MEMORY;
+   } else {
+       CAMHAL_LOGD("buffer=%p, size=%d stored at %s", buf, size, filename);
+   }
+
+   close(fd);
+   return ret;
+}
+#endif
 
 void OMXCameraAdapter::getParameters(CameraParameters& params)
 {
@@ -3226,11 +3248,43 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                 }
             }
 
-            CAMHAL_LOGEB ("RAW buffer done on video port, length = %d", pBuffHeader->nFilledLen);
+            CAMHAL_LOGD("RAW buffer done on video port, length = %d", pBuffHeader->nFilledLen);
 
             mask = (unsigned int) CameraFrame::RAW_FRAME;
 
-            stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+            time_t rawSaveTime;
+            struct tm * rawTimeStamp;
+            struct timeval  rawTimeStampUsec;
+
+            char rawFilename[256];
+
+            time ( &rawSaveTime );
+            gettimeofday(&rawTimeStampUsec, NULL);
+            rawTimeStamp = gmtime ( &rawSaveTime );
+
+            snprintf(rawFilename,256, "%s/raw_%d_%d_%d_%lu.raw",
+                    kRawImagesOutputDirPath,
+                    rawTimeStamp->tm_hour,
+                    rawTimeStamp->tm_min,
+                    rawTimeStamp->tm_sec,
+                    rawTimeStampUsec.tv_usec);
+
+            status_t statRaw = saveRaw(pBuffHeader->pBuffer, pBuffHeader->nFilledLen, rawFilename);
+
+            if(NO_ERROR == statRaw) {
+
+                CAMHAL_LOGD("raw_%d_%d_%d_%lu.raw successfully saved in %s",
+                        rawTimeStamp->tm_hour,
+                        rawTimeStamp->tm_min,
+                        rawTimeStamp->tm_sec,
+                        rawTimeStampUsec.tv_usec,
+                        kRawImagesOutputDirPath);
+                stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+            } else {
+                CAMHAL_LOGE("ERROR: %d , while saving raw!", statRaw);
+            }
+#endif
         } else {
             CAMHAL_LOGEA("Frame received for non-(preview/capture/measure) port. This is yet to be supported");
             goto EXIT;
