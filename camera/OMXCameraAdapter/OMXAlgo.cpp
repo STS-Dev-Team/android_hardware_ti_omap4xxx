@@ -34,7 +34,9 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 {
     status_t ret = NO_ERROR;
     const char *valstr = NULL;
+    const char *valManualStr = NULL;
     const char *oldstr = NULL;
+    OMXCameraPortParameters *cap;
 
     LOG_FUNCTION_NAME;
 
@@ -253,22 +255,30 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         mOMXStateSwitch = true;
         }
 
-    if ( mSensorIndex == OMX_TI_StereoSensor ) {
-        //Set Auto Convergence Mode
-        valstr = params.get((const char *) TICameraParameters::KEY_AUTOCONVERGENCE_MODE);
-        if ( valstr != NULL ) {
-                setAutoConvergence(valstr, params);
+    //Set Auto Convergence Mode
+    valstr = params.get((const char *) TICameraParameters::KEY_AUTOCONVERGENCE_MODE);
+    valManualStr = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE);
+
+    cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
+
+    if (cap->mFrameLayoutType != OMX_TI_StereoFrameLayout2D) {
+        if ((valstr != NULL) || (valManualStr != NULL)) {
+            setAutoConvergence(valstr, valManualStr, params);
+            if (valstr != NULL) {
                 CAMHAL_LOGDB("AutoConvergenceMode %s", valstr);
+            }
+            if (valManualStr != NULL) {
+                CAMHAL_LOGDB("Manual Convergence  %s", valManualStr);
+            }
+        }
+
+        //Set Mechanical Misalignment Correction
+        valstr = params.get((const char *) TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
+        if ( valstr != NULL ) {
+            setMechanicalMisalignmentCorrection(valstr);
+            CAMHAL_LOGDB("Mechanical Misalignment Correction %s", valstr);
         }
     }
-
-    //Set Mechanical Misalignment Correction
-    valstr = params.get((const char *) TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
-    if ( valstr != NULL )
-        {
-        setMechanicalMisalignmentCorrection(valstr);
-        CAMHAL_LOGDB("Mechanical Misalignment Correction %s", valstr);
-        }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -276,20 +286,43 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 }
 
 // Set AutoConvergence
-status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const CameraParameters &params)
+status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const char *pValManualstr, const CameraParameters &params)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_TI_CONFIG_CONVERGENCETYPE ACParams;
     const char *str = NULL;
     Vector< sp<CameraArea> > tempAreas;
-    OMX_S32 manualconvergence = 0;
-    int mode = 0;
+    int mode;
+    int changed = 0;
 
     LOG_FUNCTION_NAME;
 
-    mode = getLUTvalue_HALtoOMX(pValstr, mAutoConvergenceLUT);
-    if ( OMX_TI_AutoConvergenceModeFocusFaceTouch == mode ) {
+    if ( pValManualstr != NULL ) {
+        OMX_S32 manualConvergence = (OMX_S32)strtol(pValManualstr ,0 ,0);
+
+        if (mManualConv != manualConvergence) {
+            mManualConv = manualConvergence;
+            changed = 1;
+        }
+    }
+
+    if ( pValstr != NULL ) {
+        mode = getLUTvalue_HALtoOMX(pValstr, mAutoConvergenceLUT);
+
+        if ( NAME_NOT_FOUND == mode ) {
+            CAMHAL_LOGEB("Wrong convergence mode: %s", pValstr);
+            LOG_FUNCTION_NAME_EXIT;
+            return mode;
+        }
+
+        if ( mAutoConv != static_cast<OMX_TI_AUTOCONVERGENCEMODETYPE> (mode) ) {
+            mAutoConv = static_cast<OMX_TI_AUTOCONVERGENCEMODETYPE> (mode);
+            changed = 1;
+        }
+    }
+
+    if ( OMX_TI_AutoConvergenceModeFocusFaceTouch == mAutoConv ) {
         Mutex::Autolock lock(mTouchAreasLock);
 
         str = params.get((const char *)CameraParameters::KEY_METERING_AREAS);
@@ -299,38 +332,21 @@ status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const CameraP
         } else {
             CAMHAL_LOGEB("Touch areas not received in %s",
                          CameraParameters::KEY_METERING_AREAS);
-            ret = BAD_VALUE;
-        }
-
-        if ( NO_ERROR != ret ) {
-            return ret;
-        } else if ( CameraArea::areAreasDifferent(mTouchAreas, tempAreas) ||
-                    ( mAutoConv != mode ) ) {
-            mTouchAreas.clear();
-            mTouchAreas = tempAreas;
-        } else {
-            return NO_ERROR;
-        }
-
-    } else if ( OMX_TI_AutoConvergenceModeManual  == mode ) {
-        str = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE);
-        if ( str != NULL ) {
-            manualconvergence = (OMX_S32)params.getInt(TICameraParameters::KEY_MANUAL_CONVERGENCE);
-            if ( ( mAutoConv != mode ) || ( manualconvergence != mManualConv ) ) {
-                mManualConv = manualconvergence;
-            } else {
-                return NO_ERROR;
-            }
-        } else {
+            LOG_FUNCTION_NAME_EXIT;
             return BAD_VALUE;
         }
-    } else if ( mAutoConv == mode ) {
-        return NO_ERROR;
-    } else if ( NAME_NOT_FOUND == mode ) {
-        return mode;
+
+        if ( CameraArea::areAreasDifferent(mTouchAreas, tempAreas) ) {
+            mTouchAreas.clear();
+            mTouchAreas = tempAreas;
+            changed = 1;
+        }
     }
 
-    mAutoConv = static_cast<OMX_TI_AUTOCONVERGENCEMODETYPE> (mode);
+    if (!changed) {
+        LOG_FUNCTION_NAME_EXIT;
+        return NO_ERROR;
+    }
 
     OMXCameraPortParameters * mPreviewData;
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -347,9 +363,19 @@ status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const CameraP
     ACParams.nManualConverence = mManualConv;
 
     if (1 == mTouchAreas.size()) {
+        int widthDivisor = 1;
+        int heightDivisor = 1;
+
+        if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutTopBottom) {
+            heightDivisor = 2;
+        }
+        if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutLeftRight) {
+            widthDivisor = 2;
+        }
+
         // transform the coordinates to 3A-type coordinates
-        mTouchAreas.itemAt(0)->transfrom((size_t)mPreviewData->mWidth,
-                                         (size_t)mPreviewData->mHeight,
+        mTouchAreas.itemAt(0)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
+                                         (size_t)mPreviewData->mHeight/heightDivisor,
                                          (size_t&) ACParams.nACProcWinStartY,
                                          (size_t&) ACParams.nACProcWinStartX,
                                          (size_t&) ACParams.nACProcWinWidth,

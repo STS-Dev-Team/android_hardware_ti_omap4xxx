@@ -630,17 +630,23 @@ int CameraHal::setParameters(const CameraParameters& params)
         }
 
         ///Update the current parameter set
-        if ( (valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE_MODE)) != NULL )
-            {
+        if ( (valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE_MODE)) != NULL ) {
             CAMHAL_LOGDB("AutoConvergence mode set = %s", valstr);
             mParameters.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE, valstr);
-             }
+        }
 
-        if ( (valstr = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE)) != NULL )
-            {
-            CAMHAL_LOGDB("ManualConvergence Value = %s", valstr);
-            mParameters.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, valstr);
-             }
+        if ( (valstr = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE)) != NULL ) {
+            int manualConvergence = (int)strtol(valstr, 0, 0);
+
+            if ( ( manualConvergence < strtol(mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MIN), 0, 0) ) ||
+                    ( manualConvergence > strtol(mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MAX), 0, 0) ) ) {
+                CAMHAL_LOGEB("ERROR: Invalid Manual Convergence = %d", manualConvergence);
+                return BAD_VALUE;
+            } else {
+                CAMHAL_LOGDB("ManualConvergence Value = %d", manualConvergence);
+                mParameters.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, valstr);
+            }
+        }
 
         if((valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION)) != NULL) {
             if (isParameterValid(valstr,
