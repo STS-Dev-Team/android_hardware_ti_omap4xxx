@@ -1621,9 +1621,19 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
 
   for ( unsigned int n = 0; n < mMeteringAreas.size(); n++)
       {
+        int widthDivisor = 1;
+        int heightDivisor = 1;
+
+        if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutTopBottom) {
+            heightDivisor = 2;
+        }
+        if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutLeftRight) {
+            widthDivisor = 2;
+        }
+
       // transform the coordinates to 3A-type coordinates
-      mMeteringAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth,
-                                      (size_t)mPreviewData->mHeight,
+      mMeteringAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
+                                      (size_t)mPreviewData->mHeight/heightDivisor,
                                       (size_t&)meteringAreas[0]->tAlgoAreas[n].nTop,
                                       (size_t&)meteringAreas[0]->tAlgoAreas[n].nLeft,
                                       (size_t&)meteringAreas[0]->tAlgoAreas[n].nWidth,

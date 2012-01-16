@@ -746,11 +746,20 @@ status_t OMXCameraAdapter::setTouchFocus()
             focusAreas[0]->nNumAreas = 0;
             }
 
-        for ( unsigned int n = 0; n < mFocusAreas.size(); n++)
-            {
+        for ( unsigned int n = 0; n < mFocusAreas.size(); n++) {
+            int widthDivisor = 1;
+            int heightDivisor = 1;
+
+            if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutTopBottom) {
+                heightDivisor = 2;
+            }
+            if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutLeftRight) {
+                widthDivisor = 2;
+            }
+
             // transform the coordinates to 3A-type coordinates
-            mFocusAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth,
-                                            (size_t)mPreviewData->mHeight,
+            mFocusAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
+                                            (size_t)mPreviewData->mHeight/heightDivisor,
                                             (size_t&)focusAreas[0]->tAlgoAreas[n].nTop,
                                             (size_t&)focusAreas[0]->tAlgoAreas[n].nLeft,
                                             (size_t&)focusAreas[0]->tAlgoAreas[n].nWidth,
@@ -770,7 +779,7 @@ status_t OMXCameraAdapter::setTouchFocus()
                     n, (int)focusAreas[0]->tAlgoAreas[n].nTop, (int)focusAreas[0]->tAlgoAreas[n].nLeft,
                     (int)focusAreas[0]->tAlgoAreas[n].nWidth, (int)focusAreas[0]->tAlgoAreas[n].nHeight,
                     (int)focusAreas[0]->tAlgoAreas[n].nPriority);
-             }
+        }
 
         OMX_INIT_STRUCT_PTR (&sharedBuffer, OMX_TI_CONFIG_SHAREDBUFFER);
 

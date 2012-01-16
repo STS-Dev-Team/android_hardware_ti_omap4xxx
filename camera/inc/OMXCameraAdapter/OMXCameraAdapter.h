@@ -681,7 +681,7 @@ private:
     status_t apply3Asettings( Gen3A_settings& Gen3A );
 
     // AutoConvergence
-    status_t setAutoConvergence(const char *valstr,const CameraParameters &params);
+    status_t setAutoConvergence(const char *valstr, const char *pValManualstr, const CameraParameters &params);
 
     OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type);
 
