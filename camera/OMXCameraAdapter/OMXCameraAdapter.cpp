@@ -200,7 +200,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mExposureBracketingValidEntries = 0;
     mSensorOverclock = false;
     mAutoConv = OMX_TI_AutoConvergenceModeMax;
-    mManualConv = 0x7FFFFFFF;
+    mManualConv = 0;
     mDeviceOrientation = 0;
     mCapabilities = caps;
     mZoomUpdating = false;
