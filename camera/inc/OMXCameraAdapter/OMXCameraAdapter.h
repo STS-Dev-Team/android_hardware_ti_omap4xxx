@@ -683,7 +683,7 @@ private:
     // AutoConvergence
     status_t setAutoConvergence(const char *valstr, const char *pValManualstr, const CameraParameters &params);
 
-    OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type);
+    OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type);
 
     // Mechanical Misalignment Correction
     status_t setMechanicalMisalignmentCorrection(const char *mode);
