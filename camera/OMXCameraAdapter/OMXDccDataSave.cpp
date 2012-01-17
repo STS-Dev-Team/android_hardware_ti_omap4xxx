@@ -122,7 +122,7 @@ status_t OMXCameraAdapter::sniffDccFileDataSave(OMX_BUFFERHEADERTYPE* pBuffHeade
         return -EINVAL;
     }
 
-    extraData = getExtradata(extraData , (OMX_EXTRADATATYPE)OMX_TI_DccData);
+    extraData = getExtradata(extraData, platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE)OMX_TI_DccData);
 
     if ( NULL != extraData ) {
         CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",

@@ -3011,7 +3011,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             {
             platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
             extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) platformPrivate->pMetaDataBuffer,
-                    (OMX_EXTRADATATYPE) OMX_AncillaryData);
+                    platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE) OMX_AncillaryData);
 
             if ( NULL != extraData )
                 {
@@ -3462,21 +3462,22 @@ void OMXCameraAdapter::OMXCallbackHandler::flush()
     mCondition.wait(mLock);
 }
 
-OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type)
-{
-  if ( NULL != extraData )
-      {
-      while ( extraData->eType && extraData->nDataSize && extraData->data )
-          {
-          if ( type == extraData->eType )
-              {
-              return extraData;
-              }
-          extraData = (OMX_OTHER_EXTRADATATYPE*) ((char*)extraData + extraData->nSize);
-          }
-      }
-  // Required extradata type wasn't found
-  return NULL;
+OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type) {
+    OMX_U32 remainingSize = extraDataSize;
+
+    if ( NULL != extraData ) {
+        while ( extraData->eType && extraData->nDataSize && extraData->data &&
+            (remainingSize >= extraData->nSize)) {
+            if ( type == extraData->eType ) {
+                return extraData;
+            }
+            extraData = (OMX_OTHER_EXTRADATATYPE*) ((char*)extraData + extraData->nSize);
+            remainingSize -= extraData->nSize;
+        }
+    }
+
+    // Required extradata type wasn't found
+    return NULL;
 }
 
 OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
