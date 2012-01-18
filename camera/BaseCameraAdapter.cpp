@@ -1710,6 +1710,12 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                                  operation);
                     mNextState = INTIALIZED_STATE;
                     break;
+                case CAMERA_STOP_BRACKET_CAPTURE:
+                    ret = INVALID_OPERATION;
+                    break;
+                case CAMERA_CANCEL_AUTOFOCUS:
+                    ret = INVALID_OPERATION;
+                    break;
 
                 default:
                     CAMHAL_LOGEB("Adapter state switch INTIALIZED_STATE Invalid Op! event = 0x%x",
