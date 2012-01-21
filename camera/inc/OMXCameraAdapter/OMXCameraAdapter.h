@@ -215,6 +215,7 @@ public:
         HIGH_QUALITY = 2,
         VIDEO_MODE = 3,
         HIGH_QUALITY_ZSL = 4,
+        CP_CAM = 5,
         };
 
     enum IPPMode
