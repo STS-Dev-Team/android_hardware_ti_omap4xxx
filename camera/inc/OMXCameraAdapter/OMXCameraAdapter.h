@@ -668,7 +668,10 @@ private:
                                   BaseCameraAdapter::AdapterState state);
 
     //Exposure Bracketing
+    status_t setVectorShot(int *evValues, int *evValues2, size_t evCount, size_t frameCount);
     status_t setExposureBracketing(int *evValues, int *evValues2,
+                                   size_t evCount, size_t frameCount);
+    status_t doExposureBracketing(int *evValues, int *evValues2,
                                    size_t evCount, size_t frameCount);
     status_t parseExpRange(const char *rangeStr, int *expRange, int *gainRange,
                            size_t count, size_t &validEntries);
