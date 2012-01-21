@@ -126,6 +126,7 @@ static const char IPP_NONE[];
 static const char HIGH_PERFORMANCE_MODE[];
 static const char HIGH_QUALITY_MODE[];
 static const char HIGH_QUALITY_ZSL_MODE[];
+static const char CP_CAM_MODE[];
 static const char VIDEO_MODE[];
 static const char EXPOSURE_BRACKETING[];
 static const char TEMP_BRACKETING[];
