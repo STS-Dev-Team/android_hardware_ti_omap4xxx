@@ -164,7 +164,13 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     } else if ( (str = params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE)) != NULL) {
         parseExpRange(str, mExposureBracketingValues, mExposureGainBracketingValues,
                       EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
-        mExposureBracketMode = OMX_BracketExposureGainAbsolute;
+        // TODO(XXX): Use bracket shot for cpcam. Should we let user use exposure
+        // bracketing too?
+        if (mCapMode == OMXCameraAdapter::CP_CAM) {
+            mExposureBracketMode = OMX_BracketVectorShot;
+        } else {
+            mExposureBracketMode = OMX_BracketExposureGainAbsolute;
+        }
         mPendingCaptureSettings |= SetExpBracket;
     } else {
         // if bracketing was previously set...we set again before capturing to clear
@@ -404,6 +410,149 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
     return ret;
 }
 
+status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
+                                                 int *evValues2,
+                                                 size_t evCount,
+                                                 size_t frameCount)
+{
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+    if ( OMX_StateInvalid == mComponentState ) {
+        CAMHAL_LOGEA("OMX component is in invalid state");
+        ret = -EINVAL;
+    }
+
+    if ( NULL == evValues ) {
+        CAMHAL_LOGEA("Exposure compensation values pointer is invalid");
+        ret = -EINVAL;
+    }
+
+    if ( NO_ERROR == ret ) {
+        if (mExposureBracketMode == OMX_BracketVectorShot) {
+            ret = setVectorShot(evValues, evValues2, evCount, frameCount);
+        } else {
+            ret = setExposureBracketing(evValues, evValues2, evCount, frameCount);
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+status_t OMXCameraAdapter::setVectorShot(int *evValues,
+                                         int *evValues2,
+                                         size_t evCount,
+                                         size_t frameCount)
+{
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_CONFIG_CAPTUREMODETYPE expCapMode;
+    OMX_CONFIG_EXTCAPTUREMODETYPE extExpCapMode;
+    OMX_TI_CONFIG_ENQUEUESHOTCONFIGS enqueueShotConfigs;
+    OMX_TI_CONFIG_QUERYAVAILABLESHOTS queryAvailableShots;
+
+
+    LOG_FUNCTION_NAME;
+
+    OMX_INIT_STRUCT_PTR(&enqueueShotConfigs, OMX_TI_CONFIG_ENQUEUESHOTCONFIGS);
+    OMX_INIT_STRUCT_PTR(&queryAvailableShots, OMX_TI_CONFIG_QUERYAVAILABLESHOTS);
+
+    queryAvailableShots.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+    eError = OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
+                                (OMX_INDEXTYPE) OMX_TI_IndexConfigQueryAvailableShots,
+                                &queryAvailableShots);
+    if (OMX_ErrorNone != eError) {
+        CAMHAL_LOGE("Error getting available shots 0x%x", eError);
+        goto exit;
+    } else {
+        CAMHAL_LOGD("AVAILABLE SHOTS: %d", queryAvailableShots.nAvailableShots);
+        if (queryAvailableShots.nAvailableShots < evCount) {
+            // TODO(XXX): Need to implement some logic to handle this error
+            CAMHAL_LOGE("Not enough available shots to fulfill this queue request");
+            ret = -ENOSPC;
+            goto exit;
+        }
+    }
+
+    if (NO_ERROR == ret) {
+        OMX_INIT_STRUCT_PTR (&expCapMode, OMX_CONFIG_CAPTUREMODETYPE);
+        expCapMode.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+
+        expCapMode.bFrameLimited = OMX_FALSE;
+
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                OMX_IndexConfigCaptureMode,
+                                &expCapMode);
+        if (OMX_ErrorNone != eError) {
+            CAMHAL_LOGEB("Error while configuring capture mode 0x%x", eError);
+            goto exit;
+        } else {
+            CAMHAL_LOGDA("Camera capture mode configured successfully");
+        }
+    }
+
+    if (NO_ERROR == ret) {
+        OMX_INIT_STRUCT_PTR (&extExpCapMode, OMX_CONFIG_EXTCAPTUREMODETYPE);
+        extExpCapMode.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+
+        if ( 0 == evCount ) {
+            extExpCapMode.bEnableBracketing = OMX_FALSE;
+        } else {
+            extExpCapMode.bEnableBracketing = OMX_TRUE;
+            extExpCapMode.tBracketConfigType.eBracketMode = mExposureBracketMode;
+        }
+
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                ( OMX_INDEXTYPE ) OMX_IndexConfigExtCaptureMode,
+                                &extExpCapMode);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while configuring extended capture mode 0x%x", eError);
+            goto exit;
+        } else {
+            CAMHAL_LOGDA("Extended camera capture mode configured successfully");
+        }
+    }
+
+    if ( NO_ERROR == ret )
+    {
+        unsigned int i;
+        for ( i = 0 ; i < evCount ; i++ ) {
+                enqueueShotConfigs.nShotConfig[i].nConfigId = i;
+                enqueueShotConfigs.nShotConfig[i].nFrames = 1;
+                enqueueShotConfigs.nShotConfig[i].nExp = evValues[i];
+                enqueueShotConfigs.nShotConfig[i].nGain = evValues2[i];
+        }
+
+        // Repeat last exposure and again
+        if ((evCount > 0) && (frameCount > evCount)) {
+            enqueueShotConfigs.nShotConfig[i-1].nFrames = frameCount - evCount;
+        }
+
+        if (mExposureBracketMode == OMX_BracketVectorShot) {
+            enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+            enqueueShotConfigs.bFlushQueue = OMX_FALSE;
+            enqueueShotConfigs.nNumConfigs = evCount;
+            eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                            ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
+                                &enqueueShotConfigs);
+            if ( OMX_ErrorNone != eError ) {
+                CAMHAL_LOGEB("Error while configuring bracket shot 0x%x", eError);
+                goto exit;
+            } else {
+                 CAMHAL_LOGDA("Bracket shot configured successfully");
+            }
+        }
+    }
+
+ exit:
+    LOG_FUNCTION_NAME_EXIT;
+
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+}
+
 status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
                                                  int *evValues2,
                                                  size_t evCount,
@@ -415,18 +564,6 @@ status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
     OMX_CONFIG_EXTCAPTUREMODETYPE extExpCapMode;
 
     LOG_FUNCTION_NAME;
-
-    if ( OMX_StateInvalid == mComponentState )
-        {
-        CAMHAL_LOGEA("OMX component is in invalid state");
-        ret = -EINVAL;
-        }
-
-    if ( NULL == evValues )
-        {
-        CAMHAL_LOGEA("Exposure compensation values pointer is invalid");
-        ret = -EINVAL;
-        }
 
     if ( NO_ERROR == ret )
         {
@@ -823,6 +960,26 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
                 CAMHAL_LOGEB("Error configuring image rotation %x", ret);
             }
         }
+
+        if (mPendingCaptureSettings & SetExpBracket) {
+            mPendingCaptureSettings &= ~SetExpBracket;
+            if ( mBracketingSet ) {
+                ret = doExposureBracketing(mExposureBracketingValues,
+                                            mExposureGainBracketingValues,
+                                            0,
+                                            0);
+            } else {
+                ret = doExposureBracketing(mExposureBracketingValues,
+                                    mExposureGainBracketingValues,
+                                    mExposureBracketingValidEntries,
+                                    mBurstFrames);
+            }
+
+            if ( ret != NO_ERROR ) {
+                CAMHAL_LOGEB("setExposureBracketing() failed %d", ret);
+                goto EXIT;
+            }
+        }
     }
 
     // need to enable wb data for video snapshot to fill in exif data
@@ -850,6 +1007,10 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             }
 
         }
+
+    if (mPending3Asettings) {
+        apply3Asettings(mParameters3A);
+    }
 
     if ( NO_ERROR == ret ) {
         capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
@@ -1212,27 +1373,6 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
             CAMHAL_LOGEB("Error configuring thumbnail size %x", ret);
             return ret;
         }
-    }
-
-    if (mPendingCaptureSettings & SetExpBracket) {
-        mPendingCaptureSettings &= ~SetExpBracket;
-        if ( mBracketingSet ) {
-            ret = setExposureBracketing(mExposureBracketingValues,
-                                        mExposureGainBracketingValues,
-                                        0,
-                                        0);
-        } else {
-            ret = setExposureBracketing(mExposureBracketingValues,
-                                        mExposureGainBracketingValues,
-                                        mExposureBracketingValidEntries,
-                                        mBurstFrames);
-        }
-
-        if ( ret != NO_ERROR ) {
-            CAMHAL_LOGEB("setExposureBracketing() failed %d", ret);
-            goto EXIT;
-        }
-
     }
 
     if (mPendingCaptureSettings & SetQuality) {
