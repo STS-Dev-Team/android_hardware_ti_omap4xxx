@@ -28,6 +28,7 @@ namespace android {
 const char TICameraParameters::HIGH_PERFORMANCE_MODE[] = "high-performance";
 const char TICameraParameters::HIGH_QUALITY_MODE[] = "high-quality";
 const char TICameraParameters::HIGH_QUALITY_ZSL_MODE[] = "high-quality-zsl";
+const char TICameraParameters::CP_CAM_MODE[] = "cp-cam";
 const char TICameraParameters::VIDEO_MODE[] = "video-mode";
 const char TICameraParameters::EXPOSURE_BRACKETING[] = "exposure-bracketing";
 const char TICameraParameters::TEMP_BRACKETING[] = "temporal-bracketing";

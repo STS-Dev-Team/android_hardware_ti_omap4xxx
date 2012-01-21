@@ -66,6 +66,10 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
             {
             capMode = OMXCameraAdapter::VIDEO_MODE;
             }
+        else if (strcmp(valstr, (const char *) TICameraParameters::CP_CAM_MODE) == 0)
+            {
+            capMode = OMXCameraAdapter::CP_CAM;
+            }
         else
             {
             capMode = OMXCameraAdapter::HIGH_QUALITY;
@@ -620,11 +624,13 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_CONFIG_CAMOPERATINGMODETYPE camMode;
     OMX_CONFIG_BOOLEANTYPE bCAC;
+    OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE singlePrevMode;
 
     LOG_FUNCTION_NAME;
 
     //CAC is disabled by default
     OMX_INIT_STRUCT_PTR (&bCAC, OMX_CONFIG_BOOLEANTYPE);
+    OMX_INIT_STRUCT_PTR (&singlePrevMode, OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE);
     bCAC.bEnabled = OMX_FALSE;
 
     if ( NO_ERROR == ret )
@@ -640,6 +646,13 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
             {
             CAMHAL_LOGDA("Camera mode: HIGH SPEED");
             camMode.eCamOperatingMode = OMX_CaptureImageHighSpeedTemporalBracketing;
+            }
+        else if ( OMXCameraAdapter::CP_CAM == mode )
+            {
+            CAMHAL_LOGDA("Camera mode: CP CAM");
+            camMode.eCamOperatingMode = OMX_TI_CPCam;
+            // TODO(XXX): Hardcode for now until we implement re-proc pipe
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
             }
         else if( OMXCameraAdapter::HIGH_QUALITY == mode )
             {
@@ -678,6 +691,20 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                 CAMHAL_LOGDA("Camera mode configured successfully");
                 }
             }
+
+        if((NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mode)) {
+            //Configure Single Preview Mode
+            eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                    ( OMX_INDEXTYPE ) OMX_TI_IndexConfigSinglePreviewMode,
+                                    &singlePrevMode);
+            if ( OMX_ErrorNone != eError ) {
+                CAMHAL_LOGEB("Error while configuring single preview mode 0x%x", eError);
+                ret = ErrorUtils::omxToAndroidError(eError);
+            } else {
+                CAMHAL_LOGDA("single preview mode configured successfully");
+            }
+        }
+
 
         if( NO_ERROR == ret )
             {
