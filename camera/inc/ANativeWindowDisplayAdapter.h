@@ -23,6 +23,7 @@
 
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
+#define HAL_PIXEL_FORMAT_TI_NV12_1D 0x102
 
 namespace android {
 
