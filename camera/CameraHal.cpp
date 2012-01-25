@@ -277,7 +277,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 }
             }
 
-            if ((valstr = params.get(TICameraParameters::KEY_VNF_SUPPORTED)) != NULL) {
+            if ((valstr = params.get(TICameraParameters::KEY_VNF)) != NULL) {
                 if (strcmp(mCameraProperties->get(CameraProperties::VNF_SUPPORTED),
                            CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGDB("VNF %s",
