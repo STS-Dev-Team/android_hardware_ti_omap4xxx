@@ -1817,6 +1817,20 @@ status_t OMXCameraAdapter::startPreview()
         goto EXIT;
         }
 
+    // Enable Ancillary data. The nDCCStatus field is used to signify
+    // whether the preview frame is a snapshot
+    if ( OMX_ErrorNone == eError) {
+        OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
+        extraDataControl.nPortIndex = OMX_ALL;
+        extraDataControl.eExtraDataType = OMX_AncillaryData;
+        extraDataControl.bEnable = OMX_TRUE;
+
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                               ( OMX_INDEXTYPE ) OMX_IndexConfigOtherExtraDataControl,
+                               &extraDataControl);
+        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+    }
+
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
     measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
 
@@ -1911,21 +1925,6 @@ status_t OMXCameraAdapter::startPreview()
             GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
             }
 
-        }
-
-    // Enable Ancillary data. The nDCCStatus field is used to signify
-    // whether the preview frame is a snapshot
-    if ( OMX_ErrorNone == eError)
-        {
-        OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
-        extraDataControl.nPortIndex = OMX_ALL;
-        extraDataControl.eExtraDataType = OMX_AncillaryData;
-        extraDataControl.bEnable = OMX_TRUE;
-
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                               ( OMX_INDEXTYPE ) OMX_IndexConfigOtherExtraDataControl,
-                               &extraDataControl);
-        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
     //reset frame rate estimates
