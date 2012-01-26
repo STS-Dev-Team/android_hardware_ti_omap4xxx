@@ -109,6 +109,14 @@ status_t OMXCameraAdapter::doAutoFocus()
        return NO_ERROR;
     }
 
+    // AF when fixed focus modes are set should be a no-op.
+    if ( ( mParameters3A.Focus == OMX_IMAGE_FocusControlOff ) ||
+         ( mParameters3A.Focus == OMX_IMAGE_FocusControlAutoInfinity ) ||
+         ( mParameters3A.Focus == OMX_IMAGE_FocusControlHyperfocal ) ) {
+        returnFocusStatus(true);
+        return NO_ERROR;
+    }
+
     OMX_INIT_STRUCT_PTR (&focusStatus, OMX_PARAM_FOCUSSTATUSTYPE);
 
     // If the app calls autoFocus, the camera will stop sending face callbacks.
