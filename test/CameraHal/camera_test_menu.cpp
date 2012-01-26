@@ -1942,106 +1942,117 @@ int menu_gps() {
 
 int functional_menu() {
     char ch;
+    char area1[MAX_LINES][MAX_SYMBOLS+1];
+    char area2[MAX_LINES][MAX_SYMBOLS+1];
+    int j = 0;
+    int k = 0;
+
+    memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
+    memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
 
     if (print_menu) {
 
-        printf("\n\n=========== FUNCTIONAL TEST MENU ===================\n\n");
+        printf("\n========================================= FUNCTIONAL TEST MENU =========================================\n");
 
-        printf(" \n\nSTART / STOP / GENERAL SERVICES \n");
-        printf(" -----------------------------\n");
-        printf("   A  Select Camera %s\n", cameras[camera_index]);
-        printf("   [. Resume Preview after capture\n");
-        printf("   0. Reset to defaults\n");
-        printf("   q. Quit\n");
-        printf("   @. Disconnect and Reconnect to CameraService \n");
-        printf("   /. Enable/Disable showfps: %s\n", ((showfps)? "Enabled":"Disabled"));
-        printf("   a. GEO tagging settings menu\n");
-        printf("   E.  Camera Capability Dump");
+        snprintf(area1[j++], MAX_SYMBOLS, "   START / STOP / GENERAL SERVICES");
+        snprintf(area1[j++], MAX_SYMBOLS, "   -----------------------------");
+        snprintf(area1[j++], MAX_SYMBOLS, "A  Select Camera %s", cameras[camera_index]);
+        snprintf(area1[j++], MAX_SYMBOLS, "[. Resume Preview after capture");
+        snprintf(area1[j++], MAX_SYMBOLS, "0. Reset to defaults");
+        snprintf(area1[j++], MAX_SYMBOLS, "q. Quit");
+        snprintf(area1[j++], MAX_SYMBOLS, "@. Disconnect and Reconnect to CameraService");
+        snprintf(area1[j++], MAX_SYMBOLS, "/. Enable/Disable showfps: %s", ((showfps)? "Enabled":"Disabled"));
+        snprintf(area1[j++], MAX_SYMBOLS, "a. GEO tagging settings menu");
+        snprintf(area1[j++], MAX_SYMBOLS, "E. Camera Capability Dump");
 
-
-        printf(" \n\n PREVIEW SUB MENU \n");
-        printf(" -----------------------------\n");
-        printf("   1. Start Preview\n");
-        printf("   2. Stop Preview\n");
-        printf("   ~. Preview format %s\n", previewFormatArray[previewFormat]);
-        printf("   4. Preview size:   %4d x %4d - %s\n",preview_Array[previewSizeIDX]->width,  preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
-        printf("   R. Preview framerate range: %s\n", rangeDescription[fpsRangeIdx]);
-        printf("   &. Dump a preview frame\n");
+        snprintf(area1[j++], MAX_SYMBOLS, "        PREVIEW SUB MENU");
+        snprintf(area1[j++], MAX_SYMBOLS, "   -----------------------------");
+        snprintf(area1[j++], MAX_SYMBOLS, "1. Start Preview");
+        snprintf(area1[j++], MAX_SYMBOLS, "2. Stop Preview");
+        snprintf(area1[j++], MAX_SYMBOLS, "~. Preview format %s", previewFormatArray[previewFormat]);
+#if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
+        snprintf(area1[j++], MAX_SYMBOLS, "4. Preview size: %4d x %4d - %s",preview_Array[previewSizeIDX]->width,  preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
+#else
+        snprintf(area1[j++], MAX_SYMBOLS, "4. Preview size: %4d x %4d - %s",preview_Array[previewSizeIDX]->width, camera_index == 2 ? preview_Array[previewSizeIDX]->height*2 : preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
+#endif
+        snprintf(area1[j++], MAX_SYMBOLS, "R. Preview framerate range: %s", rangeDescription[fpsRangeIdx]);
+        snprintf(area1[j++], MAX_SYMBOLS, "&. Dump a preview frame");
         if (camera_index == 2) {
-            printf("   _. Auto Convergence mode: %s\n", autoconvergencemode[AutoConvergenceModeIDX]);
-            printf("   ^. Manual Convergence Value: %d\n", ManualConvergenceValues);
-            printf("   L. Stereo Layout: %s\n", stereoLayout[stereoLayoutIDX]);
+            snprintf(area1[j++], MAX_SYMBOLS, "_. Auto Convergence mode: %s", autoconvergencemode[AutoConvergenceModeIDX]);
+            snprintf(area1[j++], MAX_SYMBOLS, "^. Manual Convergence Value: %d\n", ManualConvergenceValues);
+            snprintf(area1[j++], MAX_SYMBOLS, "   L. Stereo Layout: %s\n", stereoLayout[stereoLayoutIDX]);
         }
+        snprintf(area1[j++], MAX_SYMBOLS, "{. 2D Preview in 3D Stereo Mode: %s", params.get(KEY_S3D2D_PREVIEW_MODE));
 
-        printf("   {. 2D Preview in 3D Stereo Mode: %s\n", params.get(KEY_S3D2D_PREVIEW_MODE));
-        printf(" \n\n IMAGE CAPTURE SUB MENU \n");
-        printf(" -----------------------------\n");
-        printf("   p. Take picture/Full Press\n");
-        printf("   H. Exposure Bracketing: %s\n", expBracketing[expBracketIdx]);
-        printf("   U. Temporal Bracketing:   %s\n", tempBracketing[tempBracketIdx]);
-        printf("   W. Temporal Bracketing Range: [-%d;+%d]\n", tempBracketRange, tempBracketRange);
-        printf("   $. Picture Format: %s\n", pictureFormatArray[pictureFormat]);
-        printf("   3. Picture Rotation:       %3d degree\n", rotation );
-        printf("   V. Preview Rotation:       %3d degree\n", previewRotation );
-        printf("   5. Picture size:   %4d x %4d - %s\n",capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height,              capture_Array[captureSizeIDX]->name);
-        printf("   i. ISO mode:       %s\n", isoMode[iso_mode]);
-        printf("   u. Capture Mode:   %s\n", modevalues[capture_mode]);
-        printf("   k. IPP Mode:       %s\n", ipp_mode[ippIDX]);
-        printf("   K. GBCE: %s\n", gbce[gbceIDX]);
-        printf("   O. GLBCE %s\n", gbce[glbceIDX]);
-        printf("   o. Jpeg Quality:   %d\n", jpegQuality);
-        printf("   #. Burst Images:  %3d\n", burst);
-        printf("   :. Thumbnail Size:  %4d x %4d - %s\n",thumbnail_Array[thumbSizeIDX]->width, thumbnail_Array[thumbSizeIDX]->height, thumbnail_Array[thumbSizeIDX]->name);
-        printf("   ': Thumbnail Quality %d\n", thumbQuality);
+        snprintf(area1[j++], MAX_SYMBOLS, "     IMAGE CAPTURE SUB MENU");
+        snprintf(area1[j++], MAX_SYMBOLS, "   -----------------------------");
+        snprintf(area1[j++], MAX_SYMBOLS, "p. Take picture/Full Press");
+        snprintf(area1[j++], MAX_SYMBOLS, "H. Exposure Bracketing: %s", expBracketing[expBracketIdx]);
+        snprintf(area1[j++], MAX_SYMBOLS, "U. Temporal Bracketing:   %s", tempBracketing[tempBracketIdx]);
+        snprintf(area1[j++], MAX_SYMBOLS, "W. Temporal Bracketing Range: [-%d;+%d]", tempBracketRange, tempBracketRange);
+        snprintf(area1[j++], MAX_SYMBOLS, "$. Picture Format: %s", pictureFormatArray[pictureFormat]);
+        snprintf(area1[j++], MAX_SYMBOLS, "3. Picture Rotation:       %3d degree", rotation );
+        snprintf(area1[j++], MAX_SYMBOLS, "V. Preview Rotation:       %3d degree", previewRotation );
+        snprintf(area1[j++], MAX_SYMBOLS, "5. Picture size:   %4d x %4d - %s",capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height,              capture_Array[captureSizeIDX]->name);
+        snprintf(area1[j++], MAX_SYMBOLS, "i. ISO mode:       %s", isoMode[iso_mode]);
+        snprintf(area1[j++], MAX_SYMBOLS, "u. Capture Mode:   %s", modevalues[capture_mode]);
+        snprintf(area1[j++], MAX_SYMBOLS, "k. IPP Mode:       %s", ipp_mode[ippIDX]);
+        snprintf(area1[j++], MAX_SYMBOLS, "K. GBCE: %s", gbce[gbceIDX]);
+        snprintf(area1[j++], MAX_SYMBOLS, "O. GLBCE %s", gbce[glbceIDX]);
+        snprintf(area1[j++], MAX_SYMBOLS, "o. Jpeg Quality:   %d", jpegQuality);
+        snprintf(area1[j++], MAX_SYMBOLS, "#. Burst Images:  %3d", burst);
+        snprintf(area1[j++], MAX_SYMBOLS, ":. Thumbnail Size:  %4d x %4d - %s",thumbnail_Array[thumbSizeIDX]->width, thumbnail_Array[thumbSizeIDX]->height, thumbnail_Array[thumbSizeIDX]->name);
+        snprintf(area1[j++], MAX_SYMBOLS, "': Thumbnail Quality %d", thumbQuality);
 
-        printf(" \n\n VIDEO CAPTURE SUB MENU \n");
-        printf(" -----------------------------\n");
+        snprintf(area2[k++], MAX_SYMBOLS, "     VIDEO CAPTURE SUB MENU");
+        snprintf(area2[k++], MAX_SYMBOLS, "   -----------------------------");
+        snprintf(area2[k++], MAX_SYMBOLS, "6. Start Video Recording");
+        snprintf(area2[k++], MAX_SYMBOLS, "2. Stop Recording");
+        snprintf(area2[k++], MAX_SYMBOLS, "l. Video Capture resolution:   %4d x %4d - %s",Vcapture_Array[VcaptureSizeIDX]->width,Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->name);
+        snprintf(area2[k++], MAX_SYMBOLS, "]. Video Bit rate :  %s", VbitRate[VbitRateIDX].desc);
+        snprintf(area2[k++], MAX_SYMBOLS, "9. Video Codec:    %s", videoCodecs[videoCodecIDX].desc);
+        snprintf(area2[k++], MAX_SYMBOLS, "D. Audio Codec:    %s", audioCodecs[audioCodecIDX].desc);
+        snprintf(area2[k++], MAX_SYMBOLS, "v. Output Format:  %s", outputFormat[outputFormatIDX].desc);
+        snprintf(area2[k++], MAX_SYMBOLS, "r. Framerate:     %d", constFramerate[frameRateIDX]);
+        snprintf(area2[k++], MAX_SYMBOLS, "*. Start Video Recording dump ( 1 raw frame )");
+        snprintf(area2[k++], MAX_SYMBOLS, "B  VNF              %s", vnftoggle? "On" : "Off");
+        snprintf(area2[k++], MAX_SYMBOLS, "C  VSTAB              %s", vstabtoggle? "On" : "Off");
 
-        printf("   6. Start Video Recording\n");
-        printf("   2. Stop Recording\n");
-        printf("   l. Video Capture resolution:   %4d x %4d - %s\n",Vcapture_Array[VcaptureSizeIDX]->width,Vcapture_Array[VcaptureSizeIDX]->height, Vcapture_Array[VcaptureSizeIDX]->name);
-        printf("   ]. Video Bit rate :  %s\n", VbitRate[VbitRateIDX].desc);
-        printf("   9. Video Codec:    %s\n", videoCodecs[videoCodecIDX].desc);
-        printf("   D. Audio Codec:    %s\n", audioCodecs[audioCodecIDX].desc);
-        printf("   v. Output Format:  %s\n", outputFormat[outputFormatIDX].desc);
-        printf("   r. Framerate:     %d\n", constFramerate[frameRateIDX]);
-        printf("   *. Start Video Recording dump ( 1 raw frame ) \n");
-        printf("   B  VNF              %s \n", vnftoggle? "On" : "Off");
-        printf("   C  VSTAB              %s", vstabtoggle? "On" : "Off");
-
-        printf(" \n\n 3A SETTING SUB MENU \n");
-        printf(" -----------------------------\n");
-
-        printf("   M. Measurement Data: %s\n", measurement[measurementIdx]);
-        printf("   F. Start face detection \n");
-        printf("   T. Stop face detection \n");
-        printf("   G. Touch/Focus area AF\n");
-        printf("   y. Metering area\n");
-        printf("   Y. Metering area center\n");
-        printf("   N. Metering area average\n");
-        printf("   f. Auto Focus/Half Press\n");
-        printf("   I. AF Timeout       %s\n", afTimeout[afTimeoutIdx]);
-        printf("   J.Flash:              %s\n", flash[flashIdx]);
-        printf("   7. EV offset:      %4.1f\n", compensation);
-        printf("   8. AWB mode:       %s\n", awb[awb_mode]);
-        printf("   z. Zoom            %s\n", zoom[zoomIDX].zoom_description);
-        printf("   Z. Smooth Zoom     %s\n", zoom[zoomIDX].zoom_description);
-        printf("   j. Exposure        %s\n", exposureMode[exposure_mode]);
-        printf("   e. Effect:         %s\n", effectss[effects_mode]);
-        printf("   w. Scene:          %s\n", scene[scene_mode]);
-        printf("   s. Saturation:     %d\n", saturation);
-        printf("   c. Contrast:       %d\n", contrast);
-        printf("   h. Sharpness:      %d\n", sharpness);
-        printf("   b. Brightness:     %d\n", brightness);
-        printf("   x. Antibanding:    %s\n", antiband[antibanding_mode]);
-        printf("   g. Focus mode:     %s\n", focus[focus_mode]);
-        printf("   m. Metering mode:     %s\n" , metering[meter_mode]);
-        printf("   <. Exposure Lock:     %s\n", AutoExposureLocktoggle ? "On" : "Off");
-        printf("   >. WhiteBalance Lock:  %s\n",AutoWhiteBalanceLocktoggle ? "On": "Off");
-        printf("   ). Mechanical Misalignment Correction:  %s\n",misalignmentCorrection[enableMisalignmentCorrectionIdx]);
+        snprintf(area2[k++], MAX_SYMBOLS, "       3A SETTING SUB MENU");
+        snprintf(area2[k++], MAX_SYMBOLS, "   -----------------------------");
+        snprintf(area2[k++], MAX_SYMBOLS, "M. Measurement Data: %s", measurement[measurementIdx]);
+        snprintf(area2[k++], MAX_SYMBOLS, "F. Start face detection");
+        snprintf(area2[k++], MAX_SYMBOLS, "T. Stop face detection");
+        snprintf(area2[k++], MAX_SYMBOLS, "G. Touch/Focus area AF");
+        snprintf(area2[k++], MAX_SYMBOLS, "y. Metering area");
+        snprintf(area2[k++], MAX_SYMBOLS, "Y. Metering area center");
+        snprintf(area2[k++], MAX_SYMBOLS, "N. Metering area average");
+        snprintf(area2[k++], MAX_SYMBOLS, "f. Auto Focus/Half Press");
+        snprintf(area2[k++], MAX_SYMBOLS, "I. AF Timeout       %s", afTimeout[afTimeoutIdx]);
+        snprintf(area2[k++], MAX_SYMBOLS, "J.Flash:              %s", flash[flashIdx]);
+        snprintf(area2[k++], MAX_SYMBOLS, "7. EV offset:      %4.1f", compensation);
+        snprintf(area2[k++], MAX_SYMBOLS, "8. AWB mode:       %s", awb[awb_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "z. Zoom            %s", zoom[zoomIDX].zoom_description);
+        snprintf(area2[k++], MAX_SYMBOLS, "Z. Smooth Zoom     %s", zoom[zoomIDX].zoom_description);
+        snprintf(area2[k++], MAX_SYMBOLS, "j. Exposure        %s", exposureMode[exposure_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "e. Effect:         %s", effectss[effects_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "w. Scene:          %s", scene[scene_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "s. Saturation:     %d", saturation);
+        snprintf(area2[k++], MAX_SYMBOLS, "c. Contrast:       %d", contrast);
+        snprintf(area2[k++], MAX_SYMBOLS, "h. Sharpness:      %d", sharpness);
+        snprintf(area2[k++], MAX_SYMBOLS, "b. Brightness:     %d", brightness);
+        snprintf(area2[k++], MAX_SYMBOLS, "x. Antibanding:    %s", antiband[antibanding_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "g. Focus mode:     %s", focus[focus_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "m. Metering mode:     %s" , metering[meter_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "<. Exposure Lock:     %s", AutoExposureLocktoggle ? "On" : "Off");
+        snprintf(area2[k++], MAX_SYMBOLS, ">. WhiteBalance Lock:  %s",AutoWhiteBalanceLocktoggle ? "On": "Off");
+        snprintf(area2[k++], MAX_SYMBOLS, "). Mechanical Misalignment Correction:  %s",misalignmentCorrection[enableMisalignmentCorrectionIdx]);
 
         printf("\n");
-        printf("   Choice: ");
+        for (int i=0; (i<j || i < k) && i<MAX_LINES; i++) {
+            printf("%-65s \t %-65s\n", area1[i], area2[i]);
+        }
+        printf("   Choice:");
     }
 
     ch = getchar();
