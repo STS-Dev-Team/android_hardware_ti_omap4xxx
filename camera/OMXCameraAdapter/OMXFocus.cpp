@@ -357,7 +357,7 @@ status_t OMXCameraAdapter::setFocusCallback(bool enabled)
     if ( OMX_StateExecuting != mComponentState )
         {
           CAMHAL_LOGEA("OMX component not in executing state");
-        ret = NO_ERROR;
+        return NO_ERROR;
         }
 
     if ( NO_ERROR == ret )
