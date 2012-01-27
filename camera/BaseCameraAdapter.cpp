@@ -20,6 +20,40 @@ const int EVENT_MASK = 0xffff;
 
 namespace android {
 
+const LUT cameraCommandsUserToHAL[] = {
+    { "CAMERA_START_PREVIEW",                   CameraAdapter::CAMERA_START_PREVIEW },
+    { "CAMERA_STOP_PREVIEW",                    CameraAdapter::CAMERA_STOP_PREVIEW },
+    { "CAMERA_START_VIDEO",                     CameraAdapter::CAMERA_START_VIDEO },
+    { "CAMERA_STOP_VIDEO",                      CameraAdapter::CAMERA_STOP_VIDEO },
+    { "CAMERA_START_IMAGE_CAPTURE",             CameraAdapter::CAMERA_START_IMAGE_CAPTURE },
+    { "CAMERA_STOP_IMAGE_CAPTURE",              CameraAdapter::CAMERA_STOP_IMAGE_CAPTURE },
+    { "CAMERA_PERFORM_AUTOFOCUS",               CameraAdapter::CAMERA_PERFORM_AUTOFOCUS },
+    { "CAMERA_CANCEL_AUTOFOCUS",                CameraAdapter::CAMERA_CANCEL_AUTOFOCUS },
+    { "CAMERA_PREVIEW_FLUSH_BUFFERS",           CameraAdapter::CAMERA_PREVIEW_FLUSH_BUFFERS },
+    { "CAMERA_START_SMOOTH_ZOOM",               CameraAdapter::CAMERA_START_SMOOTH_ZOOM },
+    { "CAMERA_STOP_SMOOTH_ZOOM",                CameraAdapter::CAMERA_STOP_SMOOTH_ZOOM },
+    { "CAMERA_USE_BUFFERS_PREVIEW",             CameraAdapter::CAMERA_USE_BUFFERS_PREVIEW },
+    { "CAMERA_SET_TIMEOUT",                     CameraAdapter::CAMERA_SET_TIMEOUT },
+    { "CAMERA_CANCEL_TIMEOUT",                  CameraAdapter::CAMERA_CANCEL_TIMEOUT },
+    { "CAMERA_START_BRACKET_CAPTURE",           CameraAdapter::CAMERA_START_BRACKET_CAPTURE },
+    { "CAMERA_STOP_BRACKET_CAPTURE",            CameraAdapter::CAMERA_STOP_BRACKET_CAPTURE },
+    { "CAMERA_QUERY_RESOLUTION_PREVIEW",        CameraAdapter::CAMERA_QUERY_RESOLUTION_PREVIEW },
+    { "CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE", CameraAdapter::CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE },
+    { "CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA",  CameraAdapter::CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA },
+    { "CAMERA_USE_BUFFERS_IMAGE_CAPTURE",       CameraAdapter::CAMERA_USE_BUFFERS_IMAGE_CAPTURE },
+    { "CAMERA_USE_BUFFERS_PREVIEW_DATA",        CameraAdapter::CAMERA_USE_BUFFERS_PREVIEW_DATA },
+    { "CAMERA_TIMEOUT_EXPIRED",                 CameraAdapter::CAMERA_TIMEOUT_EXPIRED },
+    { "CAMERA_START_FD",                        CameraAdapter::CAMERA_START_FD },
+    { "CAMERA_STOP_FD",                         CameraAdapter::CAMERA_STOP_FD },
+    { "CAMERA_SWITCH_TO_EXECUTING",             CameraAdapter::CAMERA_SWITCH_TO_EXECUTING },
+    { "CAMERA_USE_BUFFERS_VIDEO_CAPTURE",       CameraAdapter::CAMERA_USE_BUFFERS_VIDEO_CAPTURE }
+};
+
+const LUTtypeHAL CamCommandsLUT = {
+    sizeof(cameraCommandsUserToHAL)/sizeof(cameraCommandsUserToHAL[0]),
+    cameraCommandsUserToHAL
+};
+
 /*--------------------Camera Adapter Class STARTS here-----------------------------*/
 
 BaseCameraAdapter::BaseCameraAdapter()
@@ -1707,11 +1741,22 @@ status_t BaseCameraAdapter::switchToExecuting()
   return ret;
 }
 
+const char* BaseCameraAdapter::getLUTvalue_translateHAL(int Value, LUTtypeHAL LUT) {
+    int LUTsize = LUT.size;
+    for(int i = 0; i < LUTsize; i++)
+        if( LUT.Table[i].halDefinition == Value )
+            return LUT.Table[i].userDefinition;
+
+    return NULL;
+}
+
 status_t BaseCameraAdapter::setState(CameraCommands operation)
 {
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
+
+    const char *printState = getLUTvalue_translateHAL(operation, CamCommandsLUT);
 
     mLock.lock();
 
@@ -1724,8 +1769,8 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_USE_BUFFERS_PREVIEW:
-                    CAMHAL_LOGDB("Adapter state switch INTIALIZED_STATE->LOADED_PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch INTIALIZED_STATE->LOADED_PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = LOADED_PREVIEW_STATE;
                     break;
 
@@ -1733,8 +1778,8 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 case CAMERA_QUERY_RESOLUTION_PREVIEW:
                 case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
                 case CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA:
-                    CAMHAL_LOGDB("Adapter state switch INTIALIZED_STATE->INTIALIZED_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch INTIALIZED_STATE->INTIALIZED_STATE event  = %s",
+                            printState);
                     mNextState = INTIALIZED_STATE;
                     break;
                 case CAMERA_STOP_BRACKET_CAPTURE:
@@ -1745,8 +1790,8 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch INTIALIZED_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch INTIALIZED_STATE Invalid Op! event  = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1760,8 +1805,8 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_START_PREVIEW:
-                    CAMHAL_LOGDB("Adapter state switch LOADED_PREVIEW_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch LOADED_PREVIEW_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
@@ -1769,14 +1814,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
                 case CAMERA_QUERY_BUFFER_SIZE_PREVIEW_DATA:
                 case CAMERA_USE_BUFFERS_PREVIEW_DATA:
-                    CAMHAL_LOGDB("Adapter state switch LOADED_PREVIEW_STATE->LOADED_PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch LOADED_PREVIEW_STATE->LOADED_PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = LOADED_PREVIEW_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGDB("Adapter state switch LOADED_PREVIEW Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch LOADED_PREVIEW Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1790,46 +1835,46 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_STOP_PREVIEW:
-                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->INTIALIZED_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->INTIALIZED_STATE event = %s",
+                            printState);
                     mNextState = INTIALIZED_STATE;
                     break;
 
                 case CAMERA_PERFORM_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->AF_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->AF_STATE event = %s",
+                            printState);
                     mNextState = AF_STATE;
                     break;
 
                 case CAMERA_START_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->ZOOM_STATE event = %s",
+                            printState);
                     mNextState = ZOOM_STATE;
                     break;
 
                 case CAMERA_USE_BUFFERS_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->LOADED_CAPTURE_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->LOADED_CAPTURE_STATE event = %s",
+                            printState);
                     mNextState = LOADED_CAPTURE_STATE;
                     break;
 
                 case CAMERA_START_VIDEO:
-                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->VIDEO_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->VIDEO_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_STATE;
                     break;
 
                 case CAMERA_CANCEL_AUTOFOCUS:
                 case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
                 case CAMERA_STOP_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch PREVIEW_ACTIVE->PREVIEW_ACTIVE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_ACTIVE->PREVIEW_ACTIVE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch PREVIEW_ACTIVE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch PREVIEW_ACTIVE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1843,20 +1888,20 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_START_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->CAPTURE_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->CAPTURE_STATE event = %s",
+                            printState);
                     mNextState = CAPTURE_STATE;
                     break;
 
                 case CAMERA_START_BRACKET_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->BRACKETING_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->BRACKETING_STATE event = %s",
+                            printState);
                     mNextState = BRACKETING_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch LOADED_CAPTURE_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch LOADED_CAPTURE_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1870,14 +1915,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
                 case CAMERA_STOP_IMAGE_CAPTURE:
                 case CAMERA_STOP_BRACKET_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch CAPTURE_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch CAPTURE_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1892,20 +1937,20 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
 
                 case CAMERA_STOP_IMAGE_CAPTURE:
                 case CAMERA_STOP_BRACKET_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch BRACKETING_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch BRACKETING_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
                 case CAMERA_START_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch BRACKETING_STATE->CAPTURE_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch BRACKETING_STATE->CAPTURE_STATE event = %s",
+                            printState);
                     mNextState = CAPTURE_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch BRACKETING_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch BRACKETING_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1919,20 +1964,20 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_CANCEL_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch AF_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch AF_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
                 case CAMERA_START_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch AF_STATE->AF_ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch AF_STATE->AF_ZOOM_STATE event = %s",
+                            printState);
                     mNextState = AF_ZOOM_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch AF_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch AF_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1946,32 +1991,32 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_CANCEL_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch AF_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch AF_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = ZOOM_STATE;
                     break;
 
                 case CAMERA_STOP_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch ZOOM_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch ZOOM_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
                 case CAMERA_PERFORM_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch ZOOM_STATE->AF_ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch ZOOM_STATE->AF_ZOOM_STATE event = %s",
+                            printState);
                     mNextState = AF_ZOOM_STATE;
                     break;
 
                 case CAMERA_START_VIDEO:
-                    CAMHAL_LOGDB("Adapter state switch ZOOM_STATE->VIDEO_ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch ZOOM_STATE->VIDEO_ZOOM_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_ZOOM_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch ZOOM_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch ZOOM_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -1985,38 +2030,38 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_STOP_VIDEO:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = PREVIEW_STATE;
                     break;
 
                 case CAMERA_PERFORM_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_AF_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_AF_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_AF_STATE;
                     break;
 
                 case CAMERA_START_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_ZOOM_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_ZOOM_STATE;
                     break;
 
                 case CAMERA_USE_BUFFERS_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_LOADED_CAPTURE_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_LOADED_CAPTURE_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_LOADED_CAPTURE_STATE;
                     break;
 
                 case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_STATE->VIDEO_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch VIDEO_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch VIDEO_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2030,14 +2075,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_CANCEL_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_AF_STATE->VIDEO_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_AF_STATE->VIDEO_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch VIDEO_AF_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch VIDEO_AF_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2051,14 +2096,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_START_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->CAPTURE_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->CAPTURE_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_CAPTURE_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch LOADED_CAPTURE_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch LOADED_CAPTURE_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2071,14 +2116,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
             switch ( operation )
                 {
                 case CAMERA_STOP_IMAGE_CAPTURE:
-                    CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->PREVIEW_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->PREVIEW_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch CAPTURE_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch CAPTURE_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2092,20 +2137,20 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_STOP_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch AF_ZOOM_STATE->AF_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch AF_ZOOM_STATE->AF_STATE event = %s",
+                            printState);
                     mNextState = AF_STATE;
                     break;
 
                 case CAMERA_CANCEL_AUTOFOCUS:
-                    CAMHAL_LOGDB("Adapter state switch AF_ZOOM_STATE->ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch AF_ZOOM_STATE->ZOOM_STATE event = %s",
+                            printState);
                     mNextState = ZOOM_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch AF_ZOOM_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch AF_ZOOM_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2119,20 +2164,20 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_STOP_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_ZOOM_STATE->VIDEO_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_ZOOM_STATE->VIDEO_STATE event = %s",
+                            printState);
                     mNextState = VIDEO_STATE;
                     break;
 
                 case CAMERA_STOP_VIDEO:
-                    CAMHAL_LOGDB("Adapter state switch VIDEO_ZOOM_STATE->ZOOM_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch VIDEO_ZOOM_STATE->ZOOM_STATE event = %s",
+                            printState);
                     mNextState = ZOOM_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch VIDEO_ZOOM_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch VIDEO_ZOOM_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2146,14 +2191,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 {
 
                 case CAMERA_STOP_SMOOTH_ZOOM:
-                    CAMHAL_LOGDB("Adapter state switch BRACKETING_ZOOM_STATE->BRACKETING_STATE event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGDB("Adapter state switch BRACKETING_ZOOM_STATE->BRACKETING_STATE event = %s",
+                            printState);
                     mNextState = BRACKETING_STATE;
                     break;
 
                 default:
-                    CAMHAL_LOGEB("Adapter state switch BRACKETING_ZOOM_STATE Invalid Op! event = 0x%x",
-                                 operation);
+                    CAMHAL_LOGEB("Adapter state switch BRACKETING_ZOOM_STATE Invalid Op! event = %s",
+                            printState);
                     ret = INVALID_OPERATION;
                     break;
 
@@ -2349,9 +2394,11 @@ void BaseCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
     LOG_FUNCTION_NAME;
     LOG_FUNCTION_NAME_EXIT;
 }
+
 //-----------------------------------------------------------------------------
 
 
+//-----------------------------------------------------------------------------
 
 };
 
