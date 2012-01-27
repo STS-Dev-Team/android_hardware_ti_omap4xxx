@@ -323,7 +323,7 @@ const LUTtype OMXCameraAdapter::mMechanicalMisalignmentCorrectionLUT = {
 
 const userToOMX_LUT OMXCameraAdapter::mBracketingModes [] = {
     { TICameraParameters::TEMP_BRACKETING       , OMX_BracketTemporal               },
-    { TICameraParameters::EXPOSURE_BRACKETING   , OMX_BracketExposureRelativeInEV   },
+    { TICameraParameters::EXPOSURE_BRACKETING   , OMX_BracketExposureRelativeInEV   }
 };
 
 const LUTtype OMXCameraAdapter::mBracketingModesLUT = {
@@ -1719,6 +1719,8 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
         strncat(supported, TICameraParameters::HIGH_PERFORMANCE_MODE, REMAINING_BYTES(supported));
         strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
         strncat(supported, TICameraParameters::HIGH_QUALITY_ZSL_MODE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::ZOOM_BRACKETING, REMAINING_BYTES(supported));
     }
 
     for ( unsigned int i = 0 ; i < caps.ulBracketingModesCount; i++ ) {

@@ -62,6 +62,7 @@ static const  char KEY_METERING_MODE[];
 static const  char KEY_PADDED_WIDTH[];
 static const  char KEY_PADDED_HEIGHT[];
 static const char  KEY_EXP_BRACKETING_RANGE[];
+static const char  KEY_ZOOM_BRACKETING_RANGE[];
 static const char  KEY_TEMP_BRACKETING[];
 static const char  KEY_TEMP_BRACKETING_RANGE_POS[];
 static const char  KEY_TEMP_BRACKETING_RANGE_NEG[];
@@ -128,6 +129,7 @@ static const char HIGH_QUALITY_MODE[];
 static const char HIGH_QUALITY_ZSL_MODE[];
 static const char VIDEO_MODE[];
 static const char EXPOSURE_BRACKETING[];
+static const char ZOOM_BRACKETING[];
 static const char TEMP_BRACKETING[];
 
 // TI extensions to standard android pixel formats
