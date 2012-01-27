@@ -184,6 +184,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 #endif
 
     mBracketingEnabled = false;
+    mZoomBracketingEnabled = false;
     mBracketingBuffersQueuedCount = 0;
     mBracketingRange = 1;
     mLastBracetingBufferIdx = 0;
@@ -218,6 +219,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mZoomInc = 1;
     mZoomParameterIdx = 0;
     mExposureBracketingValidEntries = 0;
+    mZoomBracketingValidEntries = 0;
     mSensorOverclock = false;
     mAutoConv = OMX_TI_AutoConvergenceModeMax;
     mManualConv = 0;
@@ -301,6 +303,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mFirstTimeInit = true;
 
     memset(mExposureBracketingValues, 0, EXP_BRACKET_RANGE*sizeof(int));
+    memset(mZoomBracketingValues, 0, ZOOM_BRACKET_RANGE*sizeof(int));
     mMeasurementEnabled = false;
     mFaceDetectionRunning = false;
     mFaceDetectionPaused = false;
@@ -3401,6 +3404,15 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                 {
                 doBracketing(pBuffHeader, typeOfFrame);
                 return eError;
+                }
+            }
+
+            if (mZoomBracketingEnabled) {
+                doZoom(mZoomBracketingValues[mCurrentZoomBracketing]);
+                CAMHAL_LOGDB("Current Zoom Bracketing: %d", mZoomBracketingValues[mCurrentZoomBracketing]);
+                mCurrentZoomBracketing++;
+                if (mCurrentZoomBracketing == ARRAY_SIZE(mZoomBracketingValues)) {
+                    mZoomBracketingEnabled = false;
                 }
             }
 

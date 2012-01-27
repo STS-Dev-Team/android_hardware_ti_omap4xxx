@@ -60,6 +60,7 @@ namespace android {
 #define MIN_JPEG_QUALITY            1
 #define MAX_JPEG_QUALITY            100
 #define EXP_BRACKET_RANGE           10
+#define ZOOM_BRACKET_RANGE          10
 
 #define FD_PERIOD                   400 //[ms.]
 
@@ -1003,6 +1004,10 @@ private:
     size_t mExposureBracketingValidEntries;
     OMX_BRACKETMODETYPE mExposureBracketMode;
 
+    //Zoom Bracketing
+    int mZoomBracketingValues[ZOOM_BRACKET_RANGE];
+    size_t mZoomBracketingValidEntries;
+
     mutable Mutex mFaceDetectionLock;
     //Face detection status
     bool mFaceDetectionRunning;
@@ -1080,8 +1085,9 @@ private:
     int mBracketingBuffersQueuedCount;
     int mLastBracetingBufferIdx;
     bool mBracketingEnabled;
+    bool mZoomBracketingEnabled;
     size_t mBracketingRange;
-
+    int mCurrentZoomBracketing;
     CameraParameters mParameters;
     bool mOmxInitialized;
     OMXCameraAdapterComponentContext mCameraAdapterParameters;

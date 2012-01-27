@@ -31,6 +31,7 @@ const char TICameraParameters::HIGH_QUALITY_ZSL_MODE[] = "high-quality-zsl";
 const char TICameraParameters::CP_CAM_MODE[] = "cp-cam";
 const char TICameraParameters::VIDEO_MODE[] = "video-mode";
 const char TICameraParameters::EXPOSURE_BRACKETING[] = "exposure-bracketing";
+const char TICameraParameters::ZOOM_BRACKETING[] = "zoom-bracketing";
 const char TICameraParameters::TEMP_BRACKETING[] = "temporal-bracketing";
 
 // TI extensions to standard android Parameters
@@ -68,6 +69,7 @@ const char TICameraParameters::KEY_PADDED_WIDTH[] = "padded-width";
 const char TICameraParameters::KEY_PADDED_HEIGHT[] = "padded-height";
 const char TICameraParameters::KEY_EXP_BRACKETING_RANGE[] = "exp-bracketing-range";
 const char TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE[] = "exp-gain-bracketing-range";
+const char TICameraParameters::KEY_ZOOM_BRACKETING_RANGE[] = "zoom-bracketing-range";
 const char TICameraParameters::KEY_TEMP_BRACKETING[] = "temporal-bracketing";
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS[] = "temporal-bracketing-range-positive";
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_NEG[] = "temporal-bracketing-range-negative";
