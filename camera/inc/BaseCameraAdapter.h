@@ -23,6 +23,16 @@
 
 namespace android {
 
+struct LUT{
+        const char * userDefinition;
+        int           halDefinition;
+    };
+
+struct LUTtypeHAL{
+    int size;
+    const LUT *Table;
+};
+
 class BaseCameraAdapter : public CameraAdapter
 {
 
@@ -160,6 +170,7 @@ protected:
     void setFrameRefCount(void* frameBuf, CameraFrame::FrameType frameType, int refCount);
     int getFrameRefCount(void* frameBuf, CameraFrame::FrameType frameType);
     int setInitFrameRefCount(void* buf, unsigned int mask);
+    static const char* getLUTvalue_translateHAL(int Value, LUTtypeHAL LUT);
 
 // private member functions
 private:
@@ -265,8 +276,7 @@ protected:
     KeyedVector<void *, CameraFrame *> mFrameQueue;
 };
 
-};
-
+}
 #endif //BASE_CAMERA_ADAPTER_H
 
 

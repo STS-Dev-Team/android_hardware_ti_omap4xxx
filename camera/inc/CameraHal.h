@@ -870,6 +870,7 @@ public:
         BRACKETING_ZOOM_STATE      = BRACKETING_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
     };
 
+
 public:
 
     ///Initialzes the camera adapter creates any resources required
@@ -1343,7 +1344,6 @@ private:
 
     String8 mCapModeBackup;
 };
-
 
 }; // namespace android
 
