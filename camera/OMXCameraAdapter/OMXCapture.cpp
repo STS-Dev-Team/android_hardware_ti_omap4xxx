@@ -173,6 +173,18 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         }
     }
 
+    str = params.get(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE);
+    if ( NULL != str ) {
+        parseExpRange(str, mZoomBracketingValues, ZOOM_BRACKET_RANGE, mZoomBracketingValidEntries);
+        mCurrentZoomBracketing = 0;
+        mZoomBracketingEnabled = true;
+    } else {
+        if (mZoomBracketingValidEntries) {
+            mZoomBracketingValidEntries = 0;
+        }
+        mZoomBracketingEnabled = false;
+    }
+
     if ( params.getInt(CameraParameters::KEY_ROTATION) != -1 )
         {
         if (params.getInt(CameraParameters::KEY_ROTATION) != (int) mPictureRotation) {

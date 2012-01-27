@@ -926,6 +926,13 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.remove(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
             }
 
+        if( (valstr = params.get(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE)) != NULL ) {
+            CAMHAL_LOGDB("Zoom Bracketing range %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE, valstr);
+        } else {
+            mParameters.remove(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE);
+        }
+
         if ((valstr = params.get(CameraParameters::KEY_ZOOM)) != NULL ) {
             if ((params.getInt(CameraParameters::KEY_ZOOM) >= 0 ) &&
                 (params.getInt(CameraParameters::KEY_ZOOM) <= mMaxZoomSupported )) {
