@@ -1232,7 +1232,7 @@ status_t BaseCameraAdapter::__sendFrameToSubscribers(CameraFrame* frame,
         if (mFrameQueue.size() > 0){
           CameraFrame *lframe = (CameraFrame *)mFrameQueue.valueFor(frame->mBuffer);
           frame->mYuv[0] = lframe->mYuv[0];
-          frame->mYuv[1] = lframe->mYuv[1];
+          frame->mYuv[1] = frame->mYuv[0] + (frame->mLength + frame->mOffset)*2/3;
         }
         else{
           CAMHAL_LOGDA("Empty Frame Queue");
