@@ -18,6 +18,7 @@
 
 #include <linux/bltsville.h>
 
+#define RGZ_MAXLAYERS 12
 /*
  * Regionizer data
  *
@@ -99,6 +100,9 @@ struct rgz_out_bvcmd {
     struct bvsurfgeom *dstgeom;
     int noblend;
     int clrdst;
+    buffer_handle_t out_hndls[RGZ_MAXLAYERS]; /* OUTPUT */
+    int out_nhndls; /* OUTPUT */
+    int out_blits; /* OUTPUT */
 };
 
 struct rgz_out_svg {
@@ -154,6 +158,9 @@ typedef struct rgz_out_params {
  * data.bvc.dstgeom     bltsville struct describing the destination geometry
  * data.bvc.noblend     Test option to disable blending
  * data.bvc.clrdst      Clear the destination
+ * data.bvc.out_hndls   Array of buffer handles (OUTPUT)
+ * data.bvc.out_nhndls  Number of buffer handles (OUTPUT)
+ * data.bvc.out_blits   Number of blits (OUTPUT)
  */
 #define RGZ_OUT_BVCMD_PAINT 1
 
@@ -241,8 +248,8 @@ typedef struct blit_rect {
  * the diagram above H4 has 2 sub-regions, layer 0 intersects with the first
  * region and layers 0 and 2 intersect with the second region.
  */
-#define RGZ_MAXLAYERS 12
 #define RGZ_SUBREGIONMAX ((RGZ_MAXLAYERS << 1) - 1)
+#define RGZ_MAX_BLITS (RGZ_MAXLAYERS * RGZ_SUBREGIONMAX)
 
 typedef struct blit_hregion {
     blit_rect_t rect;
@@ -259,11 +266,11 @@ struct rgz {
     blit_hregion_t *hregions;
     int nhregions;
     int state;
-    unsigned int layerno;
     void* dirtyhndl[RGZ_MAXLAYERS]; /* z-order */
     int dirtyno[RGZ_MAXLAYERS]; /* z-order */
-    hwc_layer_t layers[RGZ_MAXLAYERS];
-    int layersbuf[RGZ_MAXLAYERS];
+    unsigned int paint_layerno;
+    hwc_layer_t paint_layers[RGZ_MAXLAYERS];
+    int paint_layersbuf[RGZ_MAXLAYERS];
 };
 
 #endif /* __RGZ_2D__ */

@@ -68,7 +68,7 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define is_BGR(format) ((format) == HAL_PIXEL_FORMAT_RGBX_8888 || (format) == HAL_PIXEL_FORMAT_RGBA_8888)
 #define is_NV12(format) ((format) == HAL_PIXEL_FORMAT_TI_NV12 || (format) == HAL_PIXEL_FORMAT_TI_NV12_PADDED)
 
-#define HAL_PIXEL_FORMAT_BGRX_8888		0x1FF
+#define HAL_PIXEL_FORMAT_BGRX_8888 0x1FF
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 #define HAL_PIXEL_FORMAT_TI_NV12_PADDED 0x101
 /* Borrowed macros from hwc.c ^^^ */
@@ -267,18 +267,16 @@ static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
 
     rgz_blts_init(&blts);
 
-    for (i = 0; i < rgz->layerno; i++) {
-        hwc_layer_t *l = &rgz->layers[i];
-        if (l->compositionType != HWC_OVERLAY)
-            continue;
+    for (i = 0; i < rgz->paint_layerno; i++) {
+        hwc_layer_t *l = &rgz->paint_layers[i];
 
         rv = rgz_hwc_layer_blit(l, params->data.bv.dstdesc,
                                 params->data.bv.dstgeom,
                                 params->data.bv.noblend,
-				-1);
+                                -1);
         if (rv) {
             OUTE("bvdirect_paint: error in layer %d: %d", i, rv);
-            dump_all(rgz->layers, rgz->layerno, i);
+            dump_all(rgz->paint_layers, rgz->paint_layerno, i);
             rgz_blts_free(&blts);
             return rv;
         }
@@ -350,36 +348,43 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
 static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
 {
     int rv = 0;
-    unsigned int i;
-    (void)rgz;
-
     rgz_blts_init(&blts);
 
+    params->data.bvc.out_blits = 0;
     if (params->data.bvc.clrdst) {
         rgz_out_clrdst(rgz, params);
+        params->data.bvc.out_blits++;
     }
 
-    for (i = 0; i < rgz->layerno; i++) {
-        hwc_layer_t *l = &rgz->layers[i];
-        if (l->compositionType != HWC_OVERLAY)
-            continue;
+    params->data.bvc.out_nhndls = 0;
+    unsigned int i;
+    for (i = 0; i < rgz->paint_layerno; i++) {
+        hwc_layer_t *l = &rgz->paint_layers[i];
 
         rv = rgz_hwc_layer_blit(l, NULL,
                                 params->data.bvc.dstgeom,
                                 params->data.bvc.noblend,
-                                rgz->layersbuf[i]);
+                                rgz->paint_layersbuf[i]);
         if (rv) {
             OUTE("bvcmd_paint: error in layer %d: %d", i, rv);
-            dump_all(rgz->layers, rgz->layerno, i);
+            dump_all(rgz->paint_layers, rgz->paint_layerno, i);
             rgz_blts_free(&blts);
             return rv;
         }
+        params->data.bvc.out_hndls[i] = l->handle;
+        params->data.bvc.out_nhndls++;
+        params->data.bvc.out_blits++;
     }
 
+    /* FIXME: we want to be able to call rgz_blts_free and populate the actual
+     * composition data structure ourselves */
     params->data.bvc.cmdp = blts.bvcmds;
     params->data.bvc.cmdlen = blts.idx;
 
-    //rgz_blts_free(&blts);
+    if (params->data.bvc.out_blits > RGZ_MAX_BLITS) {
+        rv = -1;
+    // rgz_blts_free(&blts); // FIXME
+    }
     return rv;
 }
 
@@ -563,28 +568,38 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     if (!layers)
         return -1;
 
-    int l, possible_blit = 0, candidates = 0;
+    /*
+     * Store buffer index to be sent in the HWC Post2 list. Any overlay
+     * meminfos will come first
+     */
+    int l, memidx = 1;
+    for (l = 0; l < layerno; l++) {
+        if (layers[l].compositionType == HWC_OVERLAY) {
+            memidx++;
+        }
+    }
+
+    int possible_blit = 0, candidates = 0;
     for (l = 0; l < layerno; l++) {
         if (layers[l].compositionType == HWC_FRAMEBUFFER) {
             candidates++;
             if (rgz_in_valid_hwc_layer(&layers[l]) &&
                     possible_blit < RGZ_MAXLAYERS) {
-                rgz->layers[possible_blit] = layers[l];
-                rgz->layers[possible_blit].compositionType = HWC_OVERLAY;
-				/* Store buffer index to be sent in the HWC Post2 list */
-                rgz->layersbuf[possible_blit] = l + 1;
+                rgz->paint_layers[possible_blit] = layers[l];
+                rgz->paint_layersbuf[possible_blit] = memidx++;
                 possible_blit++;
             }
         }
     }
 
-    if (!possible_blit)
+    if (!possible_blit || possible_blit != candidates) {
         return -1;
+    }
 
     rgz->state = RGZ_STATE_INIT;
-    rgz->layerno = possible_blit;
+    rgz->paint_layerno = possible_blit;
 
-    return (possible_blit == candidates ? RGZ_ALL : -1);
+    return RGZ_ALL;
 }
 
 static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
@@ -777,7 +792,7 @@ static int hal_to_ocd(int color)
     case HAL_PIXEL_FORMAT_BGRX_8888:
         return OCDFMT_BGR124;
     case HAL_PIXEL_FORMAT_RGB_565:
-	return OCDFMT_BGR16;
+        return OCDFMT_BGR16;
     case HAL_PIXEL_FORMAT_RGBA_8888:
         return OCDFMT_RGBA24;
     case HAL_PIXEL_FORMAT_RGBX_8888:
@@ -832,9 +847,8 @@ static int loadbltsville(void)
     return 0;
 }
 #else
-static int loadbltsville(void)
-{
-	return 0;
+static int loadbltsville(void) {
+    return 0;
 }
 #endif
 
@@ -855,8 +869,7 @@ static int rgz_hwc_layer_blit(
     struct bvsurfgeom *scrgeom, int noblend, int buff_idx)
 {
     IMG_native_handle_t *handle = (IMG_native_handle_t *)l->handle;
-    if (!handle || l->flags & HWC_SKIP_LAYER ||
-        l->compositionType != HWC_OVERLAY) {
+    if (!handle || l->flags & HWC_SKIP_LAYER) {
         /*
          * This shouldn't happen regionizer should reject compositions w/ skip
          * layers
@@ -1215,7 +1228,6 @@ static int rgz_blts_bvdirect(rgz_t *rgz, struct rgz_blts *blts, rgz_out_params_t
         if (rv) {
             OUTE("BV_BLT failed: %d", rv);
             BVDUMP("bv_blt:", "  ", &e->bp);
-            dump_all(rgz->layers, rgz->layerno, -1);
             return -1;
         }
         if (e->bp.flags & BVFLAG_BATCH_BEGIN)
