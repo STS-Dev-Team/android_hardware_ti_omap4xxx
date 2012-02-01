@@ -480,6 +480,8 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
         }
     }
 
+    if (0) initInternalBuffers();
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
@@ -1437,6 +1439,78 @@ EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
+status_t OMXCameraAdapter::initInternalBuffers(void)
+{
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    int ion_fd;
+    int index = 0;
+    OMX_TI_PARAM_USEBUFFERDESCRIPTOR bufferdesc;
+
+    /* Indicate to Ducati that we're planning to use dynamically-mapped buffers */
+    OMX_INIT_STRUCT_PTR (&bufferdesc, OMX_TI_PARAM_USEBUFFERDESCRIPTOR);
+    bufferdesc.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+    bufferdesc.bEnabled = OMX_FALSE;
+    bufferdesc.eBufferType = OMX_TI_BufferTypePhysicalPageList;
+
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE) OMX_TI_IndexUseBufferDescriptor,
+            &bufferdesc);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+        return -EINVAL;
+    }
+
+    ion_fd = ion_open ();
+
+    CAMHAL_LOGDA("Initializing internal buffers");
+    do {
+        OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferalloc;
+        OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferallocset;
+        OMX_INIT_STRUCT_PTR (&bufferalloc, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
+        bufferalloc.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        bufferalloc.nIndex = index;
+
+        eError = OMX_GetParameter (mCameraAdapterParameters.mHandleComp,
+                (OMX_INDEXTYPE)OMX_TI_IndexParamComponentBufferAllocation,
+                &bufferalloc);
+        if (eError == OMX_ErrorNoMore) {
+            return NO_ERROR;
+        }
+        if (eError != OMX_ErrorNone) {
+            CAMHAL_LOGE("GetParameter failed error = 0x%x", eError);
+            break;
+        }
+
+        CAMHAL_LOGDB("Requesting buftype %d of size %dx%d",
+            (int)bufferalloc.eBufType, (int)bufferalloc.nAllocWidth,
+            (int)bufferalloc.nAllocLines);
+
+        bufferalloc.eBufType = OMX_TI_BufferTypeHardwareReserved1D;
+
+        OMX_INIT_STRUCT_PTR (&bufferallocset, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
+        bufferallocset.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        bufferallocset.nIndex = index;
+        bufferallocset.eBufType = OMX_TI_BufferTypeHardwareReserved1D;
+        bufferallocset.nAllocWidth = bufferalloc.nAllocWidth;
+        bufferallocset.nAllocLines = bufferalloc.nAllocLines;
+
+        eError = OMX_SetParameter (mCameraAdapterParameters.mHandleComp,
+                (OMX_INDEXTYPE)OMX_TI_IndexParamComponentBufferAllocation,
+                &bufferallocset);
+        if (eError != OMX_ErrorNone) {
+            CAMHAL_LOGE("SetParameter failed, error=%08x", eError);
+            break;
+        }
+
+        index++;
+
+        /* 10 is an arbitrary limit */
+    } while (index < 10);
+
+    CAMHAL_LOGEA("Ducati requested too many (>10) internal buffers");
+
+    return -EINVAL;
+}
 
 status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 {
