@@ -738,6 +738,9 @@ private:
     FILE * fopenCameraDCC(const char *dccFolderPath);
     FILE * parseDCCsubDir(DIR *pDir, char *path);
 
+    // Internal buffers
+    status_t initInternalBuffers (void);
+
     class CommandHandler : public Thread {
         public:
             CommandHandler(OMXCameraAdapter* ca)
