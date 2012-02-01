@@ -186,9 +186,9 @@ struct omap4_hwc_device {
     int blit_enabled;
     int blit_mode;  /* See BLTMODE_ */
 
-    int blit_num;
+    int blit_num; /* FIXME, not sure this is needed */
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
-    struct rgz_blt_entry blit_ops[MAX_BLIT_OPS];
+    struct rgz_blt_entry blit_ops[RGZ_MAX_BLITS];
 };
 typedef struct omap4_hwc_device omap4_hwc_device_t;
 
@@ -1438,48 +1438,42 @@ static void blit_reset(omap4_hwc_device_t *hwc_dev)
 {
     hwc_dev->blit_num = 0;
     hwc_dev->post2_blit_buffers = 0;
+    hwc_dev->comp_data.blit_data.rgz_items = 0;
+    rgz_release(&grgz);
 }
 
 static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int bufoff)
 {
-    int needclear = 0;
-    bzero(&grgz, sizeof(rgz_t));
     if (!list)
         goto err_out;
 
-    rgz_in_params_t in = { .data = { .hwc = {
-        .layers = list->hwLayers,
-        .layerno = list->numHwLayers } } };
-    in.op = RGZ_IN_HWCCHK;
-    int blitting = (rgz_in(&in, &grgz) == RGZ_ALL);
-    unsigned int i;
+    rgz_in_params_t in = {
+        .op = RGZ_IN_HWCCHK,
+        .data = {
+            .hwc = {
+                .layers = list->hwLayers,
+                .layerno = list->numHwLayers
+            }
+        }
+    };
 
     /*
      * This means if all the layers marked for the FRAMEBUFFER cannot be
      * blitted, do not blit, for e.g. SKIP layers
      */
-    if (!blitting)
+    if (rgz_in(&in, &grgz) != RGZ_ALL)
         goto err_out;
 
-    unsigned int count = 0;
+    unsigned int i, count = 0;
     for (i = 0; i < list->numHwLayers; i++) {
-        hwc_layer_t *l = &list->hwLayers[i];
-        if (l->compositionType == HWC_FRAMEBUFFER) {
-            l->compositionType = HWC_OVERLAY;
-            hwc_dev->buffers[i+bufoff] = l->handle; /* Do not touch slot 1, this is for FB */
+        if (list->hwLayers[i].compositionType == HWC_OVERLAY) {
+            bufoff++;
+        } else {
             count++;
         }
     }
-    hwc_dev->post2_blit_buffers = hwc_dev->blit_num = count;
-    /* We know we're going to paint, so can set the blit count here */
-    if (list->numHwLayers != count) {
-        needclear = 1;
-        hwc_dev->blit_num++;
-    }
-    if (hwc_dev->blit_num > MAX_BLIT_OPS) {
-        LOGE("Max blit data exceeded");
-        goto err_out;
-    }
+
+    int needclear = (list->numHwLayers != count) ? 1 : 0;
 
     rgz_out_params_t out = {
         .op = RGZ_OUT_BVCMD_PAINT,
@@ -1487,19 +1481,31 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
             .bvc = {
                 .dstgeom = &gscrngeom,
                 .noblend = 0, .clrdst = needclear,
-            },
+            }
         }
     };
 
-    rgz_out(&grgz, &out);
+    if (rgz_out(&grgz, &out) != 0) {
+        LOGE("Failed generating blits");
+        goto err_out;
+    }
+
+    hwc_dev->blit_num = out.data.bvc.out_blits;
+    hwc_dev->post2_blit_buffers = out.data.bvc.out_nhndls;
+    for (i = 0; i < hwc_dev->post2_blit_buffers; i++) {
+        hwc_dev->buffers[bufoff++] = out.data.bvc.out_hndls[i];
+    }
 
     struct rgz_blt_entry *res_blit_ops = (struct rgz_blt_entry *) out.data.bvc.cmdp;
     memcpy(hwc_dev->comp_data.blit_data.rgz_blts, res_blit_ops, sizeof(*res_blit_ops) * out.data.bvc.cmdlen);
 
     LOGE_IF(hwc_dev->blit_num != out.data.bvc.cmdlen,"blit_num != out.data.bvc.cmdlen, %d != %d", hwc_dev->blit_num, out.data.bvc.cmdlen);
-    rgz_release(&grgz);
 
-    return blitting;
+    /* all layers will be rendered without SGX help either via DSS or blitter */
+    for (i = 0; i < list->numHwLayers; i++) {
+        list->hwLayers[i].compositionType = HWC_OVERLAY;
+    }
+    return 1;
 
 err_out:
     blit_reset(hwc_dev);
@@ -1857,8 +1863,10 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
         int omaplfb_comp_data_sz = sizeof(hwc_dev->comp_data) +
             (hwc_dev->comp_data.blit_data.rgz_items * sizeof(struct rgz_blt_entry));
 
-        LOGI_IF(hwc_dev->blit_enabled, "Post2, blits %d, ovl_buffers %d, blit_buffers %d",
-            hwc_dev->blit_num, hwc_dev->post2_layers, hwc_dev->post2_blit_buffers);
+        LOGI_IF(hwc_dev->blit_enabled,
+            "Post2, blits %d, ovl_buffers %d, blit_buffers %d sgx %d",
+            hwc_dev->blit_num, hwc_dev->post2_layers, hwc_dev->post2_blit_buffers,
+            hwc_dev->use_sgx);
         err = hwc_dev->fb_dev->Post2((framebuffer_device_t *)hwc_dev->fb_dev,
                                  hwc_dev->buffers,
                                  hwc_dev->post2_layers + hwc_dev->post2_blit_buffers,
