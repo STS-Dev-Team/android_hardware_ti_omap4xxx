@@ -1785,6 +1785,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = INTIALIZED_STATE;
                     break;
                 case CAMERA_STOP_BRACKET_CAPTURE:
+                case CAMERA_STOP_IMAGE_CAPTURE:
                     ret = INVALID_OPERATION;
                     break;
                 case CAMERA_CANCEL_AUTOFOCUS:
@@ -1872,6 +1873,9 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     CAMHAL_LOGDB("Adapter state switch PREVIEW_ACTIVE->PREVIEW_ACTIVE event = %s",
                             printState);
                     mNextState = PREVIEW_STATE;
+                    break;
+                case CAMERA_STOP_BRACKET_CAPTURE:
+                    ret = INVALID_OPERATION;
                     break;
 
                 default:
