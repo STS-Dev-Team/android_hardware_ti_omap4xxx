@@ -1030,6 +1030,8 @@ status_t OMXCameraAdapter::flushBuffers()
         goto EXIT;
         }
 
+    mOMXCallbackHandler->flush();
+
     LOG_FUNCTION_NAME_EXIT;
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
@@ -3442,6 +3444,7 @@ bool OMXCameraAdapter::OMXCallbackHandler::Handler()
         {
         Mutex::Autolock lock(mLock);
         mCommandMsgQ.get(&msg);
+        mIsProcessed = false;
         }
 
         switch ( msg.command ) {
@@ -3458,10 +3461,41 @@ bool OMXCameraAdapter::OMXCallbackHandler::Handler()
                 break;
             }
         }
+
+        {
+            android::AutoMutex locker(mLock);
+            CAMHAL_UNUSED(locker);
+
+            mIsProcessed = mCommandMsgQ.isEmpty();
+            if ( mIsProcessed )
+                mCondition.signal();
+        }
+    }
+
+    // force the condition to wake
+    {
+        android::AutoMutex locker(mLock);
+        CAMHAL_UNUSED(locker);
+
+        mIsProcessed = true;
+        mCondition.signal();
     }
 
     LOG_FUNCTION_NAME_EXIT;
     return false;
+}
+
+void OMXCameraAdapter::OMXCallbackHandler::flush()
+{
+    LOG_FUNCTION_NAME;
+
+    AutoMutex locker(mLock);
+    CAMHAL_UNUSED(locker);
+
+    if ( mIsProcessed )
+        return;
+
+    mCondition.wait(mLock);
 }
 
 OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type)
