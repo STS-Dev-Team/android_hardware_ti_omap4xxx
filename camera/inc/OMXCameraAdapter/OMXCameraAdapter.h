@@ -727,7 +727,10 @@ public:
     class OMXCallbackHandler : public Thread {
         public:
         OMXCallbackHandler(OMXCameraAdapter* ca)
-            : Thread(false), mCameraAdapter(ca) { }
+            : Thread(false), mCameraAdapter(ca)
+        {
+            mIsProcessed = true;
+        }
 
         virtual bool threadLoop() {
             bool ret;
@@ -746,6 +749,8 @@ public:
             mCommandMsgQ.clear();
             }
 
+        void flush();
+
         enum {
             COMMAND_EXIT = -1,
             CAMERA_FILL_BUFFER_DONE,
@@ -756,6 +761,8 @@ public:
         TIUTILS::MessageQueue mCommandMsgQ;
         OMXCameraAdapter* mCameraAdapter;
         Mutex mLock;
+        Condition mCondition;
+        bool mIsProcessed;
     };
 
     sp<OMXCallbackHandler> mOMXCallbackHandler;
