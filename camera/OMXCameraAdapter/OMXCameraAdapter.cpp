@@ -780,17 +780,82 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &portParams)
+status_t OMXCameraAdapter::setSensorQuirks(int orientation,
+                                           OMXCameraPortParameters &portParams,
+                                           bool &portConfigured)
 {
+    status_t overclockStatus = NO_ERROR;
+    int sensorID = -1;
     size_t overclockWidth;
     size_t overclockHeight;
-    int sensorID = -1;
-    size_t bufferCount;
-    status_t ret = NO_ERROR;
-    status_t overclockStatus = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_PARAM_PORTDEFINITIONTYPE portCheck;
 
     LOG_FUNCTION_NAME;
 
+    portConfigured = false;
+    OMX_INIT_STRUCT_PTR (&portCheck, OMX_PARAM_PORTDEFINITIONTYPE);
+
+    portCheck.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
+
+    eError = OMX_GetParameter (mCameraAdapterParameters.mHandleComp,
+                               OMX_IndexParamPortDefinition,
+                               &portCheck);
+
+    if ( eError != OMX_ErrorNone ) {
+        CAMHAL_LOGEB("OMX_GetParameter - %x", eError);
+        return ErrorUtils::omxToAndroidError(eError);
+    }
+
+    if ( ( orientation == 90 ) || ( orientation == 270 ) ) {
+        overclockWidth = 1080;
+        overclockHeight = 1920;
+    } else {
+        overclockWidth = 1920;
+        overclockHeight = 1080;
+    }
+
+    sensorID = mCapabilities->getInt(CameraProperties::CAMERA_SENSOR_ID);
+    if( ( ( sensorID == SENSORID_IMX060 ) &&
+          ( portParams.mWidth >= overclockWidth ) &&
+          ( portParams.mHeight >= overclockHeight ) &&
+          ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) ||
+        ( ( sensorID == SENSORID_OV5640 ) &&
+          ( portParams.mWidth >= overclockWidth ) &&
+          ( portParams.mHeight >= overclockHeight ) ) ) {
+        overclockStatus = setSensorOverclock(true);
+    } else {
+
+        //WA: If the next port resolution doesn't require
+        //    sensor overclocking, but the previous resolution
+        //    needed it, then we have to first set new port
+        //    resolution and then disable sensor overclocking.
+        if( ( ( sensorID == SENSORID_IMX060 ) &&
+              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+              ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
+              ( ( portCheck.format.video.xFramerate >> 16 ) >= FRAME_RATE_FULL_HD ) ) ||
+            ( ( sensorID == SENSORID_OV5640 ) &&
+              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+              ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ) {
+            status_t ret = setFormat(mCameraAdapterParameters.mPrevPortIndex,
+                                     portParams);
+            if ( NO_ERROR != ret ) {
+                return ret;
+            }
+            portConfigured = true;
+        }
+
+        overclockStatus = setSensorOverclock(false);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return overclockStatus;
+}
+status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &portParams)
+{
+    status_t ret = NO_ERROR;
+    size_t bufferCount;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_PARAM_PORTDEFINITIONTYPE portCheck;
 
@@ -810,27 +875,6 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         portCheck.format.video.nFrameHeight     = portParams.mHeight;
         portCheck.format.video.eColorFormat     = portParams.mColorFormat;
         portCheck.format.video.nStride          = portParams.mStride;
-
-        if ( ( mSensorOrientation == 90 ) || ( mSensorOrientation == 270 ) ) {
-            overclockWidth = 1080;
-            overclockHeight = 1920;
-        } else {
-            overclockWidth = 1920;
-            overclockHeight = 1080;
-        }
-
-        sensorID = mCapabilities->getInt(CameraProperties::CAMERA_SENSOR_ID);
-        if( ( ( sensorID == SENSORID_IMX060 ) &&
-              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
-              ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
-              ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) ||
-            ( ( sensorID == SENSORID_OV5640 ) &&
-              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
-              ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ){
-            overclockStatus = setSensorOverclock(true);
-        } else {
-            overclockStatus = setSensorOverclock(false);
-        }
 
         portCheck.format.video.xFramerate       = portParams.mFrameRate<<16;
         portCheck.nBufferSize                   = portParams.mStride * portParams.mHeight;
@@ -949,7 +993,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError) | overclockStatus;
+    return ErrorUtils::omxToAndroidError(eError);
 
     EXIT:
 
@@ -957,7 +1001,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError) | overclockStatus;
+    return ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::flushBuffers()
