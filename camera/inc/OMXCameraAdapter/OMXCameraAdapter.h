@@ -449,6 +449,10 @@ private:
     status_t setSensorOrientation(unsigned int degree);
     status_t setImageQuality(unsigned int quality);
     status_t setThumbnailParams(unsigned int width, unsigned int height, unsigned int quality);
+    status_t setSensorQuirks(int orientation,
+                             OMXCameraPortParameters &portParams,
+                             bool &portConfigured);
+
 
     //EXIF
     status_t setParametersEXIF(const CameraParameters &params,
