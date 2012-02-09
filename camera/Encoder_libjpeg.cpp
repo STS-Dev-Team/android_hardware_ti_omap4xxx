@@ -421,7 +421,7 @@ size_t Encoder_libjpeg::encode(params* input) {
 
     jpeg_start_compress(&cinfo, TRUE);
 
-    row_tmp = (uint8_t*)malloc(out_width * 3);
+    row_tmp = (uint8_t*)malloc((out_width - right_crop) * 3);
     row_src = src + start_offset;
     row_uv = src + out_width * out_height * bpp;
 
