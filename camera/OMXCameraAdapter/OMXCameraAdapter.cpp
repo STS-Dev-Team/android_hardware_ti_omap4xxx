@@ -1918,7 +1918,7 @@ status_t OMXCameraAdapter::startPreview()
             CAMHAL_LOGEB("OMX_FillThisBuffer-0x%x", eError);
             }
         mFramesWithDucati++;
-#ifdef DEGUG_LOG
+#ifdef CAMERAHAL_DEBUG
         mBuffersWithDucati.add((uint32_t)mPreviewData->mBufferHeader[index]->pBuffer,1);
 #endif
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
