@@ -35,6 +35,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     const char *str = NULL;
     int w, h;
     OMX_COLOR_FORMATTYPE pixFormat;
+    CodingMode codingMode = mCodingMode;
     const char *valstr = NULL;
     OMX_TI_STEREOFRAMELAYOUTTYPE capFrmLayout;
 
@@ -80,40 +81,27 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_JPEG) == 0) {
             CAMHAL_LOGDA("JPEG format selected");
             pixFormat = OMX_COLOR_FormatUnused;
-            mCodingMode = CodingNone;
+            codingMode = CodingJPEG;
         } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_JPS) == 0) {
             CAMHAL_LOGDA("JPS format selected");
             pixFormat = OMX_COLOR_FormatUnused;
-            mCodingMode = CodingJPS;
+            codingMode = CodingJPS;
         } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_MPO) == 0) {
             CAMHAL_LOGDA("MPO format selected");
             pixFormat = OMX_COLOR_FormatUnused;
-            mCodingMode = CodingMPO;
-        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_JPEG) == 0) {
-            CAMHAL_LOGDA("RAW + JPEG format selected");
-            pixFormat = OMX_COLOR_FormatUnused;
-            mCodingMode = CodingRAWJPEG;
-            mRawCapture = true;
-        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_MPO) == 0) {
-            CAMHAL_LOGDA("RAW + MPO format selected");
-            pixFormat = OMX_COLOR_FormatUnused;
-            mCodingMode = CodingRAWMPO;
-            mRawCapture = true;
-        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW_JPS) == 0) {
-            CAMHAL_LOGDA("RAW + JPS format selected");
-            pixFormat = OMX_COLOR_FormatUnused;
-            mCodingMode = CodingRAWJPS;
-            mRawCapture = true;
+            codingMode = CodingMPO;
         } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
         } else {
             CAMHAL_LOGEA("Invalid format, JPEG format selected as default");
             pixFormat = OMX_COLOR_FormatUnused;
+            codingMode = CodingJPEG;
         }
     } else {
         CAMHAL_LOGEA("Picture format is NULL, defaulting to JPEG");
         pixFormat = OMX_COLOR_FormatUnused;
+        codingMode = CodingJPEG;
     }
 
     // JPEG capture is not supported in video mode by OMX Camera
@@ -126,9 +114,10 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         pixFormat = OMX_COLOR_FormatCbYCrY;
     }
 
-    if (pixFormat != cap->mColorFormat) {
+    if (pixFormat != cap->mColorFormat || codingMode != mCodingMode) {
         mPendingCaptureSettings |= SetFormat;
         cap->mColorFormat = pixFormat;
+        mCodingMode = codingMode;
     }
 
     str = params.get(TICameraParameters::KEY_TEMP_BRACKETING);

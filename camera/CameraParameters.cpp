@@ -135,7 +135,8 @@ const char CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "preferred-pre
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION[] = "prop-mechanical-misalignment-correction";
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] = "prop-mechanical-misalignment-correction-values";
 const char CameraProperties::CAP_MODE_VALUES[] = "prop-mode-values";
-
+const char CameraProperties::RAW_WIDTH[] = "prop-raw-width-values";
+const char CameraProperties::RAW_HEIGHT[] = "prop-raw-height-values";
 const char CameraProperties::DEFAULT_VALUE[] = "";
 
 const char CameraProperties::PARAMS_DELIMITER []= ",";

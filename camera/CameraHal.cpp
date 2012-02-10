@@ -449,7 +449,7 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         ///Below parameters can be changed when the preview is running
         if ( (valstr = params.getPictureFormat()) != NULL ) {
-            if (isParameterValid(params.getPictureFormat(),mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS))) {
+            if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS))) {
                 mParameters.setPictureFormat(valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid picture format: %s",valstr);
@@ -457,10 +457,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
         }
 
-        if ( 0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW) ||
-                0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW_JPEG) ||
-                0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW_JPS) ||
-                0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW_MPO) ) {
+        if ( 0 == strcmp (valstr, TICameraParameters::PIXEL_FORMAT_RAW) ) {
 
             mRawCapture = true; // RawCapture flag
 
@@ -2710,7 +2707,7 @@ status_t CameraHal::takePicture( )
         if (mRawCapture) {
             if ( NO_ERROR == ret ) {
                 CAMHAL_LOGDB("Raw capture buffers setup - %s", mParameters.getPictureFormat());
-                ret = allocRawBufs(mRawWidth, mRawHeight, TICameraParameters::PIXEL_FORMAT_RAW, rawBufferCount);
+                ret = allocRawBufs(mParameters.getInt(TICameraParameters::RAW_WIDTH), mParameters.getInt(TICameraParameters::RAW_HEIGHT), TICameraParameters::PIXEL_FORMAT_RAW, rawBufferCount);
 
                 if ( NO_ERROR != ret ) {
                     CAMHAL_LOGEB("allocRawBufs (for RAW capture) returned error 0x%x", ret);
@@ -2991,8 +2988,7 @@ CameraHal::CameraHal(int cameraId)
     mVideoHeight = 0;
 
     //These values depends on the sensor characteristics
-    mRawWidth = 4032;
-    mRawHeight = 3024;
+
     mRawCapture = false;
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
@@ -3542,8 +3538,8 @@ void CameraHal::initDefaultParameters()
     p.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK, mCameraProperties->get(CameraProperties::AUTO_EXPOSURE_LOCK));
     p.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK, mCameraProperties->get(CameraProperties::AUTO_WHITEBALANCE_LOCK));
     p.set(CameraParameters::KEY_MAX_NUM_METERING_AREAS, mCameraProperties->get(CameraProperties::MAX_NUM_METERING_AREAS));
-    p.set(TICameraParameters::RAW_WIDTH, mRawWidth);
-    p.set(TICameraParameters::RAW_HEIGHT, mRawHeight);
+    p.set(TICameraParameters::RAW_WIDTH, mCameraProperties->get(CameraProperties::RAW_WIDTH));
+    p.set(TICameraParameters::RAW_HEIGHT,mCameraProperties->get(CameraProperties::RAW_HEIGHT));
     LOG_FUNCTION_NAME_EXIT;
 }
 
