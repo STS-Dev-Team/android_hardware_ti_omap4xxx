@@ -61,7 +61,9 @@ const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS[] = "temporal-brack
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_NEG[] = "temporal-bracketing-range-negative";
 const char TICameraParameters::KEY_MEASUREMENT_ENABLE[] = "measurement";
 const char TICameraParameters::KEY_GBCE[] = "gbce";
+const char TICameraParameters::KEY_GBCE_SUPPORTED[] = "gbce-supported";
 const char TICameraParameters::KEY_GLBCE[] = "glbce";
+const char TICameraParameters::KEY_GLBCE_SUPPORTED[] = "glbce-supported";
 const char TICameraParameters::KEY_CURRENT_ISO[] = "current-iso";
 const char TICameraParameters::KEY_SENSOR_ORIENTATION[] = "sensor-orientation";
 const char TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES[] = "sensor-orientation-values";
@@ -73,14 +75,6 @@ const char TICameraParameters::KEY_AUTO_FOCUS_LOCK[] = "auto-focus-lock";
 const char TICameraParameters::RAW_WIDTH[] = "raw-width";
 const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
 const char TICameraParameters::KEY_FILENAME_TIMESTAMP[] = "captured-filename";
-
-//TI extensions for enabling/disabling GLBCE
-const char TICameraParameters::GLBCE_ENABLE[] = "enable";
-const char TICameraParameters::GLBCE_DISABLE[] = "disable";
-
-//TI extensions for enabling/disabling GBCE
-const char TICameraParameters::GBCE_ENABLE[] = "enable";
-const char TICameraParameters::GBCE_DISABLE[] = "disable";
 
 //TI extensions for enabling/disabling measurement
 const char TICameraParameters::MEASUREMENT_ENABLE[] = "enable";

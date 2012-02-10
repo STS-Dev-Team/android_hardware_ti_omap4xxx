@@ -104,6 +104,9 @@ public:
     static const char CONTRAST[];
     static const char IPP[];
     static const char GBCE[];
+    static const char SUPPORTED_GBCE[];
+    static const char GLBCE[];
+    static const char SUPPORTED_GLBCE[];
     static const char AUTOCONVERGENCE_MODE[];
     static const char AUTOCONVERGENCE_MODE_VALUES[];
     static const char MANUAL_CONVERGENCE[];

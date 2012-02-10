@@ -134,11 +134,11 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
             if( cmpRes )
                 {
-                if (strcmp(valstr, ( const char * ) TICameraParameters::GBCE_ENABLE ) == 0)
+                if (strcmp(valstr, CameraParameters::TRUE ) == 0)
                     {
                     setGBCE(OMXCameraAdapter::BRIGHTNESS_ON);
                     }
-                else if (strcmp(valstr, ( const char * ) TICameraParameters::GBCE_DISABLE ) == 0)
+                else if (strcmp(valstr, CameraParameters::FALSE ) == 0)
                     {
                     setGBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
                     }
@@ -172,11 +172,11 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
             if( cmpRes )
                 {
-                if (strcmp(valstr, ( const char * ) TICameraParameters::GLBCE_ENABLE ) == 0)
+                if (strcmp(valstr, CameraParameters::TRUE ) == 0)
                     {
                     setGLBCE(OMXCameraAdapter::BRIGHTNESS_ON);
                     }
-                else if (strcmp(valstr, ( const char * ) TICameraParameters::GLBCE_DISABLE ) == 0)
+                else if (strcmp(valstr, CameraParameters::FALSE ) == 0)
                     {
                     setGLBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
                     }

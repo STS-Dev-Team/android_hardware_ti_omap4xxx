@@ -634,6 +634,10 @@ private:
     static status_t insertVideoSnapshotSupported(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVNFSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
     static status_t insertVSTABSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
+    static status_t insertGBCESupported(CameraProperties::Properties* params,
+                                        const OMX_TI_CAPTYPE &caps);
+    static status_t insertGLBCESupported(CameraProperties::Properties* params,
+                                         const OMX_TI_CAPTYPE &caps);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -816,7 +820,6 @@ private:
     static const char DEFAULT_FRAMERATE_RANGE_IMAGE[];
     static const char DEFAULT_FRAMERATE_RANGE_VIDEO[];
     static const char DEFAULT_IPP[];
-    static const char DEFAULT_GBCE[];
     static const char DEFAULT_ISO_MODE[];
     static const char DEFAULT_JPEG_QUALITY[];
     static const char DEFAULT_THUMBNAIL_QUALITY[];
