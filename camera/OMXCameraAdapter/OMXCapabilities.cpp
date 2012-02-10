@@ -758,12 +758,10 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
             if ( NO_ERROR != ret ) {
                 CAMHAL_LOGEB("Error inserting supported picture sizes 0x%x", ret);
             } else {
-                params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+                params->set(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES, supported);
             }
-        }
-        else
-        {
-            params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+        } else {
+            params->set(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES, supported);
         }
     }
 
@@ -883,12 +881,12 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
                 CAMHAL_LOGEB("Error inserting supported preview sizes 0x%x", ret);
                 return ret;
             } else {
-                params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+                params->set(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, supported);
             }
         }
         else
         {
-            params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+            params->set(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, supported);
         }
      }
 
@@ -1851,12 +1849,31 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
         *pos = '\0';
     }
     params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, temp);
+
+    if (!strcmp(TICameraParameters::S3D_TB_FULL, temp)) {
+        params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, params->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
+    } else if (!strcmp(TICameraParameters::S3D_SS_FULL, temp)) {
+        params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, params->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
+    } else if ((!strcmp(TICameraParameters::S3D_TB_SUBSAMPLED, temp))
+              || (!strcmp(TICameraParameters::S3D_SS_SUBSAMPLED, temp))) {
+        params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, params->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
+    }
+
     strncpy(temp, params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES),
                 MAX_PROP_VALUE_LENGTH - 1);
     if ((pos = strstr(temp, PARAM_SEP))) {
         *pos = '\0';
     }
     params->set(CameraProperties::S3D_CAP_FRAME_LAYOUT, temp);
+
+    if (!strcmp(TICameraParameters::S3D_TB_FULL, temp)) {
+        params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, params->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
+    } else if (!strcmp(TICameraParameters::S3D_SS_FULL, temp)) {
+        params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, params->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
+    } else if ((!strcmp(TICameraParameters::S3D_TB_SUBSAMPLED, temp))
+              || (!strcmp(TICameraParameters::S3D_SS_SUBSAMPLED, temp))) {
+        params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, params->get(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES));
+    }
 
     params->set(CameraProperties::ANTIBANDING, DEFAULT_ANTIBANDING);
     params->set(CameraProperties::BRIGHTNESS, DEFAULT_BRIGHTNESS);

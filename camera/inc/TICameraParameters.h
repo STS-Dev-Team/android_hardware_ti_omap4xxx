@@ -222,8 +222,10 @@ static const char S3D_TB_SUBSAMPLED[];
 static const char S3D_SS_SUBSAMPLED[];
 
 //TI extentions fo 3D resolutions
+static const char KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES[];
 static const char KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
 static const char KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[];
+static const char KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[];
 static const char KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[];
 static const char KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
 
