@@ -1220,7 +1220,10 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
       usleep(15000);
     }
 
-    mFramesWithCameraAdapterMap.add((int) mGrallocHandleMap[i], i);
+    {
+        Mutex::Autolock lock(mLock);
+        mFramesWithCameraAdapterMap.add((int) mGrallocHandleMap[i], i);
+    }
 
     CAMHAL_LOGVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount-1);
     mFrameProvider->returnFrame( (void*)mGrallocHandleMap[i], CameraFrame::PREVIEW_FRAME_SYNC);
