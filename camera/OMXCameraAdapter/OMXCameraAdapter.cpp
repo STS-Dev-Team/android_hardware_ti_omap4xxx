@@ -884,13 +884,13 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
     } else if (OMX_CAMERA_PORT_VIDEO_OUT_VIDEO == port) {
         portCheck.format.video.nFrameWidth      = portParams.mWidth;
         portCheck.format.video.nFrameHeight     = portParams.mHeight;
-        portCheck.format.video.eColorFormat     = OMX_COLOR_FormatRawBayer10bit;//portParams.mColorFormat;
-        portCheck.nBufferCountActual            = 1;//portParams.mNumBufs;
+        portCheck.format.video.eColorFormat     = OMX_COLOR_FormatRawBayer10bit; // portParams.mColorFormat;
+        portCheck.nBufferCountActual            = 1; // portParams.mNumBufs;
     } else if (OMX_CAMERA_PORT_IMAGE_OUT_IMAGE == port) {
         portCheck.format.image.nFrameWidth      = portParams.mWidth;
         portCheck.format.image.nFrameHeight     = portParams.mHeight;
-        if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingNone) {
-            portCheck.format.image.eColorFormat     = OMX_COLOR_FormatCbYCrY;
+        if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingJPEG) {
+            portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
         } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingJPS) {
             portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
@@ -898,23 +898,8 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingMPO) {
             portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
             portCheck.format.image.eCompressionFormat = (OMX_IMAGE_CODINGTYPE) OMX_TI_IMAGE_CodingMPO;
-        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWJPEG) {
-            //TODO: OMX_IMAGE_CodingJPEG should be changed to OMX_IMAGE_CodingRAWJPEG when
-            // RAW format is supported
-            portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
-            portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
-        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWMPO) {
-            //TODO: OMX_IMAGE_CodingJPEG should be changed to OMX_IMAGE_CodingRAWMPO when
-            // RAW format is supported
-            portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
-            portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingJPEG;
-        } else if (OMX_COLOR_FormatUnused == portParams.mColorFormat && mCodingMode == CodingRAWJPS) {
-            //TODO: OMX_IMAGE_CodingJPEG should be changed to OMX_IMAGE_CodingRAWMPO when
-            // RAW format is supported
-            portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
-            portCheck.format.image.eCompressionFormat = (OMX_IMAGE_CODINGTYPE) OMX_TI_IMAGE_CodingJPS;
         } else {
-            portCheck.format.image.eColorFormat     = portParams.mColorFormat;
+            portCheck.format.image.eColorFormat       = portParams.mColorFormat;
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
         }
 
@@ -926,7 +911,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         CAMHAL_LOGEB("Unsupported port index (%lu)", port);
     }
 
-    if ( mSensorIndex == OMX_TI_StereoSensor ) {
+    if (( mSensorIndex == OMX_TI_StereoSensor ) && (OMX_CAMERA_PORT_VIDEO_OUT_VIDEO != port)) {
         ret = setS3DFrameLayout(port);
         if ( NO_ERROR != ret )
             {
@@ -3092,8 +3077,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 #ifdef CAMERAHAL_DEBUG
         if(mBuffersWithDucati.indexOfKey((int)pBuffHeader->pBuffer)<0)
             {
-            LOGE("Buffer was never with Ducati!! 0x%x", pBuffHeader->pBuffer);
-            for(int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
+            LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
+            for(unsigned int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
             }
         mBuffersWithDucati.removeItem((int)pBuffHeader->pBuffer);
 #endif
@@ -3217,10 +3202,11 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             CAMHAL_LOGEB ("RAW buffer done on video port, length = %d", pBuffHeader->nFilledLen);
 
             mask = (unsigned int) CameraFrame::RAW_FRAME;
+
             stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
         } else {
-        CAMHAL_LOGEA("Frame received for non-(preview/capture/measure) port. This is yet to be supported");
-        goto EXIT;
+            CAMHAL_LOGEA("Frame received for non-(preview/capture/measure) port. This is yet to be supported");
+            goto EXIT;
         }
 
     if ( NO_ERROR != stat )

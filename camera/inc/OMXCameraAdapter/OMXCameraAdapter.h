@@ -169,6 +169,11 @@ struct CapPixelformat {
     const char *param;
 };
 
+struct CapCodingFormat {
+    OMX_IMAGE_CODINGTYPE imageCodingFormat;
+    const char *param;
+};
+
 struct CapU32 {
     OMX_U32 num;
     const char *param;
@@ -227,12 +232,9 @@ public:
 
     enum CodingMode
         {
-        CodingNone = 0,
+        CodingJPEG = 0,
         CodingJPS,
         CodingMPO,
-        CodingRAWJPEG,
-        CodingRAWMPO,
-        CodingRAWJPS,
         };
 
     enum Algorithm3A
@@ -592,6 +594,10 @@ private:
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
     static status_t encodeFramerateCap(OMX_U32, OMX_U32, const CapFramerate*, size_t, char*, size_t);
     static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, const CapU32Pair*, size_t, char*, char*, size_t);
+    static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
+                                                const CapCodingFormat *,
+                                                size_t,
+                                                char *);
     static status_t encodePixelformatCap(OMX_COLOR_FORMATTYPE,
                                          const CapPixelformat*,
                                          size_t,
@@ -640,6 +646,7 @@ private:
                                         const OMX_TI_CAPTYPE &caps);
     static status_t insertGLBCESupported(CameraProperties::Properties* params,
                                          const OMX_TI_CAPTYPE &caps);
+    static status_t insertRaw(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -789,6 +796,7 @@ private:
     static const CapPixelformat mPixelformats [];
     static const userToOMX_LUT mFrameLayout [];
     static const LUTtype mLayoutLUT;
+    static const CapCodingFormat mImageCodingFormat[];
     static const CapFramerate mFramerates [];
     static const CapU32 mSensorNames[] ;
     static const CapZoom mZoomStages [];

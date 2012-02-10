@@ -150,13 +150,9 @@ static const char TEMP_BRACKETING[];
 
 // TI extensions to standard android pixel formats
 static const char PIXEL_FORMAT_UNUSED[];
-static const char PIXEL_FORMAT_JPEG[];
 static const char PIXEL_FORMAT_RAW[];
 static const char PIXEL_FORMAT_JPS[];
 static const char PIXEL_FORMAT_MPO[];
-static const char PIXEL_FORMAT_RAW_JPEG[];
-static const char PIXEL_FORMAT_RAW_MPO[];
-static const char PIXEL_FORMAT_RAW_JPS[];
 
 // TI extensions to standard android scene mode settings
 static const  char SCENE_MODE_SPORT[];
