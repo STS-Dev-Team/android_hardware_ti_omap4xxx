@@ -54,11 +54,13 @@ public:
     static const char ORIENTATION_INDEX[];
     static const char FACING_INDEX[];
     static const char SUPPORTED_PREVIEW_SIZES[];
+    static const char SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[];
     static const char SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[];
     static const char SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
     static const char SUPPORTED_PREVIEW_FORMATS[];
     static const char SUPPORTED_PREVIEW_FRAME_RATES[];
     static const char SUPPORTED_PICTURE_SIZES[];
+    static const char SUPPORTED_PICTURE_SUBSAMPLED_SIZES[];
     static const char SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
     static const char SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[];
     static const char SUPPORTED_PICTURE_FORMATS[];
