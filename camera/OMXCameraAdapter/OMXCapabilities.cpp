@@ -181,12 +181,12 @@ const CapResolution OMXCameraAdapter::mThumbRes [] = {
 };
 
 const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
-    { OMX_COLOR_FormatUnused, TICameraParameters::PIXEL_FORMAT_UNUSED },
     { OMX_COLOR_FormatCbYCrY, CameraParameters::PIXEL_FORMAT_YUV422I },
     { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420SP },
     { OMX_COLOR_Format16bitRGB565, CameraParameters::PIXEL_FORMAT_RGB565 },
-    { OMX_COLOR_FormatRawBayer10bit, TICameraParameters::PIXEL_FORMAT_RAW },
     { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420P },
+    { OMX_COLOR_FormatUnused, TICameraParameters::PIXEL_FORMAT_UNUSED },
+    { OMX_COLOR_FormatRawBayer10bit, TICameraParameters::PIXEL_FORMAT_RAW },
 };
 
 const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
@@ -200,6 +200,12 @@ const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
 const LUTtype OMXCameraAdapter::mLayoutLUT = {
    ARRAY_SIZE(mFrameLayout),
    mFrameLayout
+};
+
+const CapCodingFormat OMXCameraAdapter::mImageCodingFormat [] = {
+      { OMX_IMAGE_CodingJPEG, CameraParameters::PIXEL_FORMAT_JPEG },
+      { (OMX_IMAGE_CODINGTYPE)OMX_TI_IMAGE_CodingJPS, TICameraParameters::PIXEL_FORMAT_JPS },
+      { (OMX_IMAGE_CODINGTYPE)OMX_TI_IMAGE_CodingMPO, TICameraParameters::PIXEL_FORMAT_MPO },
 };
 
 const CapFramerate OMXCameraAdapter::mFramerates [] = {
@@ -351,6 +357,36 @@ const CapU32 OMXCameraAdapter::mFacing [] = {
  *****************************************/
 
 /**** Utility functions to help translate OMX Caps to Parameter ****/
+
+status_t OMXCameraAdapter::encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE format,
+        const CapCodingFormat *cap,
+        size_t capCount,
+        char * buffer) {
+
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+    if ( ( NULL == buffer ) || ( NULL == cap ) ) {
+        CAMHAL_LOGEA("Invalid input arguments");
+        ret = -EINVAL;
+    }
+
+    if ( NO_ERROR == ret ) {
+        for ( unsigned int i = 0 ; i < capCount ; i++ ) {
+            if ( format == cap[i].imageCodingFormat ) {
+                if (buffer[0] != '\0') {
+                    strncat(buffer, PARAM_SEP, ((((int)MAX_PROP_VALUE_LENGTH - 1 - (int)strlen(buffer)) < 0) ? 0 : (MAX_PROP_VALUE_LENGTH - 1 - strlen(buffer))));
+                }
+                strncat(buffer, cap[i].param,  ((((int)MAX_PROP_VALUE_LENGTH - 1 - (int)strlen(buffer)) < 0) ? 0 : (MAX_PROP_VALUE_LENGTH - 1 - strlen(buffer))));
+            }
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
 
 status_t OMXCameraAdapter::encodePixelformatCap(OMX_COLOR_FORMATTYPE format,
                               const CapPixelformat *cap,
@@ -957,14 +993,14 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
 
     LOG_FUNCTION_NAME;
 
-    memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+    memset(supported, '\0', sizeof(supported));
 
-    for ( int i = 0 ; i < caps.ulImageFormatCount ; i++ ) {
-        ret = encodePixelformatCap(caps.eImageFormats[i],
-                                   mPixelformats,
-                                   ARRAY_SIZE(mPixelformats),
-                                   supported,
-                                   MAX_PROP_VALUE_LENGTH);
+    for (int i = 0; i < caps.ulImageCodingFormatCount ; i++) {
+        ret = encodeImageCodingFormatCap(caps.eImageCodingFormat[i],
+                                        mImageCodingFormat,
+                                        ARRAY_SIZE(mImageCodingFormat),
+                                        supported);
+
         if ( NO_ERROR != ret ) {
             CAMHAL_LOGEB("Error inserting supported picture formats 0x%x", ret);
             break;
@@ -972,13 +1008,6 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
     }
 
     if ( NO_ERROR == ret ) {
-        //jpeg is not supported in OMX capabilies yet
-        if (supported[0] != '\0') {
-            strncat(supported, PARAM_SEP, 1);
-        }
-        strncat(supported, CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
-        strcat(supported, ",");
-        strncat(supported, TICameraParameters::PIXEL_FORMAT_RAW_JPEG, MAX_PROP_VALUE_LENGTH - 1);
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
     }
 
@@ -1521,6 +1550,31 @@ status_t OMXCameraAdapter::insertSenMount(CameraProperties::Properties* params, 
     return ret;
 }
 
+status_t OMXCameraAdapter::insertRaw(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
+
+    status_t ret = NO_ERROR;
+    char supported[MAX_PROP_VALUE_LENGTH];
+    unsigned int i = 0;
+
+    LOG_FUNCTION_NAME;
+
+    memset(supported, '\0', sizeof(supported));
+    sprintf(supported,"%d",int(caps.uSenNativeResWidth));
+    params->set(CameraProperties::RAW_WIDTH, supported);
+
+    memset(supported, '\0', sizeof(supported));
+    if (caps.bMechanicalMisalignmentSupported) {
+        sprintf(supported,"%d",int(caps.uSenNativeResHeight) * 2);
+    } else {
+        sprintf(supported,"%d",int(caps.uSenNativeResHeight));
+    }
+    params->set(CameraProperties::RAW_HEIGHT, supported);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertFacing(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1991,6 +2045,10 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
 
     if ( NO_ERROR == ret) {
         ret = insertMechanicalMisalignmentCorrection(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertRaw(params, caps);
     }
 
     if ( NO_ERROR == ret) {
