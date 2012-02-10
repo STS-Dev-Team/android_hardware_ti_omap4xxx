@@ -283,6 +283,15 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         if ( NULL != mReleaseImageBuffersCallback ) {
             mReleaseImageBuffersCallback(mReleaseData);
         }
+        if (mPendingCaptureSettings & SetFormat) {
+            mPendingCaptureSettings &= ~SetFormat;
+            ret = setFormat(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE, *cap);
+            if ( ret != NO_ERROR ) {
+                CAMHAL_LOGEB("setFormat() failed %d", ret);
+                LOG_FUNCTION_NAME_EXIT;
+                return ret;
+            }
+        }
     }
 
     LOG_FUNCTION_NAME_EXIT;
