@@ -1689,6 +1689,46 @@ status_t OMXCameraAdapter::insertVideoSnapshotSupported(CameraProperties::Proper
     return ret;
 }
 
+status_t OMXCameraAdapter::insertGBCESupported(CameraProperties::Properties* params,
+                                               const OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+    if (caps.bGbceSupported) {
+        params->set(CameraProperties::SUPPORTED_GBCE,
+                    CameraParameters::TRUE);
+    } else {
+        params->set(CameraProperties::SUPPORTED_GBCE,
+                    CameraParameters::FALSE);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
+status_t OMXCameraAdapter::insertGLBCESupported(CameraProperties::Properties* params,
+                                                const OMX_TI_CAPTYPE &caps)
+{
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+    if (caps.bGlbceSupported) {
+        params->set(CameraProperties::SUPPORTED_GLBCE,
+                    CameraParameters::TRUE);
+    } else {
+        params->set(CameraProperties::SUPPORTED_GLBCE,
+                    CameraParameters::FALSE);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1727,7 +1767,8 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
         params->set(CameraProperties::FOCUS_MODE, DEFAULT_FOCUS_MODE);
         }
     params->set(CameraProperties::IPP, DEFAULT_IPP);
-    params->set(CameraProperties::GBCE, DEFAULT_GBCE);
+    params->set(CameraProperties::GBCE, CameraParameters::FALSE);
+    params->set(CameraProperties::GLBCE, CameraParameters::FALSE);
     params->set(CameraProperties::ISO_MODE, DEFAULT_ISO_MODE);
     params->set(CameraProperties::JPEG_QUALITY, DEFAULT_JPEG_QUALITY);
     params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, DEFAULT_THUMBNAIL_QUALITY);
@@ -1918,6 +1959,14 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     // or not
     if ( NO_ERROR == ret ) {
         ret = insertVideoSizes(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertGBCESupported(params, caps);
+    }
+
+    if ( NO_ERROR == ret) {
+        ret = insertGLBCESupported(params, caps);
     }
 
     if ( NO_ERROR == ret ) {
