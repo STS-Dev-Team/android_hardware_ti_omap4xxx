@@ -361,16 +361,14 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
 
         if ( (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
-            && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES)))
-            && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES))) )
-            {
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES)))
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES)))
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES))) ) {
             CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
             return BAD_VALUE;
-            }
-        else
-            {
+        } else {
             mParameters.setPreviewSize(w, h);
-            }
+        }
 
         if ( ( oldWidth != w ) || ( oldHeight != h ) )
             {
@@ -478,8 +476,9 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         params.getPictureSize(&w, &h);
         if ( (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIZES)))
-            || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES)))
-            || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES))) ) {
+                || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES)))
+                || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES)))
+                || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES))) ) {
             mParameters.setPictureSize(w, h);
         } else {
             CAMHAL_LOGEB("ERROR: Invalid picture resolution %d x %d", w, h);
@@ -2793,6 +2792,28 @@ char* CameraHal::getParameters()
         mCameraAdapter->getParameters(mParameters);
     }
 
+    if ( (valstr = mParameters.get(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT)) != NULL ) {
+        if (!strcmp(TICameraParameters::S3D_TB_FULL, valstr)) {
+            mParameters.set(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
+        } else if (!strcmp(TICameraParameters::S3D_SS_FULL, valstr)) {
+            mParameters.set(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
+        } else if ((!strcmp(TICameraParameters::S3D_TB_SUBSAMPLED, valstr))
+            || (!strcmp(TICameraParameters::S3D_SS_SUBSAMPLED, valstr))) {
+            mParameters.set(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES));
+        }
+    }
+
+    if ( (valstr = mParameters.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT)) != NULL ) {
+        if (!strcmp(TICameraParameters::S3D_TB_FULL, valstr)) {
+            mParameters.set(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
+        } else if (!strcmp(TICameraParameters::S3D_SS_FULL, valstr)) {
+            mParameters.set(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
+        } else if ((!strcmp(TICameraParameters::S3D_TB_SUBSAMPLED, valstr))
+                || (!strcmp(TICameraParameters::S3D_SS_SUBSAMPLED, valstr))) {
+            mParameters.set(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
+        }
+    }
+
     CameraParameters mParams = mParameters;
 
     // Handle RECORDING_HINT to Set/Reset Video Mode Parameters
@@ -3391,8 +3412,10 @@ void CameraHal::insertSupportedParams()
     p.set(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FORMATS));
+    p.set(TICameraParameters::KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
+    p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));

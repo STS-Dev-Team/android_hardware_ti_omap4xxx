@@ -100,8 +100,10 @@ const char TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT[] = "s3d-cap-frame-layou
 const char TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT_VALUES[] = "s3d-cap-frame-layout-values";
 
 //TI extentions fo 3D resolutions
+const char TICameraParameters::KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES[] = "supported-picture-subsampled-size-values";
 const char TICameraParameters::KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[] = "supported-picture-topbottom-size-values";
 const char TICameraParameters::KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "supported-picture-sidebyside-size-values";
+const char TICameraParameters::KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[] = "supported-preview-subsampled-size-values";
 const char TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[] = "supported-preview-topbottom-size-values";
 const char TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[] = "supported-preview-sidebyside-size-values";
 
