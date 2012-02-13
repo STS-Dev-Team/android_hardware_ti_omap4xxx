@@ -449,6 +449,10 @@ private:
     status_t setSensorOrientation(unsigned int degree);
     status_t setImageQuality(unsigned int quality);
     status_t setThumbnailParams(unsigned int width, unsigned int height, unsigned int quality);
+    status_t setSensorQuirks(int orientation,
+                             OMXCameraPortParameters &portParams,
+                             bool &portConfigured);
+
 
     //EXIF
     status_t setParametersEXIF(const CameraParameters &params,
@@ -630,6 +634,10 @@ private:
     static status_t insertVideoSnapshotSupported(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVNFSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
     static status_t insertVSTABSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
+    static status_t insertGBCESupported(CameraProperties::Properties* params,
+                                        const OMX_TI_CAPTYPE &caps);
+    static status_t insertGLBCESupported(CameraProperties::Properties* params,
+                                         const OMX_TI_CAPTYPE &caps);
 
     status_t setParametersCapture(const CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
@@ -658,12 +666,7 @@ private:
     //Used for calculation of the average frame rate during preview
     status_t recalculateFPS();
 
-    //Helper method for initializing a CameFrame object
-    status_t initCameraFrame(CameraFrame &frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, int typeOfFrame, OMXCameraPortParameters *port);
-
     //Sends the incoming OMX buffer header to subscribers
-    status_t sendFrame(CameraFrame &frame);
-
     status_t sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, unsigned int mask, OMXCameraPortParameters *port);
 
     status_t apply3Asettings( Gen3A_settings& Gen3A );
@@ -817,7 +820,6 @@ private:
     static const char DEFAULT_FRAMERATE_RANGE_IMAGE[];
     static const char DEFAULT_FRAMERATE_RANGE_VIDEO[];
     static const char DEFAULT_IPP[];
-    static const char DEFAULT_GBCE[];
     static const char DEFAULT_ISO_MODE[];
     static const char DEFAULT_JPEG_QUALITY[];
     static const char DEFAULT_THUMBNAIL_QUALITY[];

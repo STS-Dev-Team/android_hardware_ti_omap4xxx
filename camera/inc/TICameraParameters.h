@@ -60,7 +60,9 @@ static const char  KEY_SHUTTER_ENABLE[];
 static const char  KEY_MEASUREMENT_ENABLE[];
 static const char  KEY_INITIAL_VALUES[];
 static const char  KEY_GBCE[];
+static const char  KEY_GBCE_SUPPORTED[];
 static const char  KEY_GLBCE[];
+static const char  KEY_GLBCE_SUPPORTED[];
 static const char  KEY_MINFRAMERATE[];
 static const char  KEY_MAXFRAMERATE[];
 
@@ -91,14 +93,6 @@ static const char KEY_MANUAL_CONVERGENCE[];
 static const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[];
 static const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[];
 static const char KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[];
-
-//TI extensions for enabling/disabling GLBCE
-static const char GLBCE_ENABLE[];
-static const char GLBCE_DISABLE[];
-
-//TI extensions for enabling/disabling GBCE
-static const char GBCE_ENABLE[];
-static const char GBCE_DISABLE[];
 
 // TI extensions to add Min frame rate Values
 static const char VIDEO_MINFRAMERATE_5[];

@@ -277,7 +277,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 }
             }
 
-            if ((valstr = params.get(TICameraParameters::KEY_VNF_SUPPORTED)) != NULL) {
+            if ((valstr = params.get(TICameraParameters::KEY_VNF)) != NULL) {
                 if (strcmp(mCameraProperties->get(CameraProperties::VNF_SUPPORTED),
                            CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGDB("VNF %s",
@@ -598,17 +598,39 @@ int CameraHal::setParameters(const CameraParameters& params)
         mParameters.set(TICameraParameters::KEY_MINFRAMERATE, minFPS);
         mParameters.set(TICameraParameters::KEY_MAXFRAMERATE, maxFPS);
 
-        if( ( valstr = params.get(TICameraParameters::KEY_GBCE) ) != NULL )
-            {
-            CAMHAL_LOGDB("GBCE Value = %s", valstr);
-            mParameters.set(TICameraParameters::KEY_GBCE, valstr);
+        if ((valstr = params.get(TICameraParameters::KEY_GBCE)) != NULL) {
+            if (strcmp(mCameraProperties->get(CameraProperties::SUPPORTED_GBCE),
+                       CameraParameters::TRUE) == 0) {
+                CAMHAL_LOGDB("GBCE %s", valstr);
+                mParameters.set(TICameraParameters::KEY_GBCE, valstr);
+            } else if (strcmp(valstr, CameraParameters::TRUE) == 0) {
+                CAMHAL_LOGEB("ERROR: Invalid GBCE: %s", valstr);
+                return BAD_VALUE;
+            } else {
+                mParameters.set(TICameraParameters::KEY_GBCE,
+                                CameraParameters::FALSE);
             }
+        } else {
+            mParameters.set(TICameraParameters::KEY_GBCE,
+                            CameraParameters::FALSE);
+        }
 
-        if( ( valstr = params.get(TICameraParameters::KEY_GLBCE) ) != NULL )
-            {
-            CAMHAL_LOGDB("GLBCE Value = %s", valstr);
-            mParameters.set(TICameraParameters::KEY_GLBCE, valstr);
+        if ((valstr = params.get(TICameraParameters::KEY_GLBCE)) != NULL) {
+            if (strcmp(mCameraProperties->get(CameraProperties::SUPPORTED_GLBCE),
+                       CameraParameters::TRUE) == 0) {
+                CAMHAL_LOGDB("GLBCE %s", valstr);
+                mParameters.set(TICameraParameters::KEY_GLBCE, valstr);
+            } else if (strcmp(valstr, CameraParameters::TRUE) == 0) {
+                CAMHAL_LOGEB("ERROR: Invalid GLBCE: %s", valstr);
+                return BAD_VALUE;
+            } else {
+                mParameters.set(TICameraParameters::KEY_GLBCE,
+                                CameraParameters::FALSE);
             }
+        } else {
+            mParameters.set(TICameraParameters::KEY_GLBCE,
+                            CameraParameters::FALSE);
+        }
 
         ///Update the current parameter set
         if ( (valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE_MODE)) != NULL )
@@ -1660,6 +1682,16 @@ status_t CameraHal::startPreview()
         if ( ret != NO_ERROR )
             {
             CAMHAL_LOGEA("Couldn't enable display");
+
+            // FIXME: At this stage mStateSwitchLock is locked and unlock is supposed to be called
+            //        only from mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_PREVIEW)
+            //        below. But this will never happen because of goto error. Thus at next
+            //        startPreview() call CameraHAL will be deadlocked.
+            //        Need to revisit mStateSwitch lock, for now just abort the process.
+            CAMHAL_ASSERT_X(false,
+                    "At this stage mCameraAdapter->mStateSwitchLock is still locked, "
+                    "deadlock is guaranteed");
+
             goto error;
             }
 
@@ -3426,6 +3458,9 @@ void CameraHal::initDefaultParameters()
     p.set(TICameraParameters::KEY_ISO, mCameraProperties->get(CameraProperties::ISO_MODE));
     p.set(TICameraParameters::KEY_IPP, mCameraProperties->get(CameraProperties::IPP));
     p.set(TICameraParameters::KEY_GBCE, mCameraProperties->get(CameraProperties::GBCE));
+    p.set(TICameraParameters::KEY_GBCE_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_GBCE));
+    p.set(TICameraParameters::KEY_GLBCE, mCameraProperties->get(CameraProperties::GLBCE));
+    p.set(TICameraParameters::KEY_GLBCE_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_GLBCE));
     p.set(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT, mCameraProperties->get(CameraProperties::S3D_PRV_FRAME_LAYOUT));
     p.set(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT, mCameraProperties->get(CameraProperties::S3D_CAP_FRAME_LAYOUT));
     p.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE_MODE));

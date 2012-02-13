@@ -780,17 +780,82 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &portParams)
+status_t OMXCameraAdapter::setSensorQuirks(int orientation,
+                                           OMXCameraPortParameters &portParams,
+                                           bool &portConfigured)
 {
+    status_t overclockStatus = NO_ERROR;
+    int sensorID = -1;
     size_t overclockWidth;
     size_t overclockHeight;
-    int sensorID = -1;
-    size_t bufferCount;
-    status_t ret = NO_ERROR;
-    status_t overclockStatus = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_PARAM_PORTDEFINITIONTYPE portCheck;
 
     LOG_FUNCTION_NAME;
 
+    portConfigured = false;
+    OMX_INIT_STRUCT_PTR (&portCheck, OMX_PARAM_PORTDEFINITIONTYPE);
+
+    portCheck.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
+
+    eError = OMX_GetParameter (mCameraAdapterParameters.mHandleComp,
+                               OMX_IndexParamPortDefinition,
+                               &portCheck);
+
+    if ( eError != OMX_ErrorNone ) {
+        CAMHAL_LOGEB("OMX_GetParameter - %x", eError);
+        return ErrorUtils::omxToAndroidError(eError);
+    }
+
+    if ( ( orientation == 90 ) || ( orientation == 270 ) ) {
+        overclockWidth = 1080;
+        overclockHeight = 1920;
+    } else {
+        overclockWidth = 1920;
+        overclockHeight = 1080;
+    }
+
+    sensorID = mCapabilities->getInt(CameraProperties::CAMERA_SENSOR_ID);
+    if( ( ( sensorID == SENSORID_IMX060 ) &&
+          ( portParams.mWidth >= overclockWidth ) &&
+          ( portParams.mHeight >= overclockHeight ) &&
+          ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) ||
+        ( ( sensorID == SENSORID_OV5640 ) &&
+          ( portParams.mWidth >= overclockWidth ) &&
+          ( portParams.mHeight >= overclockHeight ) ) ) {
+        overclockStatus = setSensorOverclock(true);
+    } else {
+
+        //WA: If the next port resolution doesn't require
+        //    sensor overclocking, but the previous resolution
+        //    needed it, then we have to first set new port
+        //    resolution and then disable sensor overclocking.
+        if( ( ( sensorID == SENSORID_IMX060 ) &&
+              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+              ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
+              ( ( portCheck.format.video.xFramerate >> 16 ) >= FRAME_RATE_FULL_HD ) ) ||
+            ( ( sensorID == SENSORID_OV5640 ) &&
+              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
+              ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ) {
+            status_t ret = setFormat(mCameraAdapterParameters.mPrevPortIndex,
+                                     portParams);
+            if ( NO_ERROR != ret ) {
+                return ret;
+            }
+            portConfigured = true;
+        }
+
+        overclockStatus = setSensorOverclock(false);
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return overclockStatus;
+}
+status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &portParams)
+{
+    status_t ret = NO_ERROR;
+    size_t bufferCount;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_PARAM_PORTDEFINITIONTYPE portCheck;
 
@@ -810,27 +875,6 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         portCheck.format.video.nFrameHeight     = portParams.mHeight;
         portCheck.format.video.eColorFormat     = portParams.mColorFormat;
         portCheck.format.video.nStride          = portParams.mStride;
-
-        if ( ( mSensorOrientation == 90 ) || ( mSensorOrientation == 270 ) ) {
-            overclockWidth = 1080;
-            overclockHeight = 1920;
-        } else {
-            overclockWidth = 1920;
-            overclockHeight = 1080;
-        }
-
-        sensorID = mCapabilities->getInt(CameraProperties::CAMERA_SENSOR_ID);
-        if( ( ( sensorID == SENSORID_IMX060 ) &&
-              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
-              ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
-              ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) ||
-            ( ( sensorID == SENSORID_OV5640 ) &&
-              ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
-              ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ){
-            overclockStatus = setSensorOverclock(true);
-        } else {
-            overclockStatus = setSensorOverclock(false);
-        }
 
         portCheck.format.video.xFramerate       = portParams.mFrameRate<<16;
         portCheck.nBufferSize                   = portParams.mStride * portParams.mHeight;
@@ -949,7 +993,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError) | overclockStatus;
+    return ErrorUtils::omxToAndroidError(eError);
 
     EXIT:
 
@@ -957,7 +1001,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError) | overclockStatus;
+    return ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::flushBuffers()
@@ -1760,6 +1804,8 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
     ///If there is any failure, we reach here.
     ///Here, we do any resource freeing and convert from OMX error code to Camera Hal error code
 EXIT:
+    mStateSwitchLock.unlock();
+
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     performCleanupAfterError();
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
@@ -1782,8 +1828,8 @@ status_t OMXCameraAdapter::startPreview()
     if( 0 != mStartPreviewSem.Count() )
         {
         CAMHAL_LOGEB("Error mStartPreviewSem semaphore count %d", mStartPreviewSem.Count());
-        LOG_FUNCTION_NAME_EXIT;
-        return NO_INIT;
+        ret = NO_INIT;
+        goto EXIT;
         }
 
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -3259,23 +3305,6 @@ status_t OMXCameraAdapter::recalculateFDSkip(uint32_t &skip, uint32_t currentFPS
     return NO_ERROR;
 }
 
-status_t OMXCameraAdapter::sendFrame(CameraFrame &frame)
-{
-    status_t ret = NO_ERROR;
-
-    LOG_FUNCTION_NAME;
-
-
-    if ( NO_ERROR == ret )
-        {
-        ret = sendFrameToSubscribers(&frame);
-        }
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
-}
-
 status_t OMXCameraAdapter::sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader, unsigned int mask, OMXCameraPortParameters *port)
 {
   status_t ret = NO_ERROR;
@@ -3328,57 +3357,6 @@ status_t OMXCameraAdapter::sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEA
   LOG_FUNCTION_NAME_EXIT;
 
   return ret;
-}
-
-status_t OMXCameraAdapter::initCameraFrame( CameraFrame &frame,
-                                            OMX_IN OMX_BUFFERHEADERTYPE *pBuffHeader,
-                                            int typeOfFrame,
-                                            OMXCameraPortParameters *port)
-{
-    status_t ret = NO_ERROR;
-
-    LOG_FUNCTION_NAME;
-
-    if ( NULL == port)
-        {
-        CAMHAL_LOGEA("Invalid portParam");
-        return -EINVAL;
-        }
-
-    if ( NULL == pBuffHeader )
-        {
-        CAMHAL_LOGEA("Invalid Buffer header");
-        return -EINVAL;
-        }
-
-    frame.mFrameType = typeOfFrame;
-    frame.mBuffer = pBuffHeader->pBuffer;
-    frame.mLength = pBuffHeader->nFilledLen;
-    frame.mAlignment = port->mStride;
-    frame.mOffset = pBuffHeader->nOffset;
-    frame.mWidth = port->mWidth;
-    frame.mHeight = port->mHeight;
-
-    // Timestamp in pBuffHeader->nTimeStamp is derived on DUCATI side, which is
-    // is not  same time value as derived using systemTime. It would be ideal to use
-    // exactly same time source across Android and Ducati, which is limited by
-    // system now. So, workaround for now is to find the time offset between the two
-    // time sources and compensate the difference, along with the latency involved
-    // in camera buffer reaching CameraHal. Also, Do timeset offset calculation only
-    // when recording is in progress, when nTimestamp will be populated by Camera
-    if ( onlyOnce && mRecording )
-        {
-        mTimeSourceDelta = (pBuffHeader->nTimeStamp * 1000) - systemTime(SYSTEM_TIME_MONOTONIC);
-        mTimeSourceDelta += kCameraBufferLatencyNs;
-        onlyOnce = false;
-        }
-
-    // Calculating the new video timestamp based on offset from ducati source.
-    frame.mTimestamp = (pBuffHeader->nTimeStamp * 1000) - mTimeSourceDelta;
-
-        LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
 }
 
 bool OMXCameraAdapter::CommandHandler::Handler()

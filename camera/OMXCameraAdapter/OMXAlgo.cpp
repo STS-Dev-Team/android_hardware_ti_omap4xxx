@@ -134,11 +134,11 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
             if( cmpRes )
                 {
-                if (strcmp(valstr, ( const char * ) TICameraParameters::GBCE_ENABLE ) == 0)
+                if (strcmp(valstr, CameraParameters::TRUE ) == 0)
                     {
                     setGBCE(OMXCameraAdapter::BRIGHTNESS_ON);
                     }
-                else if (strcmp(valstr, ( const char * ) TICameraParameters::GBCE_DISABLE ) == 0)
+                else if (strcmp(valstr, CameraParameters::FALSE ) == 0)
                     {
                     setGBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
                     }
@@ -172,11 +172,11 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
             if( cmpRes )
                 {
-                if (strcmp(valstr, ( const char * ) TICameraParameters::GLBCE_ENABLE ) == 0)
+                if (strcmp(valstr, CameraParameters::TRUE ) == 0)
                     {
                     setGLBCE(OMXCameraAdapter::BRIGHTNESS_ON);
                     }
-                else if (strcmp(valstr, ( const char * ) TICameraParameters::GLBCE_DISABLE ) == 0)
+                else if (strcmp(valstr, CameraParameters::FALSE ) == 0)
                     {
                     setGLBCE(OMXCameraAdapter::BRIGHTNESS_OFF);
                     }
@@ -1070,17 +1070,13 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
         tmpWidth = mPreviewData->mWidth;
         mPreviewData->mWidth = 640;
         mPreviewData->mHeight = 480;
+
         ret = setFormat(OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW, *mPreviewData);
-
-        // Handles one corner case in which sensor overclocking
-        // would incorrectly return an error.
-        if ( BAD_VALUE == ret ) {
-            ret = setFormat (OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW, *mPreviewData);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error while configuring format 0x%x", ret);
+            return ret;
         }
 
-        if ( ret != NO_ERROR ) {
-            CAMHAL_LOGEB("setFormat() failed %d", ret);
-        }
         mPreviewData->mWidth = tmpWidth;
         mPreviewData->mHeight = tmpHeight;
     }
@@ -1104,18 +1100,22 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
 
     /* Now set the required resolution as requested */
     if ( NO_ERROR == ret ) {
-        ret = setFormat (mCameraAdapterParameters.mPrevPortIndex,
-                         mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex]);
-
-        // Handles one corner case in which sensor overclocking
-        // would incorrectly return an error.
-        if ( BAD_VALUE == ret ) {
-            ret = setFormat (mCameraAdapterParameters.mPrevPortIndex,
-                             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex]);
+        bool portConfigured = false;
+        ret = setSensorQuirks(degree,
+                mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex],
+                portConfigured);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error while configuring setSensorQuirks 0x%x", ret);
+            return ret;
         }
 
-        if ( NO_ERROR != ret ) {
-            CAMHAL_LOGEB("setFormat() failed %d", ret);
+        if ( !portConfigured ) {
+            ret = setFormat (mCameraAdapterParameters.mPrevPortIndex,
+                             mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex]);
+            if ( NO_ERROR != ret ) {
+                CAMHAL_LOGEB("Error while configuring format 0x%x", ret);
+                return ret;
+            }
         }
     }
 

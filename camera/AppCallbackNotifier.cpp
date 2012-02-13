@@ -965,7 +965,7 @@ void AppCallbackNotifier::notifyFrame()
                              ( NULL != mDataCb) &&
                              ( mCameraHal->msgTypeEnabled(CAMERA_MSG_VIDEO_FRAME)  ) )
                     {
-                    mRecordingLock.lock();
+                    AutoMutex locker(mRecordingLock);
                     if(mRecording)
                         {
                         if(mUseMetaDataBufferMode)
@@ -1032,20 +1032,18 @@ void AppCallbackNotifier::notifyFrame()
                         else
                             {
                             //TODO: Need to revisit this, should ideally be mapping the TILER buffer using mRequestMemory
-                            camera_memory_t* fakebuf = mRequestMemory(-1, 4, 1, NULL);
+                            camera_memory_t* fakebuf = mRequestMemory(-1, sizeof(buffer_handle_t), 1, NULL);
                             if( (NULL == fakebuf) || ( NULL == fakebuf->data) || ( NULL == frame->mBuffer))
                                 {
                                 CAMHAL_LOGEA("Error! One of the video buffers is NULL");
                                 break;
                                 }
 
-                            fakebuf->data = frame->mBuffer;
+                            *reinterpret_cast<buffer_handle_t*>(fakebuf->data) = reinterpret_cast<buffer_handle_t>(frame->mBuffer);
                             mDataCbTimestamp(frame->mTimestamp, CAMERA_MSG_VIDEO_FRAME, fakebuf, 0, mCallbackCookie);
                             fakebuf->release(fakebuf);
                             }
                         }
-                    mRecordingLock.unlock();
-
                     }
                 else if(( CameraFrame::SNAPSHOT_FRAME == frame->mFrameType ) &&
                              ( NULL != mCameraHal ) &&
