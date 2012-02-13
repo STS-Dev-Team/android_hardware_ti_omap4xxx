@@ -1047,7 +1047,10 @@ private:
     OMX_BOOL mUserSetExpLock;
     OMX_BOOL mUserSetWbLock;
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
     bool mRawCapture;
+    bool mYuvCapture;
+#endif
 
     OMX_TI_DCCDATATYPE mDccData;
     Mutex mDccDataLock;

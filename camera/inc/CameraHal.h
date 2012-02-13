@@ -122,6 +122,7 @@ namespace android {
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
 extern const char * const kRawImagesOutputDirPath;
+extern const char * const kYuvImagesOutputDirPath;
 #endif
 #define V4L_CAMERA_NAME_USB     "USBCAMERA"
 #define OMX_CAMERA_NAME_OV      "OV5640"
