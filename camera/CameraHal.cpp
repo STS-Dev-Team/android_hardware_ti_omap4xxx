@@ -60,6 +60,7 @@ const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP = 15;
 //       The directory name is choosed in so weird way to enable RAW images saving only when
 //       directory has been created explicitly by user.
 extern const char * const kRawImagesOutputDirPath = "/data/misc/camera/RaW_PiCtUrEs";
+extern const char * const kYuvImagesOutputDirPath = "/data/misc/camera/YuV_PiCtUrEs";
 #endif
 
 /******************************************************************************/
