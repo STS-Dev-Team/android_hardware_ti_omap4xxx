@@ -67,16 +67,6 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     CAMHAL_LOGVB("Image: cap.mWidth = %d", (int)cap->mWidth);
     CAMHAL_LOGVB("Image: cap.mHeight = %d", (int)cap->mHeight);
 
-    mRawCapture = false;
-
-#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
-    valstr = params.get(TICameraParameters::KEY_CAP_MODE);
-    if ( (!valstr || strcmp(valstr, TICameraParameters::HIGH_QUALITY_MODE) == 0) &&
-            access(kRawImagesOutputDirPath, F_OK) != -1 ) {
-        mRawCapture = true;
-    }
-#endif
-
     if ((valstr = params.getPictureFormat()) != NULL) {
         if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
@@ -122,6 +112,21 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         mPictureFormatFromClient = NULL;
     }
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+    mRawCapture = false;
+    mYuvCapture = false;
+
+    valstr = params.get(TICameraParameters::KEY_CAP_MODE);
+    if ( (!valstr || strcmp(valstr, TICameraParameters::HIGH_QUALITY_MODE) == 0) &&
+            access(kRawImagesOutputDirPath, F_OK) != -1 ) {
+        mRawCapture = true;
+    }
+
+    if (mRawCapture && (access(kYuvImagesOutputDirPath, F_OK) != -1)) {
+        pixFormat = OMX_COLOR_FormatCbYCrY;
+        mYuvCapture = true;
+    }
+#endif
     // JPEG capture is not supported in video mode by OMX Camera
     // Set capture format to yuv422i...jpeg encode will
     // be done on A9
@@ -855,6 +860,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
         if (mRawCapture) {
             capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
 
@@ -867,6 +873,8 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
                 GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
             }
         }
+#endif
+
         mWaitingForSnapshot = true;
         mCaptureSignalled = false;
 
@@ -1098,8 +1106,8 @@ status_t OMXCameraAdapter::disableImagePort(){
         goto EXIT;
     }
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
     if (mRawCapture) {
-
         ///Register for Video port Disable event
         ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
                 OMX_EventCmdComplete,
@@ -1131,6 +1139,7 @@ status_t OMXCameraAdapter::disableImagePort(){
         mStopCaptureSem.WaitTimeout(OMX_CMD_TIMEOUT);
         CAMHAL_LOGDA("Video Port disabled");
     }
+#endif
 
 EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
@@ -1304,9 +1313,13 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
 
     mCapturedFrames = mBurstFrames;
 
-    if (!mRawCapture) {
-        mCaptureConfigured = true;
+    mCaptureConfigured = true;
+
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+    if (mRawCapture) {
+        mCaptureConfigured = false;
     }
+#endif
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
