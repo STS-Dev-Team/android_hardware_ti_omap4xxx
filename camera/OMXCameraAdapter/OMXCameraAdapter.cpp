@@ -222,6 +222,12 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mEXIFData.mModelValid = false;
     mEXIFData.mMakeValid = false;
 
+    if (mCapabilities->get(CameraProperties::SUPPORTED_ZOOM_STAGES) != NULL) {
+        mMaxZoomSupported = mCapabilities->getInt(CameraProperties::SUPPORTED_ZOOM_STAGES) + 1;
+    } else {
+        mMaxZoomSupported = 1;
+    }
+
     // initialize command handling thread
     if(mCommandHandler.get() == NULL)
         mCommandHandler = new CommandHandler(this);
