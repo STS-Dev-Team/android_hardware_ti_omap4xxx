@@ -75,6 +75,9 @@
 #include <VideoMetadata.h>
 #endif
 
+#include <stdlib.h>
+#include <cutils/properties.h>
+
 #define COMPONENT_NAME "OMX.TI.DUCATI1.VIDEO.H264E"
 /* needs to be specific for every configuration wrapper */
 
@@ -90,6 +93,26 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
     OMX_IN OMX_INDEXTYPE nParamIndex, OMX_INOUT OMX_PTR pParamStruct);
 
 #endif
+
+
+#define OMX_INIT_STRUCT(_s_, _name_)    \
+   memset(&(_s_), 0x0, sizeof(_name_));         \
+   (_s_).nSize = sizeof(_name_);               \
+   (_s_).nVersion.s.nVersionMajor = 0x1;    \
+   (_s_).nVersion.s.nVersionMinor = 0x1;     \
+   (_s_).nVersion.s.nRevision = 0x0;            \
+   (_s_).nVersion.s.nStep = 0x0
+
+
+/* Params needed for Dynamic Frame Rate Control*/
+#define FRAME_RATE_THRESHOLD 1 /* Change in Frame rate to configure the encoder */
+OMX_U32 nFrameRateThreshold = 0;/* Frame Rate threshold for every frame rate update */
+OMX_U32 nPortFrameRate = 0; /* Port FPS initially set to the Encoder */
+OMX_U32 nFrameCounter = 0; /* Number of input frames recieved since last framerate calculation */
+OMX_TICKS nVideoTime = 0; /* Video duration since last framerate calculation */
+OMX_TICKS nLastFrameRateUpdateTime = 0; /*Time stamp at last frame rate update */
+OMX_U16 nBFrames = 0; /* Number of B Frames in H264 Encoder */
+
 
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 /* Opaque color format requires below quirks to be enabled
@@ -132,11 +155,115 @@ typedef struct _OMX_PROXY_H264E_PRIVATE
 }OMX_PROXY_H264E_PRIVATE;
 #endif
 
+
 OMX_ERRORTYPE LOCAL_PROXY_H264E_GetExtensionIndex(OMX_IN OMX_HANDLETYPE hComponent,
     OMX_IN OMX_STRING cParameterName, OMX_OUT OMX_INDEXTYPE * pIndexType);
 
 OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
     OMX_BUFFERHEADERTYPE * pBufferHdr);
+
+static OMX_ERRORTYPE OMX_ConfigureDynamicFrameRate( OMX_HANDLETYPE hComponent,
+	OMX_BUFFERHEADERTYPE * pBufferHdr)
+{
+	OMX_ERRORTYPE eError = OMX_ErrorNone;
+	OMX_U32 nTargetFrameRate = 0; /* Target Frame Rate to be provided to Encoder */
+	OMX_U32 nCurrentFrameRate = 0; /* Current Frame Rate currently set  in Encoder */
+	OMX_CONFIG_FRAMERATETYPE tFrameRate;
+	OMX_COMPONENTTYPE *pHandle;
+	if (hComponent == NULL){
+		DOMX_ERROR("Component is invalid/ not present ");
+		return OMX_ErrorBadParameter;
+	}
+	pHandle = (OMX_COMPONENTTYPE *) hComponent;
+
+	/* Initialise the OMX structures */
+	OMX_INIT_STRUCT(tFrameRate,OMX_CONFIG_FRAMERATETYPE);
+
+	/* Intialise nLastFrameRateUpdateTime for the 1st frame */
+	if((!nFrameCounter) && (!nLastFrameRateUpdateTime)){
+		nLastFrameRateUpdateTime = pBufferHdr-> nTimeStamp;
+	}
+
+	/* Increment the Frame Counter and Calculate Frame Rate*/
+	nFrameCounter++;
+	nVideoTime = pBufferHdr->nTimeStamp - nLastFrameRateUpdateTime;
+
+	if(nVideoTime < 0) {
+		return OMX_ErrorBadParameter;
+	}
+
+	/*Get Port Frame Rate if not read yet*/
+	if(!nFrameRateThreshold) {
+		tFrameRate.nPortIndex = OMX_H264E_INPUT_PORT; /* As per ducati support-set for input port */
+
+		/* Read Current FrameRate */
+		eError = pHandle->GetConfig(hComponent,OMX_IndexConfigVideoFramerate,&tFrameRate);
+        if (eError != OMX_ErrorNone)
+            DOMX_ERROR ("pHandle->GetConfig OMX_IndexConfigVideoFramerate eError :0x%x \n",eError);
+		nFrameRateThreshold = tFrameRate.xEncodeFramerate >>16;
+		nPortFrameRate = nFrameRateThreshold;
+		DOMX_DEBUG(" Port Frame Rate is %d ", nPortFrameRate);
+	}
+	nCurrentFrameRate = nFrameRateThreshold;
+
+	/* If Number of frames is less than the Threshold
+	  *  Frame Rate udpate is not necessary
+	  */
+	if(nFrameCounter < nFrameRateThreshold){
+		DOMX_EXIT(" Threshold not reached, no update necessary");
+		return OMX_ErrorNone;
+	}
+
+	/*Calculate the new target Frame Rate*/
+    if (nVideoTime != 0)
+        nTargetFrameRate = nFrameCounter * 1000000 / nVideoTime;
+
+	/* For 1080p  record, max FPS supported by Codec for profile 4.1 is 30.
+	  * When Dynamic Frame Rate is enabled, there might be scenario when FPS
+	  * calculated is more than 30. Hence adding the check so that Dynamic Frame
+	  * Rate set is never greater than the port FPS initially set.
+	  */
+	if(nTargetFrameRate > nPortFrameRate){
+		DOMX_DEBUG("Frame Rate Calculated is more than initial port set Frame Rate");
+		nTargetFrameRate = nPortFrameRate;
+	}
+
+	/* Difference in Frame Rate is more than Threshold - Only then update Frame Rate*/
+	if((( (OMX_S32)nTargetFrameRate) -((OMX_S32) nCurrentFrameRate) >= FRAME_RATE_THRESHOLD) ||
+		(((OMX_S32) nCurrentFrameRate) - ( (OMX_S32)nTargetFrameRate) >= FRAME_RATE_THRESHOLD)) {
+
+		/* Now Send the new Frame Rate */
+		tFrameRate.nPortIndex = OMX_H264E_INPUT_PORT; /* As per ducati support-set for input port */
+		tFrameRate.xEncodeFramerate = (OMX_U32)(nTargetFrameRate * (1 << 16));
+		eError = pHandle->SetConfig(hComponent,OMX_IndexConfigVideoFramerate,&tFrameRate);
+		if(eError != OMX_ErrorNone){
+			DOMX_ERROR(" Error while configuring Dynamic Frame Rate,Error info = %d",eError);
+			return eError;
+		} else {
+            DOMX_DEBUG("Dynamic Frame Rate configuration successful \n");
+        }
+		nFrameRateThreshold = nTargetFrameRate; /*Update the threshold */
+	}
+
+	/* reset all params */
+	nFrameCounter = 0 ;
+	nVideoTime = 0;
+	nLastFrameRateUpdateTime = pBufferHdr->nTimeStamp;
+	return OMX_ErrorNone;
+}
+
+static OMX_ERRORTYPE ComponentPrivateEmptyThisBuffer(OMX_HANDLETYPE hComponent,
+	OMX_BUFFERHEADERTYPE * pBufferHdr)
+{
+	OMX_ERRORTYPE eError = OMX_ErrorNone;
+
+    eError = OMX_ConfigureDynamicFrameRate(hComponent, pBufferHdr);
+    if( eError != OMX_ErrorNone)
+        DOMX_ERROR(" Error while configuring FrameRate Dynamically.Error  info = %d",eError);
+
+    DOMX_DEBUG("Redirection from ComponentPricateEmptyThisBuffer to PROXY_EmptyThisBuffer");
+    return LOCAL_PROXY_H264E_EmptyThisBuffer (hComponent,pBufferHdr);
+}
 
 OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 {
@@ -149,6 +276,10 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	TIMM_OSAL_ERRORTYPE eOSALStatus = TIMM_OSAL_ERR_NONE;
 	OMX_PROXY_H264E_PRIVATE *pProxy = NULL;
 #endif
+	char value[OMX_MAX_STRINGNAME_SIZE];
+	OMX_U32 mEnableVFR = 1; /* Flag used to enable/disable VFR for Encoder */
+	property_get("debug.vfr.enable", value, "1");
+	mEnableVFR = atoi(value);
 
 	DOMX_ENTER("");
 
@@ -221,6 +352,9 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
 	pHandle->FreeBuffer = LOCAL_PROXY_H264E_FreeBuffer;
 	pHandle->AllocateBuffer = LOCAL_PROXY_H264E_AllocateBuffer;
 #endif
+
+	if(mEnableVFR)
+	    pHandle->EmptyThisBuffer = ComponentPrivateEmptyThisBuffer;
 
     EXIT:
 	if (eError != OMX_ErrorNone)
@@ -527,7 +661,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_GetExtensionIndex(OMX_IN OMX_HANDLETYPE hCompone
 		goto EXIT;
 	}
 
-        PROXY_GetExtensionIndex(hComponent, cParameterName, pIndexType);
+        eError = PROXY_GetExtensionIndex(hComponent, cParameterName, pIndexType);
 
       EXIT:
 	DOMX_EXIT("%s eError: %d",__FUNCTION__, eError);
@@ -551,7 +685,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
-	OMX_PTR pBufferOrig = pBufferHdr->pBuffer;
+	OMX_PTR pBufferOrig = NULL;
 	OMX_U32 nStride = 0, nNumLines = 0;
 	OMX_PARAM_PORTDEFINITIONTYPE tParamStruct;
 	OMX_U32 nFilledLen, nAllocLen;
@@ -676,7 +810,7 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		}
 	}
 
-	PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
+	eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 	if (pProxy->bAndroidOpaqueFormat)
 	{

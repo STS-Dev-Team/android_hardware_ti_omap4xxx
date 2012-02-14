@@ -80,7 +80,7 @@ extern "C"
 #define OMX_VER_MAJOR 0x1
 #define OMX_VER_MINOR 0x1
 
-#define MAX_NUM_PROXY_BUFFERS             32
+#define MAX_NUM_PROXY_BUFFERS             100
 #define MAX_COMPONENT_NAME_LENGTH         128
 #define PROXY_MAXNUMOFPORTS               8
 
@@ -94,7 +94,7 @@ extern "C"
 #define PROXY_paramCheck(C, V, S) do {\
     if (!(C)) { eError = V;\
     if(S) DOMX_ERROR("failed check:" #C" - returning error: 0x%x - %s",V,S);\
-    else DOMX_ERROR("failed check:" #C" - returning error: 0x%x",C, V); \
+    else DOMX_ERROR("failed check:" #C" - returning error: 0x%x",V); \
     goto EXIT; }\
     } while(0)
 
@@ -158,7 +158,8 @@ extern "C"
 		VirtualPointers,   /*Used when buffer pointers come from the normal A9 virtual space */
 		GrallocPointers,   /*Used when buffer pointers come from Gralloc allocations */
 		IONPointers,       /*Used when buffer pointers come from ION allocations */
-		EncoderMetadataPointers		/*Used when buffer pointers come from Stagefright in camcorder usecase */
+		EncoderMetadataPointers,		/*Used when buffer pointers come from Stagefright in camcorder usecase */
+		BufferDescriptorVirtual2D          /*Virtual unpacked buffers passed via OMX_TI_BUFFERDESCRIPTOR_TYPE */
 	} PROXY_BUFFER_TYPE;
 
 /*===============================================================*/
@@ -171,6 +172,33 @@ extern "C"
 		PROXY_BUFFER_TYPE proxyBufferType;   /*Used when buffer pointers come from the normal A9 virtual space */
 		OMX_U32 IsBuffer2D;   /*Used when buffer pointers come from Gralloc allocations */
 	} PROXY_PORT_TYPE;
+
+#ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
+/*===============================================================*/
+/** DebugFrame_Dump     : Structure holding the info about frames to dump
+ *  @param fromFrame: From which frame to start dumping
+ *  @param toFrame:  till which frame to dump
+ *  @param frame_width: Width of the frame
+ *  @param frame_height: Height of the frame
+ *  @param padded_width: Width of the buffer
+ *  @param padded_height: Height of the buffer
+ *  @param stride: Stride of the Buffer
+ *  @param runningFrame: running counter to track the frames
+ */
+/*===============================================================*/
+	typedef struct DebugFrame_Dump
+	{
+		OMX_S32 fromFrame;
+		OMX_S32 toFrame;
+		OMX_U32 frame_width;
+		OMX_U32 frame_height;
+		OMX_U32 frame_xoffset;
+		OMX_U32	frame_yoffset;
+		OMX_U32 stride;
+		OMX_S32 runningFrame;
+		OMX_U32 *y_uv[2];
+	}DebugFrame_Dump;
+#endif
 
 /* ========================================================================== */
 /**
@@ -206,6 +234,9 @@ extern "C"
 		int ion_fd;
 		OMX_BOOL bUseIon;
 		OMX_BOOL bMapIonBuffers;
+#endif
+#ifdef ENABLE_RAW_BUFFERS_DUMP_UTILITY
+		DebugFrame_Dump debugframeInfo;
 #endif
 		int secure_misc_drv_fd;
 	} PROXY_COMPONENT_PRIVATE;

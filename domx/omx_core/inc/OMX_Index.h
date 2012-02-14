@@ -181,40 +181,40 @@ typedef enum OMX_INDEXTYPE {
 
     /* Image & Video common Configurations */
     OMX_IndexCommonStartUnused = 0x07000000,
-    OMX_IndexParamCommonDeblocking,         /**< reference: OMX_PARAM_DEBLOCKINGTYPE */
-    OMX_IndexParamCommonSensorMode,         /**< reference: OMX_PARAM_SENSORMODETYPE */
-    OMX_IndexParamCommonInterleave,         /**< reference: OMX_PARAM_INTERLEAVETYPE */
-    OMX_IndexConfigCommonColorFormatConversion, /**< reference: OMX_CONFIG_COLORCONVERSIONTYPE */
-    OMX_IndexConfigCommonScale,             /**< reference: OMX_CONFIG_SCALEFACTORTYPE */
-    OMX_IndexConfigCommonImageFilter,       /**< reference: OMX_CONFIG_IMAGEFILTERTYPE */
-    OMX_IndexConfigCommonColorEnhancement,  /**< reference: OMX_CONFIG_COLORENHANCEMENTTYPE */
-    OMX_IndexConfigCommonColorKey,          /**< reference: OMX_CONFIG_COLORKEYTYPE */
-    OMX_IndexConfigCommonColorBlend,        /**< reference: OMX_CONFIG_COLORBLENDTYPE */
-    OMX_IndexConfigCommonFrameStabilisation,/**< reference: OMX_CONFIG_FRAMESTABTYPE */
-    OMX_IndexConfigCommonRotate,            /**< reference: OMX_CONFIG_ROTATIONTYPE */
-    OMX_IndexConfigCommonMirror,            /**< reference: OMX_CONFIG_MIRRORTYPE */
-    OMX_IndexConfigCommonOutputPosition,    /**< reference: OMX_CONFIG_POINTTYPE */
-    OMX_IndexConfigCommonInputCrop,         /**< reference: OMX_CONFIG_RECTTYPE */
-    OMX_IndexConfigCommonOutputCrop,        /**< reference: OMX_CONFIG_RECTTYPE */
-    OMX_IndexConfigCommonDigitalZoom,       /**< reference: OMX_CONFIG_SCALEFACTORTYPE */
-    OMX_IndexConfigCommonOpticalZoom,       /**< reference: OMX_CONFIG_SCALEFACTORTYPE*/
-    OMX_IndexConfigCommonWhiteBalance,      /**< reference: OMX_CONFIG_WHITEBALCONTROLTYPE */
-    OMX_IndexConfigCommonExposure,          /**< reference: OMX_CONFIG_EXPOSURECONTROLTYPE */
-    OMX_IndexConfigCommonContrast,          /**< reference: OMX_CONFIG_CONTRASTTYPE */
-    OMX_IndexConfigCommonBrightness,        /**< reference: OMX_CONFIG_BRIGHTNESSTYPE */
-    OMX_IndexConfigCommonBacklight,         /**< reference: OMX_CONFIG_BACKLIGHTTYPE */
-    OMX_IndexConfigCommonGamma,             /**< reference: OMX_CONFIG_GAMMATYPE */
-    OMX_IndexConfigCommonSaturation,        /**< reference: OMX_CONFIG_SATURATIONTYPE */
-    OMX_IndexConfigCommonLightness,         /**< reference: OMX_CONFIG_LIGHTNESSTYPE */
-    OMX_IndexConfigCommonExclusionRect,     /**< reference: OMX_CONFIG_RECTTYPE */
-    OMX_IndexConfigCommonDithering,         /**< reference: OMX_CONFIG_DITHERTYPE */
-    OMX_IndexConfigCommonPlaneBlend,        /**< reference: OMX_CONFIG_PLANEBLENDTYPE */
-    OMX_IndexConfigCommonExposureValue,     /**< reference: OMX_CONFIG_EXPOSUREVALUETYPE */
-    OMX_IndexConfigCommonOutputSize,        /**< reference: OMX_FRAMESIZETYPE */
-    OMX_IndexParamCommonExtraQuantData,     /**< reference: OMX_OTHER_EXTRADATATYPE */
-    OMX_IndexConfigCommonFocusRegion,       /**< reference: OMX_CONFIG_FOCUSREGIONTYPE */
-    OMX_IndexConfigCommonFocusStatus,       /**< reference: OMX_PARAM_FOCUSSTATUSTYPE */
-    OMX_IndexConfigCommonTransitionEffect,  /**< reference: OMX_CONFIG_TRANSITIONEFFECTTYPE */
+    OMX_IndexParamCommonDeblocking,         /**< 0x07000001 reference: OMX_PARAM_DEBLOCKINGTYPE */
+    OMX_IndexParamCommonSensorMode,         /**< 0x07000002 reference: OMX_PARAM_SENSORMODETYPE */
+    OMX_IndexParamCommonInterleave,         /**< 0x07000003 reference: OMX_PARAM_INTERLEAVETYPE */
+    OMX_IndexConfigCommonColorFormatConversion, /**< 0x07000004 reference: OMX_CONFIG_COLORCONVERSIONTYPE */
+    OMX_IndexConfigCommonScale,             /**< 0x07000005 reference: OMX_CONFIG_SCALEFACTORTYPE */
+    OMX_IndexConfigCommonImageFilter,       /**< 0x07000006 reference: OMX_CONFIG_IMAGEFILTERTYPE */
+    OMX_IndexConfigCommonColorEnhancement,  /**< 0x07000007 reference: OMX_CONFIG_COLORENHANCEMENTTYPE */
+    OMX_IndexConfigCommonColorKey,          /**< 0x07000008 reference: OMX_CONFIG_COLORKEYTYPE */
+    OMX_IndexConfigCommonColorBlend,        /**< 0x07000009 reference: OMX_CONFIG_COLORBLENDTYPE */
+    OMX_IndexConfigCommonFrameStabilisation, /**< 0x0700000A reference: OMX_CONFIG_FRAMESTABTYPE */
+    OMX_IndexConfigCommonRotate,            /**< 0x0700000B reference: OMX_CONFIG_ROTATIONTYPE */
+    OMX_IndexConfigCommonMirror,            /**< 0x0700000C reference: OMX_CONFIG_MIRRORTYPE */
+    OMX_IndexConfigCommonOutputPosition,    /**< 0x0700000D reference: OMX_CONFIG_POINTTYPE */
+    OMX_IndexConfigCommonInputCrop,         /**< 0x0700000E reference: OMX_CONFIG_RECTTYPE */
+    OMX_IndexConfigCommonOutputCrop,        /**< 0x0700000F reference: OMX_CONFIG_RECTTYPE */
+    OMX_IndexConfigCommonDigitalZoom,       /**< 0x07000010 reference: OMX_CONFIG_SCALEFACTORTYPE */
+    OMX_IndexConfigCommonOpticalZoom,       /**< 0x07000011 reference: OMX_CONFIG_SCALEFACTORTYPE*/
+    OMX_IndexConfigCommonWhiteBalance,      /**< 0x07000012 reference: OMX_CONFIG_WHITEBALCONTROLTYPE */
+    OMX_IndexConfigCommonExposure,          /**< 0x07000013 reference: OMX_CONFIG_EXPOSURECONTROLTYPE */
+    OMX_IndexConfigCommonContrast,          /**< 0x07000014 reference: OMX_CONFIG_CONTRASTTYPE */
+    OMX_IndexConfigCommonBrightness,        /**< 0x07000015 reference: OMX_CONFIG_BRIGHTNESSTYPE */
+    OMX_IndexConfigCommonBacklight,         /**< 0x07000016 reference: OMX_CONFIG_BACKLIGHTTYPE */
+    OMX_IndexConfigCommonGamma,             /**< 0x07000017 reference: OMX_CONFIG_GAMMATYPE */
+    OMX_IndexConfigCommonSaturation,        /**< 0x07000018 reference: OMX_CONFIG_SATURATIONTYPE */
+    OMX_IndexConfigCommonLightness,         /**< 0x07000019 reference: OMX_CONFIG_LIGHTNESSTYPE */
+    OMX_IndexConfigCommonExclusionRect,     /**< 0x0700001A reference: OMX_CONFIG_RECTTYPE */
+    OMX_IndexConfigCommonDithering,         /**< 0x0700001B reference: OMX_CONFIG_DITHERTYPE */
+    OMX_IndexConfigCommonPlaneBlend,        /**< 0x0700001C reference: OMX_CONFIG_PLANEBLENDTYPE */
+    OMX_IndexConfigCommonExposureValue,     /**< 0x0700001D reference: OMX_CONFIG_EXPOSUREVALUETYPE */
+    OMX_IndexConfigCommonOutputSize,        /**< 0x0700001E reference: OMX_FRAMESIZETYPE */
+    OMX_IndexParamCommonExtraQuantData,     /**< 0x0700001F reference: OMX_OTHER_EXTRADATATYPE */
+    OMX_IndexConfigCommonFocusRegion,       /**< 0x07000020 reference: OMX_CONFIG_FOCUSREGIONTYPE */
+    OMX_IndexConfigCommonFocusStatus,       /**< 0x07000021 reference: OMX_PARAM_FOCUSSTATUSTYPE */
+    OMX_IndexConfigCommonTransitionEffect,  /**< 0x07000022 reference: OMX_CONFIG_TRANSITIONEFFECTTYPE */
 
     /* Reserved Configuration range */
     OMX_IndexOtherStartUnused = 0x08000000,

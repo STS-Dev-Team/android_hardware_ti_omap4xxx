@@ -82,7 +82,7 @@ extern "C"
 #define RPC_paramCheck(C, V, S) do { \
     if (!(C)) { eRPCError = V;\
     if(S) DOMX_ERROR("failed check:" #C" - returning error: 0x%x - %s",V,S);\
-    else DOMX_ERROR("failed check: %s - returning error: 0x%x",C, V); \
+    else DOMX_ERROR("failed check:" #C" - returning error: 0x%x",V); \
     goto EXIT; } \
     } while(0)
 

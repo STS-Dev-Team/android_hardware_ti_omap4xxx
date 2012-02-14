@@ -85,6 +85,7 @@ char *tComponentName[MAXCOMP][MAX_ROLES] = {
         "video_decoder.avc",
         "video_decoder.h263",
         "video_decoder.wmv",
+        "video_decoder.mpeg2",
         "video_decoder.vp6",
         "video_decoder.vp7", NULL},
     {"OMX.TI.DUCATI1.VIDEO.DECODER.secure", "video_decoder.mpeg4",
@@ -99,6 +100,9 @@ char *tComponentName[MAXCOMP][MAX_ROLES] = {
     {"OMX.TI.DUCATI1.VIDEO.VP7D",   "video_decoder.vp7", NULL},
     {"OMX.TI.DUCATI1.IMAGE.JPEGD",  "jpeg_decoder.jpeg", NULL},
     {"OMX.TI.DUCATI1.VIDEO.CAMERA",  "camera.omx", NULL},
+    {"OMX.ITTIAM.WMA.decode",  "audio_decoder.wma", NULL},
+    {"OMX.ITTIAM.WMALSL.decode", "audio_decoder.wmalsl", NULL},
+    {"OMX.ITTIAM.WMAPRO.decode", "audio_decoder.wmapro", NULL},
     /* terminate the table */
     {NULL, NULL},
 };
@@ -246,30 +250,36 @@ OMX_ERRORTYPE OMX_GetHandle(OMX_HANDLETYPE * pHandle,
 	{
 		TIMM_OSAL_Error("Can't open misc driver device 0x%x\n", errno);
 	}
-
-	ret = read(secure_misc_drv_fd, &mode, sizeof(mode));
-	if (ret < 0)
-	{
-		TIMM_OSAL_Error("Can't read from the misc driver");
-	}
-        if(mode == enable && strstr(cComponentName,"secure") == NULL)
-	{
-		TIMM_OSAL_Error("non-secure component not supported in secure mode");
-		eError = OMX_ErrorComponentNotFound;
-	}
-	ret = close(secure_misc_drv_fd);
-	if (ret < 0)
-	{
-		TIMM_OSAL_Error("Can't close the misc driver");
-	}
-        //Dont allow non-secure usecases if we are in secure state.
-        //Else some of the memory regions will be unexpected firewalled.
-        //This provides a clean exit in case we are in secure mode.
-        if(eError == OMX_ErrorComponentNotFound)
+        else
         {
-                goto EXIT;
+            ret = read(secure_misc_drv_fd, &mode, sizeof(mode));
+            if (ret != sizeof(mode))
+            {
+                TIMM_OSAL_Error("Can't read from the misc driver");
+            }
+            else
+            {
+                if(mode == enable && strstr(cComponentName,"secure") == NULL)
+                {
+                    TIMM_OSAL_Error("non-secure component not supported in secure mode");
+                    eError = OMX_ErrorComponentNotFound;
+                }
+            }
+            ret = close(secure_misc_drv_fd);
+            if (ret < 0)
+            {
+                TIMM_OSAL_Error("Can't close the misc driver");
+            }
         }
-#endif
+        /* Don't allow non-secure usecases if we are in secure state.
+         * Else some of the memory regions will be unexpected firewalled.
+         * This provides a clean exit in case we are in secure mode. */
+        if (eError == OMX_ErrorComponentNotFound)
+        {
+            goto EXIT;
+        }
+#endif //CHECK_SECURE_STATE
+
 
 //#if 0
 	pModules[i] = dlopen(buf, RTLD_LAZY | RTLD_GLOBAL);
