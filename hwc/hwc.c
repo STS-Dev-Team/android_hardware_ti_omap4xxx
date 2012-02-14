@@ -205,6 +205,7 @@ typedef struct omap4_hwc_device omap4_hwc_device_t;
                     (f) == OMAP_DSS_COLOR_RGB16 ? "RGB565" : "??")
 
 static int debug = 0;
+static int debugpost2 = 0;
 static int gshowfps;
 static rgz_t grgz;
 static struct bvsurfgeom gscrngeom;
@@ -1514,6 +1515,20 @@ err_out:
     return 0;
 }
 
+void debug_post2(omap4_hwc_device_t *hwc_dev, int nbufs)
+{
+    if (!debugpost2)
+        return;
+    struct dsscomp_setup_dispc_data *dsscomp = &hwc_dev->comp_data.dsscomp_data;
+    int i;
+    for (i=0; i<nbufs; i++) {
+        LOGI("buf[%d] hndl %p", i, hwc_dev->buffers[i]);
+    }
+    for (i=0; i < dsscomp->num_ovls; i++) {
+        LOGI("ovl[%d] ba %d", i, dsscomp->ovls[i].ba);
+    }
+}
+
 static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* list)
 {
     omap4_hwc_device_t *hwc_dev = (omap4_hwc_device_t *)dev;
@@ -1893,6 +1908,8 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
             "Post2, blits %d, ovl_buffers %d, blit_buffers %d sgx %d",
             hwc_dev->blit_num, hwc_dev->post2_layers, hwc_dev->post2_blit_buffers,
             hwc_dev->use_sgx);
+
+        debug_post2(hwc_dev, nbufs);
         err = hwc_dev->fb_dev->Post2((framebuffer_device_t *)hwc_dev->fb_dev,
                                  hwc_dev->buffers,
                                  nbufs,

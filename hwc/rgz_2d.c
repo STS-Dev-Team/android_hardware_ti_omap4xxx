@@ -362,6 +362,8 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
     for (i = 0; i < rgz->paint_layerno; i++) {
         hwc_layer_t *l = &rgz->paint_layers[i];
 
+        //OUTP("blitting meminfo %d", rgz->paint_layersbuf[i]);
+
         rv = rgz_hwc_layer_blit(l, NULL,
                                 params->data.bvc.dstgeom,
                                 params->data.bvc.noblend,
