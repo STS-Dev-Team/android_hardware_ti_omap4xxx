@@ -176,6 +176,7 @@ char Core_Array[][MAX_CORENAME_LENGTH] =
             default: \
                 eError = OMX_ErrorUndefined; \
         } \
+        PROXY_assert((eError == OMX_ErrorNone), eError, "Error returned from OMX API in ducati"); \
     } \
 } while(0)
 
@@ -966,6 +967,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 
 	PROXY_require((hComp->pComponentPrivate != NULL),
 	    OMX_ErrorBadParameter, NULL);
+	PROXY_require(pBuffer != NULL, OMX_ErrorBadParameter, "Pointer to buffer is NULL");
 	PROXY_require(ppBufferHdr != NULL, OMX_ErrorBadParameter,
 	    "Pointer to buffer header is NULL");
 
@@ -1099,6 +1101,13 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		{
 			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
 				pAuxBuf1 = NULL;
+		}
+		if(pCompPrv->proxyPortBuffers[nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
+		{
+			pAuxBuf0 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[0]);
+
+			((OMX_TI_PLATFORMPRIVATE *) pBufferHeader->pPlatformPrivate)->
+				pAuxBuf1 = (OMX_U8 *)(((OMX_TI_BUFFERDESCRIPTOR_TYPE*)pBuffer)->pBuf[1]);
 		}
 	}
 
@@ -1258,7 +1267,7 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 		{
         		if (pCompPrv->bUseIon == OMX_TRUE)
 			{
-				if(pCompPrv->bMapIonBuffers == OMX_TRUE)
+				if(pCompPrv->bMapIonBuffers == OMX_TRUE && pBufferHdr->pBuffer)
 				{
 	                                munmap(pBufferHdr->pBuffer, pBufferHdr->nAllocLen);
         				close(pCompPrv->tBufList[count].mmap_fd);
@@ -1327,12 +1336,13 @@ OMX_ERRORTYPE PROXY_FreeBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 /* ===========================================================================*/
 OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_IN OMX_INDEXTYPE nParamIndex, OMX_IN OMX_PTR pParamStruct,
-	OMX_PTR pLocBufNeedMap)
+	OMX_PTR pLocBufNeedMap, OMX_U32 nNumOfLocalBuf)
 {
 	OMX_ERRORTYPE eError = OMX_ErrorNone, eCompReturn = OMX_ErrorNone;
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+	OMX_TI_PARAM_USEBUFFERDESCRIPTOR *ptBufDescParam = NULL;
 #ifdef ENABLE_GRALLOC_BUFFERS
 	OMX_TI_PARAMUSENATIVEBUFFER *pParamNativeBuffer = NULL;
 #endif
@@ -1346,9 +1356,10 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	DOMX_ENTER
 		("hComponent = %p, pCompPrv = %p, nParamIndex = %d, pParamStruct = %p",
 		hComponent, pCompPrv, nParamIndex, pParamStruct);
-#ifdef ENABLE_GRALLOC_BUFFERS
+
 	switch(nParamIndex)
 	{
+#ifdef ENABLE_GRALLOC_BUFFERS
 		case OMX_TI_IndexUseNativeBuffers:
 		{
 			//Add check version.
@@ -1360,16 +1371,29 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 			}
 			break;
 		}
+#endif
+		case OMX_TI_IndexUseBufferDescriptor:
+		     ptBufDescParam = (OMX_TI_PARAM_USEBUFFERDESCRIPTOR *) pParamStruct;
+		     if(ptBufDescParam->bEnabled == OMX_TRUE)
+		     {
+			     if(ptBufDescParam->eBufferType == OMX_TI_BufferTypeVirtual2D)
+			     {
+			         pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType = BufferDescriptorVirtual2D;
+			         pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].IsBuffer2D = OMX_TRUE;
+		             }
+		     }
+		     else if(ptBufDescParam->bEnabled == OMX_FALSE)
+		     {
+			     /* Reset to defaults*/
+			     pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType = VirtualPointers;
+			     pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].IsBuffer2D = OMX_FALSE;
+		     }
+		     break;
 		default:
 			eRPCError =
 				RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
-					pLocBufNeedMap, &eCompReturn);
+					pLocBufNeedMap, nNumOfLocalBuf, &eCompReturn);
 	}
-#else
-	eRPCError =
-		RPC_SetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
-			pLocBufNeedMap, &eCompReturn);
-#endif
 
 	PROXY_checkRpcError();
 
@@ -1391,7 +1415,7 @@ OMX_ERRORTYPE __PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 OMX_ERRORTYPE PROXY_SetParameter(OMX_IN OMX_HANDLETYPE hComponent,
     OMX_IN OMX_INDEXTYPE nParamIndex, OMX_IN OMX_PTR pParamStruct)
 {
-	return __PROXY_SetParameter(hComponent, nParamIndex, pParamStruct, NULL);
+	return __PROXY_SetParameter(hComponent, nParamIndex, pParamStruct, NULL, 0);
 }
 
 
@@ -1413,6 +1437,7 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 	RPC_OMX_ERRORTYPE eRPCError = RPC_OMX_ErrorNone;
 	PROXY_COMPONENT_PRIVATE *pCompPrv = NULL;
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
+	OMX_TI_PARAM_USEBUFFERDESCRIPTOR *ptBufDescParam = NULL;
 
 	PROXY_require((pParamStruct != NULL), OMX_ErrorBadParameter, NULL);
 	PROXY_assert((hComp->pComponentPrivate != NULL),
@@ -1424,9 +1449,26 @@ OMX_ERRORTYPE __PROXY_GetParameter(OMX_IN OMX_HANDLETYPE hComponent,
 		("hComponent = %p, pCompPrv = %p, nParamIndex = %d, pParamStruct = %p",
 		 hComponent, pCompPrv, nParamIndex, pParamStruct);
 
-	eRPCError =
-		RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
+	switch(nParamIndex)
+	{
+		case OMX_TI_IndexUseBufferDescriptor:
+		     ptBufDescParam = (OMX_TI_PARAM_USEBUFFERDESCRIPTOR *) pParamStruct;
+		     if(pCompPrv->proxyPortBuffers[ptBufDescParam->nPortIndex].proxyBufferType == BufferDescriptorVirtual2D)
+		     {
+			     ptBufDescParam->bEnabled = OMX_TRUE;
+			     ptBufDescParam->eBufferType = OMX_TI_BufferTypeVirtual2D;
+		     }
+		     else
+		     {
+			     ptBufDescParam->bEnabled = OMX_FALSE;
+			     ptBufDescParam->eBufferType = OMX_TI_BufferTypeMax;
+		     }
+		     break;
+
+		default:
+			eRPCError = RPC_GetParameter(pCompPrv->hRemoteComp, nParamIndex, pParamStruct,
 				pLocBufNeedMap, &eCompReturn);
+	}
 
 	PROXY_checkRpcError();
 
@@ -1596,11 +1638,17 @@ static OMX_ERRORTYPE PROXY_GetState(OMX_IN OMX_HANDLETYPE hComponent,
 
 	eRPCError = RPC_GetState(pCompPrv->hRemoteComp, pState, &eCompReturn);
 
-	DOMX_DEBUG("Returned from RPC_GetState, state: ", *pState);
+	DOMX_DEBUG("Returned from RPC_GetState, state: = %x", *pState);
 
 	PROXY_checkRpcError();
 
       EXIT:
+	if (eError == OMX_ErrorHardware)
+	{
+		*pState = OMX_StateInvalid;
+		eError = OMX_ErrorNone;
+		DOMX_DEBUG("Invalid state returned from RPC_GetState, state due to ducati in faulty state");
+	}
 	DOMX_EXIT("eError: %d", eError);
 	return eError;
 }
@@ -1867,7 +1915,34 @@ static OMX_ERRORTYPE PROXY_ComponentTunnelRequest(OMX_IN OMX_HANDLETYPE
 
 	DOMX_ENTER("hComponent = %p", hComponent);
 	DOMX_DEBUG(" EMPTY IMPLEMENTATION ");
+	PROXY_COMPONENT_PRIVATE *pOutCompPrv = NULL;
+	PROXY_COMPONENT_PRIVATE *pInCompPrv  = NULL;
+	OMX_COMPONENTTYPE       *hOutComp    = hComponent;
+	OMX_COMPONENTTYPE       *hInComp     = hTunneledComp;
+	OMX_ERRORTYPE           eCompReturn = OMX_ErrorNone;
+	RPC_OMX_ERRORTYPE       eRPCError    = RPC_OMX_ErrorNone;
+	OMX_ERRORTYPE           nCmdStatus   = OMX_ErrorNone;
+	PROXY_assert((hOutComp->pComponentPrivate != NULL),
+	    OMX_ErrorBadParameter, NULL);
+	PROXY_assert((hInComp->pComponentPrivate != NULL),
+	    OMX_ErrorBadParameter, NULL);
 
+        //TBD
+        //PROXY_assert(nPort != 1, OMX_ErrorBadParameter, NULL);
+        //PROXY_assert(nTunnelPort != 0, OMX_ErrorBadParameter, NULL);
+	pOutCompPrv = (PROXY_COMPONENT_PRIVATE *) hOutComp->pComponentPrivate;
+	pInCompPrv  = (PROXY_COMPONENT_PRIVATE *) hInComp->pComponentPrivate;
+	DOMX_ENTER("hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n",
+	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
+
+	printf("PROXY_ComponentTunnelRequest:: hOutComp=%p, pOutCompPrv=%p, hInComp=%p, pInCompPrv=%p, nOutPort=%d, nInPort=%d \n ",
+	        hOutComp, pOutCompPrv, hInComp, pInCompPrv, nPort, nTunneledPort);
+       eRPCError = RPC_ComponentTunnelRequest(pOutCompPrv->hRemoteComp, nPort,
+	        pInCompPrv->hRemoteComp, nTunneledPort, pTunnelSetup, &nCmdStatus);
+        printf("\nafter: RPC_ComponentTunnelRequest = 0x%x\n ", eRPCError);
+        PROXY_checkRpcError();
+
+EXIT:
 	DOMX_EXIT("eError: %d", eError);
 	return eError;
 }

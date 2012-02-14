@@ -53,10 +53,11 @@
  * The OMX_TI_IMAGE_CODINGTYPE enumeration is used to define the
  * extended image coding types.
  */
-typedef enum OMX_TI_IMAGE_CODINGTYPE
-{
+typedef enum OMX_TI_IMAGE_CODINGTYPE {
 	OMX_TI_IMAGE_CodingJPS = OMX_IMAGE_CodingVendorStartUnused + 1, /**< JPS format */
-	OMX_TI_IMAGE_CodingMPO          /**< MPO format */
+    OMX_TI_IMAGE_CodingMPO,           /**< MPO format */
+    OMX_TI_IMAGE_CodingJPEG_SOC,
+    OMX_TI_IMAGE_CodingJPEG_SOC_SPOOFED
 } OMX_TI_IMAGE_CODINGTYPE;
 
 #endif /* OMX_TI_IMAGE_H */
