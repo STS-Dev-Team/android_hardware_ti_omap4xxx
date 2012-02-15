@@ -1553,8 +1553,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
      */
     int needs_fb = hwc_dev->use_sgx;
 
-#ifndef OMAP_ENHANCEMENT_S3D
-    if (hwc_dev->blit_enabled && hwc_dev->blit_mode == BLTMODE_ALL) {
+    if (hwc_dev->blit_mode == BLTMODE_ALL) {
         /* Check if we can blit everything */
         blit_all = blit_layers(hwc_dev, list, 1);
         if (blit_all) {
@@ -1562,7 +1561,6 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
             hwc_dev->use_sgx = 0;
         }
     }
-#endif
 
     /* If a framebuffer is needed, begin using VID1 for DSS overlay layers,
      * we need GFX for FB
