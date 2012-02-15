@@ -2468,7 +2468,7 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
     LOGI("omap4_hwc_device_open(rgb_order=%d nv12_only=%d)",
         hwc_dev->flags_rgb_order, hwc_dev->flags_nv12_only);
 
-    int gc2d_fd = open("/dev/gc-core", O_RDWR);
+    int gc2d_fd = open("/dev/gcioctl", O_RDWR);
     if (gc2d_fd < 0) {
         LOGI("Unable to open gc-core device (%d), blits disabled", errno);
         hwc_dev->blit_enabled = 0;
