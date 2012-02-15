@@ -868,6 +868,8 @@ status_t OMXCameraAdapter::setSensorQuirks(int orientation,
 }
 status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &portParams)
 {
+    LOG_FUNCTION_NAME;
+
     status_t ret = NO_ERROR;
     size_t bufferCount;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
