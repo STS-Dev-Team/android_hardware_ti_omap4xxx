@@ -129,6 +129,8 @@ ifeq ($(OMAP4_CAMERA_HAL_USES),USB)
 
 include $(CLEAR_VARS)
 
+CAMERAHAL_CFLAGS += -DV4L_CAMERA_ADAPTER
+
 LOCAL_SRC_FILES:= \
 	$(OMAP4_CAMERA_HAL_SRC) \
 	$(OMAP4_CAMERA_USB_SRC) \
@@ -144,7 +146,10 @@ LOCAL_C_INCLUDES += \
     hardware/ti/omap4xxx/ion \
     frameworks/base/include/ui \
     frameworks/base/include/utils \
-    frameworks/base/include/media/stagefright/openmax
+    frameworks/base/include/media/stagefright \
+    frameworks/base/include/media/stagefright/openmax \
+    external/jpeg \
+    external/jhead
 
 LOCAL_SHARED_LIBRARIES:= \
     libui \
@@ -153,7 +158,10 @@ LOCAL_SHARED_LIBRARIES:= \
     libcutils \
     libtiutils \
     libcamera_client \
+    libgui \
     libion \
+    libjpeg \
+    libexif
 
 LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
 

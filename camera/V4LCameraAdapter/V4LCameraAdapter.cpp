@@ -25,6 +25,7 @@
 #include "V4LCameraAdapter.h"
 #include "CameraHal.h"
 #include "TICameraParameters.h"
+#include "DebugUtils.h"
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +38,8 @@
 #include <sys/select.h>
 #include <linux/videodev.h>
 
+#include <ui/GraphicBuffer.h>
+#include <ui/GraphicBufferMapper.h>
 
 #include <cutils/properties.h>
 #define UNLIKELY( exp ) (__builtin_expect( (exp) != 0, false ))
@@ -51,6 +54,10 @@ namespace android {
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
 
+//define this macro to save first few raw frames when starting the preview.
+//#define SAVE_RAW_FRAMES 1
+
+#define FPS_PERIOD 30
 Mutex gAdapterLock;
 const char *device = DEVICE;
 
@@ -220,11 +227,11 @@ status_t V4LCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, si
 status_t V4LCameraAdapter::UseBuffersPreview(void* bufArr, int num)
 {
     int ret = NO_ERROR;
+    uint32_t *ptr = (uint32_t*) bufArr;
 
-    if(NULL == bufArr)
-        {
+    if(NULL == bufArr) {
         return BAD_VALUE;
-        }
+    }
 
     //First allocate adapter internal buffers at V4L level for USB Cam
     //These are the buffers from which we will copy the data into overlay buffers
@@ -265,11 +272,8 @@ status_t V4LCameraAdapter::UseBuffersPreview(void* bufArr, int num)
             return -1;
         }
 
-        uint32_t *ptr = (uint32_t*) bufArr;
-
         //Associate each Camera internal buffer with the one from Overlay
         mPreviewBufs.add((int)ptr[i], i);
-
     }
 
     // Update the preview buffer count
@@ -280,14 +284,13 @@ status_t V4LCameraAdapter::UseBuffersPreview(void* bufArr, int num)
 
 status_t V4LCameraAdapter::startPreview()
 {
-    status_t ret = NO_ERROR;
+  status_t ret = NO_ERROR;
 
   Mutex::Autolock lock(mPreviewBufsLock);
 
-  if(mPreviewing)
-    {
+  if(mPreviewing) {
     return BAD_VALUE;
-    }
+  }
 
    for (int i = 0; i < mPreviewBufferCount; i++) {
 
@@ -304,7 +307,7 @@ status_t V4LCameraAdapter::startPreview()
        nQueued++;
    }
 
-    enum v4l2_buf_type bufType;
+   enum v4l2_buf_type bufType;
    if (!mVideoInfo->isStreaming) {
        bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -322,12 +325,10 @@ status_t V4LCameraAdapter::startPreview()
 
    CAMHAL_LOGDA("Created preview thread");
 
-
    //Update the flag to indicate we are previewing
    mPreviewing = true;
 
    return ret;
-
 }
 
 status_t V4LCameraAdapter::stopPreview()
@@ -371,7 +372,6 @@ status_t V4LCameraAdapter::stopPreview()
     mPreviewThread.clear();
 
     return ret;
-
 }
 
 char * V4LCameraAdapter::GetFrame(int &index)
@@ -399,6 +399,7 @@ char * V4LCameraAdapter::GetFrame(int &index)
 status_t V4LCameraAdapter::getFrameSize(size_t &width, size_t &height)
 {
     status_t ret = NO_ERROR;
+    LOG_FUNCTION_NAME;
 
     // Just return the current preview size, nothing more to do here.
     mParams.getPreviewSize(( int * ) &width,
@@ -503,6 +504,64 @@ V4LCameraAdapter::~V4LCameraAdapter()
     LOG_FUNCTION_NAME_EXIT;
 }
 
+void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int width, int height ) {
+    //convert YUV422I to YUV420 NV12 format.
+    size_t        nv12_buf_size = (width * height)*3/2;
+    unsigned char *bf = src;
+    unsigned char *dst = dest;
+
+    for(int i = 0; i < height; i++)
+    {
+        for(int j = 0; j < width; j++)
+        {
+            *dst = *bf;
+             dst++;
+             bf = bf + 2;
+        }
+    }
+
+    bf = src;
+    bf++;  //U sample
+    for(int i = 0; i < height/2; i++)
+    {
+        for(int j=0; j<width; j++)
+        {
+            *dst = *bf;
+             dst++;
+             bf = bf + 2;
+        }
+        bf = bf + width*2;
+    }
+}
+
+#ifdef SAVE_RAW_FRAMES
+void saveFile(unsigned char* buff, int buff_size) {
+    static int      counter = 1;
+    int             fd = -1;
+    char            fn[256];
+
+    LOG_FUNCTION_NAME;
+    if (counter > 3) {
+        return;
+    }
+    //dump nv12 buffer
+    sprintf(fn, "/data/misc/camera/raw/nv12_dump_%03d.yuv", counter);
+    CAMHAL_LOGEB("Dumping nv12 frame to a file : %s.", fn);
+
+    fd = open(fn, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
+    if(fd < 0) {
+        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        return;
+    }
+
+    counter++;
+    write(fd, buff, buff_size );
+    close(fd);
+
+    LOG_FUNCTION_NAME_EXIT;
+}
+#endif
+
 /* Preview Thread */
 // ---------------------------------------------------------------------------
 
@@ -511,52 +570,74 @@ int V4LCameraAdapter::previewThread()
     status_t ret = NO_ERROR;
     int width, height;
     CameraFrame frame;
+    unsigned char *nv12_buff = NULL;
+    void *y_uv[2];
 
-    if (mPreviewing)
-        {
+    mParams.getPreviewSize(&width, &height);
+    nv12_buff = (unsigned char*) malloc(width*height*3/2);
+
+    if (mPreviewing) {
         int index = 0;
         char *fp = this->GetFrame(index);
-        if(!fp)
-            {
+        if(!fp) {
             return BAD_VALUE;
-            }
-
-        uint8_t* ptr = (uint8_t*) mPreviewBufs.keyAt(index);
-
-        int width, height;
-        uint16_t* dest = (uint16_t*)ptr;
-        uint16_t* src = (uint16_t*) fp;
-        mParams.getPreviewSize(&width, &height);
-        for(int i=0;i<height;i++)
-            {
-            for(int j=0;j<width;j++)
-                {
-                //*dest = *src;
-                //convert from YUYV to UYVY supported in Camera service
-                *dest = (((*src & 0xFF000000)>>24)<<16)|(((*src & 0x00FF0000)>>16)<<24) |
-                        (((*src & 0xFF00)>>8)<<0)|(((*src & 0x00FF)>>0)<<8);
-                src++;
-                dest++;
-                }
-                dest += 4096/2-width;
-            }
-
-        mParams.getPreviewSize(&width, &height);
-        frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
-        frame.mBuffer = ptr;
-        frame.mLength = width*height*2;
-        frame.mAlignment = width*2;
-        frame.mOffset = 0;
-        frame.mTimestamp = systemTime(SYSTEM_TIME_MONOTONIC);;
-
-        ret = sendFrameToSubscribers(&frame);
-
         }
 
+        uint8_t* ptr = (uint8_t*) mPreviewBufs.keyAt(index);
+        int stride = 4096;
+
+        //Convert yuv422i ti yuv420sp(NV12) & dump the frame to a file
+        convertYUV422ToNV12 ( (unsigned char*)fp, nv12_buff, width, height);
+#ifdef SAVE_RAW_FRAMES
+        saveFile( nv12_buff, ((width*height)*3/2) );
+#endif
+
+        CameraFrame *lframe = (CameraFrame *)mFrameQueue.valueFor(ptr);
+        y_uv[0] = (void*) lframe->mYuv[0];
+        //y_uv[1] = (void*) lframe->mYuv[1];
+        y_uv[1] = (void*) lframe->mYuv[0] + height*stride;
+
+        CAMHAL_LOGVB("##...index= %d.;ptr= 0x%x; y= 0x%x; UV= 0x%x.",index, ptr, y_uv[0], y_uv[1] );
+
+        unsigned char *bufferDst = ( unsigned char * ) y_uv[0];
+        unsigned char *bufferSrc = nv12_buff;
+        int rowBytes = width;
+
+        //Copy the Y plane to Gralloc buffer
+        for(int i = 0; i < height; i++) {
+            memcpy(bufferDst, bufferSrc, rowBytes);
+            bufferDst += stride;
+            bufferSrc += rowBytes;
+        }
+        //Copy UV plane, now Y & UV are contiguous.
+        //bufferDst = ( unsigned char * ) y_uv[1];
+        for(int j = 0; j < height/2; j++) {
+            memcpy(bufferDst, bufferSrc, rowBytes);
+            bufferDst += stride;
+            bufferSrc += rowBytes;
+        }
+
+        frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
+        frame.mBuffer = ptr;
+        frame.mLength = width*height*3/2;
+        frame.mAlignment = stride;
+        frame.mOffset = 0;
+        frame.mTimestamp = systemTime(SYSTEM_TIME_MONOTONIC);;
+        frame.mFrameMask = (unsigned int)CameraFrame::PREVIEW_FRAME_SYNC;
+
+        ret = setInitFrameRefCount(frame.mBuffer, frame.mFrameMask);
+        if (ret != NO_ERROR) {
+            CAMHAL_LOGDB("Error in setInitFrameRefCount %d", ret);
+        } else {
+            ret = sendFrameToSubscribers(&frame);
+        }
+    }
+
+    free (nv12_buff);
     return ret;
 }
 
-extern "C" CameraAdapter* CameraAdapter_Factory()
+extern "C" CameraAdapter* CameraAdapter_Factory(size_t sensor_index)
 {
     CameraAdapter *adapter = NULL;
     Mutex::Autolock lock(gAdapterLock);
@@ -575,17 +656,21 @@ extern "C" CameraAdapter* CameraAdapter_Factory()
     return adapter;
 }
 
-extern "C" int CameraAdapter_Capabilities(CameraProperties::Properties* properties_array,
-                                          const unsigned int starting_camera,
-                                          const unsigned int max_camera) {
-    int num_cameras_supported = 0;
-    CameraProperties::Properties* properties = NULL;
-
+extern "C" status_t CameraAdapter_Capabilities(
+        CameraProperties::Properties * const properties_array,
+        const int starting_camera, const int max_camera, int & supportedCameras)
+{
     LOG_FUNCTION_NAME;
 
-    if(!properties_array)
-    {
-        return -EINVAL;
+    supportedCameras = 0;
+    int num_cameras_supported = 0;
+    CameraProperties::Properties* properties = NULL;
+    CAMHAL_LOGEB("starting_camera+%d, max_camera=%d, supportedCameras=%d", starting_camera,max_camera,supportedCameras);
+
+    if (!properties_array) {
+        CAMHAL_LOGEB("invalid param: properties = 0x%p", properties_array);
+        LOG_FUNCTION_NAME_EXIT;
+        return BAD_VALUE;
     }
 
     // TODO: Need to tell camera properties what other cameras we can support
@@ -593,11 +678,25 @@ extern "C" int CameraAdapter_Capabilities(CameraProperties::Properties* properti
         num_cameras_supported++;
         properties = properties_array + starting_camera;
         properties->set(CameraProperties::CAMERA_NAME, "USBCamera");
+        properties->set(CameraProperties::PREVIEW_SIZE, "640x480");
+        properties->set(CameraProperties::PREVIEW_FORMAT, "yuv420sp");
+        properties->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, "yuv420sp");
+        properties->set(CameraProperties::PICTURE_SIZE, "640x480");
+        properties->set(CameraProperties::JPEG_THUMBNAIL_SIZE, "320x240");
+        properties->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, "640x480");
+        properties->set(CameraProperties::SUPPORTED_PICTURE_SIZES, "640x480");
+        properties->set(CameraProperties::REQUIRED_PREVIEW_BUFS, "6");
+        properties->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "30000,30000");
+        properties->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, "30000,30000");
+        properties->set(CameraProperties::FRAMERATE_RANGE, "30000,30000");
+        properties->set(CameraProperties::PREVIEW_FRAME_RATE, "30000");
+
     }
 
+    supportedCameras = num_cameras_supported;
     LOG_FUNCTION_NAME_EXIT;
 
-    return num_cameras_supported;
+    return NO_ERROR;
 }
 
 };
