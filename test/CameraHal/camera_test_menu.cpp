@@ -2913,19 +2913,27 @@ int functional_menu() {
 }
 
 void print_usage() {
-    printf(" USAGE: camera_test  <param>  <script> <target_board>\n");
-    printf(" <param>\n-----------\n\n");
-    printf(" F or f -> Functional tests \n");
-    printf(" A or a -> API tests \n");
-    printf(" E or e -> Error scenario tests \n");
-    printf(" S or s -> Stress tests; with syslink trace \n");
-    printf(" SN or sn -> Stress tests; No syslink trace \n\n");
-    printf(" <script>\n----------\n");
-    printf("Script name (Only for stress tests)\n\n");
-    printf(" <target_board> (Only for stress tests)\n----------------\n");
-    printf(" blaze or B    -> for BLAZE \n");
-    printf(" tablet1 or T1 -> for Blaze TABLET-1 \n");
-    printf(" tablet2 or T2 -> for Blaze TABLET-2.[default] \n\n");
+    printf(" USAGE: camera_test <options>\n");
+    printf(" <options> (case insensitive)\n");
+    printf("-----------\n");
+    printf(" -f            -> Functional tests.\n");
+    printf(" -a            -> API tests.\n");
+    printf(" -e [<script>] -> Error scenario tests. If no script file is provided\n");
+    printf("                  the test is run in interactive mode.\n");
+    printf(" -s <script>   -> Stress / regression tests.\n");
+    printf(" -l [<flags>]  -> Enable different kinds of logging capture. Multiple flags\n");
+    printf("                  should be combined into a string. If flags are not provided\n");
+    printf("                  no logs are captured.\n");
+    printf("                   <flags>\n");
+    printf("                  ---------\n");
+    printf("                   l -> logcat [default]\n");
+    printf("                   s -> syslink [default]\n");
+    printf(" -p <platform> -> Target platform. Only for stress tests.\n");
+    printf("                   <platform>\n");
+    printf("                  ------------\n");
+    printf("                   blaze or B    -> BLAZE\n");
+    printf("                   tablet1 or T1 -> Blaze TABLET-1\n");
+    printf("                   tablet2 or T2 -> Blaze TABLET-2 [default]\n\n");
     return;
 }
 
@@ -3163,183 +3171,260 @@ int restartCamera() {
   return 0;
 }
 
-int main(int argc, char *argv[]) {
+int parseCommandLine(int argc, char *argv[], cmd_args_t *cmd_args) {
+    if (argc < 2) {
+        printf("Please enter at least 1 argument\n");
+        return -2;
+    }
+
+    // Set defaults
+    memset(cmd_args, 0, sizeof(*cmd_args));
+    cmd_args->logging = LOGGING_LOGCAT | LOGGING_SYSLINK;
+    cmd_args->platform_id = BLAZE_TABLET2;
+
+    for (int a = 1; a < argc; a++) {
+        const char * const arg = argv[a];
+        if (arg[0] != '-') {
+            printf("Error: Invalid argument \"%s\"\n", arg);
+            return -2;
+        }
+
+        switch (arg[1]) {
+            case 's':
+                cmd_args->test_type = TEST_TYPE_REGRESSION;
+                if (a < argc - 1) {
+                    cmd_args->script_file_name = argv[++a];
+                } else {
+                    printf("Error: No script is specified for stress / regression test.\n");
+                    return -2;
+                }
+                break;
+
+            case 'f':
+                cmd_args->test_type = TEST_TYPE_FUNCTIONAL;
+                break;
+
+            case 'a':
+                cmd_args->test_type = TEST_TYPE_API;
+                break;
+
+            case 'e':
+                cmd_args->test_type = TEST_TYPE_ERROR;
+                if (a < argc - 1) {
+                    cmd_args->script_file_name = argv[++a];
+                }
+                break;
+
+            case 'l':
+                cmd_args->logging = 0;
+
+                if (a < argc - 1 && argv[a + 1][0] != '-') {
+                    const char *flags = argv[++a];
+                    while (*flags) {
+                        char flag = *flags++;
+                        switch (flag) {
+                            case 'l':
+                                cmd_args->logging |= LOGGING_LOGCAT;
+                                break;
+
+                            case 's':
+                                cmd_args->logging |= LOGGING_SYSLINK;
+                                break;
+
+                            default:
+                                printf("Error: Unknown logging type \"%c\"\n", flag);
+                                return -2;
+                        }
+                    }
+                }
+                break;
+
+            case 'p':
+                if (a < argc - 1) {
+                    const char *platform = argv[++a];
+                    if( strcasecmp(platform,"blaze") == 0 || strcasecmp(platform,"B") == 0 ){
+                        cmd_args->platform_id = BLAZE;
+                    }
+                    else if( (strcasecmp(platform,"tablet1") == 0) || (strcasecmp(platform,"T1") == 0) ) {
+                        cmd_args->platform_id = BLAZE_TABLET1;
+                    }
+                    else if( (strcasecmp(platform,"tablet2") == 0) || (strcasecmp(platform,"T2") == 0) ) {
+                        cmd_args->platform_id = BLAZE_TABLET2;
+                    }
+                    else {
+                        printf("Error: Unknown argument for platform ID.\n");
+                        return -2;
+                    }
+                } else {
+                    printf("Error: No argument is specified for platform ID.\n");
+                    return -2;
+                }
+                break;
+
+            default:
+                printf("Error: Unknown option \"%s\"\n", argv[a]);
+                return -2;
+        }
+    }
+
+    return 0;
+}
+
+int startTest() {
+    ProcessState::self()->startThreadPool();
+
+    if (openCamera() < 0) {
+        printf("Camera initialization failed\n");
+        return -1;
+    }
+
+    initDefaults();
+
+    return 0;
+}
+
+int runRegressionTest(cmd_args_t *cmd_args) {
     char *cmd;
     int pid;
+
+    if ((cmd_args->logging & LOGGING_SYSLINK) == 0) {
+        bLogSysLinkTrace = false;
+    }
+
+    platformID = cmd_args->platform_id;
+
+    int res = startTest();
+    if (res != 0) {
+        return res;
+    }
+
+    cmd = load_script(cmd_args->script_file_name);
+
+    if (cmd != NULL) {
+        start_logging(cmd_args->script_file_name, pid);
+        stressTest = true;
+
+        while (1) {
+            if (execute_functional_script(cmd) == 0) {
+                break;
+            }
+
+            printf("CameraTest Restarting Camera...\n");
+
+            free(cmd);
+            cmd = NULL;
+
+            if ( (restartCamera() != 0)  || ((cmd = load_script(cmd_args->script_file_name)) == NULL) ) {
+                printf("ERROR::CameraTest Restarting Camera...\n");
+                break;
+            }
+        }
+
+        free(cmd);
+        stop_logging(pid);
+    }
+
+    return 0;
+}
+
+int runFunctionalTest() {
+    int res = startTest();
+    if (res != 0) {
+        return res;
+    }
+
+    print_menu = 1;
+
+    while (1) {
+        if (functional_menu() < 0) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int runApiTest() {
+    printf("API level test cases coming soon ... \n");
+    return 0;
+}
+
+int runErrorTest(cmd_args_t *cmd_args) {
+    int res = startTest();
+    if (res != 0) {
+        return res;
+    }
+
+    if (cmd_args->script_file_name != NULL) {
+        char *cmd;
+        int pid;
+
+        cmd = load_script(cmd_args->script_file_name);
+
+        if (cmd != NULL) {
+            start_logging(cmd_args->script_file_name, pid);
+            execute_error_script(cmd);
+            free(cmd);
+            stop_logging(pid);
+        }
+    } else {
+        print_menu = 1;
+
+        while (1) {
+            if (error_scenario() < 0) {
+                break;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
     sp<ProcessState> proc(ProcessState::self());
 
     unsigned long long st, end, delay;
     timeval current_time;
+    cmd_args_t cmd_args;
+    int res;
+
+    res = parseCommandLine(argc, argv, &cmd_args);
+    if (res != 0) {
+        print_usage();
+        return res;
+    }
 
     gettimeofday(&current_time, 0);
 
     st = current_time.tv_sec * 1000000 + current_time.tv_usec;
 
-    cmd = NULL;
-
-    if ( argc < 2 ) {
-        printf(" Please enter atleast 1 argument\n");
-        print_usage();
-
-        return 0;
-    }
     system("echo camerahal_test > /sys/power/wake_lock");
-    if ( argc < 3 ) {
-        switch (*argv[1]) {
-            case 'S':
-            case 's':
-                printf("This is stress / regression tests \n");
-                printf("Provide script file as 2nd argument\n");
 
-                break;
+    switch (cmd_args.test_type) {
+        case TEST_TYPE_REGRESSION:
+            res = runRegressionTest(&cmd_args);
+            break;
 
-            case 'F':
-            case 'f':
-                ProcessState::self()->startThreadPool();
+        case TEST_TYPE_FUNCTIONAL:
+            res = runFunctionalTest();
+            break;
 
-                if ( openCamera() < 0 ) {
-                    printf("Camera initialization failed\n");
-                    system("echo camerahal_test > /sys/power/wake_unlock");
-                    return -1;
-                }
+        case TEST_TYPE_API:
+            res = runApiTest();
+            break;
 
-                initDefaults();
-                print_menu = 1;
-
-                while ( 1 ) {
-                    if ( functional_menu() < 0 )
-                        break;
-                };
-
-                break;
-
-            case 'A':
-            case 'a':
-                printf("API level test cases coming soon ... \n");
-
-                break;
-
-            case 'E':
-            case 'e': {
-                ProcessState::self()->startThreadPool();
-
-                if ( openCamera() < 0 ) {
-                    printf("Camera initialization failed\n");
-                    system("echo camerahal_test > /sys/power/wake_unlock");
-                    return -1;
-                }
-
-                initDefaults();
-                print_menu = 1;
-
-                while (1) {
-                    if (error_scenario() < 0) {
-                        break;
-                    }
-                }
-
-                break;
-            }
-
-            default:
-                printf("INVALID OPTION USED\n");
-                print_usage();
-
-                break;
-        }
-    } else if ( ( argc <= 4) && ( ( *argv[1] == 'S' ) || ( *argv[1] == 's') ) ) {
-
-        if((argv[1][1] == 'N') || (argv[1][1] == 'n')) {
-            bLogSysLinkTrace = false;
-        }
-
-        platformID = BLAZE_TABLET2;
-        if( argc == 4 ) {
-            if( strcasecmp(argv[3],"blaze") == 0 || strcasecmp(argv[3],"B") == 0 ){
-                platformID = BLAZE;
-            }
-            else if( (strcasecmp(argv[3],"tablet1") == 0) || (strcasecmp(argv[3],"T1") == 0) ) {
-                platformID = BLAZE_TABLET1;
-            }
-            else if( (strcasecmp(argv[3],"tablet2") == 0) || (strcasecmp(argv[3],"T2") == 0) ) {
-                platformID = BLAZE_TABLET2;
-            }
-            else {
-                printf("Error: Unknown argument for platformID.\n");
-                return -1;
-            }
-        }
-
-        ProcessState::self()->startThreadPool();
-
-        if ( openCamera() < 0 ) {
-            printf("Camera initialization failed\n");
-            system("echo camerahal_test > /sys/power/wake_unlock");
-            return -1;
-        }
-
-        initDefaults();
-
-        cmd = load_script(argv[2]);
-
-        if ( cmd != NULL) {
-            start_logging(argv[2], pid);
-            stressTest = true;
-
-            while (1)
-              {
-                if ( execute_functional_script(cmd) == 0 )
-                  {
-                    break;
-                  }
-                else
-                  {
-                    printf("CameraTest Restarting Camera...\n");
-
-                    free(cmd);
-                    cmd = NULL;
-
-                    if ( (restartCamera() != 0)  || ((cmd = load_script(argv[2])) == NULL) )
-                      {
-                        printf("ERROR::CameraTest Restarting Camera...\n");
-                        break;
-                      }
-                  }
-              }
-            free(cmd);
-            stop_logging(pid);
-        }
-    } else if ( ( argc == 3) && ( ( *argv[1] == 'E' ) || ( *argv[1] == 'e') ) ) {
-
-        ProcessState::self()->startThreadPool();
-
-        if ( openCamera() < 0 ) {
-            printf("Camera initialization failed\n");
-            system("echo camerahal_test > /sys/power/wake_unlock");
-            return -1;
-        }
-
-        initDefaults();
-
-        cmd = load_script(argv[2]);
-
-        if ( cmd != NULL) {
-            start_logging(argv[2], pid);
-            execute_error_script(cmd);
-            free(cmd);
-            stop_logging(pid);
-        }
-
-    } else {
-        printf("INVALID OPTION USED\n");
-        print_usage();
+        case TEST_TYPE_ERROR:
+            res = runErrorTest(&cmd_args);
+            break;
     }
+
+    system("echo camerahal_test > /sys/power/wake_unlock");
 
     gettimeofday(&current_time, 0);
     end = current_time.tv_sec * 1000000 + current_time.tv_usec;
     delay = end - st;
-    printf("Application clossed after: %llu ms\n", delay);
-    system("echo camerahal_test > /sys/power/wake_unlock");
-    return 0;
+    printf("Application closed after: %llu ms\n", delay);
+
+    return res;
 }
 
