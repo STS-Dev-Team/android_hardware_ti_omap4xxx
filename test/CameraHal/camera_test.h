@@ -78,6 +78,25 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+typedef enum test_type {
+    TEST_TYPE_REGRESSION,
+    TEST_TYPE_FUNCTIONAL,
+    TEST_TYPE_API,
+    TEST_TYPE_ERROR,
+} test_type_t;
+
+enum logging {
+    LOGGING_LOGCAT = 0x01,
+    LOGGING_SYSLINK = 0x02
+};
+
+typedef struct cmd_args {
+    test_type_t test_type;
+    char *script_file_name;
+    int platform_id;
+    int logging;
+} cmd_args_t;
+
 namespace android {
     class CameraHandler: public CameraListener {
         public:
