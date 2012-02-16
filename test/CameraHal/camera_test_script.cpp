@@ -132,7 +132,6 @@ extern const int ManualConvergenceDefaultValue;
 extern size_t length_cam;
 extern char script_name[];
 extern int restartCount;
-extern bool bLogSysLinkTrace;
 extern int bufferStarvationTest;
 extern size_t length_previewSize;
 extern size_t length_thumbnailSize;
@@ -1285,7 +1284,7 @@ status_t dump_mem_status() {
   return system(MEMORY_DUMP);
 }
 
-char *load_script(char *config) {
+char *load_script(const char *config) {
     FILE *infile;
     size_t fileSize;
     char *script;
@@ -1358,10 +1357,15 @@ char *load_script(char *config) {
     return script;
 }
 
-int start_logging(char *config, int &pid) {
+int start_logging(const char *config, int flags, int &pid) {
     char dir_name[40];
     size_t count = 0;
     int status = 0;
+
+    if (flags == 0) {
+        pid = -1;
+        return 0;
+    }
 
     // remove just the '.txt' part of the config
     while((config[count] != '.') && (count < sizeof(dir_name)/sizeof(dir_name[0])))
@@ -1385,11 +1389,13 @@ int start_logging(char *config, int &pid) {
         setpgid(getpid(), getpid());
 
         /* Start logcat */
-        if(!sprintf(log_cmd,"logcat > /sdcard/%s/log.txt &",dir_name))
-            printf(" Sprintf Error");
+        if (flags & LOGGING_LOGCAT) {
+            if(!sprintf(log_cmd,"logcat > /sdcard/%s/log.txt &",dir_name))
+                printf(" Sprintf Error");
+        }
 
         /* Start Syslink Trace */
-        if(bLogSysLinkTrace) {
+        if (flags & LOGGING_SYSLINK) {
             if(!sprintf(log_cmd,"%s /system/bin/syslink_trace_daemon.out -l /sdcard/%s/syslink_trace.txt -f &",log_cmd, dir_name))
                 printf(" Sprintf Error");
         }
@@ -1413,18 +1419,22 @@ int start_logging(char *config, int &pid) {
     return 0;
 }
 
-int stop_logging(int &pid)
+int stop_logging(int flags, int &pid)
 {
-    if(pid > 0)
-    {
-        if(killpg(pid, SIGKILL))
-        {
+    if (pid > 0) {
+        if (killpg(pid, SIGKILL)) {
             printf("Exit command failed");
             return -1;
         } else {
-            printf("\nlogging for script %s is complete\n   logcat saved @ location: %s\n",script_name,dir_path);
-            if (bLogSysLinkTrace)
-                printf("   syslink_trace is saved @ location: %s\n\n",dir_path);
+            printf("\nlogging for script %s is complete\n", script_name);
+
+            if (flags & LOGGING_LOGCAT) {
+                printf("   logcat saved @ location: %s\n", dir_path);
+            }
+
+            if (flags & LOGGING_SYSLINK) {
+                printf("   syslink_trace is saved @ location: %s\n\n", dir_path);
+            }
         }
     }
     return 0;

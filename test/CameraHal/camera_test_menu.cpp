@@ -429,7 +429,6 @@ const char *metering[] = {
     "average",
 };
 int meter_mode = 0;
-bool bLogSysLinkTrace = true;
 bool stressTest = false;
 bool stopScript = false;
 int restartCount = 0;
@@ -3287,10 +3286,6 @@ int runRegressionTest(cmd_args_t *cmd_args) {
     char *cmd;
     int pid;
 
-    if ((cmd_args->logging & LOGGING_SYSLINK) == 0) {
-        bLogSysLinkTrace = false;
-    }
-
     platformID = cmd_args->platform_id;
 
     int res = startTest();
@@ -3301,7 +3296,7 @@ int runRegressionTest(cmd_args_t *cmd_args) {
     cmd = load_script(cmd_args->script_file_name);
 
     if (cmd != NULL) {
-        start_logging(cmd_args->script_file_name, pid);
+        start_logging(cmd_args->script_file_name, cmd_args->logging, pid);
         stressTest = true;
 
         while (1) {
@@ -3321,7 +3316,7 @@ int runRegressionTest(cmd_args_t *cmd_args) {
         }
 
         free(cmd);
-        stop_logging(pid);
+        stop_logging(cmd_args->logging, pid);
     }
 
     return 0;
@@ -3362,10 +3357,10 @@ int runErrorTest(cmd_args_t *cmd_args) {
         cmd = load_script(cmd_args->script_file_name);
 
         if (cmd != NULL) {
-            start_logging(cmd_args->script_file_name, pid);
+            start_logging(cmd_args->script_file_name, cmd_args->logging, pid);
             execute_error_script(cmd);
             free(cmd);
-            stop_logging(pid);
+            stop_logging(cmd_args->logging, pid);
         }
     } else {
         print_menu = 1;
