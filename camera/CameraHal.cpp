@@ -262,6 +262,11 @@ int CameraHal::setParameters(const CameraParameters& params)
     bool updateRequired = false;
     CameraParameters oldParams(mParameters.flatten());
 
+#ifdef V4L_CAMERA_ADAPTER
+    ret = mCameraAdapter->setParameters(params);
+    return ret;
+#endif
+
     {
         Mutex::Autolock lock(mLock);
 
