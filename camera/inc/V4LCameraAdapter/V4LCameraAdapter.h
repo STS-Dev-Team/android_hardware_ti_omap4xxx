@@ -26,8 +26,9 @@
 namespace android {
 
 #define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
+
 #define NB_BUFFER 10
-#define DEVICE "/dev/video4"
+#define DEVICE "/dev/video0"
 
 
 struct VideoInfo {
@@ -64,12 +65,12 @@ public:
 
 public:
 
-    V4LCameraAdapter();
+    V4LCameraAdapter(size_t sensor_index);
     ~V4LCameraAdapter();
 
 
     ///Initialzes the camera adapter creates any resources required
-    virtual status_t initialize(CameraProperties::Properties*, int sensor_index=0);
+    virtual status_t initialize(CameraProperties::Properties*);
 
     //APIs to configure Camera adapter and get the current parameter set
     virtual status_t setParameters(const CameraParameters& params);
