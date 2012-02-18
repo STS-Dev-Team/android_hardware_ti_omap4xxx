@@ -1048,6 +1048,8 @@ private:
 
     OMX_TI_DCCDATATYPE mDccData;
     Mutex mDccDataLock;
+
+    int mMaxZoomSupported;
 };
 }; //// namespace
 #endif //OMX_CAMERA_ADAPTER_H
