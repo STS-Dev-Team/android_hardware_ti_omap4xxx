@@ -57,8 +57,7 @@ status_t OMXCameraAdapter::setParametersZoom(const CameraParameters &params,
     if ( ( ZOOM_ACTIVE & state ) != ZOOM_ACTIVE )
         {
         int zoom = params.getInt(CameraParameters::KEY_ZOOM);
-        if( ( zoom >= 0 ) && ( zoom < ZOOM_STAGES ) )
-            {
+        if (( zoom >= 0 ) && ( zoom < mMaxZoomSupported )) {
             mTargetZoomIdx = zoom;
 
             //Immediate zoom should be applied instantly ( CTS requirement )
@@ -93,8 +92,7 @@ status_t OMXCameraAdapter::doZoom(int index)
         ret = -1;
         }
 
-    if (  ( 0 > index) || ( ( ZOOM_STAGES - 1 ) < index ) )
-        {
+    if (( 0 > index) || ((mMaxZoomSupported - 1 ) < index )) {
         CAMHAL_LOGEB("Zoom index %d out of range", index);
         ret = -EINVAL;
         }
@@ -243,17 +241,14 @@ status_t OMXCameraAdapter::startSmoothZoom(int targetIdx)
                  targetIdx,
                  mCurrentZoomIdx);
 
-    if ( ( targetIdx >= 0 ) && ( targetIdx < ZOOM_STAGES ) )
-        {
+    if (( targetIdx >= 0 ) && ( targetIdx < mMaxZoomSupported )) {
         mTargetZoomIdx = targetIdx;
         mZoomParameterIdx = mCurrentZoomIdx;
         mReturnZoomStatus = false;
-        }
-    else
-        {
+    } else {
         CAMHAL_LOGEB("Smooth value out of range %d!", targetIdx);
         ret = -EINVAL;
-        }
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
