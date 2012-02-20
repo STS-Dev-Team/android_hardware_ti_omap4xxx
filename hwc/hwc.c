@@ -1126,8 +1126,9 @@ static inline int can_dss_render_layer(omap4_hwc_device_t *hwc_dev,
     IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
 
     omap4_hwc_ext_t *ext = &hwc_dev->ext;
-    int on_tv = ext->on_tv && ext->current.enabled;
-    int tform = ext->current.enabled && (ext->current.rotation || ext->current.hflip);
+    int cloning = ext->current.enabled && (!ext->current.docking || (handle!=NULL ? dockable(layer) : 0));
+    int on_tv = ext->on_tv && cloning;
+    int tform = cloning && (ext->current.rotation || ext->current.hflip);
 
     return omap4_hwc_is_valid_layer(hwc_dev, layer, handle) &&
            /* cannot rotate non-NV12 layers on external display */
