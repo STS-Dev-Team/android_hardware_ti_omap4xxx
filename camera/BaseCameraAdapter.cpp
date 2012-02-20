@@ -1096,7 +1096,7 @@ status_t BaseCameraAdapter::notifyShutterSubscribers()
         shutterEvent.mCookie = ( void * ) mShutterSubscribers.keyAt(i);
         eventCb = ( event_callback ) mShutterSubscribers.valueAt(i);
 
-        CAMHAL_LOGEA("Sending shutter callback");
+        CAMHAL_LOGD("Sending shutter callback");
 
         eventCb ( &shutterEvent );
     }

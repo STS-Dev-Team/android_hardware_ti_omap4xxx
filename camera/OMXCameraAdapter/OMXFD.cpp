@@ -273,7 +273,7 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
                      extraData->nPortIndex,
                      extraData->nVersion);
     } else {
-        CAMHAL_LOGEA("Invalid OMX_OTHER_EXTRADATATYPE");
+        CAMHAL_LOGD("FD extra data not found!");
         return -EINVAL;
     }
 
