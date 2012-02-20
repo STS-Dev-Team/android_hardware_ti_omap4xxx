@@ -143,6 +143,24 @@ struct omap4_hwc_module {
 };
 typedef struct omap4_hwc_module omap4_hwc_module_t;
 
+struct counts {
+    unsigned int possible_overlay_layers;
+    unsigned int composited_layers;
+    unsigned int scaled_layers;
+    unsigned int RGB;
+    unsigned int BGR;
+    unsigned int NV12;
+    unsigned int dockable;
+    unsigned int protected;
+
+    unsigned int max_hw_overlays;
+    unsigned int max_scaling_overlays;
+    unsigned int mem;
+#ifdef OMAP_ENHANCEMENT_S3D
+    unsigned int s3d;
+#endif
+};
+
 struct omap4_hwc_device {
     /* static data */
     hwc_composer_device_t base;
@@ -188,6 +206,7 @@ struct omap4_hwc_device {
     int blit_num;
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
     struct rgz_blt_entry blit_ops[RGZ_MAX_BLITS];
+    struct counts stats;
 };
 typedef struct omap4_hwc_device omap4_hwc_device_t;
 
@@ -1018,24 +1037,6 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
     return 0;
 }
 
-struct counts {
-    unsigned int possible_overlay_layers;
-    unsigned int composited_layers;
-    unsigned int scaled_layers;
-    unsigned int RGB;
-    unsigned int BGR;
-    unsigned int NV12;
-    unsigned int dockable;
-    unsigned int protected;
-
-    unsigned int max_hw_overlays;
-    unsigned int max_scaling_overlays;
-    unsigned int mem;
-#ifdef OMAP_ENHANCEMENT_S3D
-    unsigned int s3d;
-#endif
-};
-
 static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *num, hwc_layer_list_t *list)
 {
     unsigned int i;
@@ -1092,6 +1093,7 @@ static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *
             num->mem += mem1d(handle);
         }
     }
+    hwc_dev->stats = *num;
 }
 
 static void decide_supported_cloning(omap4_hwc_device_t *hwc_dev, struct counts *num)
@@ -1151,7 +1153,7 @@ static void decide_supported_cloning(omap4_hwc_device_t *hwc_dev, struct counts 
 
     /* if mirroring, we are limited by both internal and external overlays.  However,
        ext_ovls is always <= MAX_HW_OVERLAYS / 2 <= max_hw_overlays */
-    if (hwc_dev->ext_ovls && ext->current.enabled && !ext->current.docking)
+    if (!num->protected && hwc_dev->ext_ovls && ext->current.enabled && !ext->current.docking)
         num->max_hw_overlays = hwc_dev->ext_ovls;
 
     num->max_scaling_overlays = num->max_hw_overlays - nonscaling_ovls;
@@ -1714,7 +1716,8 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     hwc_dev->post2_layers = dsscomp->num_ovls;
 
     omap4_hwc_ext_t *ext = &hwc_dev->ext;
-    if (ext->current.enabled && hwc_dev->ext_ovls) {
+    if (ext->current.enabled && ((!num.protected && hwc_dev->ext_ovls) ||
+              (hwc_dev->ext_ovls_wanted && hwc_dev->ext_ovls >= hwc_dev->ext_ovls_wanted))) {
 #ifdef OMAP_ENHANCEMENT_S3D
         if (ext->current.docking && ix_s3d >= 0) {
             if (clone_s3d_external_layer(hwc_dev, ix_s3d) == 0) {
@@ -1855,7 +1858,8 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
 
     omap4_hwc_reset_screen(hwc_dev);
 
-    invalidate = hwc_dev->ext_ovls_wanted && !hwc_dev->ext_ovls;
+    invalidate = hwc_dev->ext_ovls_wanted && (hwc_dev->ext_ovls < hwc_dev->ext_ovls_wanted) &&
+                                              (hwc_dev->stats.protected || !hwc_dev->ext_ovls);
 
     if (debug)
         dump_set_info(hwc_dev, list);
