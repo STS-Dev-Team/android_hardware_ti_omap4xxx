@@ -856,6 +856,11 @@ status_t OMXCameraAdapter::setSensorQuirks(int orientation,
             if ( NO_ERROR != ret ) {
                 return ret;
             }
+
+            // Another WA: Setting the port definition will reset the VFR
+            //             configuration.
+            setVFramerate(portParams.mMinFrameRate, portParams.mMaxFrameRate);
+
             portConfigured = true;
         }
 

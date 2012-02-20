@@ -1103,6 +1103,11 @@ status_t OMXCameraAdapter::setSensorOrientation(unsigned int degree)
                 CAMHAL_LOGEB("Error while configuring format 0x%x", ret);
                 return ret;
             }
+
+            // Another WA: Setting the port definition will reset the VFR
+            //             configuration.
+            setVFramerate(mPreviewData->mMinFrameRate,
+                          mPreviewData->mMaxFrameRate);
         }
     }
 
