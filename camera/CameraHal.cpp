@@ -1535,7 +1535,7 @@ status_t CameraHal::startPreview()
 
     ///If we don't have the preview callback enabled and display adapter,
     if(!mSetPreviewWindowCalled || (mDisplayAdapter.get() == NULL)){
-      CAMHAL_LOGI("Preview not started. Preview in progress flag set");
+      CAMHAL_LOGD("Preview not started. Preview in progress flag set");
       mPreviewStartInProgress = true;
       ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_SWITCH_TO_EXECUTING);
       if ( NO_ERROR != ret ){
@@ -1747,13 +1747,13 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
         if(mDisplayAdapter.get() != NULL)
         {
             ///NULL window passed, destroy the display adapter if present
-            CAMHAL_LOGI("NULL window passed, destroying display adapter");
+            CAMHAL_LOGD("NULL window passed, destroying display adapter");
             mDisplayAdapter.clear();
             ///@remarks If there was a window previously existing, we usually expect another valid window to be passed by the client
             ///@remarks so, we will wait until it passes a valid window to begin the preview again
             mSetPreviewWindowCalled = false;
         }
-        CAMHAL_LOGI("NULL ANativeWindow passed to setPreviewWindow");
+        CAMHAL_LOGD("NULL ANativeWindow passed to setPreviewWindow");
         return NO_ERROR;
     }else if(mDisplayAdapter.get() == NULL)
     {
