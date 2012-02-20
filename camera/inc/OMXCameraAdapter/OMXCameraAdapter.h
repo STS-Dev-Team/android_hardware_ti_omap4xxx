@@ -838,11 +838,13 @@ private:
     static const char DEFAULT_THUMBNAIL_QUALITY[];
     static const char DEFAULT_THUMBNAIL_SIZE[];
     static const char DEFAULT_PICTURE_FORMAT[];
+    static const char DEFAULT_S3D_PICTURE_LAYOUT[];
     static const char DEFAULT_PICTURE_SIZE[];
     static const char DEFAULT_PICTURE_SS_SIZE[];
     static const char DEFAULT_PICTURE_TB_SIZE[];
     static const char DEFAULT_PREVIEW_FORMAT[];
     static const char DEFAULT_FRAMERATE[];
+    static const char DEFAULT_S3D_PREVIEW_LAYOUT[];
     static const char DEFAULT_PREVIEW_SIZE[];
     static const char DEFAULT_PREVIEW_SS_SIZE[];
     static const char DEFAULT_PREVIEW_TB_SIZE[];

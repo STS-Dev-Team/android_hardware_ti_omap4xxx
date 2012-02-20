@@ -1839,14 +1839,20 @@ status_t OMXCameraAdapter::insertGLBCESupported(CameraProperties::Properties* pa
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
-    char temp[MAX_PROP_VALUE_LENGTH];
     char *pos;
+    char temp[MAX_PROP_VALUE_LENGTH];
 
     LOG_FUNCTION_NAME;
-    strncpy(temp, params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES),
-                MAX_PROP_VALUE_LENGTH - 1);
-    if ((pos = strstr(temp, PARAM_SEP))) {
-        *pos = '\0';
+
+    /* If default is supported - set it, else - set first supported */
+    if (strstr(params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES), DEFAULT_S3D_PREVIEW_LAYOUT)) {
+        strncpy(temp, DEFAULT_S3D_PREVIEW_LAYOUT, MAX_PROP_VALUE_LENGTH - 1);
+    } else {
+        strncpy(temp, params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES),
+                    MAX_PROP_VALUE_LENGTH - 1);
+        if ((pos = strstr(temp, PARAM_SEP))) {
+            *pos = '\0';
+        }
     }
     params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, temp);
 
@@ -1859,10 +1865,15 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, params->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
     }
 
-    strncpy(temp, params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES),
-                MAX_PROP_VALUE_LENGTH - 1);
-    if ((pos = strstr(temp, PARAM_SEP))) {
-        *pos = '\0';
+    /* If default is supported - set it, else - set first supported */
+    if (strstr(params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES), DEFAULT_S3D_PICTURE_LAYOUT)) {
+        strncpy(temp, DEFAULT_S3D_PICTURE_LAYOUT, MAX_PROP_VALUE_LENGTH - 1);
+    } else {
+        strncpy(temp, params->get(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES),
+                    MAX_PROP_VALUE_LENGTH - 1);
+        if ((pos = strstr(temp, PARAM_SEP))) {
+            *pos = '\0';
+        }
     }
     params->set(CameraProperties::S3D_CAP_FRAME_LAYOUT, temp);
 
