@@ -173,6 +173,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mBracketingBuffersQueuedCount = 0;
     mBracketingRange = 1;
     mLastBracetingBufferIdx = 0;
+    mBracketingBuffersQueued = NULL;
     mOMXStateSwitch = false;
     mBracketingSet = false;
     mRawCapture = false;
