@@ -45,7 +45,7 @@ CameraParameters params;
 float compensation = 0.0;
 double latitude = 0.0;
 double longitude = 0.0;
-double degree_by_step = 17.5609756;//..0975609756097;
+double degree_by_step = 17.5609756;
 double altitude = 0.0;
 int awb_mode = 0;
 int effects_mode = 0;
@@ -84,7 +84,7 @@ int exposure_mode = 0;
 int ippIDX = 0;
 int ippIDX_old = 0;
 int previewFormat = 0;
-int pictureFormat = 6; // jpeg
+int pictureFormat = 0;
 int jpegQuality = 85;
 int thumbQuality = 85;
 int flashIdx = 0;
@@ -116,12 +116,12 @@ int numpictureFormat = 0;
 int *constFramerate = 0;
 int rangeCnt = 0;
 int constCnt = 0;
-int focus_mode = 3;
+int focus_mode = 0;
 int thumbSizeIDX =  0;
 int previewSizeIDX = 1;
 int captureSizeIDX = 0;
 int VcaptureSizeIDX = 1;
-int frameRateIDX = 3;
+int frameRateIDX = 0;
 char *str;
 char *param;
 char *antibandStr = 0;
@@ -778,7 +778,7 @@ void printSupportedParams()
 {
     printf("\n\r\tSupported Cameras: %s", params.get("camera-indexes"));
     printf("\n\r\tSupported Picture Sizes: %s", params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES));
-    printf("\n\r\tSupported Picture Formats: %s", params.get(KEY_PICTURE_CODING_VALUES));
+    printf("\n\r\tSupported Picture Formats: %s", params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS));
     printf("\n\r\tSupported Video Formats: %s", params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
     printf("\n\r\tSupported Preview Sizes: %s", params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
     printf("\n\r\tSupported Preview Formats: %s", params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS));
@@ -1219,10 +1219,9 @@ int getParametersFromCapabilities() {
         printf("Preview formats are not supported\n");
     }
 
-    if (params.get(KEY_PICTURE_CODING_VALUES) != NULL) {
-        strcpy(pictureFormatStr, params.get(KEY_PICTURE_CODING_VALUES));
+    if (params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS) != NULL) {
+        strcpy(pictureFormatStr, params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS));
         getSupportedParameters(pictureFormatStr, &numpictureFormat, (char ***)&pictureFormatArray);
-        pictureFormat = numpictureFormat -2;
     } else {
         printf("Picture formats are not supported\n");
     }
@@ -1392,7 +1391,6 @@ void getSizeParametersFromCapabilities() {
 
 
 int getSupportedParameters(char* parameters, int *optionsCount, char  ***elem) {
-
     str = new char [400];
     param = new char [400];
     int cnt = 0;
@@ -1747,14 +1745,14 @@ void stopPreview() {
 void initDefaults() {
     camera_index = 0;
     antibanding_mode = 0;
-    focus_mode = 3;
+    focus_mode = 0;
     fpsRangeIdx = 0;
     afTimeoutIdx = 0;
-    previewSizeIDX = 1;  /* Default resolution set to HD */
-    captureSizeIDX = 0;  /* Default capture resolution for primary is 12MP, for secondary is 5MP  */
-    frameRateIDX = 3;      /* Default frame rate is 30 FPS */
+    previewSizeIDX = 0;
+    captureSizeIDX = 0;
+    frameRateIDX = 0;
     VcaptureSizeIDX = 1;
-    VbitRateIDX = ARRAY_SIZE(VbitRate) - 4;        /*Default video bit rate is 4M */
+    VbitRateIDX = 0;
     thumbSizeIDX = 0;
     compensation = 0.0;
     awb_mode = 0;
@@ -1789,13 +1787,13 @@ void initDefaults() {
     iso_mode = 0;
     capture_mode = 0;
     exposure_mode = 0;
-    ippIDX = 0;//set the ipp to ldc-nsf as the capture mode is set to HQ by default
+    ippIDX = 0;
     ippIDX_old = ippIDX;
     jpegQuality = 85;
     bufferStarvationTest = 0;
     meter_mode = 0;
     previewFormat = 1;
-    pictureFormat = numpictureFormat - 2; // jpeg
+    pictureFormat = 0;
     stereoCapLayoutIDX = 0;
     stereoLayoutIDX = 0;
 
@@ -1826,7 +1824,7 @@ void initDefaults() {
     params.set(CameraParameters::KEY_JPEG_QUALITY, jpegQuality);
     params.setPreviewFormat(previewFormatArray[previewFormat]);
     params.setPictureFormat(pictureFormatArray[pictureFormat]);
-    params.set(KEY_BUFF_STARV, bufferStarvationTest); //enable buffer starvation
+    params.set(KEY_BUFF_STARV, bufferStarvationTest);
     params.set(KEY_METERING_MODE, metering[meter_mode]);
     params.set(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH, thumbnail_Array[thumbSizeIDX]->width);
     params.set(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT, thumbnail_Array[thumbSizeIDX]->height);
