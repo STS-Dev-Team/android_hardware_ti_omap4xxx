@@ -57,8 +57,7 @@ namespace android {
 //define this macro to save first few raw frames when starting the preview.
 //#define SAVE_RAW_FRAMES 1
 
-#define FPS_PERIOD 30
-Mutex gAdapterLock;
+Mutex gV4LAdapterLock;
 const char *device = DEVICE;
 
 
@@ -545,6 +544,7 @@ void saveFile(unsigned char* buff, int buff_size) {
         return;
     }
     //dump nv12 buffer
+    counter++;
     sprintf(fn, "/data/misc/camera/raw/nv12_dump_%03d.yuv", counter);
     CAMHAL_LOGEB("Dumping nv12 frame to a file : %s.", fn);
 
@@ -554,7 +554,6 @@ void saveFile(unsigned char* buff, int buff_size) {
         return;
     }
 
-    counter++;
     write(fd, buff, buff_size );
     close(fd);
 
@@ -637,18 +636,18 @@ int V4LCameraAdapter::previewThread()
     return ret;
 }
 
-extern "C" CameraAdapter* CameraAdapter_Factory(size_t sensor_index)
+extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t sensor_index)
 {
     CameraAdapter *adapter = NULL;
-    Mutex::Autolock lock(gAdapterLock);
+    Mutex::Autolock lock(gV4LAdapterLock);
 
     LOG_FUNCTION_NAME;
 
     adapter = new V4LCameraAdapter(sensor_index);
     if ( adapter ) {
-        CAMHAL_LOGDB("New OMX Camera adapter instance created for sensor %d",sensor_index);
+        CAMHAL_LOGDB("New V4L Camera adapter instance created for sensor %d",sensor_index);
     } else {
-        CAMHAL_LOGEA("Camera adapter create failed!");
+        CAMHAL_LOGEA("V4L Camera adapter create failed for sensor index = %d!",sensor_index);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -656,16 +655,20 @@ extern "C" CameraAdapter* CameraAdapter_Factory(size_t sensor_index)
     return adapter;
 }
 
-extern "C" status_t CameraAdapter_Capabilities(
+extern "C" status_t V4LCameraAdapter_Capabilities(
         CameraProperties::Properties * const properties_array,
         const int starting_camera, const int max_camera, int & supportedCameras)
 {
+    status_t ret = NO_ERROR;
+    struct v4l2_capability cap;
+    int tempHandle = NULL;
+    int num_cameras_supported = 0;
+    CameraProperties::Properties* properties = NULL;
+
     LOG_FUNCTION_NAME;
 
     supportedCameras = 0;
-    int num_cameras_supported = 0;
-    CameraProperties::Properties* properties = NULL;
-    CAMHAL_LOGEB("starting_camera+%d, max_camera=%d, supportedCameras=%d", starting_camera,max_camera,supportedCameras);
+    memset((void*)&cap, 0, sizeof(v4l2_capability));
 
     if (!properties_array) {
         CAMHAL_LOGEB("invalid param: properties = 0x%p", properties_array);
@@ -673,11 +676,33 @@ extern "C" status_t CameraAdapter_Capabilities(
         return BAD_VALUE;
     }
 
-    // TODO: Need to tell camera properties what other cameras we can support
-    if (starting_camera + num_cameras_supported < max_camera) {
+    //look for the connected video devices
+    if (ret == NO_ERROR && (starting_camera + num_cameras_supported) < max_camera) {
+
+        if ((tempHandle = open(device, O_RDWR)) == -1) {
+            CAMHAL_LOGEB("Error while opening handle to V4L2 Camera: %s", strerror(errno));
+            return NO_ERROR;
+        }
+
+        ret = ioctl (tempHandle, VIDIOC_QUERYCAP, &cap);
+        if (ret < 0)
+        {
+            CAMHAL_LOGEA("Error when querying the capabilities of the V4L Camera");
+            goto EXIT;
+        }
+
+        //check for video capture devices
+        if ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) == 0)
+        {
+            CAMHAL_LOGEA("Error while adapter initialization: video capture not supported.");
+            goto EXIT;
+        }
+
         num_cameras_supported++;
         properties = properties_array + starting_camera;
-        properties->set(CameraProperties::CAMERA_NAME, "USBCamera");
+
+        // TODO: Need to tell camera properties what other cameras we can support
+        properties->set(CameraProperties::CAMERA_NAME, "USBCAMERA");
         properties->set(CameraProperties::PREVIEW_SIZE, "640x480");
         properties->set(CameraProperties::PREVIEW_FORMAT, "yuv420sp");
         properties->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, "yuv420sp");
@@ -694,8 +719,11 @@ extern "C" status_t CameraAdapter_Capabilities(
     }
 
     supportedCameras = num_cameras_supported;
-    LOG_FUNCTION_NAME_EXIT;
+    CAMHAL_LOGDB("V4L cameras detected =%d", num_cameras_supported);
 
+EXIT:
+    LOG_FUNCTION_NAME_EXIT;
+    close(tempHandle);
     return NO_ERROR;
 }
 
