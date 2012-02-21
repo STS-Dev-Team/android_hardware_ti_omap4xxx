@@ -1966,6 +1966,8 @@ status_t OMXCameraAdapter::startPreview()
 
         }
 
+    setFocusCallback(true);
+
     //reset frame rate estimates
     mFPS = 0.0f;
     mLastFPS = 0.0f;
@@ -2037,11 +2039,9 @@ status_t OMXCameraAdapter::stopPreview()
         mFirstFrameCondition.broadcast();
     }
 
-    ret = cancelAutoFocus();
-    if(ret!=NO_ERROR)
     {
-        CAMHAL_LOGEB("Error canceling autofocus %d", ret);
-        // Error, but we probably still want to continue to stop preview
+        Mutex::Autolock lock(mDoAFMutex);
+        mDoAFCond.broadcast();
     }
 
     OMX_CONFIG_FOCUSASSISTTYPE focusAssist;
@@ -3579,7 +3579,6 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
     onlyOnce = true;
     mDccData.pData = NULL;
 
-    mDoAFSem.Create(0);
     mInitSem.Create(0);
     mFlushSem.Create(0);
     mUsePreviewDataSem.Create(0);
