@@ -2790,6 +2790,7 @@ OMX_ERRORTYPE OMXCameraAdapter::SignalEvent(OMX_IN OMX_HANDLETYPE hComponent,
 {
     Mutex::Autolock lock(mEventLock);
     TIUTILS::Message *msg;
+    bool eventSignalled = false;
 
     LOG_FUNCTION_NAME;
 
@@ -2822,6 +2823,19 @@ OMX_ERRORTYPE OMXCameraAdapter::SignalEvent(OMX_IN OMX_HANDLETYPE hComponent,
         {
         CAMHAL_LOGDA("Event queue empty!!!");
         }
+
+    // Special handling for any unregistered events
+    if (!eventSignalled) {
+        // Handling for focus callback
+        if ((nData2 == OMX_IndexConfigCommonFocusStatus) &&
+            (eEvent == (OMX_EVENTTYPE) OMX_EventIndexSettingChanged)) {
+                TIUTILS::Message msg;
+                msg.command = OMXCallbackHandler::CAMERA_FOCUS_STATUS;
+                msg.arg1 = NULL;
+                msg.arg2 = NULL;
+                mOMXCallbackHandler->put(&msg);
+        }
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -3427,6 +3441,11 @@ bool OMXCameraAdapter::OMXCallbackHandler::Handler()
             {
                 ret = mCameraAdapter->OMXCameraAdapterFillBufferDone(( OMX_HANDLETYPE ) msg.arg1,
                                                                      ( OMX_BUFFERHEADERTYPE *) msg.arg2);
+                break;
+            }
+            case OMXCallbackHandler::CAMERA_FOCUS_STATUS:
+            {
+                mCameraAdapter->handleFocusCallback();
                 break;
             }
             case CommandHandler::COMMAND_EXIT:
