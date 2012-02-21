@@ -246,6 +246,7 @@ static void dump_layer(hwc_layer_t const* l, int iserr)
         OUTE("%s%d*%d(%s)",
             iserr ? ">>  " : "    ",
             h->iWidth, h->iHeight, FMT(h->iFormat));
+        OUTE("hndl %p", l->handle);
     }
 }
 
@@ -312,7 +313,7 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
 
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
-    src1geom->format = OCDFMT_BGRA24;
+    src1geom->format = OCDFMT_RGBA24;
     src1geom->width = src1geom->height = 1;
     src1geom->orientation = 0;
     src1geom->virtstride = 1;
@@ -568,15 +569,17 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     if (!layers)
         return -1;
 
+    /* For debugging */
+    //dump_all(layers, layerno, 0);
+
     /*
      * Store buffer index to be sent in the HWC Post2 list. Any overlay
-     * meminfos will come first
+     * meminfos must come first
      */
-    int l, memidx = 1;
+    int l, memidx = 0;
     for (l = 0; l < layerno; l++) {
-        if (layers[l].compositionType == HWC_OVERLAY) {
+        if (layers[l].compositionType == HWC_OVERLAY)
             memidx++;
-        }
     }
 
     int possible_blit = 0, candidates = 0;
@@ -935,7 +938,7 @@ static int rgz_hwc_layer_blit(
         struct bvbuffdesc *src2desc = &e->src2desc;
         *src2geom = *dstgeom;
         src2desc->structsize = sizeof(struct bvbuffdesc);
-        src2desc->virtaddr = 0; /* FB index */
+        src2desc->virtaddr = (void*)HWC_BLT_DESC_FB_FN(0);
         bpflags |= BVFLAG_BLEND;
         bp->op.blend = BVBLEND_SRC1OVER;
         bp->src2.desc = scrdesc;
