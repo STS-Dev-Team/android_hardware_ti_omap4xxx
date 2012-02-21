@@ -2351,6 +2351,49 @@ void BaseCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
 }
 //-----------------------------------------------------------------------------
 
+extern "C" status_t OMXCameraAdapter_Capabilities(
+        CameraProperties::Properties * const properties_array,
+        const int starting_camera, const int max_camera, int & supportedCameras);
+extern "C" status_t V4LCameraAdapter_Capabilities(
+        CameraProperties::Properties * const properties_array,
+        const int starting_camera, const int max_camera, int & supportedCameras);
+
+extern "C" status_t CameraAdapter_Capabilities(
+        CameraProperties::Properties * const properties_array,
+        const int starting_camera, const int max_camera, int & supportedCameras)
+{
+
+    status_t ret = NO_ERROR;
+    status_t err = NO_ERROR;
+    int num_cameras_supported = 0;
+
+    LOG_FUNCTION_NAME;
+
+    supportedCameras = 0;
+#ifdef OMX_CAMERA_ADAPTER
+    //Query OMX cameras
+    err = OMXCameraAdapter_Capabilities( properties_array, starting_camera,
+                                         max_camera, supportedCameras);
+    if(err != NO_ERROR) {
+        CAMHAL_LOGEA("error while getting OMXCameraAdapter capabilities");
+        ret = UNKNOWN_ERROR;
+    }
+#endif
+#ifdef V4L_CAMERA_ADAPTER
+    //Query V4L cameras
+    err = V4LCameraAdapter_Capabilities( properties_array, (const int) supportedCameras,
+                                         max_camera, num_cameras_supported);
+    if(err != NO_ERROR) {
+        CAMHAL_LOGEA("error while getting V4LCameraAdapter capabilities");
+        ret = UNKNOWN_ERROR;
+    }
+#endif
+
+    supportedCameras += num_cameras_supported;
+    CAMHAL_LOGEB("supportedCameras= %d\n", supportedCameras);
+    LOG_FUNCTION_NAME_EXIT;
+    return ret;
+}
 
 
 };

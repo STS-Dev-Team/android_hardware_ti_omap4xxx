@@ -32,7 +32,8 @@
 
 namespace android {
 
-extern "C" CameraAdapter* CameraAdapter_Factory(size_t);
+extern "C" CameraAdapter* OMXCameraAdapter_Factory(size_t);
+extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t);
 
 /*****************************************************************************/
 
@@ -263,8 +264,10 @@ int CameraHal::setParameters(const CameraParameters& params)
     CameraParameters oldParams(mParameters.flatten());
 
 #ifdef V4L_CAMERA_ADAPTER
-    ret = mCameraAdapter->setParameters(params);
-    return ret;
+    if (strcmp (V4L_CAMERA_NAME_USB, mCameraProperties->get(CameraProperties::CAMERA_NAME)) == 0 ) {
+        ret = mCameraAdapter->setParameters(params);
+        return ret;
+    }
 #endif
 
     {
@@ -3007,6 +3010,7 @@ status_t CameraHal::initialize(CameraProperties::Properties* properties)
     LOG_FUNCTION_NAME;
 
     int sensor_index = 0;
+    const char* sensor_name = NULL;
 
     ///Initialize the event mask used for registering an event provider for AppCallbackNotifier
     ///Currently, registering all events as to be coming from CameraAdapter
@@ -3029,9 +3033,22 @@ status_t CameraHal::initialize(CameraProperties::Properties* properties)
         sensor_index = atoi(mCameraProperties->get(CameraProperties::CAMERA_SENSOR_INDEX));
         }
 
-    CAMHAL_LOGDB("Sensor index %d", sensor_index);
+    if (strcmp(CameraProperties::DEFAULT_VALUE, mCameraProperties->get(CameraProperties::CAMERA_NAME)) != 0 ) {
+        sensor_name = mCameraProperties->get(CameraProperties::CAMERA_NAME);
+    }
+    CAMHAL_LOGDB("Sensor index= %d; Sensor name= %s", sensor_index, sensor_name);
 
-    mCameraAdapter = CameraAdapter_Factory(sensor_index);
+    if (strcmp(sensor_name, V4L_CAMERA_NAME_USB) == 0) {
+#ifdef V4L_CAMERA_ADAPTER
+        mCameraAdapter = V4LCameraAdapter_Factory(sensor_index);
+#endif
+    }
+    else {
+#ifdef OMX_CAMERA_ADAPTER
+        mCameraAdapter = OMXCameraAdapter_Factory(sensor_index);
+#endif
+    }
+
     if ( ( NULL == mCameraAdapter ) || (mCameraAdapter->initialize(properties)!=NO_ERROR))
         {
         CAMHAL_LOGEA("Unable to create or initialize CameraAdapter");
