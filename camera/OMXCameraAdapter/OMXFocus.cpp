@@ -32,6 +32,8 @@
 
 namespace android {
 
+const nsecs_t OMXCameraAdapter::CANCEL_AF_TIMEOUT =  seconds_to_nanoseconds(1);
+
 status_t OMXCameraAdapter::setParametersFocus(const CameraParameters &params,
                                               BaseCameraAdapter::AdapterState state)
 {
@@ -80,7 +82,8 @@ status_t OMXCameraAdapter::doAutoFocus()
     OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE focusControl;
     OMX_PARAM_FOCUSSTATUSTYPE focusStatus;
     OMX_CONFIG_BOOLEANTYPE bOMX;
-    int timeout = 0;
+    CameraAdapter::AdapterState state;
+    nsecs_t timeout = 0;
 
     LOG_FUNCTION_NAME;
 
@@ -96,12 +99,6 @@ status_t OMXCameraAdapter::doAutoFocus()
         CAMHAL_LOGEA("OMX component not in executing state");
         returnFocusStatus(false);
         return NO_ERROR;
-        }
-
-    if ( 0 != mDoAFSem.Count() )
-        {
-        CAMHAL_LOGEB("Error mDoAFSem semaphore count %d", mDoAFSem.Count());
-        return NO_INIT;
         }
 
     if( ((AF_ACTIVE & getState()) != AF_ACTIVE) && ((AF_ACTIVE & getNextState()) != AF_ACTIVE) ) {
@@ -168,24 +165,39 @@ status_t OMXCameraAdapter::doAutoFocus()
         eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                                (OMX_INDEXTYPE)OMX_TI_IndexConfigAutofocusEnable,
                                &bOMX);
-
-        ret = setFocusCallback(true);
-
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                                OMX_IndexConfigFocusControl,
-                                &focusControl);
-
         if ( OMX_ErrorNone != eError ) {
-            CAMHAL_LOGEB("Error while starting focus 0x%x", eError);
-            return INVALID_OPERATION;
-        } else {
-            CAMHAL_LOGDA("Autofocus started successfully");
+            return ErrorUtils::omxToAndroidError(eError);
         }
 
-        // configure focus timeout based on capture mode
-        timeout = (mCapMode == VIDEO_MODE) ? AF_VIDEO_CALLBACK_TIMEOUT : AF_IMAGE_CALLBACK_TIMEOUT;
+        {
+            Mutex::Autolock lock(mDoAFMutex);
 
-        ret = mDoAFSem.WaitTimeout(timeout);
+            eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                    OMX_IndexConfigFocusControl,
+                                    &focusControl);
+
+            if ( OMX_ErrorNone != eError ) {
+                CAMHAL_LOGEB("Error while starting focus 0x%x", eError);
+                return INVALID_OPERATION;
+            } else {
+                CAMHAL_LOGDA("Autofocus started successfully");
+            }
+
+            // No need to wait if preview is about to stop
+            getNextState(state);
+            if ( ( PREVIEW_ACTIVE & state ) != PREVIEW_ACTIVE ) {
+                return NO_ERROR;
+            }
+
+            // configure focus timeout based on capture mode
+            timeout = (mCapMode == VIDEO_MODE) ?
+                            ( ( nsecs_t ) AF_VIDEO_CALLBACK_TIMEOUT * 1000 ) :
+                            ( ( nsecs_t ) AF_IMAGE_CALLBACK_TIMEOUT * 1000 );
+
+
+            ret = mDoAFCond.waitRelative(mDoAFMutex, timeout);
+        }
+
         //If somethiing bad happened while we wait
         if (mComponentState == OMX_StateInvalid) {
           CAMHAL_LOGEA("Invalid State after Auto Focus Exitting!!!");
@@ -193,19 +205,15 @@ status_t OMXCameraAdapter::doAutoFocus()
         }
 
         if(ret != NO_ERROR) {
-            //Disable auto focus callback from Ducati
-            setFocusCallback(false);
             CAMHAL_LOGEA("Autofocus callback timeout expired");
             ret = returnFocusStatus(true);
         } else {
             CAMHAL_LOGDA("Autofocus callback received");
-            //Disable auto focus callback from Ducati
-            setFocusCallback(false);
             ret = returnFocusStatus(false);
         }
     } else { // Focus mode in continuous
         if ( NO_ERROR == ret ) {
-            ret = returnFocusStatus(false);
+            ret = returnFocusStatus(true);
             mPending3Asettings |= SetFocus;
         }
     }
@@ -223,44 +231,32 @@ status_t OMXCameraAdapter::stopAutoFocus()
 
     LOG_FUNCTION_NAME;
 
-    if ( OMX_StateInvalid == mComponentState )
-      {
+    if ( OMX_StateInvalid == mComponentState )  {
         CAMHAL_LOGEA("OMX component in Invalid state");
         returnFocusStatus(false);
         return -EINVAL;
-      }
+    }
 
-    if ( OMX_StateExecuting != mComponentState )
-        {
+    if ( OMX_StateExecuting != mComponentState ) {
           CAMHAL_LOGEA("OMX component not in executing state");
         return NO_ERROR;
-        }
+    }
 
     if ( mParameters3A.Focus == OMX_IMAGE_FocusControlAutoInfinity ) {
         // No need to stop focus if we are in infinity mode. Nothing to stop.
         return NO_ERROR;
     }
 
-    if ( NO_ERROR == ret )
-       {
-       //Disable the callback first
-       ret = setFocusCallback(false);
-       }
+    OMX_INIT_STRUCT_PTR (&focusControl, OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE);
+    focusControl.eFocusControl = OMX_IMAGE_FocusControlOff;
 
-    if ( NO_ERROR == ret )
-        {
-        OMX_INIT_STRUCT_PTR (&focusControl, OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE);
-        focusControl.eFocusControl = OMX_IMAGE_FocusControlOff;
-
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                                OMX_IndexConfigFocusControl,
-                                &focusControl);
-        if ( OMX_ErrorNone != eError )
-            {
-            CAMHAL_LOGEB("Error while stopping focus 0x%x", eError);
-            return ErrorUtils::omxToAndroidError(eError);
-            }
-        }
+    eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                            OMX_IndexConfigFocusControl,
+                            &focusControl);
+    if ( OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("Error while stopping focus 0x%x", eError);
+        return ErrorUtils::omxToAndroidError(eError);
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -307,22 +303,26 @@ status_t OMXCameraAdapter::cancelAutoFocus()
         return ret;
     }
 
-    //Stop the AF only for modes other than CAF  or Inifinity
+    //Stop the AF only for modes other than CAF, Inifinity or Off
     if ( ( focusMode.eFocusControl != OMX_IMAGE_FocusControlAuto ) &&
          ( focusMode.eFocusControl != ( OMX_IMAGE_FOCUSCONTROLTYPE )
-                 OMX_IMAGE_FocusControlAutoInfinity ) ) {
+                 OMX_IMAGE_FocusControlAutoInfinity ) &&
+         ( focusMode.eFocusControl != OMX_IMAGE_FocusControlOff ) ) {
+        Mutex::Autolock lock(mCancelAFMutex);
         stopAutoFocus();
-        //Signal a dummy AF event so that in case the callback from ducati
-        //does come then it doesnt crash after
-        //exiting this function since eventSem will go out of scope.
-        ret |= SignalEvent(mCameraAdapterParameters.mHandleComp,
-                                    (OMX_EVENTTYPE) OMX_EventIndexSettingChanged,
-                                    OMX_ALL,
-                                    OMX_IndexConfigCommonFocusStatus,
-                                    NULL );
+        ret = mCancelAFCond.waitRelative(mCancelAFMutex, CANCEL_AF_TIMEOUT);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGE("Cancel AF timeout!");
+        }
     } else if (focusMode.eFocusControl == OMX_IMAGE_FocusControlAuto) {
        // re-apply CAF after unlocking and canceling
        mPending3Asettings |= SetFocus;
+    }
+
+    {
+        // Signal to 'doAutoFocus()'
+        Mutex::Autolock lock(mDoAFMutex);
+        mDoAFCond.broadcast();
     }
 
     // If the apps call #cancelAutoFocus()}, the face callbacks will also resume.
@@ -440,7 +440,8 @@ status_t OMXCameraAdapter::returnFocusStatus(bool timeoutReached)
                         focusStatus = CameraHalEvent::FOCUS_STATUS_SUCCESS;
                         break;
                         }
-                    case OMX_FocusStatusOff:
+                    case OMX_FocusStatusOff: // AF got canceled
+                        return NO_ERROR;
                     case OMX_FocusStatusUnableToReach:
                     case OMX_FocusStatusRequest:
                     default:
@@ -817,17 +818,24 @@ void OMXCameraAdapter::handleFocusCallback() {
         CAMHAL_LOGEA("Focus status check failed!");
         // signal and unblock doAutoFocus
         if (AF_ACTIVE & nextState) {
-            mDoAFSem.Signal();
+            Mutex::Autolock lock(mDoAFMutex);
+            mDoAFCond.broadcast();
         }
         return;
-    } else if (AF_ACTIVE & nextState) { // Handling for AF callback
+    }
+
+    if ( eFocusStatus.eFocusStatus == OMX_FocusStatusOff ) {
+        Mutex::Autolock lock(mCancelAFMutex);
+        mCancelAFCond.signal();
+        return;
+    }
+
+    if (eFocusStatus.eFocusStatus != OMX_FocusStatusRequest) {
         // signal doAutoFocus when a end of scan message comes
         // ignore start of scan
-       if (eFocusStatus.eFocusStatus != OMX_FocusStatusRequest) {
-            mDoAFSem.Signal();
-       }
-       return;
-   }
+        Mutex::Autolock lock(mDoAFMutex);
+        mDoAFCond.broadcast();
+    }
 
     if (mParameters3A.Focus != (OMX_IMAGE_FOCUSCONTROLTYPE) OMX_IMAGE_FocusControlAuto) {
        CAMHAL_LOGDA("unregistered focus callback when not in CAF or doAutoFocus... not handling");
