@@ -2860,7 +2860,7 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
     if ( ( NO_ERROR == ret ) && ( NULL == mCameraAdapter ) )
         {
         CAMHAL_LOGEA("No CameraAdapter instance");
-        ret = -EINVAL;
+        return -EINVAL;
         }
 
     if ( ( NO_ERROR == ret ) && ( !previewEnabled() ))
