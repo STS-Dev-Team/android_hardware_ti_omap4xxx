@@ -184,6 +184,5 @@ const char KEY_AUTOCONVERGENCE_MODE_VALUES[] = "auto-convergence-mode-values";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "supported-manual-convergence-min";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "supported-manual-convergence-max";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "supported-manual-convergence-step";
-const char KEY_PICTURE_CODING_VALUES[] = "picture-coding-values";
 
 #endif
