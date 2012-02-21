@@ -3675,7 +3675,7 @@ OMXCameraAdapter::~OMXCameraAdapter()
     LOG_FUNCTION_NAME_EXIT;
 }
 
-extern "C" CameraAdapter* CameraAdapter_Factory(size_t sensor_index)
+extern "C" CameraAdapter* OMXCameraAdapter_Factory(size_t sensor_index)
 {
     CameraAdapter *adapter = NULL;
     Mutex::Autolock lock(gAdapterLock);
@@ -3686,7 +3686,7 @@ extern "C" CameraAdapter* CameraAdapter_Factory(size_t sensor_index)
     if ( adapter ) {
         CAMHAL_LOGDB("New OMX Camera adapter instance created for sensor %d",sensor_index);
     } else {
-        CAMHAL_LOGEA("Camera adapter create failed!");
+        CAMHAL_LOGEA("OMX Camera adapter create failed for sensor index = %d!",sensor_index);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -4002,7 +4002,7 @@ private:
     int mPortsLeftToDisable;
 };
 
-extern "C" status_t CameraAdapter_Capabilities(
+extern "C" status_t OMXCameraAdapter_Capabilities(
         CameraProperties::Properties * const properties_array,
         const int starting_camera, const int max_camera, int & supportedCameras)
 {
@@ -4061,6 +4061,7 @@ extern "C" status_t CameraAdapter_Capabilities(
             break;
 
         num_cameras_supported++;
+        CAMHAL_LOGDB("Number of OMX Cameras detected = %d \n",num_cameras_supported);
     }
 
  EXIT:
