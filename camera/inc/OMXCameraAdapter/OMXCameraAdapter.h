@@ -989,7 +989,6 @@ private:
     bool mFirstTimeInit;
 
     ///Semaphores used internally
-    Semaphore mDoAFSem;
     Semaphore mInitSem;
     Semaphore mFlushSem;
     Semaphore mUsePreviewDataSem;
@@ -1029,6 +1028,13 @@ private:
     nsecs_t mLastFPSTime;
     Mutex mFrameCountMutex;
     Condition mFirstFrameCondition;
+
+    static const nsecs_t CANCEL_AF_TIMEOUT;
+    Mutex mCancelAFMutex;
+    Condition mCancelAFCond;
+
+    Mutex mDoAFMutex;
+    Condition mDoAFCond;
 
     size_t mSensorIndex;
     CodingMode mCodingMode;
