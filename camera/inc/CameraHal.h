@@ -1268,6 +1268,7 @@ private:
     int mVideoWidth;
     int mVideoHeight;
 
+    String8 mCapModeBackup;
 };
 
 
