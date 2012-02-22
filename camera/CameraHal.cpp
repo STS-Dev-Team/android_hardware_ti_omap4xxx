@@ -313,6 +313,9 @@ int CameraHal::setParameters(const CameraParameters& params)
 
             if( (valstr = params.get(TICameraParameters::KEY_CAP_MODE)) != NULL)
                 {
+                    if (strcmp(TICameraParameters::VIDEO_MODE, valstr)) {
+                        mCapModeBackup = valstr;
+                    }
                 CAMHAL_LOGDB("Capture mode set %s", params.get(TICameraParameters::KEY_CAP_MODE));
                 mParameters.set(TICameraParameters::KEY_CAP_MODE, valstr);
                 }
@@ -2161,31 +2164,21 @@ bool CameraHal::resetVideoModeParameters()
  */
 status_t CameraHal::restartPreview()
 {
-    const char *valstr = NULL;
-    char tmpvalstr[30];
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
 
     // Retain CAPTURE_MODE before calling stopPreview(), since it is reset in stopPreview().
-    tmpvalstr[0] = 0;
-    valstr = mParameters.get(TICameraParameters::KEY_CAP_MODE);
-    if(valstr != NULL)
-        {
-        if(sizeof(tmpvalstr) < (strlen(valstr)+1))
-            {
-            return -EINVAL;
-            }
-
-        strncpy(tmpvalstr, valstr, sizeof(tmpvalstr));
-        tmpvalstr[sizeof(tmpvalstr)-1] = 0;
-        }
 
     forceStopPreview();
 
     {
         Mutex::Autolock lock(mLock);
-        mParameters.set(TICameraParameters::KEY_CAP_MODE, tmpvalstr);
+        if (!mCapModeBackup.isEmpty()) {
+            mParameters.set(TICameraParameters::KEY_CAP_MODE, mCapModeBackup.string());
+        } else {
+            mParameters.set(TICameraParameters::KEY_CAP_MODE, "");
+        }
         mCameraAdapter->setParameters(mParameters);
     }
 
