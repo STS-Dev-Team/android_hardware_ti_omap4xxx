@@ -34,8 +34,6 @@ namespace android {
 
 #define ARRAY_SIZE(array) (sizeof((array)) / sizeof((array)[0]))
 #define FPS_MIN 5
-#define FPS_STEP 5
-#define FPS_RANGE_STEP 5
 
 static const char PARAM_SEP[] = ",";
 static const uint32_t VFR_OFFSET = 8;
@@ -299,20 +297,6 @@ const CapU32 OMXCameraAdapter::mSensorNames [] = {
     // TODO(XXX): need to account for S3D camera later
 };
 
-// values for supported variable framerates sorted in ascending order
-// CapU32Pair = (max fps, min fps, string representation)
-const CapU32Pair OMXCameraAdapter::mVarFramerates [] = {
-    { 15, 15, "(15000,15000)"},
-    { 24, 15, "(15000,24000)"},
-    { 24, 24, "(24000,24000)"},
-    { 27, 15, "(15000,27000)"},
-    { 27, 24, "(24000,27000)"},
-    { 27, 27, "(27000,27000)"},
-    { 30, 15, "(15000,30000)"},
-    { 30, 24, "(24000,30000)"},
-    { 30, 30, "(30000,30000)" },
-};
-
 const userToOMX_LUT OMXCameraAdapter::mAutoConvergence [] = {
     { TICameraParameters::AUTOCONVERGENCE_MODE_DISABLE, OMX_TI_AutoConvergenceModeDisable },
     { TICameraParameters::AUTOCONVERGENCE_MODE_FRAME,   OMX_TI_AutoConvergenceModeFrame },
@@ -463,70 +447,57 @@ status_t OMXCameraAdapter::encodeFramerateCap(OMX_U32 framerateMax,
 }
 
 status_t OMXCameraAdapter::encodeVFramerateCap(OMX_TI_CAPTYPE &caps,
-                                               const CapU32Pair *cap,
-                                               size_t capCount,
                                                char *buffer,
                                                char *defaultRange,
                                                size_t bufferSize)
 {
     status_t ret = NO_ERROR;
-    uint32_t minVFR, maxVFR;
-    int default_index = -1;
+    int default_index = 0;
+    unsigned int param_sep_length = strlen(PARAM_SEP);
+    char *pos;
 
     LOG_FUNCTION_NAME;
 
-    if ( (NULL == buffer) || (NULL == defaultRange) || (NULL == cap) ) {
+    if ( (NULL == buffer) || (NULL == defaultRange) ) {
         CAMHAL_LOGEA("Invalid input arguments");
         return -EINVAL;
     }
 
-    if(caps.ulPrvVarFPSModesCount < 1) {
+    if (caps.ulPrvVarFPSModesCount < 1) {
         return NO_ERROR;
     }
 
-    // Assumption: last range in tPrvVarFPSModes will be for S30FPSHD mode
-    minVFR = caps.tPrvVarFPSModes[caps.ulPrvVarFPSModesCount-1].nVarFPSMin >> VFR_OFFSET;
-    maxVFR = caps.tPrvVarFPSModes[caps.ulPrvVarFPSModesCount-1].nVarFPSMax >> VFR_OFFSET;
+    for (unsigned int i = 0; i < caps.ulPrvVarFPSModesCount; i++) {
+        uint32_t minVFR, maxVFR;
+        unsigned int current_idx;
 
-    if (minVFR < FPS_MIN) {
-        minVFR = FPS_MIN;
-    }
-
-    for (unsigned int i = 0; i < capCount; i++) {
-        // add cap[i] if it is in range and maxVFR != minVFR
-        if ((maxVFR >= cap[i].num1) && (minVFR <= cap[i].num2)) {
-            if (buffer[0] != '\0') {
-                strncat(buffer, PARAM_SEP, bufferSize - 1);
-            }
-            strncat(buffer, cap[i].param, bufferSize - 1);
-
-            // choose the max variable framerate as default
-            if (cap[i].num1 != cap[i].num2) {
-                default_index = i;
-            }
+        minVFR = caps.tPrvVarFPSModes[i].nVarFPSMin >> VFR_OFFSET;
+        if (minVFR < FPS_MIN) {
+            minVFR = FPS_MIN;
         }
+        maxVFR = caps.tPrvVarFPSModes[i].nVarFPSMax >> VFR_OFFSET;
+
+        current_idx = strlen(buffer);
+        if (current_idx != 0) {
+            strncat(buffer, PARAM_SEP, bufferSize - current_idx - 1);
+            current_idx += param_sep_length;
+        }
+
+        // choose the max variable framerate as default
+        if (minVFR != maxVFR) {
+            default_index = current_idx;
+        }
+
+        snprintf(&buffer[current_idx], bufferSize - current_idx - 1,
+            "(%u%s%u)",
+            minVFR * CameraHal::VFR_SCALE,
+            PARAM_SEP,
+            maxVFR * CameraHal::VFR_SCALE);
     }
 
-    // if we haven't found any caps in the list to populate
-    // just use the min and max
-    if (buffer[0] == '\0') {
-        snprintf(buffer, bufferSize - 1,
-             "(%u%s%u)",
-             minVFR * CameraHal::VFR_SCALE,
-             PARAM_SEP,
-             maxVFR * CameraHal::VFR_SCALE);
-    }
-
-    if (default_index != -1) {
-        snprintf(defaultRange, (MAX_PROP_VALUE_LENGTH - 1), "%lu%s%lu",
-                 cap[default_index].num2 * CameraHal::VFR_SCALE,
-                 PARAM_SEP,
-                 cap[default_index].num1 * CameraHal::VFR_SCALE);
-    } else {
-        snprintf(defaultRange, (MAX_PROP_VALUE_LENGTH - 1), "%u%s%u",
-                 minVFR * CameraHal::VFR_SCALE,
-                 PARAM_SEP,
-                 maxVFR * CameraHal::VFR_SCALE);
+    strcpy(defaultRange, &buffer[default_index + 1]);
+    if ((pos = strstr(defaultRange, ")")) != NULL) {
+        *pos = '\0';
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1089,8 +1060,6 @@ status_t OMXCameraAdapter::insertVFramerates(CameraProperties::Properties* param
     memset(defaultRange, '\0', MAX_PROP_VALUE_LENGTH);
 
     ret = encodeVFramerateCap(caps,
-                              mVarFramerates,
-                              ARRAY_SIZE(mVarFramerates),
                               supported,
                               defaultRange,
                               MAX_PROP_VALUE_LENGTH);

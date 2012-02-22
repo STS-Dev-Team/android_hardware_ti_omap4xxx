@@ -179,10 +179,6 @@ struct CapU32 {
     const char *param;
 };
 
-struct CapU32Pair {
-    OMX_U32 num1, num2;
-    const char *param;
-};
 struct CapS32 {
     OMX_S32 num;
     const char *param;
@@ -596,7 +592,7 @@ private:
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
     static status_t encodeFramerateCap(OMX_U32, OMX_U32, const CapFramerate*, size_t, char*, size_t);
-    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, const CapU32Pair*, size_t, char*, char*, size_t);
+    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, char*, char*, size_t);
     static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
                                                 const CapCodingFormat *,
                                                 size_t,
@@ -805,7 +801,6 @@ private:
     static const CapZoom mZoomStages [];
     static const CapEVComp mEVCompRanges [];
     static const CapISO mISOStages [];
-    static const CapU32Pair mVarFramerates [];
     static const int SENSORID_IMX060;
     static const int SENSORID_OV5650;
     static const int SENSORID_OV5640;
