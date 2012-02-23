@@ -1808,7 +1808,7 @@ status_t OMXCameraAdapter::insertGLBCESupported(CameraProperties::Properties* pa
 status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
-    char *pos;
+    char *pos, *str, *def;
     char temp[MAX_PROP_VALUE_LENGTH];
 
     LOG_FUNCTION_NAME;
@@ -1902,7 +1902,29 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     }
 
     params->set(CameraProperties::PREVIEW_FORMAT, DEFAULT_PREVIEW_FORMAT);
-    params->set(CameraProperties::PREVIEW_FRAME_RATE, DEFAULT_FRAMERATE);
+
+    /* Set default value if supported, otherwise set max supported value */
+    strncpy(temp, params->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES),
+            MAX_PROP_VALUE_LENGTH - 1);
+    def = str = temp;
+    while (1) {
+        if ((pos = strstr(str, PARAM_SEP))) {
+            *pos = '\0';
+        }
+        if (!strcmp(str, DEFAULT_FRAMERATE)) {
+            def = str;
+            break;
+        }
+        if (atoi(str) > atoi(def)) {
+            def = str;
+        }
+        if (pos == NULL) {
+            break;
+        }
+        str = pos + strlen(PARAM_SEP);
+    }
+    params->set(CameraProperties::PREVIEW_FRAME_RATE, def);
+
     params->set(CameraProperties::REQUIRED_PREVIEW_BUFS, DEFAULT_NUM_PREV_BUFS);
     params->set(CameraProperties::REQUIRED_IMAGE_BUFS, DEFAULT_NUM_PIC_BUFS);
     params->set(CameraProperties::SATURATION, DEFAULT_SATURATION);
