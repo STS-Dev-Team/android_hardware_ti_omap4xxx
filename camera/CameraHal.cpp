@@ -1000,7 +1000,9 @@ int CameraHal::setParameters(const CameraParameters& params)
             adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
             mParameters.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
             mBracketingEnabled = false;
-            stopImageBracketing();
+            if ( mBracketingRunning ) {
+                stopImageBracketing();
+            }
 
             //Remove AF events subscription
             if ( NULL != mEventProvider ) {
@@ -3518,7 +3520,9 @@ void CameraHal::forceStopPreview()
     LOG_FUNCTION_NAME;
 
     // stop bracketing if it is running
-    stopImageBracketing();
+    if ( mBracketingRunning ) {
+        stopImageBracketing();
+    }
 
     if(mDisplayAdapter.get() != NULL) {
         ///Stop the buffer display first
