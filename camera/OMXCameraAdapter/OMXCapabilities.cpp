@@ -978,11 +978,11 @@ status_t OMXCameraAdapter::insertZoomStages(CameraProperties::Properties* params
     params->set(CameraProperties::SUPPORTED_ZOOM_STAGES, zoomStageCount - 1); //As per CTS requirement
 
     if ( 0 == zoomStageCount ) {
-        params->set(CameraProperties::ZOOM_SUPPORTED, TICameraParameters::ZOOM_UNSUPPORTED);
-        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, TICameraParameters::ZOOM_UNSUPPORTED);
+        params->set(CameraProperties::ZOOM_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, CameraParameters::FALSE);
     } else {
-        params->set(CameraProperties::ZOOM_SUPPORTED, TICameraParameters::ZOOM_SUPPORTED);
-        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, TICameraParameters::ZOOM_SUPPORTED);
+        params->set(CameraProperties::ZOOM_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, CameraParameters::TRUE);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1497,11 +1497,11 @@ status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX
     LOG_FUNCTION_NAME
 
     if ( caps.bAELockSupported ) {
-        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
+        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::TRUE);
     }
 
     if ( caps.bAWBLockSupported ) {
-        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, DEFAULT_LOCK_SUPPORTED);
+        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::FALSE);
     }
 
     LOG_FUNCTION_NAME_EXIT
@@ -1780,11 +1780,11 @@ status_t OMXCameraAdapter::insertVideoSnapshotSupported(CameraProperties::Proper
 
     if (caps.bStillCapDuringVideoSupported)
     {
-        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, TICameraParameters::VIDEO_SNAPSHOT_SUPPORTED);
+        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, CameraParameters::TRUE);
     }
     else
     {
-        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, TICameraParameters::VIDEO_SNAPSHOT_UNSUPPORTED);
+        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, CameraParameters::FALSE);
     }
 
     LOG_FUNCTION_NAME_EXIT;

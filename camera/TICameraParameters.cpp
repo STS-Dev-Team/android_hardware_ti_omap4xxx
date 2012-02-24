@@ -82,14 +82,6 @@ const char TICameraParameters::RAW_WIDTH[] = "raw-width";
 const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
 const char TICameraParameters::KEY_FILENAME_TIMESTAMP[] = "captured-filename";
 
-//TI extensions for enabling/disabling measurement
-const char TICameraParameters::MEASUREMENT_ENABLE[] = "enable";
-const char TICameraParameters::MEASUREMENT_DISABLE[] = "disable";
-
-//TI extensions for zoom
-const char TICameraParameters::ZOOM_SUPPORTED[] = "true";
-const char TICameraParameters::ZOOM_UNSUPPORTED[] = "false";
-
 // TI extensions for Stereo Mode
 const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT[] = "s3d-prv-frame-layout";
 const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT_VALUES[] = "s3d-prv-frame-layout-values";
@@ -120,14 +112,6 @@ const char TICameraParameters::KEY_EXIF_MAKE[] = "exif-make";
 const char TICameraParameters::KEY_GPS_MAPDATUM[] = "gps-mapdatum";
 const char TICameraParameters::KEY_GPS_VERSION[] = "gps-version";
 const char TICameraParameters::KEY_GPS_DATESTAMP[] = "gps-datestamp";
-
-//TI extensions for enabling/disabling shutter sound
-const char TICameraParameters::SHUTTER_ENABLE[] = "true";
-const char TICameraParameters::SHUTTER_DISABLE[] = "false";
-
-//TI extensions for Temporal Bracketing
-const char TICameraParameters::BRACKET_ENABLE[] = "enable";
-const char TICameraParameters::BRACKET_DISABLE[] = "disable";
 
 //TI extensions to Image post-processing
 const char TICameraParameters::IPP_LDCNSF[] = "ldc-nsf";
@@ -227,10 +211,5 @@ const char TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] =
 
 const char TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE[] = "enable";
 const char TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE[] = "disable";
-
-//TI extensions for video snapshot
-const char TICameraParameters::VIDEO_SNAPSHOT_SUPPORTED[] = "true";
-const char TICameraParameters::VIDEO_SNAPSHOT_UNSUPPORTED[] = "false";
-
 };
 
