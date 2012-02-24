@@ -1047,6 +1047,7 @@ private:
     Mutex mDccDataLock;
 
     int mMaxZoomSupported;
+    Mutex mImageCaptureLock;
 };
 }; //// namespace
 #endif //OMX_CAMERA_ADAPTER_H
