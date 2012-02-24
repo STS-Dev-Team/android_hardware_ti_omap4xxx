@@ -75,8 +75,6 @@ const char TICameraParameters::KEY_GLBCE_SUPPORTED[] = "glbce-supported";
 const char TICameraParameters::KEY_CURRENT_ISO[] = "current-iso";
 const char TICameraParameters::KEY_SENSOR_ORIENTATION[] = "sensor-orientation";
 const char TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES[] = "sensor-orientation-values";
-const char TICameraParameters::KEY_MINFRAMERATE[] = "min-framerate";
-const char TICameraParameters::KEY_MAXFRAMERATE[] = "max-framerate";
 const char TICameraParameters::KEY_RECORDING_HINT[] = "internal-recording-hint";
 const char TICameraParameters::KEY_AUTO_FOCUS_LOCK[] = "auto-focus-lock";
 

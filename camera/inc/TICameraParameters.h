@@ -72,8 +72,6 @@ static const char  KEY_GBCE[];
 static const char  KEY_GBCE_SUPPORTED[];
 static const char  KEY_GLBCE[];
 static const char  KEY_GLBCE_SUPPORTED[];
-static const char  KEY_MINFRAMERATE[];
-static const char  KEY_MAXFRAMERATE[];
 
 // TI recording hint to notify camera adapters of possible recording
 static const char  KEY_RECORDING_HINT[];

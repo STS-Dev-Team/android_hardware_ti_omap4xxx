@@ -333,9 +333,9 @@ public:
             OMX_CONFIG_FRAMESTABTYPE        mVidStabConfig;
             OMX_U32                         mCapFrame;
             OMX_U32                         mFrameRate;
-            OMX_S32                         mMinFrameRate;
-            OMX_S32                         mMaxFrameRate;
-            CameraFrame::FrameType mImageType;
+            OMX_U32                         mMinFrameRate;
+            OMX_U32                         mMaxFrameRate;
+            CameraFrame::FrameType          mImageType;
             OMX_TI_STEREOFRAMELAYOUTTYPE    mFrameLayoutType;
     };
 
@@ -593,7 +593,7 @@ private:
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
     static status_t encodeFramerateCap(OMX_U32, OMX_U32, const CapFramerate*, size_t, char*, size_t);
-    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, char*, char*, size_t);
+    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, const CapFramerate*, size_t, int&, int&, char*, char*, size_t);
     static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
                                                 const CapCodingFormat *,
                                                 size_t,
@@ -615,7 +615,6 @@ private:
     static status_t insertImageFormats(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertPreviewFormats(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFramerates(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
-    static status_t insertVFramerates(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertEVs(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertISOModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertIPPModes(CameraProperties::Properties*, OMX_TI_CAPTYPE &);
