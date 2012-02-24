@@ -128,6 +128,73 @@ class CameraFrame;
 class CameraHalEvent;
 class DisplayFrame;
 
+class FpsRange {
+public:
+    static FpsRange create(int min, int max);
+
+    static int compare(const FpsRange * left, const FpsRange * right);
+
+    FpsRange();
+
+    bool operator==(const FpsRange & fpsRange) const;
+
+    bool isNull() const;
+    bool isFixed() const;
+
+    int min() const;
+    int max() const;
+
+private:
+    int mMin;
+    int mMax;
+};
+
+
+inline FpsRange FpsRange::create(const int min, const int max) {
+    FpsRange fpsRange;
+    fpsRange.mMin = min;
+    fpsRange.mMax = max;
+    return fpsRange;
+}
+
+inline int FpsRange::compare(const FpsRange * const left, const FpsRange * const right) {
+    if ( left->max() < right->max() ) {
+        return -1;
+    }
+
+    if ( left->max() > right->max() ) {
+        return 1;
+    }
+
+    if ( left->min() < right->min() ) {
+        return -1;
+    }
+
+    if ( left->min() > right->min() ) {
+        return 1;
+    }
+
+    return 0;
+}
+
+inline FpsRange::FpsRange() : mMin(-1), mMax(-1) {}
+
+inline bool FpsRange::operator==(const FpsRange & fpsRange) const { 
+    return mMin == fpsRange.mMin && mMax == fpsRange.mMax;
+}
+
+inline bool FpsRange::isNull() const {
+    return mMin == -1 || mMax == -1;
+}
+
+inline bool FpsRange::isFixed() const {
+    return mMin == mMax;
+}
+
+inline int FpsRange::min() const { return mMin; }
+
+inline int FpsRange::max() const { return mMax; }
+
 class CameraArea : public RefBase
 {
 public:
@@ -1139,6 +1206,10 @@ private:
     //instance
     bool isResolutionValid(unsigned int width, unsigned int height, const char *supportedResolutions);
 
+    //Check if a given variable frame rate range is supported by the current camera
+    //instance
+    bool isFpsRangeValid(int fpsMin, int fpsMax, const char *supportedFpsRanges);
+
     //Check if a given parameter is supported by the current camera
     // instance
     bool isParameterValid(const char *param, const char *supportedParams);
@@ -1157,8 +1228,6 @@ private:
     void setShutter(bool enable);
 
     void forceStopPreview();
-
-    void selectFPSRange(int framerate, int *min_fps, int *max_fps);
 
     bool checkFramerateThr(const CameraParameters &params);
     bool setPreferredPreviewRes(const CameraParameters &params, int width, int height);

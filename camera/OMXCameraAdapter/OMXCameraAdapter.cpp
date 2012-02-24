@@ -507,30 +507,26 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
 
     params.getPreviewSize(&w, &h);
     frameRate = params.getPreviewFrameRate();
-    minFramerate = params.getInt(TICameraParameters::KEY_MINFRAMERATE);
-    maxFramerate = params.getInt(TICameraParameters::KEY_MAXFRAMERATE);
-    if ( ( 0 < minFramerate ) &&
-         ( 0 < maxFramerate ) )
-        {
-        if ( minFramerate > maxFramerate )
-            {
-             CAMHAL_LOGEA(" Min FPS set higher than MAX. So setting MIN and MAX to the higher value");
-             maxFramerate = minFramerate;
-            }
+    params.getPreviewFpsRange(&minFramerate, &maxFramerate);
+    minFramerate /= CameraHal::VFR_SCALE;
+    maxFramerate /= CameraHal::VFR_SCALE;
+    if ( ( 0 < minFramerate ) && ( 0 < maxFramerate ) ) {
+        if ( minFramerate > maxFramerate ) {
+            CAMHAL_LOGEA(" Min FPS set higher than MAX. So setting MIN and MAX to the higher value");
+            maxFramerate = minFramerate;
+        }
 
-        if ( 0 >= frameRate )
-            {
+        if ( 0 >= frameRate ) {
             frameRate = maxFramerate;
-            }
+        }
 
-        if( ( cap->mMinFrameRate != minFramerate ) ||
-            ( cap->mMaxFrameRate != maxFramerate ) )
-            {
+        if ( ( cap->mMinFrameRate != (OMX_U32) minFramerate ) ||
+             ( cap->mMaxFrameRate != (OMX_U32) maxFramerate ) ) {
             cap->mMinFrameRate = minFramerate;
             cap->mMaxFrameRate = maxFramerate;
             setVFramerate(cap->mMinFrameRate, cap->mMaxFrameRate);
-            }
         }
+    }
 
     if ( 0 < frameRate )
         {

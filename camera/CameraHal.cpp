@@ -245,20 +245,14 @@ int CameraHal::setParameters(const CameraParameters& params)
     LOG_FUNCTION_NAME;
 
     int w, h;
-    int framerate,minframerate;
+    int framerate;
     int maxFPS, minFPS;
-    int error;
-    int base;
     const char *valstr = NULL;
-    const char *prevFormat;
-    char *af_coord;
     status_t ret = NO_ERROR;
     // Needed for KEY_RECORDING_HINT
     bool restartPreviewRequired = false;
     bool updateRequired = false;
     CameraParameters oldParams(mParameters.flatten());
-    bool videoMode = false;
-    char range[MAX_PROP_VALUE_LENGTH];
 
     {
         Mutex::Autolock lock(mLock);
@@ -388,7 +382,6 @@ int CameraHal::setParameters(const CameraParameters& params)
                 {
                 CAMHAL_LOGDB("Recording Hint is set to %s", valstr);
                 mParameters.set(CameraParameters::KEY_RECORDING_HINT, valstr);
-                videoMode = true;
                 int w, h;
 
                 params.getPreviewSize(&w, &h);
@@ -500,102 +493,44 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
         }
 
-        framerate = params.getPreviewFrameRate();
-        valstr = params.get(CameraParameters::KEY_PREVIEW_FPS_RANGE);
-        CAMHAL_LOGDB("FRAMERATE %d", framerate);
-
-        CAMHAL_LOGVB("Passed FRR: %s, Supported FRR %s", valstr
-                        , mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
-        CAMHAL_LOGVB("Passed FR: %d, Supported FR %s", framerate
-                        , mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
-
-
-        //Perform parameter validation
-        if(!isParameterValid(valstr
-                        , mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED)))
-        {
-            CAMHAL_LOGDA(" FPS Range is invalid. Ckeck the Frame Rate param ");
-            if(!isParameterValid(framerate,
-                                      mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES)))
-            {
-                CAMHAL_LOGEA("Invalid frame rate ");
-                return BAD_VALUE;
-            }
-        }
-
         // Variable framerate ranges have higher priority over
         // deprecated constant FPS. "KEY_PREVIEW_FPS_RANGE" should
         // be cleared by the client in order for constant FPS to get
         // applied.
-        // If Port FPS needs to be used for configuring , then FPS RANGE should not be set by the APP.
-        if ( valstr != NULL)
-          {
+        // If Port FPS needs to be used for configuring, then FPS RANGE should not be set by the APP.
+        valstr = params.get(CameraParameters::KEY_PREVIEW_FPS_RANGE);
+        framerate = 0;
+        if (valstr != NULL && strlen(valstr)) {
             // APP wants to set FPS range
-            //Set framerate = MAXFPS
+            // Set framerate = MAXFPS
             CAMHAL_LOGDA("APP IS CHANGING FRAME RATE RANGE");
+
             params.getPreviewFpsRange(&minFPS, &maxFPS);
-
-            if ( ( 0 > minFPS ) || ( 0 > maxFPS ) )
-              {
-                CAMHAL_LOGEA("ERROR: FPS Range is negative!");
-                return BAD_VALUE;
-              }
-
-            framerate = maxFPS /CameraHal::VFR_SCALE;
-
-          }
-        else
-        {
-              if ( framerate != atoi(mCameraProperties->get(CameraProperties::PREVIEW_FRAME_RATE)) )
-              {
-
-                selectFPSRange(framerate, &minFPS, &maxFPS);
-                CAMHAL_LOGDB("Select FPS Range %d %d", minFPS, maxFPS);
-              }
-              else
-                {
-                    if (videoMode) {
-                        valstr = mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_VIDEO);
-                        CameraParameters temp;
-                        temp.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
-                        temp.getPreviewFpsRange(&minFPS, &maxFPS);
-                    }
-                    else {
-                        valstr = mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_IMAGE);
-                        CameraParameters temp;
-                        temp.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
-                        temp.getPreviewFpsRange(&minFPS, &maxFPS);
-                    }
-
-                    framerate = maxFPS / CameraHal::VFR_SCALE;
-                }
-
+            // Validate VFR
+            if (!isFpsRangeValid(minFPS, maxFPS, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE))) {
+                CAMHAL_LOGEA("Invalid FPS Range");
+            } else {
+                framerate = maxFPS / CameraHal::VFR_SCALE;
+                mParameters.setPreviewFrameRate(framerate);
+                CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
+                CAMHAL_LOGDB("FPS Range = %s", valstr);
+                mParameters.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
+            }
         }
+        if (!framerate) {
+            framerate = params.getPreviewFrameRate();
+            if (!isParameterValid(framerate, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES))) {
+                CAMHAL_LOGEA("Invalid frame rate");
+                return BAD_VALUE;
+            }
+            char tmpBuffer[MAX_PROP_VALUE_LENGTH];
 
-        CAMHAL_LOGDB("FPS Range = %s", valstr);
-        CAMHAL_LOGDB("DEFAULT FPS Range = %s", mCameraProperties->get(CameraProperties::FRAMERATE_RANGE));
-
-        minFPS /= CameraHal::VFR_SCALE;
-        maxFPS /= CameraHal::VFR_SCALE;
-
-        if ( ( 0 == minFPS ) || ( 0 == maxFPS ) )
-          {
-            CAMHAL_LOGEA("ERROR: FPS Range is invalid!");
-            return BAD_VALUE;
-          }
-
-        if ( maxFPS < minFPS )
-          {
-            CAMHAL_LOGEA("ERROR: Max FPS is smaller than Min FPS!");
-            return BAD_VALUE;
-          }
-        CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
-        mParameters.setPreviewFrameRate(framerate);
-        mParameters.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, params.get(CameraParameters::KEY_PREVIEW_FPS_RANGE));
-
-        CAMHAL_LOGDB("FPS Range [%d, %d]", minFPS, maxFPS);
-        mParameters.set(TICameraParameters::KEY_MINFRAMERATE, minFPS);
-        mParameters.set(TICameraParameters::KEY_MAXFRAMERATE, maxFPS);
+            sprintf(tmpBuffer, "%d,%d", framerate * CameraHal::VFR_SCALE, framerate * CameraHal::VFR_SCALE);
+            mParameters.setPreviewFrameRate(framerate);
+            CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
+            mParameters.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, tmpBuffer);
+            CAMHAL_LOGDB("FPS Range = %s", tmpBuffer);
+        }
 
         if ((valstr = params.get(TICameraParameters::KEY_GBCE)) != NULL) {
             if (strcmp(mCameraProperties->get(CameraProperties::SUPPORTED_GBCE),
@@ -3244,6 +3179,44 @@ exit:
     return ret;
 }
 
+bool CameraHal::isFpsRangeValid(int fpsMin, int fpsMax, const char *supportedFpsRanges)
+{
+    bool ret = false;
+    char supported[MAX_PROP_VALUE_LENGTH];
+    char *pos;
+    int suppFpsRangeArray[2];
+    int i = 0;
+
+    LOG_FUNCTION_NAME;
+
+    if ( NULL == supportedFpsRanges ) {
+        CAMHAL_LOGEA("Invalid supported FPS ranges string");
+        return false;
+    }
+
+    if (fpsMin <= 0 || fpsMax <= 0 || fpsMin > fpsMax) {
+        return false;
+    }
+
+    strncpy(supported, supportedFpsRanges, MAX_PROP_VALUE_LENGTH);
+    pos = strtok(supported, " (,)");
+    while (pos != NULL) {
+        suppFpsRangeArray[i] = atoi(pos);
+        if (i++) {
+            if (fpsMin >= suppFpsRangeArray[0] && fpsMax <= suppFpsRangeArray[1]) {
+                ret = true;
+                break;
+            }
+            i = 0;
+        }
+        pos = strtok(NULL, " (,)");
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return ret;
+}
+
 bool CameraHal::isParameterValid(const char *param, const char *supportedParams)
 {
     bool ret = true;
@@ -3412,6 +3385,7 @@ void CameraHal::insertSupportedParams()
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
+    p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
     p.set(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_THUMBNAIL_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE, mCameraProperties->get(CameraProperties::SUPPORTED_WHITE_BALANCE));
     p.set(CameraParameters::KEY_SUPPORTED_EFFECTS, mCameraProperties->get(CameraProperties::SUPPORTED_EFFECTS));
@@ -3443,7 +3417,6 @@ void CameraHal::insertSupportedParams()
     p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_STEP));
     p.set(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED, mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED));
     p.set(TICameraParameters::KEY_VNF_SUPPORTED, mCameraProperties->get(CameraProperties::VNF_SUPPORTED));
-    p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
     p.set(TICameraParameters::KEY_SENSOR_ORIENTATION, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION));
     p.set(TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION_VALUES));
     p.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED));
@@ -3508,6 +3481,7 @@ void CameraHal::initDefaultParameters()
 
     //Insert default values
     p.setPreviewFrameRate(atoi(mCameraProperties->get(CameraProperties::PREVIEW_FRAME_RATE)));
+    p.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE));
     p.setPreviewFormat(mCameraProperties->get(CameraProperties::PREVIEW_FORMAT));
     p.setPictureFormat(mCameraProperties->get(CameraProperties::PICTURE_FORMAT));
     p.set(CameraParameters::KEY_JPEG_QUALITY, mCameraProperties->get(CameraProperties::JPEG_QUALITY));
@@ -3544,7 +3518,6 @@ void CameraHal::initDefaultParameters()
     p.set(CameraParameters::KEY_FOCAL_LENGTH, mCameraProperties->get(CameraProperties::FOCAL_LENGTH));
     p.set(CameraParameters::KEY_HORIZONTAL_VIEW_ANGLE, mCameraProperties->get(CameraProperties::HOR_ANGLE));
     p.set(CameraParameters::KEY_VERTICAL_VIEW_ANGLE, mCameraProperties->get(CameraProperties::VER_ANGLE));
-    p.set(CameraParameters::KEY_PREVIEW_FPS_RANGE,mCameraProperties->get(CameraProperties::FRAMERATE_RANGE));
     p.set(TICameraParameters::KEY_SENSOR_ORIENTATION, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION));
     p.set(TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION_VALUES));
     p.set(TICameraParameters::KEY_EXIF_MAKE, mCameraProperties->get(CameraProperties::EXIF_MAKE));
@@ -3651,41 +3624,6 @@ status_t CameraHal::storeMetaDataInBuffers(bool enable)
     return mAppCallbackNotifier->useMetaDataBufferMode(enable);
 
     LOG_FUNCTION_NAME_EXIT;
-}
-
-void CameraHal::selectFPSRange(int framerate, int *min_fps, int *max_fps)
-{
-  char * ptr;
-  char supported[MAX_PROP_VALUE_LENGTH];
-  int fpsrangeArray[2];
-  int i = 0;
-
-  LOG_FUNCTION_NAME;
-  size_t size = strlen(mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED))+1;
-  strncpy(supported, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED), size);
-
-  ptr = strtok (supported," (,)");
-
-  while (ptr != NULL)
-    {
-      fpsrangeArray[i]= atoi(ptr)/CameraHal::VFR_SCALE;
-      if (i == 1)
-        {
-          if (framerate == fpsrangeArray[i])
-            {
-              CAMHAL_LOGDB("SETTING FPS RANGE min = %d max = %d \n", fpsrangeArray[0], fpsrangeArray[1]);
-              *min_fps = fpsrangeArray[0]*CameraHal::VFR_SCALE;
-              *max_fps = fpsrangeArray[1]*CameraHal::VFR_SCALE;
-              break;
-            }
-        }
-      ptr = strtok (NULL, " (,)");
-      i++;
-      i%=2;
-    }
-
-  LOG_FUNCTION_NAME_EXIT;
-
 }
 
 bool CameraHal::checkFramerateThr(const CameraParameters &params)
