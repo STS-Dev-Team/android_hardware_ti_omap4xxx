@@ -140,7 +140,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     str = params.get(TICameraParameters::KEY_TEMP_BRACKETING);
     if ( ( str != NULL ) &&
-         ( strcmp(str, TICameraParameters::BRACKET_ENABLE ) == 0 ) ) {
+         ( strcmp(str, CameraParameters::TRUE) == 0 ) ) {
 
         if ( !mBracketingSet ) {
             mPendingCaptureSettings |= SetExpBracket;

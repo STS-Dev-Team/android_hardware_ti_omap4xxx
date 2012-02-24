@@ -739,14 +739,14 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         if( (valstr = params.get(TICameraParameters::KEY_MEASUREMENT_ENABLE)) != NULL )
             {
-            CAMHAL_LOGDB("Measurements set to %s", params.get(TICameraParameters::KEY_MEASUREMENT_ENABLE));
+            CAMHAL_LOGDB("Measurements set to %s", valstr);
             mParameters.set(TICameraParameters::KEY_MEASUREMENT_ENABLE, valstr);
 
-            if (strcmp(valstr, (const char *) TICameraParameters::MEASUREMENT_ENABLE) == 0)
+            if (strcmp(valstr, CameraParameters::TRUE) == 0)
                 {
                 mMeasurementEnabled = true;
                 }
-            else if (strcmp(valstr, (const char *) TICameraParameters::MEASUREMENT_DISABLE) == 0)
+            else if (strcmp(valstr, CameraParameters::FALSE) == 0)
                 {
                 mMeasurementEnabled = false;
                 }
@@ -988,7 +988,7 @@ int CameraHal::setParameters(const CameraParameters& params)
         CAMHAL_LOGDB("Negative bracketing range %d", mBracketRangeNegative);
 
         if( ( (valstr = params.get(TICameraParameters::KEY_TEMP_BRACKETING)) != NULL) &&
-            ( strcmp(valstr, TICameraParameters::BRACKET_ENABLE) == 0 )) {
+            ( strcmp(valstr, CameraParameters::TRUE) == 0 )) {
             if ( !mBracketingEnabled ) {
                 CAMHAL_LOGDA("Enabling bracketing");
                 mBracketingEnabled = true;
@@ -998,7 +998,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
             mParameters.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
         } else if ( ( (valstr = params.get(TICameraParameters::KEY_TEMP_BRACKETING)) != NULL ) &&
-            ( strcmp(valstr, TICameraParameters::BRACKET_DISABLE) == 0 )) {
+            ( strcmp(valstr, CameraParameters::FALSE) == 0 )) {
             CAMHAL_LOGDA("Disabling bracketing");
 
             adapterParams.set(TICameraParameters::KEY_TEMP_BRACKETING, valstr);
@@ -1022,7 +1022,7 @@ int CameraHal::setParameters(const CameraParameters& params)
         }
 
         if( ( (valstr = params.get(TICameraParameters::KEY_SHUTTER_ENABLE)) != NULL ) &&
-            ( strcmp(valstr, TICameraParameters::SHUTTER_ENABLE) == 0 ))
+            ( strcmp(valstr, CameraParameters::TRUE) == 0 ))
             {
             CAMHAL_LOGDA("Enabling shutter sound");
 
@@ -1031,7 +1031,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.set(TICameraParameters::KEY_SHUTTER_ENABLE, valstr);
             }
         else if ( ( (valstr = params.get(TICameraParameters::KEY_SHUTTER_ENABLE)) != NULL ) &&
-            ( strcmp(valstr, TICameraParameters::SHUTTER_DISABLE) == 0 ))
+            ( strcmp(valstr, CameraParameters::FALSE) == 0 ))
             {
             CAMHAL_LOGDA("Disabling shutter sound");
 

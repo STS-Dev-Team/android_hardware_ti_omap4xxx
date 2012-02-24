@@ -575,11 +575,11 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
 
     if ( (valstr = params.get(TICameraParameters::KEY_MEASUREMENT_ENABLE)) != NULL )
         {
-        if (strcmp(valstr, (const char *) TICameraParameters::MEASUREMENT_ENABLE) == 0)
+        if (strcmp(valstr, CameraParameters::TRUE) == 0)
             {
             mMeasurementEnabled = true;
             }
-        else if (strcmp(valstr, (const char *) TICameraParameters::MEASUREMENT_DISABLE) == 0)
+        else if (strcmp(valstr, CameraParameters::FALSE) == 0)
             {
             mMeasurementEnabled = false;
             }
