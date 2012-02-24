@@ -753,6 +753,8 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
 
     LOG_FUNCTION_NAME;
 
+    Mutex::Autolock lock(mImageCaptureLock);
+
     if(!mCaptureConfigured)
         {
         ///Image capture was cancelled before we could start
@@ -929,6 +931,8 @@ status_t OMXCameraAdapter::stopImageCapture()
     OMXCameraPortParameters *imgCaptureData = NULL;
 
     LOG_FUNCTION_NAME;
+
+    Mutex::Autolock lock(mImageCaptureLock);
 
     if (!mCaptureConfigured) {
         //Capture is not ongoing, return from here
