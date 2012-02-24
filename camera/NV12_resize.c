@@ -12,6 +12,22 @@
 #define STRIDE 4096
 #include <utils/Log.h>
 
+/*----------------------------------------------------------------------------
+    Define : TRUE/FALSE for boolean operations
+----------------------------------------------------------------------------*/
+
+#ifndef TRUE
+    #define TRUE 1
+#endif
+
+#ifndef FALSE
+    #define FALSE 0
+#endif
+
+#ifndef NULL
+   #define NULL 0
+#endif
+
 /*==========================================================================
 * Function Name  : VT_resizeFrame_Video_opt2_lp
 *

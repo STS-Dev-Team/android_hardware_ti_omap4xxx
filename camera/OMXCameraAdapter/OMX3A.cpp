@@ -27,11 +27,6 @@
 
 #include <cutils/properties.h>
 
-#undef TRUE
-#undef FALSE
-#define TRUE "true"
-#define FALSE "false"
-
 #define METERING_AREAS_RANGE 0xFF
 
 static const char PARAM_SEP[] = ",";
@@ -298,12 +293,12 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         }
 
     str = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED);
-    if ( (str != NULL) && (!strcmp(str, "true")) )
+    if ( (str != NULL) && (!strcmp(str, CameraParameters::TRUE)) )
       {
         OMX_BOOL lock = OMX_FALSE;
         mUserSetExpLock = OMX_FALSE;
         str = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK);
-        if (str && ((strcmp(str, "true")) == 0))
+        if (str && ((strcmp(str, CameraParameters::TRUE)) == 0))
           {
             CAMHAL_LOGVA("Locking Exposure");
             lock = OMX_TRUE;
@@ -323,12 +318,12 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
       }
 
     str = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED);
-    if ( (str != NULL) && (!strcmp(str, "true")) )
+    if ( (str != NULL) && (!strcmp(str, CameraParameters::TRUE)) )
       {
         OMX_BOOL lock = OMX_FALSE;
         mUserSetWbLock = OMX_FALSE;
         str = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK);
-        if (str && ((strcmp(str, "true")) == 0))
+        if (str && ((strcmp(str, CameraParameters::TRUE)) == 0))
           {
             CAMHAL_LOGVA("Locking WhiteBalance");
             lock = OMX_TRUE;
@@ -347,11 +342,11 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
       }
 
     str = params.get(TICameraParameters::KEY_AUTO_FOCUS_LOCK);
-    if (str && (strcmp(str, TRUE) == 0) && (mParameters3A.FocusLock != OMX_TRUE)) {
+    if (str && (strcmp(str, CameraParameters::TRUE) == 0) && (mParameters3A.FocusLock != OMX_TRUE)) {
         CAMHAL_LOGVA("Locking Focus");
         mParameters3A.FocusLock = OMX_TRUE;
         setFocusLock(mParameters3A);
-    } else if (str && (strcmp(str, FALSE) == 0) && (mParameters3A.FocusLock != OMX_FALSE)) {
+    } else if (str && (strcmp(str, CameraParameters::FALSE) == 0) && (mParameters3A.FocusLock != OMX_FALSE)) {
         CAMHAL_LOGVA("UnLocking Focus");
         mParameters3A.FocusLock = OMX_FALSE;
         setFocusLock(mParameters3A);
@@ -481,7 +476,7 @@ static bool isFlashDisabled() {
 
     char value[PROPERTY_VALUE_MAX];
     if (property_get("camera.flash_off", value, NULL) &&
-        (!strcasecmp(value, "true") || !strcasecmp(value, "1"))) {
+        (!strcasecmp(value, CameraParameters::TRUE) || !strcasecmp(value, "1"))) {
         LOGW("flash is disabled for testing purpose");
         return true;
     }
@@ -1519,7 +1514,7 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
     }
     else
     {
-        const char *lock_state_exp = toggleExp ? TRUE : FALSE;
+        const char *lock_state_exp = toggleExp ? CameraParameters::TRUE : CameraParameters::FALSE;
         CAMHAL_LOGDA("Exposure Lock GetConfig successfull");
 
         /* Apply locks only when not applied already */
@@ -1565,7 +1560,7 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
     }
     else
     {
-        const char *lock_state_wb = toggleWb ? TRUE : FALSE;
+        const char *lock_state_wb = toggleWb ? CameraParameters::TRUE : CameraParameters::FALSE;
         CAMHAL_LOGDA("WhiteBalance Lock GetConfig successfull");
 
         /* Apply locks only when not applied already */
