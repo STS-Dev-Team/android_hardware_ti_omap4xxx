@@ -145,8 +145,6 @@ public:
     static const char VNF[];
     static const char VNF_SUPPORTED[];
     static const char FRAMERATE_RANGE[];
-    static const char FRAMERATE_RANGE_IMAGE[];
-    static const char FRAMERATE_RANGE_VIDEO[];
     static const char FRAMERATE_RANGE_SUPPORTED[];
 
     static const char DEFAULT_VALUE[];
