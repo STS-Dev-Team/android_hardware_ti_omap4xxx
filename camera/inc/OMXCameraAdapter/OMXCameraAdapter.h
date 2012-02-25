@@ -751,6 +751,7 @@ public:
 
         status_t put(TIUTILS::Message* msg){
             Mutex::Autolock lock(mLock);
+            mIsProcessed = false;
             return mCommandMsgQ.put(msg);
         }
 
