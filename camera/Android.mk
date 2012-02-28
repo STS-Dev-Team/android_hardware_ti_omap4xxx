@@ -66,7 +66,8 @@ OMAP4_CAMERA_OMX_SRC:= \
 	OMXCameraAdapter/OMXDccDataSave.cpp \
 
 OMAP4_CAMERA_USB_SRC:= \
-	V4LCameraAdapter/V4LCameraAdapter.cpp
+	V4LCameraAdapter/V4LCameraAdapter.cpp \
+    V4LCameraAdapter/V4LCapabilities.cpp \
 
 #
 # OMX Camera HAL

@@ -28,8 +28,28 @@ namespace android {
 #define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
 
 #define NB_BUFFER 10
-#define DEVICE "/dev/video0"
+#define DEVICE "/dev/videoxx"
+#define DEVICE_PATH "/dev/"
+#define DEVICE_NAME "videoxx"
 
+typedef int V4L_HANDLETYPE;
+
+struct CapPixelformat {
+        uint32_t pixelformat;
+        const char *param;
+};
+
+struct CapResolution {
+        size_t width, height;
+        char param[10];
+};
+
+struct CapU32 {
+        uint32_t num;
+        const char *param;
+};
+
+typedef CapU32 CapFramerate;
 
 struct VideoInfo {
     struct v4l2_capability cap;
@@ -44,6 +64,16 @@ struct VideoInfo {
     int framesizeIn;
 };
 
+typedef struct V4L_TI_CAPTYPE {
+    uint16_t        ulPreviewFormatCount;   // supported preview pixelformat count
+    uint32_t        ePreviewFormats[32];
+    uint16_t        ulPreviewResCount;   // supported preview resolution sizes
+    CapResolution   tPreviewRes[32];
+    uint16_t        ulCaptureResCount;   // supported capture resolution sizes
+    CapResolution   tCaptureRes[32];
+    uint16_t        ulFrameRateCount;   // supported frame rate
+    uint16_t        ulFrameRates[32];
+}V4L_TI_CAPTYPE;
 
 /**
   * Class which completely abstracts the camera hardware interaction from camera hal
@@ -78,6 +108,8 @@ public:
 
     // API
     virtual status_t UseBuffersPreview(void* bufArr, int num);
+
+    static status_t getCaps(const int sensorId, CameraProperties::Properties* params, V4L_HANDLETYPE handle);
 
 protected:
 
@@ -120,6 +152,28 @@ private:
 public:
 
 private:
+    //capabilities data
+    static const CapPixelformat mPixelformats [];
+    static const CapResolution mPreviewRes [];
+    static const CapFramerate mFramerates [];
+    static const CapResolution mImageCapRes [];
+
+    //camera defaults
+    static const char DEFAULT_PREVIEW_FORMAT[];
+    static const char DEFAULT_PREVIEW_SIZE[];
+    static const char DEFAULT_FRAMERATE[];
+    static const char DEFAULT_NUM_PREV_BUFS[];
+
+    static const char DEFAULT_PICTURE_FORMAT[];
+    static const char DEFAULT_PICTURE_SIZE[];
+
+    static status_t insertDefaults(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
+    static status_t insertCapabilities(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
+    static status_t insertPreviewFormats(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t insertPreviewSizes(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t insertImageSizes(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t insertFrameRates(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+
     int mPreviewBufferCount;
     KeyedVector<int, int> mPreviewBufs;
     mutable Mutex mPreviewBufsLock;
@@ -140,12 +194,11 @@ private:
 
     int mSensorIndex;
 
-     // protected by mLock
-     sp<PreviewThread>   mPreviewThread;
+    // protected by mLock
+    sp<PreviewThread>   mPreviewThread;
 
-     struct VideoInfo *mVideoInfo;
-     int mCameraHandle;
-
+    struct VideoInfo *mVideoInfo;
+    int mCameraHandle;
 
     int nQueued;
     int nDequeued;
