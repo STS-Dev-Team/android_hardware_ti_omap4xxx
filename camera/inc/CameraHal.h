@@ -120,8 +120,6 @@
 
 namespace android {
 
-#define PARAM_BUFFER            6000
-
 ///Forward declarations
 class CameraHal;
 class CameraFrame;
@@ -179,7 +177,7 @@ inline int FpsRange::compare(const FpsRange * const left, const FpsRange * const
 
 inline FpsRange::FpsRange() : mMin(-1), mMax(-1) {}
 
-inline bool FpsRange::operator==(const FpsRange & fpsRange) const { 
+inline bool FpsRange::operator==(const FpsRange & fpsRange) const {
     return mMin == fpsRange.mMin && mMax == fpsRange.mMax;
 }
 
