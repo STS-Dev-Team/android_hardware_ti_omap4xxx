@@ -145,6 +145,9 @@ extern "C"
 #ifdef USE_ION
 		int mmap_fd;
 		int mmap_fd_metadata_buff;
+		OMX_PTR pRegisteredAufBux0;
+		OMX_PTR pRegisteredAufBux1;
+		OMX_PTR pRegisteredAufBux2;
 #endif
 	} PROXY_BUFFER_INFO;
 
