@@ -58,7 +58,7 @@ namespace android {
 //#define SAVE_RAW_FRAMES 1
 
 Mutex gV4LAdapterLock;
-const char *device = DEVICE;
+char device[15];
 
 
 /*--------------------Camera Adapter Class STARTS here-----------------------------*/
@@ -636,6 +636,36 @@ int V4LCameraAdapter::previewThread()
     return ret;
 }
 
+//scan for video devices
+void detectVideoDevice(char** video_device_list, int& num_device) {
+    char dir_path[20];
+    char* filename;
+    char** dev_list = video_device_list;
+    DIR *d;
+    struct dirent *dir;
+    int index = 0;
+
+    strcpy(dir_path, DEVICE_PATH);
+    d = opendir(dir_path);
+    if(d) {
+        //read each entry in the /dev/ and find if there is videox entry.
+        while ((dir = readdir(d)) != NULL) {
+            filename = dir->d_name;
+            if (strncmp(filename, DEVICE_NAME, 5) == 0) {
+                strcpy(dev_list[index],DEVICE_PATH);
+                strncat(dev_list[index],filename,sizeof(DEVICE_NAME));
+                index++;
+            }
+       } //end of while()
+       closedir(d);
+       num_device = index;
+
+       for(int i=0; i<index; i++){
+           CAMHAL_LOGDB("Video device list::dev_list[%d]= %s",i,dev_list[i]);
+       }
+    }
+}
+
 extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t sensor_index)
 {
     CameraAdapter *adapter = NULL;
@@ -663,6 +693,10 @@ extern "C" status_t V4LCameraAdapter_Capabilities(
     struct v4l2_capability cap;
     int tempHandle = NULL;
     int num_cameras_supported = 0;
+    char device_list[5][15];
+    char* video_device_list[5];
+    int num_v4l_devices = 0;
+    int sensorId = 0;
     CameraProperties::Properties* properties = NULL;
 
     LOG_FUNCTION_NAME;
@@ -676,50 +710,52 @@ extern "C" status_t V4LCameraAdapter_Capabilities(
         return BAD_VALUE;
     }
 
-    //look for the connected video devices
-    if (ret == NO_ERROR && (starting_camera + num_cameras_supported) < max_camera) {
-
-        if ((tempHandle = open(device, O_RDWR)) == -1) {
-            CAMHAL_LOGEB("Error while opening handle to V4L2 Camera: %s", strerror(errno));
-            return NO_ERROR;
-        }
-
-        ret = ioctl (tempHandle, VIDIOC_QUERYCAP, &cap);
-        if (ret < 0)
-        {
-            CAMHAL_LOGEA("Error when querying the capabilities of the V4L Camera");
-            goto EXIT;
-        }
-
-        //check for video capture devices
-        if ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) == 0)
-        {
-            CAMHAL_LOGEA("Error while adapter initialization: video capture not supported.");
-            goto EXIT;
-        }
-
-        num_cameras_supported++;
-        properties = properties_array + starting_camera;
-
-        // TODO: Need to tell camera properties what other cameras we can support
-        properties->set(CameraProperties::CAMERA_NAME, "USBCAMERA");
-        properties->set(CameraProperties::PREVIEW_SIZE, "640x480");
-        properties->set(CameraProperties::PREVIEW_FORMAT, "yuv420sp");
-        properties->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, "yuv420sp");
-        properties->set(CameraProperties::PICTURE_SIZE, "640x480");
-        properties->set(CameraProperties::JPEG_THUMBNAIL_SIZE, "320x240");
-        properties->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, "640x480");
-        properties->set(CameraProperties::SUPPORTED_PICTURE_SIZES, "640x480");
-        properties->set(CameraProperties::REQUIRED_PREVIEW_BUFS, "6");
-        properties->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "30000,30000");
-        properties->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, "30000,30000");
-        properties->set(CameraProperties::FRAMERATE_RANGE, "30000,30000");
-        properties->set(CameraProperties::PREVIEW_FRAME_RATE, "30000");
-
+    for (int i = 0; i < 5; i++) {
+        video_device_list[i] = device_list[i];
     }
+    //look for the connected video devices
+    detectVideoDevice(video_device_list, num_v4l_devices);
+
+    for (int i = 0; i < num_v4l_devices; i++) {
+        if ( (starting_camera + num_cameras_supported) < max_camera) {
+            sensorId = starting_camera + num_cameras_supported;
+
+            CAMHAL_LOGDB("Opening device[%d] = %s..",i, video_device_list[i]);
+            if ((tempHandle = open(video_device_list[i], O_RDWR)) == -1) {
+                CAMHAL_LOGEB("Error while opening handle to V4L2 Camera(%s): %s",video_device_list[i], strerror(errno));
+                continue;
+            }
+
+            ret = ioctl (tempHandle, VIDIOC_QUERYCAP, &cap);
+            if (ret < 0) {
+                CAMHAL_LOGEA("Error when querying the capabilities of the V4L Camera");
+                close(tempHandle);
+                continue;
+            }
+
+            //check for video capture devices
+            if ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) == 0) {
+                CAMHAL_LOGEA("Error while adapter initialization: video capture not supported.");
+                close(tempHandle);
+                continue;
+            }
+
+            strcpy(device, video_device_list[i]);
+            properties = properties_array + starting_camera + num_cameras_supported;
+
+            //fetch capabilities for this camera
+            V4LCameraAdapter::getCaps( sensorId, properties, tempHandle );
+
+            num_cameras_supported++;
+
+        }
+        //For now exit this loop once a valid video capture device is found.
+        //TODO: find all V4L capture devices and it capabilities
+        break;
+    }//end of for() loop
 
     supportedCameras = num_cameras_supported;
-    CAMHAL_LOGDB("V4L cameras detected =%d", num_cameras_supported);
+    CAMHAL_LOGDB("Number of V4L cameras detected =%d", num_cameras_supported);
 
 EXIT:
     LOG_FUNCTION_NAME_EXIT;
