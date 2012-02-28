@@ -3140,40 +3140,27 @@ status_t CameraHal::initialize(CameraProperties::Properties* properties)
 
 bool CameraHal::isResolutionValid(unsigned int width, unsigned int height, const char *supportedResolutions)
 {
-    bool ret = true;
+    bool ret = false;
     status_t status = NO_ERROR;
-    char tmpBuffer[PARAM_BUFFER + 1];
+    char tmpBuffer[MAX_PROP_VALUE_LENGTH];
     char *pos = NULL;
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == supportedResolutions )
-        {
+    if (NULL == supportedResolutions) {
         CAMHAL_LOGEA("Invalid supported resolutions string");
-        ret = false;
         goto exit;
-        }
+    }
 
-    status = snprintf(tmpBuffer, PARAM_BUFFER, "%dx%d", width, height);
-    if ( 0 > status )
-        {
+    status = snprintf(tmpBuffer, MAX_PROP_VALUE_LENGTH - 1, "%dx%d", width, height);
+    if (0 > status) {
         CAMHAL_LOGEA("Error encountered while generating validation string");
-        ret = false;
         goto exit;
-        }
+    }
 
-    pos = strstr(supportedResolutions, tmpBuffer);
-    if ( NULL == pos )
-        {
-        ret = false;
-        }
-    else
-        {
-        ret = true;
-        }
+    ret = isParameterValid(tmpBuffer, supportedResolutions);
 
 exit:
-
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
@@ -3219,37 +3206,34 @@ bool CameraHal::isFpsRangeValid(int fpsMin, int fpsMax, const char *supportedFps
 
 bool CameraHal::isParameterValid(const char *param, const char *supportedParams)
 {
-    bool ret = true;
-    char *pos = NULL;
+    bool ret = false;
+    char *pos;
+    char supported[MAX_PROP_VALUE_LENGTH];
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == supportedParams )
-        {
+    if (NULL == supportedParams) {
         CAMHAL_LOGEA("Invalid supported parameters string");
-        ret = false;
         goto exit;
-        }
+    }
 
-    if ( NULL == param )
-        {
+    if (NULL == param) {
         CAMHAL_LOGEA("Invalid parameter string");
-        ret = false;
         goto exit;
-        }
+    }
 
-    pos = strstr(supportedParams, param);
-    if ( NULL == pos )
-        {
-        ret = false;
+    strncpy(supported, supportedParams, MAX_PROP_VALUE_LENGTH - 1);
+
+    pos = strtok(supported, ",");
+    while (pos != NULL) {
+        if (!strcmp(pos, param)) {
+            ret = true;
+            break;
         }
-    else
-        {
-        ret = true;
-        }
+        pos = strtok(NULL, ",");
+    }
 
 exit:
-
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
@@ -3257,40 +3241,26 @@ exit:
 
 bool CameraHal::isParameterValid(int param, const char *supportedParams)
 {
-    bool ret = true;
-    char *pos = NULL;
+    bool ret = false;
     status_t status;
-    char tmpBuffer[PARAM_BUFFER + 1];
+    char tmpBuffer[MAX_PROP_VALUE_LENGTH];
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == supportedParams )
-        {
+    if (NULL == supportedParams) {
         CAMHAL_LOGEA("Invalid supported parameters string");
-        ret = false;
         goto exit;
-        }
+    }
 
-    status = snprintf(tmpBuffer, PARAM_BUFFER, "%d", param);
-    if ( 0 > status )
-        {
+    status = snprintf(tmpBuffer, MAX_PROP_VALUE_LENGTH - 1, "%d", param);
+    if (0 > status) {
         CAMHAL_LOGEA("Error encountered while generating validation string");
-        ret = false;
         goto exit;
-        }
+    }
 
-    pos = strstr(supportedParams, tmpBuffer);
-    if ( NULL == pos )
-        {
-        ret = false;
-        }
-    else
-        {
-        ret = true;
-        }
+    ret = isParameterValid(tmpBuffer, supportedParams);
 
 exit:
-
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
