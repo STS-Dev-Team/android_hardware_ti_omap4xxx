@@ -182,6 +182,7 @@ struct omap4_hwc_device {
 
     int flags_rgb_order;
     int flags_nv12_only;
+    float upscaled_nv12_limit;
 
     int on_tv;                  /* using a tv */
     int force_sgx;
@@ -473,6 +474,25 @@ static int is_NV12(IMG_native_handle_t *handle)
     default:
         return 0;
     }
+}
+
+static int is_upscaled_NV12(omap4_hwc_device_t *hwc_dev, hwc_layer_t *layer)
+{
+    if (!layer)
+        return 0;
+
+    IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+    if (!is_NV12(handle))
+        return 0;
+
+    int w = WIDTH(layer->sourceCrop);
+    int h = HEIGHT(layer->sourceCrop);
+
+    if (layer->transform & HWC_TRANSFORM_ROT_90)
+        swap(w, h);
+
+    return (WIDTH(layer->displayFrame) >= w * hwc_dev->upscaled_nv12_limit ||
+            HEIGHT(layer->displayFrame) >= h * hwc_dev->upscaled_nv12_limit);
 }
 
 static int dockable(hwc_layer_t *layer)
@@ -1631,6 +1651,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
             (!hwc_dev->force_sgx ||
              /* render protected and dockable layers via DSS */
              is_protected(layer) ||
+             is_upscaled_NV12(hwc_dev, layer) ||
              (hwc_dev->ext.current.docking && hwc_dev->ext.current.enabled && dockable(layer))) &&
             mem_used + mem1d(handle) < MAX_TILER_SLOT &&
             /* can't have a transparent overlay in the middle of the framebuffer stack */
@@ -2579,6 +2600,13 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
             err = -EINVAL;
             goto done;
         }
+    }
+
+    property_get("persist.hwc.upscaled_nv12_limit", value, "2.");
+    sscanf(value, "%f", &hwc_dev->upscaled_nv12_limit);
+    if (hwc_dev->upscaled_nv12_limit < 0. || hwc_dev->upscaled_nv12_limit > 2048.) {
+        LOGW("Invalid upscaled_nv12_limit (%s), setting to 2.", value);
+        hwc_dev->upscaled_nv12_limit = 2.;
     }
 
 done:
