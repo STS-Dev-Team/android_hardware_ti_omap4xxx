@@ -272,10 +272,6 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     CAMHAL_LOGDB("Thumbnail Quality set %d", mThumbQuality);
 
-    cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
-    cap->mWidth = params.getInt(TICameraParameters::RAW_WIDTH);
-    cap->mHeight = params.getInt(TICameraParameters::RAW_HEIGHT);
-
     if (mFirstTimeInit) {
         mPendingCaptureSettings = ECapturesettingsAll;
     }
@@ -295,6 +291,10 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
             }
         }
     }
+
+    cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+    cap->mWidth = params.getInt(TICameraParameters::RAW_WIDTH);
+    cap->mHeight = params.getInt(TICameraParameters::RAW_HEIGHT);
 
     LOG_FUNCTION_NAME_EXIT;
 
