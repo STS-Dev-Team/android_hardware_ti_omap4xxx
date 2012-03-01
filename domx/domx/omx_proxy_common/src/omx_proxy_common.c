@@ -651,6 +651,7 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_BOOL bSlotFound = OMX_FALSE;
 #ifdef USE_ION
 	struct ion_handle *handle = NULL;
+	OMX_PTR pIonMappedBuffer = NULL;
 #else
      	MemAllocBlock block;
         MemAllocBlock blocks[2];
@@ -761,7 +762,18 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	else if (pCompPrv->bUseIon == OMX_TRUE)
 	{
 		eError = PROXY_AllocateBufferIonCarveout(pCompPrv, nSize, &handle);
-		pMemptr = handle;
+		pCompPrv->tBufList[currentBuffer].pYBuffer = handle;
+		if (pCompPrv->bMapIonBuffers == OMX_TRUE)
+		{
+			DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
+			if (ion_map(pCompPrv->ion_fd, handle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+		                &pIonMappedBuffer, &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0)
+			{
+				DOMX_ERROR("userspace mapping of ION buffers returned error");
+				return OMX_ErrorInsufficientResources;
+			}
+		}
+		pMemptr = pCompPrv->tBufList[currentBuffer].mmap_fd;
 		DOMX_DEBUG ("Ion handle recieved = %x",handle);
 		if (eError != OMX_ErrorNone)
 			return eError;
@@ -805,28 +817,24 @@ OMX_ERRORTYPE PROXY_AllocateBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	if(eError != OMX_ErrorNone) {
 		DOMX_ERROR("PROXY_UseBuffer in PROXY_AllocateBuffer failed with error %d (0x%08x)", eError, eError);
 #ifdef USE_ION
-		ion_free(pCompPrv->ion_fd, pMemptr);
+		ion_free(pCompPrv->ion_fd, pCompPrv->tBufList[currentBuffer].pYBuffer);
+		close(pCompPrv->tBufList[currentBuffer].mmap_fd);
 #else
 		MemMgr_Free(pMemptr);
 #endif
 		goto EXIT;
 	}
 	else {
+#ifndef USE_ION
 		pCompPrv->tBufList[currentBuffer].pYBuffer = pMemptr;
+#endif
 	}
 
 #ifdef USE_ION
 	if (pCompPrv->bUseIon == OMX_TRUE && pCompPrv->bMapIonBuffers == OMX_TRUE)
 	{
 		DOMX_DEBUG("before mapping, handle = %x, nSize = %d",handle,nSize);
-        	if (ion_map(pCompPrv->ion_fd, handle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-                          &((*ppBufferHdr)->pBuffer),
-                                    &(pCompPrv->tBufList[currentBuffer].mmap_fd)) < 0)
-		{
-			DOMX_ERROR("userspace mapping of ION buffers returned error");
-			return OMX_ErrorInsufficientResources;
-		}
-		//ion_free(pCompPrv->ion_fd, handleToMap);
+		(*ppBufferHdr)->pBuffer = pIonMappedBuffer;
 	}
 #endif
 
