@@ -153,6 +153,10 @@ typedef struct _OMX_PROXY_H264E_PRIVATE
 	OMX_S32  nCurBufIndex;
 	alloc_device_t* mAllocDev;
 }OMX_PROXY_H264E_PRIVATE;
+
+RPC_OMX_ERRORTYPE RPC_RegisterBuffer(OMX_HANDLETYPE hRPCCtx, int fd,
+				     OMX_PTR *handle);
+RPC_OMX_ERRORTYPE RPC_UnRegisterBuffer(OMX_HANDLETYPE hRPCCtx, OMX_PTR handle);
 #endif
 
 
@@ -810,6 +814,15 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		}
 	}
 
+#ifdef ENABLE_GRALLOC_BUFFER
+	RPC_RegisterBuffer(pCompPrv->hRemoteComp,
+					 pBufferHdr->pBuffer,
+					 &pBufferHdr->pBuffer);
+	RPC_RegisterBuffer(pCompPrv->hRemoteComp,
+					 ((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1,
+					 &((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1);
+#endif
+
 	eError = PROXY_EmptyThisBuffer(hComponent, pBufferHdr);
 #ifdef ANDROID_CUSTOM_OPAQUECOLORFORMAT
 	if (pProxy->bAndroidOpaqueFormat)
@@ -820,6 +833,14 @@ OMX_ERRORTYPE LOCAL_PROXY_H264E_EmptyThisBuffer(OMX_HANDLETYPE hComponent,
 		PROXY_assert(eOSALStatus == TIMM_OSAL_ERR_NONE, OMX_ErrorBadParameter, "Pipe write failed");
 	}
 #endif
+
+#ifdef ENABLE_GRALLOC_BUFFER
+	RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+						 pBufferHdr->pBuffer);
+	RPC_UnRegisterBuffer(pCompPrv->hRemoteComp,
+						 ((OMX_TI_PLATFORMPRIVATE *) pBufferHdr->pPlatformPrivate)->pAuxBuf1);
+#endif
+
 	if( pCompPrv->proxyPortBuffers[pBufferHdr->nInputPortIndex].proxyBufferType == EncoderMetadataPointers)
 	{
 		pBufferHdr->pBuffer = pBufferOrig;
