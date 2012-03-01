@@ -1817,7 +1817,7 @@ void initDefaults() {
     params.set(KEY_BRIGHTNESS, brightness);
     params.set(KEY_SATURATION, saturation);
     params.set(params.KEY_EFFECT, effectss[effects_mode]);
-    params.setPreviewFrameRate(constFramerate[frameRateIDX]);
+    params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRateIDX]);
     params.set(params.KEY_ANTIBANDING, antiband[antibanding_mode]);
     params.set(params.KEY_FOCUS_MODE, focus[focus_mode]);
     params.set(KEY_IPP, ipp_mode[ippIDX]);
