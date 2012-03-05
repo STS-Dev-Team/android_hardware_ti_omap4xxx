@@ -972,6 +972,9 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
         __u32 ext_width = d.dis.width_in_mm;
         __u32 ext_height = d.dis.height_in_mm;
 
+        if (d.modedb[i].vmode & FB_VMODE_INTERLACED)
+            mode_yres /= 2;
+
         if (d.modedb[i].flag & FB_FLAG_RATIO_4_3) {
             ext_width = 4;
             ext_height = 3;
@@ -988,7 +991,7 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
 
         /* we need to ensure that even TILER2D buffers can be scaled */
         if (!d.modedb[i].pixclock ||
-            d.modedb[i].vmode ||
+            (d.modedb[i].vmode & ~FB_VMODE_INTERLACED) ||
             !omap4_hwc_can_scale(xres, yres, ext_fb_xres, ext_fb_yres,
                                  1, &d.dis, &limits,
                                  1000000000 / d.modedb[i].pixclock))
@@ -1032,7 +1035,6 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
         get_max_dimensions(xres, yres, xpy, d.dis.timings.x_res, d.dis.timings.y_res,
                            ext_width, ext_height, &ext_fb_xres, &ext_fb_yres);
         if (!d.dis.timings.pixel_clock ||
-            d.dis.mgr.interlaced ||
             !omap4_hwc_can_scale(xres, yres, ext_fb_xres, ext_fb_yres,
                                  1, &d.dis, &limits,
                                  d.dis.timings.pixel_clock)) {
