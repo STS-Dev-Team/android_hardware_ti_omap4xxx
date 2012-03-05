@@ -349,7 +349,7 @@ status_t ANativeWindowDisplayAdapter::setSnapshotTimeRef(struct timeval *refTime
 #endif
 
 
-int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct timeval *refTime, S3DParameters *s3dParams)
+int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct timeval *refTime)
 {
     Semaphore sem;
     TIUTILS::Message msg;
@@ -363,12 +363,6 @@ int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct tim
 
         return NO_ERROR;
     }
-
-#if 0 //TODO: s3d is not part of bringup...will reenable
-    if (s3dParams)
-        mOverlay->set_s3d_params(s3dParams->mode, s3dParams->framePacking,
-                                    s3dParams->order, s3dParams->subSampling);
-#endif
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 

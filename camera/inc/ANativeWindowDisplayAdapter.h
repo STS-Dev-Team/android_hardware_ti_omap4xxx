@@ -66,7 +66,7 @@ public:
     virtual int setPreviewWindow(struct preview_stream_ops *window);
     virtual int setFrameProvider(FrameNotifier *frameProvider);
     virtual int setErrorHandler(ErrorNotifier *errorNotifier);
-    virtual int enableDisplay(int width, int height, struct timeval *refTime = NULL, S3DParameters *s3dParams = NULL);
+    virtual int enableDisplay(int width, int height, struct timeval *refTime = NULL);
     virtual int disableDisplay(bool cancel_buffer = true);
     virtual status_t pauseDisplay(bool pause);
 
