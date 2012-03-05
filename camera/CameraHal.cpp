@@ -1661,11 +1661,11 @@ status_t CameraHal::startPreview()
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
-        ret = mDisplayAdapter->enableDisplay(width, height, &mStartPreview, NULL);
+        ret = mDisplayAdapter->enableDisplay(width, height, &mStartPreview);
 
 #else
 
-        ret = mDisplayAdapter->enableDisplay(width, height, NULL, NULL);
+        ret = mDisplayAdapter->enableDisplay(width, height, NULL);
 
 #endif
 
