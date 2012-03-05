@@ -52,6 +52,7 @@ const int OMXCameraAdapter::SENSORID_S5K6A1GX03 = 306;
 /**** look up tables to translate OMX Caps to Parameter ****/
 
 const CapResolution OMXCameraAdapter::mImageCapRes [] = {
+    { 4416, 3312, "4416x3312" },
     { 4032, 3024, "4032x3024" },
     { 4000, 3000, "4000x3000" },
     { 3648, 2736, "3648x2736" },
