@@ -928,21 +928,13 @@ protected:
 class DisplayAdapter : public BufferProvider, public virtual RefBase
 {
 public:
-    typedef struct S3DParameters_t
-    {
-        int mode;
-        int framePacking;
-        int order;
-        int subSampling;
-    } S3DParameters;
-
     ///Initializes the display adapter creates any resources required
     virtual int initialize() = 0;
 
     virtual int setPreviewWindow(struct preview_stream_ops *window) = 0;
     virtual int setFrameProvider(FrameNotifier *frameProvider) = 0;
     virtual int setErrorHandler(ErrorNotifier *errorNotifier) = 0;
-    virtual int enableDisplay(int width, int height, struct timeval *refTime = NULL, S3DParameters *s3dParams = NULL) = 0;
+    virtual int enableDisplay(int width, int height, struct timeval *refTime = NULL) = 0;
     virtual int disableDisplay(bool cancel_buffer = true) = 0;
     //Used for Snapshot review temp. pause
     virtual int pauseDisplay(bool pause) = 0;
