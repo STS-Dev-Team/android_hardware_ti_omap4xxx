@@ -450,15 +450,18 @@ static int rgz_bunique(int *a, int len)
     return unique;
 }
 
-static int rgz_hwc_layer_sortbyy(rgz_layer_t *ra, int rsz, int *out, int *width)
+static int rgz_hwc_layer_sortbyy(rgz_layer_t *ra, int rsz, int *out, int *width, int screen_height)
 {
     int outsz = 0;
     int i;
     *width = 0;
     for (i = 0; i < rsz; i++) {
         hwc_layer_t *layer = ra[i].hwc_layer;
-        out[outsz++] = layer->displayFrame.top;
-        out[outsz++] = layer->displayFrame.bottom;
+        /* Maintain regions inside display boundaries */
+        int top = layer->displayFrame.top;
+        int bottom = layer->displayFrame.bottom;
+        out[outsz++] = max(0, top);
+        out[outsz++] = min(bottom, screen_height);
         int right = layer->displayFrame.right;
         *width = *width > right ? *width : right;
     }
@@ -472,7 +475,7 @@ static int rgz_hwc_intersects(blit_rect_t *a, hwc_rect_t *b)
             (a->right > b->left) && (a->left < b->right));
 }
 
-static void rgz_gen_blitregions(blit_hregion_t *hregion)
+static void rgz_gen_blitregions(blit_hregion_t *hregion, int screen_width)
 {
 /*
  * 1. Get the offsets (left/right positions) of each layer within the
@@ -487,8 +490,11 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion)
     int l, r;
     for (l = 0; l < hregion->nlayers; l++) {
         hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
-        offsets[noffsets++] = layer->displayFrame.left;
-        offsets[noffsets++] = layer->displayFrame.right;
+        /* Make sure the subregion is not outside the boundaries of the screen */
+        int left = layer->displayFrame.left;
+        int right = layer->displayFrame.right;
+        offsets[noffsets++] = max(0, left);
+        offsets[noffsets++] = min(right, screen_width);
     }
     rgz_bsort(offsets, noffsets);
     noffsets = rgz_bunique(offsets, noffsets);
@@ -600,6 +606,8 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
 {
     int yentries[RGZ_SUBREGIONMAX];
     int dispw;  /* widest layer */
+    int screen_width = p->data.hwc.dstgeom->width;
+    int screen_height = p->data.hwc.dstgeom->height;
 
     if (rgz->state != RGZ_STATE_INIT) {
         OUTE("rgz_process started with bad state");
@@ -624,7 +632,7 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
 
     /* Find the horizontal regions */
     rgz_layer_t *rgz_layers = rgz->rgz_layers;
-    int ylen = rgz_hwc_layer_sortbyy(rgz_layers, layerno, yentries, &dispw);
+    int ylen = rgz_hwc_layer_sortbyy(rgz_layers, layerno, yentries, &dispw, screen_height);
 
     ylen = rgz_bunique(yentries, ylen);
 
@@ -641,8 +649,9 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
     for (i = 0; i < rgz->nhregions; i++) {
         hregions[i].rect.top = yentries[i];
         hregions[i].rect.bottom = yentries[i+1];
+        /* Avoid hregions outside the display boundaries */
         hregions[i].rect.left = 0;
-        hregions[i].rect.right = dispw;
+        hregions[i].rect.right = dispw > screen_width ? screen_width : dispw;
         hregions[i].nlayers = 0;
         for (j = 0; j < layerno; j++) {
             hwc_layer_t *layer = rgz_layers[j].hwc_layer;
@@ -655,7 +664,7 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
 
     /* Calculate blit regions */
     for (i = 0; i < rgz->nhregions; i++) {
-        rgz_gen_blitregions(&hregions[i]);
+        rgz_gen_blitregions(&hregions[i], screen_width);
         LOGD_IF(debug, "hregion %3d: nsubregions %d", i, hregions[i].nsubregions);
         LOGD_IF(debug, "           : %d to %d: ",
             hregions[i].rect.top, hregions[i].rect.bottom);
