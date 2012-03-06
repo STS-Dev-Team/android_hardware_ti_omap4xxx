@@ -119,10 +119,15 @@ enum {
     EXT_HFLIP       = (1 << 2), /* flip l-r on output (after rotation) */
 };
 
-enum {
-    BLTMODE_DISABLED = 0,
-    BLTMODE_DEFAULT = 1,    /* Default blit policy */
-    BLTMODE_ALL,            /* Test mode to attempt to blit all */
+enum bltpolicy {
+    BLTPOLICY_DISABLED = 0,
+    BLTPOLICY_DEFAULT = 1,    /* Default blit policy */
+    BLTPOLICY_ALL,            /* Test mode to attempt to blit all */
+};
+
+enum bltmode {
+    BLTMODE_PAINT = 0,    /* Attempt to blit layer by layer */
+    BLTMODE_REGION = 1,   /* Attempt to blit layers via regions */
 };
 
 /* ARGB image */
@@ -200,7 +205,8 @@ struct omap4_hwc_device {
     enum S3DLayoutType s3d_input_type;
     enum S3DLayoutOrder s3d_input_order;
 #endif
-    int blit_mode;  /* See BLTMODE_ */
+    enum bltmode blt_mode;
+    enum bltpolicy blt_policy;
 
     int blit_num;
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
@@ -1470,8 +1476,23 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     if (!list)
         goto err_out;
 
+    int rgz_in_op;
+    int rgz_out_op;
+
+    switch (hwc_dev->blt_mode) {
+        case BLTMODE_PAINT:
+            rgz_in_op = RGZ_IN_HWCCHK;
+            rgz_out_op = RGZ_OUT_BVCMD_PAINT;
+            break;
+        case BLTMODE_REGION:
+        default:
+            rgz_in_op = RGZ_IN_HWC;
+            rgz_out_op = RGZ_OUT_BVCMD_REGION;
+            break;
+    }
+
     rgz_in_params_t in = {
-        .op = RGZ_IN_HWCCHK,
+        .op = rgz_in_op,
         .data = {
             .hwc = {
                 .dstgeom = &gscrngeom,
@@ -1498,7 +1519,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     int needclear = (list->numHwLayers != count) ? 1 : 0;
 
     rgz_out_params_t out = {
-        .op = RGZ_OUT_BVCMD_PAINT,
+        .op = rgz_out_op,
         .data = {
             .bvc = {
                 .dstgeom = &gscrngeom,
@@ -1600,7 +1621,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
      */
     int needs_fb = hwc_dev->use_sgx;
 
-    if (hwc_dev->blit_mode == BLTMODE_ALL) {
+    if (hwc_dev->blt_policy == BLTPOLICY_ALL) {
         /* Check if we can blit everything */
         blit_all = blit_layers(hwc_dev, list, 0);
         if (blit_all) {
@@ -1699,8 +1720,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     if (scaled_gfx)
         dsscomp->ovls[0].cfg.ix = dsscomp->num_ovls;
 
-    /* This will be the true SGX offload path and is disabled for now */
-    if (hwc_dev->blit_mode == BLTMODE_DEFAULT) {
+    if (hwc_dev->blt_policy == BLTPOLICY_DEFAULT) {
         if (hwc_dev->use_sgx) {
             if (blit_layers(hwc_dev, list, dsscomp->num_ovls == 1 ? 0 : dsscomp->num_ovls)) {
                 hwc_dev->use_sgx = 0;
@@ -1714,7 +1734,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     if (needs_fb) {
         /* assign a z-layer for fb */
         if (fb_z < 0) {
-            if (!hwc_dev->blit_mode != BLTMODE_DISABLED && num.composited_layers)
+            if (!hwc_dev->blt_policy != BLTPOLICY_DISABLED && num.composited_layers)
                 LOGE("**** should have assigned z-layer for fb");
             fb_z = z++;
         }
@@ -1931,7 +1951,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
                 }
             }
         }
-        LOGI_IF(hwc_dev->blit_mode != BLTMODE_DISABLED,
+        LOGI_IF(hwc_dev->blt_policy != BLTPOLICY_DISABLED,
             "Post2, blits %d, ovl_buffers %d, blit_buffers %d sgx %d",
             hwc_dev->blit_num, hwc_dev->post2_layers, hwc_dev->post2_blit_buffers,
             hwc_dev->use_sgx);
@@ -2557,11 +2577,13 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
     int gc2d_fd = open("/dev/gcioctl", O_RDWR);
     if (gc2d_fd < 0) {
         LOGI("Unable to open gc-core device (%d), blits disabled", errno);
-        hwc_dev->blit_mode = BLTMODE_DISABLED;
+        hwc_dev->blt_policy = BLTPOLICY_DISABLED;
     } else {
-        property_get("persist.hwc.blitmode", value, "0");
-        hwc_dev->blit_mode = atoi(value);
-        LOGI("blitter present, blits mode %d", hwc_dev->blit_mode);
+        property_get("persist.hwc.bltmode", value, "0");
+        hwc_dev->blt_mode = atoi(value);
+        property_get("persist.hwc.bltpolicy", value, "0");
+        hwc_dev->blt_policy = atoi(value);
+        LOGI("blitter present, blits mode %d, blits policy %d", hwc_dev->blt_mode, hwc_dev->blt_policy);
         close(gc2d_fd);
 
         if (rgz_get_screengeometry(hwc_dev->fb_fd, &gscrngeom,
