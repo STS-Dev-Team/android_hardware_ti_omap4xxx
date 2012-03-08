@@ -2173,8 +2173,6 @@ status_t OMXCameraAdapter::stopPreview()
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
 
-    saveDccFileDataSave();
-
     LOG_FUNCTION_NAME_EXIT;
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
@@ -3614,6 +3612,8 @@ OMXCameraAdapter::~OMXCameraAdapter()
     if ( mOmxInitialized ) {
         // return to OMX Loaded state
         switchToLoaded();
+
+        saveDccFileDataSave();
 
         closeDccFileDataSave();
         // deinit the OMX
