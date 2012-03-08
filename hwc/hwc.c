@@ -47,9 +47,6 @@
 
 #define ASPECT_RATIO_TOLERANCE 0.02f
 
-#ifndef FBIO_WAITFORVSYNC
-#define FBIO_WAITFORVSYNC       _IOW('F', 0x20, __u32)
-#endif
 
 #define min(a, b) ( { typeof(a) __a = (a), __b = (b); __a < __b ? __a : __b; } )
 #define max(a, b) ( { typeof(a) __a = (a), __b = (b); __a > __b ? __a : __b; } )
@@ -70,6 +67,7 @@
 #define HAL_PIXEL_FORMAT_TI_NV12        0x100
 #define HAL_PIXEL_FORMAT_TI_NV12_PADDED 0x101
 #define MAX_TILER_SLOT (16 << 20)
+#define DISPLAY_REFRESH_TIME_IN_NSEC    16000000
 
 struct ext_transform_t {
     __u8 rotation : 3;          /* 90-degree clockwise rotations */
@@ -1919,15 +1917,25 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
                                  hwc_dev->buffers,
                                  nbufs,
                                  dsscomp, omaplfb_comp_data_sz);
-
-        if (!hwc_dev->use_sgx) {
-            __u32 crt = 0;
-            int err2 = ioctl(hwc_dev->fb_fd, FBIO_WAITFORVSYNC, &crt);
-            if (err2) {
-                LOGE("failed to wait for vsync (%d)", errno);
-                err = err ? : -errno;
+        static struct timespec last_set_time, now, sleep_time;
+        static int have_last = 0;
+        if (!hwc_dev->use_sgx && have_last) {
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            sleep_time.tv_sec = 0;
+            sleep_time.tv_nsec = 0;
+            /* wait at least 16ms from last set */
+            if (now.tv_sec - last_set_time.tv_sec == 0) {
+                sleep_time.tv_nsec = DISPLAY_REFRESH_TIME_IN_NSEC -
+                    (now.tv_nsec - last_set_time.tv_nsec);
+            } else if (now.tv_sec - last_set_time.tv_sec == 1) {
+                sleep_time.tv_nsec = DISPLAY_REFRESH_TIME_IN_NSEC -
+                    (now.tv_nsec + 1000000000 - last_set_time.tv_nsec);
             }
+            if (sleep_time.tv_nsec > 0)
+                nanosleep(&sleep_time, NULL);
         }
+        have_last = 1;
+        clock_gettime(CLOCK_MONOTONIC, &last_set_time);
         if (gshowfps)
             showfps();
     }
