@@ -474,11 +474,6 @@ int CameraHal::setParameters(const CameraParameters& params)
         if ( (!valstr || strcmp(valstr, TICameraParameters::HIGH_QUALITY_MODE) == 0) &&
                 access(kRawImagesOutputDirPath, F_OK) != -1 ) {
             mRawCapture = true;
-
-            if ( (valstr = params.get(TICameraParameters::KEY_FILENAME_TIMESTAMP)) != NULL ) {
-                CAMHAL_LOGD("FILENAME TIMESTAMP Value = %s", valstr);
-                mParameters.set(TICameraParameters::KEY_FILENAME_TIMESTAMP, valstr);
-            }
         }
 #endif
 

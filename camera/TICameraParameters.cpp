@@ -80,7 +80,6 @@ const char TICameraParameters::KEY_AUTO_FOCUS_LOCK[] = "auto-focus-lock";
 
 const char TICameraParameters::RAW_WIDTH[] = "raw-width";
 const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
-const char TICameraParameters::KEY_FILENAME_TIMESTAMP[] = "captured-filename";
 
 // TI extensions for Stereo Mode
 const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT[] = "s3d-prv-frame-layout";

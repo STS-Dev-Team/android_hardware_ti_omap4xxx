@@ -114,7 +114,6 @@ static const char  KEY_GPS_DATESTAMP[];
 
 static const char  RAW_WIDTH[];
 static const char  RAW_HEIGHT[];
-static const char  KEY_FILENAME_TIMESTAMP[];
 
 //TI extensions to Image post-processing
 static const char IPP_LDCNSF[];
