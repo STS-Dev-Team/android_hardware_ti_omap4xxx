@@ -993,11 +993,6 @@ int CameraHal::setParameters(const CameraParameters& params)
             if ( !mBracketingEnabled ) {
                 CAMHAL_LOGDA("Enabling bracketing");
                 mBracketingEnabled = true;
-
-                //Wait for AF events to enable bracketing
-                if ( NULL != mCameraAdapter ) {
-                    setEventProvider( CameraHalEvent::ALL_EVENTS, mCameraAdapter );
-                }
             } else {
                 CAMHAL_LOGDA("Bracketing already enabled");
             }
@@ -1012,13 +1007,6 @@ int CameraHal::setParameters(const CameraParameters& params)
             mBracketingEnabled = false;
             if ( mBracketingRunning ) {
                 stopImageBracketing();
-            }
-
-            //Remove AF events subscription
-            if ( NULL != mEventProvider ) {
-                mEventProvider->disableEventNotification( CameraHalEvent::ALL_EVENTS );
-                delete mEventProvider;
-                mEventProvider = NULL;
             }
 
         } else {
@@ -1069,6 +1057,10 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mDisplayPaused && !mRecordingEnabled) {
         CAMHAL_LOGDA("Stopping Preview");
         forceStopPreview();
+    }
+
+    if ( !mBracketingRunning && mBracketingEnabled ) {
+        startImageBracketing();
     }
 
     if (ret != NO_ERROR)
@@ -2360,26 +2352,6 @@ void CameraHal::eventCallbackRelay(CameraHalEvent* event)
 void CameraHal::eventCallback(CameraHalEvent* event)
 {
     LOG_FUNCTION_NAME;
-
-    if ( NULL != event )
-        {
-        switch( event->mEventType )
-            {
-            case CameraHalEvent::EVENT_FOCUS_LOCKED:
-            case CameraHalEvent::EVENT_FOCUS_ERROR:
-                {
-                if ( mBracketingEnabled )
-                    {
-                    startImageBracketing();
-                    }
-                break;
-                }
-            default:
-                {
-                break;
-                }
-            };
-        }
 
     LOG_FUNCTION_NAME_EXIT;
 }
