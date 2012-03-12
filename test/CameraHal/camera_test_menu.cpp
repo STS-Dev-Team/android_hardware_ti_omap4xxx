@@ -1389,6 +1389,27 @@ void getSizeParametersFromCapabilities() {
     getSupportedParametersVideoCaptureSize(VcaptureSizeStr, &numVcaptureSize, VcaptureSize, lenght_Vcapture_size);
 }
 
+int getDefaultParameter(const char* val, int numOptions,  char **array) {
+    int cnt = 0;
+
+    for(cnt=0;cnt<numOptions;cnt++) {
+        if (strcmp(val, array[cnt]) ==0 ) {
+            return cnt;
+        }
+    }
+    return 0;
+}
+
+int getDefaultParameterResol(const char* val, int numOptions,  param_Array **array) {
+    int cnt = 0;
+
+    for(cnt=0;cnt<numOptions;cnt++) {
+        if (strcmp(val, array[cnt]->name) ==0 ) {
+            return cnt;
+        }
+    }
+    return 0;
+}
 
 int getSupportedParameters(char* parameters, int *optionsCount, char  ***elem) {
     str = new char [400];
@@ -1743,21 +1764,21 @@ void stopPreview() {
 }
 
 void initDefaults() {
-    camera_index = 0;
-    antibanding_mode = 0;
-    focus_mode = 0;
-    fpsRangeIdx = 0;
+
+    antibanding_mode = getDefaultParameter("off", numAntibanding, antiband);
+    focus_mode = getDefaultParameter("auto", numfocus, focus);
+    fpsRangeIdx = getDefaultParameter("5000,30000", rangeCnt, fps_range_str);
     afTimeoutIdx = 0;
-    previewSizeIDX = 0;
-    captureSizeIDX = 0;
-    frameRateIDX = 0;
-    VcaptureSizeIDX = 1;
+    previewSizeIDX = getDefaultParameterResol("VGA", numpreviewSize, preview_Array);
+    captureSizeIDX = getDefaultParameterResol("12MP", numcaptureSize, capture_Array);
+    frameRateIDX = getDefaultParameter("30000,30000", constCnt, fps_const_str);
+    VcaptureSizeIDX = getDefaultParameterResol("HD", numVcaptureSize, Vcapture_Array);
     VbitRateIDX = 0;
-    thumbSizeIDX = 0;
+    thumbSizeIDX = getDefaultParameterResol("VGA", numthumbnailSize, thumbnail_Array);
     compensation = 0.0;
-    awb_mode = 0;
-    effects_mode = 0;
-    scene_mode = 0;
+    awb_mode = getDefaultParameter("auto", numawb, awb);
+    effects_mode = getDefaultParameter("none", numEffects, effectss);
+    scene_mode = getDefaultParameter("auto", numscene, scene);
     caf_mode = 0;
 
     vstabtoggle = false;
@@ -1765,7 +1786,7 @@ void initDefaults() {
     AutoExposureLocktoggle = false;
     AutoWhiteBalanceLocktoggle = false;
     expBracketIdx = 0;
-    flashIdx = 0;
+    flashIdx = getDefaultParameter("off", numflash, flash);
     rotation = 0;
     zoomIDX = 0;
     videoCodecIDX = 0;
@@ -1784,16 +1805,16 @@ void initDefaults() {
     sharpness = 0;
     saturation = 100;
 #endif
-    iso_mode = 0;
-    capture_mode = 0;
-    exposure_mode = 0;
+    iso_mode = getDefaultParameter("auto", numisoMode, isoMode);
+    capture_mode = getDefaultParameter("high-quality", nummodevalues, modevalues);
+    exposure_mode = getDefaultParameter("auto", numExposureMode, exposureMode);
     ippIDX = 0;
     ippIDX_old = ippIDX;
     jpegQuality = 85;
     bufferStarvationTest = 0;
     meter_mode = 0;
-    previewFormat = 1;
-    pictureFormat = 0;
+    previewFormat = getDefaultParameter("yuv420sp", numpreviewFormat, previewFormatArray);
+    pictureFormat = getDefaultParameter("jpeg", numpictureFormat, pictureFormatArray);
     stereoCapLayoutIDX = 0;
     stereoLayoutIDX = 0;
 
@@ -2062,8 +2083,8 @@ int functional_menu() {
         }
         firstTime = true;
         closeCamera();
-
         openCamera();
+        initDefaults();
 
 
         break;
@@ -2076,6 +2097,7 @@ int functional_menu() {
 
     case '0':
         initDefaults();
+        camera_index = 0;
         break;
 
         case '1':
