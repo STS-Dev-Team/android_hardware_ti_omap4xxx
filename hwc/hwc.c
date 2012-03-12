@@ -230,6 +230,7 @@ typedef struct omap4_hwc_device omap4_hwc_device_t;
 
 static int debug = 0;
 static int debugpost2 = 0;
+static int debugblt = 0;
 static int gshowfps;
 static rgz_t grgz;
 static struct bvsurfgeom gscrngeom;
@@ -1951,7 +1952,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
                 }
             }
         }
-        LOGI_IF(hwc_dev->blt_policy != BLTPOLICY_DISABLED,
+        LOGI_IF(debugblt && hwc_dev->blt_policy != BLTPOLICY_DISABLED,
             "Post2, blits %d, ovl_buffers %d, blit_buffers %d sgx %d",
             hwc_dev->blit_num, hwc_dev->post2_layers, hwc_dev->post2_blit_buffers,
             hwc_dev->use_sgx);
