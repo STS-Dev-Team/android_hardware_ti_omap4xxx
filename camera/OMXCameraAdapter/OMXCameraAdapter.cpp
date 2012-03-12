@@ -294,6 +294,29 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex], 0, sizeof(OMXCameraPortParameters));
 
+    // initialize 3A defaults
+    mParameters3A.Effect = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_EFFECT, EffLUT);
+    mParameters3A.FlashMode = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_FLASH_MODE, FlashLUT);
+    mParameters3A.SceneMode = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_SCENE_MODE, SceneLUT);
+    mParameters3A.EVCompensation = atoi(OMXCameraAdapter::DEFAULT_EV_COMPENSATION);
+    mParameters3A.Focus = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_FOCUS_MODE, FocusLUT);
+    mParameters3A.ISO = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_ISO_MODE, IsoLUT);
+    mParameters3A.Flicker = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_ANTIBANDING, FlickerLUT);
+    mParameters3A.Brightness = atoi(OMXCameraAdapter::DEFAULT_BRIGHTNESS);
+    mParameters3A.Saturation = atoi(OMXCameraAdapter::DEFAULT_SATURATION) - SATURATION_OFFSET;
+    mParameters3A.Sharpness = atoi(OMXCameraAdapter::DEFAULT_SHARPNESS) - SHARPNESS_OFFSET;
+    mParameters3A.Contrast = atoi(OMXCameraAdapter::DEFAULT_CONTRAST) - CONTRAST_OFFSET;
+    mParameters3A.WhiteBallance = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_WB, WBalLUT);
+    mParameters3A.Exposure = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_EXPOSURE_MODE, ExpLUT);
+    mParameters3A.ExposureLock = OMX_FALSE;
+    mParameters3A.FocusLock = OMX_FALSE;
+    mParameters3A.WhiteBalanceLock = OMX_FALSE;
+
+    mParameters3A.ManualExposure = 0;
+    mParameters3A.ManualExposureRight = 0;
+    mParameters3A.ManualGain = 0;
+    mParameters3A.ManualGainRight = 0;
+
     LOG_FUNCTION_NAME_EXIT;
     return ErrorUtils::omxToAndroidError(eError);
 
