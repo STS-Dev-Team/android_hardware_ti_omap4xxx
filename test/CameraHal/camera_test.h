@@ -155,6 +155,8 @@ int stop_logging(int &pid);
 int execute_error_script(char *script);
 int getParametersFromCapabilities();
 void  getSizeParametersFromCapabilities();
+int getDefaultParameter(const char* val, int numOptions, char **array);
+int getDefaultParameterResol(const char* val, int numOptions, param_Array  **array);
 int getSupportedParameters(char* parameters, int* optionsCount, char ***elem);
 int getSupportedParametersCaptureSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
 int getSupportedParametersVideoCaptureSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
