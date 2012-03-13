@@ -2399,6 +2399,7 @@ status_t BaseCameraAdapter::rollbackToPreviousState()
             break;
 
         case CAPTURE_STATE:
+        case REPROCESS_STATE:
             ret = sendCommand(CAMERA_STOP_IMAGE_CAPTURE);
             break;
 

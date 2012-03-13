@@ -2036,7 +2036,7 @@ void CameraHal::stopPreview()
         return;
         }
 
-    bool imageCaptureRunning = (mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE) &&
+    bool imageCaptureRunning = (mCameraAdapter->getState() & CameraAdapter::CAPTURE_STATE) &&
                                     (mCameraAdapter->getNextState() != CameraAdapter::PREVIEW_STATE);
     if(mDisplayPaused && !imageCaptureRunning)
         {
