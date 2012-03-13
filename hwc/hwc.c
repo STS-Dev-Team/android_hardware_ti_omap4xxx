@@ -1778,16 +1778,13 @@ static void omap4_hwc_dump(struct hwc_composer_device *dev, char *buff, int buff
         struct dss2_ovl_cfg *cfg = &dsscomp->ovls[i].cfg;
 
         dump_printf(&log, "  layer %d:\n", i);
-        dump_printf(&log, "     enabled: %s\n",
-                          cfg->enabled ? "true" : "false");
-        dump_printf(&log, "     buff: %p %dx%d stride: %d\n",
-                          hwc_dev->buffers[i], cfg->width, cfg->height, cfg->stride);
-        dump_printf(&log, "     src: (%d,%d) %dx%d\n",
-                          cfg->crop.x, cfg->crop.y, cfg->crop.w, cfg->crop.h);
-        dump_printf(&log, "     dst: (%d,%d) %dx%d\n",
-                          cfg->win.x, cfg->win.y, cfg->win.w, cfg->win.h);
-        dump_printf(&log, "     ix: %d\n", cfg->ix);
-        dump_printf(&log, "     zorder: %d\n\n", cfg->zorder);
+        dump_printf(&log, "     enabled:%s buff:%p %dx%d stride:%d\n",
+                          cfg->enabled ? "true" : "false", hwc_dev->buffers[i],
+                          cfg->width, cfg->height, cfg->stride);
+        dump_printf(&log, "     src:(%d,%d) %dx%d dst:(%d,%d) %dx%d ix:%d zorder:%d\n",
+                          cfg->crop.x, cfg->crop.y, cfg->crop.w, cfg->crop.h,
+                          cfg->win.x, cfg->win.y, cfg->win.w, cfg->win.h,
+                          cfg->ix, cfg->zorder);
     }
 
     if (hwc_dev->blt_policy != BLTPOLICY_DISABLED) {
