@@ -445,6 +445,9 @@ int ANativeWindowDisplayAdapter::disableDisplay(bool cancel_buffer)
         ///Reset the display enabled flag
         mDisplayEnabled = false;
 
+        // Reset pause flag since display is being disabled
+        mPaused = false;
+
         ///Reset the offset values
         mXOff = -1;
         mYOff = -1;
