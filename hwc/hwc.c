@@ -207,6 +207,7 @@ struct omap4_hwc_device {
     enum bltmode blt_mode;
     enum bltpolicy blt_policy;
 
+    int blit_flags;
     int blit_num;
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
     struct rgz_blt_entry blit_ops[RGZ_MAX_BLITS];
@@ -1471,16 +1472,21 @@ static int setup_mirroring(omap4_hwc_device_t *hwc_dev)
 
 static void blit_reset(omap4_hwc_device_t *hwc_dev)
 {
+    hwc_dev->blit_flags = 0;
     hwc_dev->blit_num = 0;
     hwc_dev->post2_blit_buffers = 0;
     hwc_dev->comp_data.blit_data.rgz_items = 0;
-    rgz_release(&grgz);
 }
 
 static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int bufoff)
 {
-    if (!list)
+    /* Do not blit if this frame will be composed entirely by the GPU */
+    if (!list || hwc_dev->force_sgx)
         goto err_out;
+
+    /* We want to maintain the rgz dirty region data if there are no geometry changes */
+    if (list->flags & HWC_GEOMETRY_CHANGED)
+        rgz_release(&grgz);
 
     int rgz_in_op;
     int rgz_out_op;
@@ -1539,6 +1545,16 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
         goto err_out;
     }
 
+    /* This is a special situation where the regionizer decided no blits are
+     * needed for this frame but there are blit buffers to synchronize with. Can
+     * happen only if the regionizer is enabled otherwise it's likely a bug
+     */
+    if (rgz_out_op != RGZ_OUT_BVCMD_REGION && out.data.bvc.out_blits == 0 && out.data.bvc.out_nhndls > 0) {
+        LOGE("Regionizer invalid output blit_num %d, post2_blit_buffers %d", out.data.bvc.out_blits, out.data.bvc.out_nhndls);
+        goto err_out;
+    }
+
+    hwc_dev->blit_flags |= HWC_BLT_FLAG_USE_FB;
     hwc_dev->blit_num = out.data.bvc.out_blits;
     hwc_dev->post2_blit_buffers = out.data.bvc.out_nhndls;
     for (i = 0; i < hwc_dev->post2_blit_buffers; i++) {
@@ -1562,7 +1578,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     return 1;
 
 err_out:
-    blit_reset(hwc_dev);
+    rgz_release(&grgz);
     return 0;
 }
 
@@ -1933,6 +1949,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
         if (hwc_dev->force_sgx > 0)
             hwc_dev->force_sgx--;
 
+        hwc_dev->comp_data.blit_data.rgz_flags = hwc_dev->blit_flags;
         hwc_dev->comp_data.blit_data.rgz_items = hwc_dev->blit_num;
         int omaplfb_comp_data_sz = sizeof(hwc_dev->comp_data) +
             (hwc_dev->comp_data.blit_data.rgz_items * sizeof(struct rgz_blt_entry));

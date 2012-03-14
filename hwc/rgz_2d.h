@@ -253,8 +253,10 @@ typedef struct blit_rect {
 #define RGZ_MAX_BLITS (RGZ_SUBREGIONMAX * RGZ_SUBREGIONMAX)
 
 typedef struct rgz_layer {
-   hwc_layer_t *hwc_layer;
-   int buffidx;
+    hwc_layer_t *hwc_layer;
+    int buffidx;
+    int dirty_count;
+    void* dirty_hndl;
 } rgz_layer_t;
 
 typedef struct blit_hregion {
@@ -272,10 +274,9 @@ struct rgz {
     blit_hregion_t *hregions;
     int nhregions;
     int state;
-    void* dirtyhndl[RGZ_MAXLAYERS]; /* z-order */
-    int dirtyno[RGZ_MAXLAYERS]; /* z-order */
     unsigned int rgz_layerno;
     rgz_layer_t rgz_layers[RGZ_MAXLAYERS];
+    int screen_isdirty;
 };
 
 #endif /* __RGZ_2D__ */
