@@ -1364,7 +1364,7 @@ status_t CameraHal::allocRawBufs(int width, int height, const char* previewForma
         mVideoOffsets = NULL;
     }
 
-    LOG_FUNCTION_NAME
+    LOG_FUNCTION_NAME_EXIT
 
     return ret;
 }
