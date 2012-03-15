@@ -734,6 +734,9 @@ private:
     camera_memory_t* mPreviewMemory;
     unsigned char* mPreviewBufs[MAX_BUFFERS];
     int mPreviewBufCount;
+    int mPreviewWidth;
+    int mPreviewHeight;
+    int mPreviewStride;
     const char *mPreviewPixelFormat;
     KeyedVector<unsigned int, sp<MemoryHeapBase> > mSharedPreviewHeaps;
     KeyedVector<unsigned int, sp<MemoryBase> > mSharedPreviewBuffers;
