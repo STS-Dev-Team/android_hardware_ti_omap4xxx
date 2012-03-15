@@ -671,9 +671,9 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
                      __LINE__,
                       dest,
                       frame->mBuffer,
-                      frame->mWidth,
-                      frame->mHeight,
-                      frame->mAlignment,
+                      mPreviewWidth,
+                      mPreviewHeight,
+                      mPreviewStride,
                       2,
                       frame->mLength,
                       mPreviewPixelFormat);
@@ -694,9 +694,9 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
               else{
                 copy2Dto1D(dest,
                            frame->mYuv,
-                           frame->mWidth,
-                           frame->mHeight,
-                           frame->mAlignment,
+                           mPreviewWidth,
+                           mPreviewHeight,
+                           mPreviewStride,
                            frame->mOffset,
                            2,
                            frame->mLength,
@@ -1429,7 +1429,10 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
     ///Get preview size
     params.getPreviewSize(&w, &h);
 
-    //Get the preview pixel format
+    // save preview pixel format, size and stride
+    mPreviewWidth = w;
+    mPreviewHeight = h;
+    mPreviewStride = 4096;
     mPreviewPixelFormat = getContstantForPixelFormat(params.getPreviewFormat());
     size = calculateBufferSize(w, h, mPreviewPixelFormat);
 
