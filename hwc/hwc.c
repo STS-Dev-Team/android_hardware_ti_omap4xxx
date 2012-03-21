@@ -1454,6 +1454,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
         .op = RGZ_IN_HWCCHK,
         .data = {
             .hwc = {
+                .dstgeom = &gscrngeom,
                 .layers = list->hwLayers,
                 .layerno = list->numHwLayers
             }

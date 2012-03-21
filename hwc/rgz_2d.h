@@ -40,6 +40,7 @@ struct rgz_in_hwc {
     int flags;
     int layerno;
     hwc_layer_t *layers;
+    struct bvsurfgeom *dstgeom;
 };
 
 typedef struct rgz_in_params {
