@@ -1992,6 +1992,14 @@ static void omap4_hwc_dump(struct hwc_composer_device *dev, char *buff, int buff
                           cfg->win.x, cfg->win.y, cfg->win.w, cfg->win.h,
                           cfg->ix, cfg->zorder);
     }
+
+    if (hwc_dev->blt_policy != BLTPOLICY_DISABLED) {
+        dump_printf(&log, "  bltpolicy: %s, bltmode: %s\n",
+            hwc_dev->blt_policy == BLTPOLICY_DEFAULT ? "default" :
+                hwc_dev->blt_policy == BLTPOLICY_ALL ? "all" : "unknown",
+                    hwc_dev->blt_mode == BLTMODE_PAINT ? "paint" : "regionize");
+    }
+    dump_printf(&log, "\n");
 }
 
 static void free_png_image(omap4_hwc_device_t *hwc_dev, struct omap4_hwc_img *img)
