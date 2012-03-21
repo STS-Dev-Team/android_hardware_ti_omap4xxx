@@ -1181,6 +1181,8 @@ private:
     bool mYuvCapture;
 #endif
 
+    bool mSetFormatDone;
+
     OMX_TI_DCCDATATYPE mDccData;
     Mutex mDccDataLock;
 
