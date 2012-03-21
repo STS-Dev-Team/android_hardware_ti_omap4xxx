@@ -1026,7 +1026,7 @@ int CameraHal::setParameters(const CameraParameters& params)
         // enabled or doesSetParameterNeedUpdate says so. Initial setParameters to camera adapter,
         // will be called in startPreview()
         // TODO(XXX): Need to identify other parameters that need update from camera adapter
-        if ( (NULL != mCameraAdapter) && (mPreviewEnabled || updateRequired) ) {
+        if ( (NULL != mCameraAdapter) && (mPreviewEnabled || updateRequired) && !restartPreviewRequired ) {
             ret |= mCameraAdapter->setParameters(adapterParams);
         }
 
