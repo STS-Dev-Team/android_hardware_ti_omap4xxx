@@ -1133,7 +1133,6 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
 
 static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params)
 {
-    int batch_enabled = 0; /* FIXME: Disable batching for now */
     static int loaded = 0;
     if (!loaded)
         loaded = loadbltsville() ? : 1; /* attempt load once */
@@ -1170,8 +1169,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
          */
         rgz_src1_prep(e, hregion->rgz_layers[lix], rect, scrdesc, scrgeom, params);
         rgz_src2blend_prep(e, hregion->rgz_layers[s2lix], rect, params);
-        if (batch_enabled)
-            rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
+        rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
 
         /* Rest of layers blended with FB */
         int first = 1;
@@ -1184,9 +1182,6 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
             rgz_src1_prep(e, rgz_layer, rect, scrdesc, scrgeom, params);
             rgz_src2blend_prep2(e, layer->transform, rect, scrdesc, scrgeom, 1);
 
-            if (!batch_enabled)
-                continue;
-
             if (first) {
                 first = 0;
                 batchflags |= BVBATCH_DST | BVBATCH_SRC2 | \
@@ -1198,12 +1193,10 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
         }
 
-        if (batch_enabled) {
-            if (e->bp.flags & BVFLAG_BATCH_BEGIN)
-                rgz_batch_entry(e, 0, 0);
-            else
-                rgz_batch_entry(e, BVFLAG_BATCH_END, 0);
-        }
+        if (e->bp.flags & BVFLAG_BATCH_BEGIN)
+            rgz_batch_entry(e, 0, 0);
+        else
+            rgz_batch_entry(e, BVFLAG_BATCH_END, 0);
 
     } else { /* COPY */
         blit_rect_t *rect = &hregion->blitrects[lix][sidx];
