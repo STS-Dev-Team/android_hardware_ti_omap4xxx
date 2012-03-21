@@ -84,6 +84,8 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define LOGD_IF(debug, ...) { if (debug) OUTP(__VA_ARGS__); }
 #endif
 
+#define IS_BVCMD(params) (params->op == RGZ_OUT_BVCMD_REGION || params->op == RGZ_OUT_BVCMD_PAINT)
+
 /* Number of framebuffers to track */
 #define RGZ_NUM_FB 2
 
@@ -93,12 +95,10 @@ struct rgz_blts {
 };
 
 
-static int rgz_hwc_layer_blit(
-    hwc_layer_t *l, struct bvbuffdesc *dstdesc,
-    struct bvsurfgeom *dstgeom, int noblend, int buff_idx);
+static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff_idx);
 static void rgz_blts_init(struct rgz_blts *blts);
 static void rgz_blts_free(struct rgz_blts *blts);
-static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts);
+static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts, rgz_out_params_t *params);
 static int rgz_blts_bvdirect(rgz_t* rgz, struct rgz_blts *blts, rgz_out_params_t *params);
 
 int debug = 0;
@@ -162,7 +162,7 @@ static int get_layer_ops(blit_hregion_t *hregion, int subregion, int *bottom)
         if (!empty_rect(&hregion->blitrects[l][subregion])) {
             ops++;
             *bottom = l;
-            hwc_layer_t *layer = hregion->layers[l];
+            hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
             IMG_native_handle_t *h = (IMG_native_handle_t *)layer->handle;
             if ((layer->blending != HWC_BLENDING_PREMULT) || is_OPAQUE(h->iFormat))
                 break;
@@ -250,11 +250,11 @@ static void dump_layer(hwc_layer_t const* l, int iserr)
     }
 }
 
-static void dump_all(hwc_layer_t *layers, unsigned int layerno, unsigned int errlayer)
+static void dump_all(rgz_layer_t *rgz_layers, unsigned int layerno, unsigned int errlayer)
 {
     unsigned int i;
     for (i = 0; i < layerno; i++) {
-        hwc_layer_t *l = &layers[i];
+        hwc_layer_t *l = rgz_layers[i].hwc_layer;
         OUTE("Layer %d", i);
         dump_layer(l, errlayer == i);
     }
@@ -268,16 +268,13 @@ static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
 
     rgz_blts_init(&blts);
 
-    for (i = 0; i < rgz->paint_layerno; i++) {
-        hwc_layer_t *l = &rgz->paint_layers[i];
+    for (i = 0; i < rgz->rgz_layerno; i++) {
+        hwc_layer_t *l = rgz->rgz_layers[i].hwc_layer;
 
-        rv = rgz_hwc_layer_blit(l, params->data.bv.dstdesc,
-                                params->data.bv.dstgeom,
-                                params->data.bv.noblend,
-                                -1);
+        rv = rgz_hwc_layer_blit(l, params, -1);
         if (rv) {
             OUTE("bvdirect_paint: error in layer %d: %d", i, rv);
-            dump_all(rgz->paint_layers, rgz->paint_layerno, i);
+            dump_all(rgz->rgz_layers, rgz->rgz_layerno, i);
             rgz_blts_free(&blts);
             return rv;
         }
@@ -292,25 +289,22 @@ static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
  */
 static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
 {
+    if (!params->data.bvc.clrdst)
+        return;
+
     struct bvsurfgeom *scrgeom = params->data.bvc.dstgeom;
 
     struct rgz_blt_entry* e;
-    e = rgz_blts_get(&blts);
+    e = rgz_blts_get(&blts, params);
 
     struct bvbuffdesc *src1desc = &e->src1desc;
     src1desc->structsize = sizeof(struct bvbuffdesc);
     src1desc->length = 1;
-#ifdef RGZ_TEST_INTEGRATION
-    static unsigned long bpp32col = 0x00000000;
-    src1desc->virtaddr = (void*)&bpp32col;
-#else
     /*
      * With the HWC we don't bother having a buffer for the fill we'll get the
      * OMAPLFB to fixup the src1desc if this address is -1
      */
     src1desc->virtaddr = (void*)-1;
-#endif
-
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
     src1geom->format = OCDFMT_RGBA24;
@@ -349,34 +343,26 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
 static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
 {
     int rv = 0;
-    rgz_blts_init(&blts);
-
     params->data.bvc.out_blits = 0;
-    if (params->data.bvc.clrdst) {
-        rgz_out_clrdst(rgz, params);
-        params->data.bvc.out_blits++;
-    }
-
     params->data.bvc.out_nhndls = 0;
+    rgz_blts_init(&blts);
+    rgz_out_clrdst(rgz, params);
+
     unsigned int i;
-    for (i = 0; i < rgz->paint_layerno; i++) {
-        hwc_layer_t *l = &rgz->paint_layers[i];
+    for (i = 0; i < rgz->rgz_layerno; i++) {
+        hwc_layer_t *l = rgz->rgz_layers[i].hwc_layer;
 
-        //OUTP("blitting meminfo %d", rgz->paint_layersbuf[i]);
+        //OUTP("blitting meminfo %d", rgz->rgz_layers[i].buffidx);
 
-        rv = rgz_hwc_layer_blit(l, NULL,
-                                params->data.bvc.dstgeom,
-                                params->data.bvc.noblend,
-                                rgz->paint_layersbuf[i]);
+        rv = rgz_hwc_layer_blit(l, params, rgz->rgz_layers[i].buffidx);
         if (rv) {
             OUTE("bvcmd_paint: error in layer %d: %d", i, rv);
-            dump_all(rgz->paint_layers, rgz->paint_layerno, i);
+            dump_all(rgz->rgz_layers, rgz->rgz_layerno, i);
             rgz_blts_free(&blts);
             return rv;
         }
         params->data.bvc.out_hndls[i] = l->handle;
         params->data.bvc.out_nhndls++;
-        params->data.bvc.out_blits++;
     }
 
     /* FIXME: we want to be able to call rgz_blts_free and populate the actual
@@ -464,15 +450,16 @@ static int rgz_bunique(int *a, int len)
     return unique;
 }
 
-static int rgz_hwc_layer_sortbyy(hwc_layer_t *ra, int rsz, int *out, int *width)
+static int rgz_hwc_layer_sortbyy(rgz_layer_t *ra, int rsz, int *out, int *width)
 {
     int outsz = 0;
     int i;
     *width = 0;
     for (i = 0; i < rsz; i++) {
-        out[outsz++] = ra[i].displayFrame.top;
-        out[outsz++] = ra[i].displayFrame.bottom;
-        int right = ra[i].displayFrame.right;
+        hwc_layer_t *layer = ra[i].hwc_layer;
+        out[outsz++] = layer->displayFrame.top;
+        out[outsz++] = layer->displayFrame.bottom;
+        int right = layer->displayFrame.right;
         *width = *width > right ? *width : right;
     }
     rgz_bsort(out, outsz);
@@ -499,8 +486,9 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion)
     int noffsets=0;
     int l, r;
     for (l = 0; l < hregion->nlayers; l++) {
-        offsets[noffsets++] = hregion->layers[l]->displayFrame.left;
-        offsets[noffsets++] = hregion->layers[l]->displayFrame.right;
+        hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
+        offsets[noffsets++] = layer->displayFrame.left;
+        offsets[noffsets++] = layer->displayFrame.right;
     }
     rgz_bsort(offsets, noffsets);
     noffsets = rgz_bunique(offsets, noffsets);
@@ -516,7 +504,8 @@ static void rgz_gen_blitregions(blit_hregion_t *hregion)
         LOGD_IF(debug, "                sub l %d r %d",
             subregion.left, subregion.right);
         for (l = 0; l < hregion->nlayers; l++) {
-            if (rgz_hwc_intersects(&subregion, &hregion->layers[l]->displayFrame)) {
+            hwc_layer_t *layer = hregion->rgz_layers[l]->hwc_layer;
+            if (rgz_hwc_intersects(&subregion, &layer->displayFrame)) {
 
                 hregion->blitrects[l][r] = subregion;
 
@@ -590,8 +579,8 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
             candidates++;
             if (rgz_in_valid_hwc_layer(&layers[l]) &&
                     possible_blit < RGZ_MAXLAYERS) {
-                rgz->paint_layers[possible_blit] = layers[l];
-                rgz->paint_layersbuf[possible_blit] = memidx++;
+                rgz->rgz_layers[possible_blit].hwc_layer = &layers[l];
+                rgz->rgz_layers[possible_blit].buffidx = memidx++;
                 possible_blit++;
             }
         }
@@ -602,7 +591,7 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     }
 
     rgz->state = RGZ_STATE_INIT;
-    rgz->paint_layerno = possible_blit;
+    rgz->rgz_layerno = possible_blit;
 
     return RGZ_ALL;
 }
@@ -616,12 +605,13 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         OUTE("rgz_process started with bad state");
         return -1;
     }
-    int layerno = p->data.hwc.layerno;
+    int layerno = rgz->rgz_layerno;
     int l;
     for (l = 0; l < layerno; l++) {
-        if ((rgz->dirtyhndl[l] != p->data.hwc.layers[l].handle) ||
+        hwc_layer_t *layer = rgz->rgz_layers[l].hwc_layer;
+        if ((rgz->dirtyhndl[l] != layer->handle) ||
             (p->data.hwc.flags & HWC_GEOMETRY_CHANGED)) {
-            rgz->dirtyhndl[l] = (void*)p->data.hwc.layers[l].handle;
+            rgz->dirtyhndl[l] = (void*)layer->handle;
             rgz->dirtyno[l] = RGZ_NUM_FB;
         }
     }
@@ -633,8 +623,8 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
     }
 
     /* Find the horizontal regions */
-    hwc_layer_t *layers = p->data.hwc.layers;
-    int ylen = rgz_hwc_layer_sortbyy(layers, layerno, yentries, &dispw);
+    rgz_layer_t *rgz_layers = rgz->rgz_layers;
+    int ylen = rgz_hwc_layer_sortbyy(rgz_layers, layerno, yentries, &dispw);
 
     ylen = rgz_bunique(yentries, ylen);
 
@@ -655,9 +645,10 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         hregions[i].rect.right = dispw;
         hregions[i].nlayers = 0;
         for (j = 0; j < layerno; j++) {
-            if (rgz_hwc_intersects(&hregions[i].rect, &layers[j].displayFrame)) {
+            hwc_layer_t *layer = rgz_layers[j].hwc_layer;
+            if (rgz_hwc_intersects(&hregions[i].rect, &layer->displayFrame)) {
                 int l = hregions[i].nlayers++;
-                hregions[i].layers[l] = &layers[j];
+                hregions[i].rgz_layers[l] = &rgz_layers[j];
             }
         }
     }
@@ -669,7 +660,7 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         LOGD_IF(debug, "           : %d to %d: ",
             hregions[i].rect.top, hregions[i].rect.bottom);
         for (j = 0; j < hregions[i].nlayers; j++)
-            LOGD_IF(debug, "              %p ", hregions[i].layers[j]);
+            LOGD_IF(debug, "              %p ", hregions[i].rgz_layers[j]->hwc_layer);
     }
     rgz->state |= RGZ_REGION_DATA;
     return 0;
@@ -869,9 +860,7 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h)
 
 extern void BVDump(const char* prefix, const char* tab, const struct bvbltparams* parms);
 
-static int rgz_hwc_layer_blit(
-    hwc_layer_t *l, struct bvbuffdesc *scrdesc,
-    struct bvsurfgeom *scrgeom, int noblend, int buff_idx)
+static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff_idx)
 {
     IMG_native_handle_t *handle = (IMG_native_handle_t *)l->handle;
     if (!handle || l->flags & HWC_SKIP_LAYER) {
@@ -886,8 +875,22 @@ static int rgz_hwc_layer_blit(
     if (!loaded)
         loaded = loadbltsville() ? : 1; /* attempt load once */
 
+    struct bvbuffdesc *scrdesc;
+    struct bvsurfgeom *scrgeom;
+    int noblend;
+
+    if (IS_BVCMD(params)) {
+        scrdesc = NULL;
+        scrgeom = params->data.bvc.dstgeom;
+        noblend = params->data.bvc.noblend;
+    } else {
+        scrdesc = params->data.bv.dstdesc;
+        scrgeom = params->data.bv.dstgeom;
+        noblend = params->data.bv.noblend;
+    }
+
     struct rgz_blt_entry* e;
-    e = rgz_blts_get(&blts);
+    e = rgz_blts_get(&blts, params);
 
     struct bvbuffdesc *src1desc = &e->src1desc;
     src1desc->structsize = sizeof(struct bvbuffdesc);
@@ -993,7 +996,7 @@ static int effective_srctop(hwc_layer_t* l, blit_rect_t *rect)
  */
 static void rgz_src2blend_prep2(
     struct rgz_blt_entry* e, unsigned int hwc_transform, blit_rect_t *rect,
-    struct bvbuffdesc *dstdesc, struct bvsurfgeom *dstgeom)
+    struct bvbuffdesc *dstdesc, struct bvsurfgeom *dstgeom, int is_fb_dest)
 {
     unsigned long bpflags = BVFLAG_CLIP;
 
@@ -1007,6 +1010,14 @@ static void rgz_src2blend_prep2(
     bp->src2rect.width = WIDTH(*rect);
     bp->src2rect.height = HEIGHT(*rect);
 
+    if (is_fb_dest) {
+        struct bvsurfgeom *src2geom = &e->src2geom;
+        struct bvbuffdesc *src2desc = &e->src2desc;
+        *src2geom = *dstgeom;
+        src2desc->structsize = sizeof(struct bvbuffdesc);
+        src2desc->virtaddr = (void*)HWC_BLT_DESC_FB_FN(0);
+    }
+
     if (hwc_transform & HWC_TRANSFORM_FLIP_H)
         bpflags |= BVFLAG_HORZ_FLIP_SRC1;
     if (hwc_transform & HWC_TRANSFORM_FLIP_V)
@@ -1016,14 +1027,16 @@ static void rgz_src2blend_prep2(
 }
 
 static void rgz_src2blend_prep(
-    struct rgz_blt_entry* e, hwc_layer_t *l, blit_rect_t *rect)
+    struct rgz_blt_entry* e, rgz_layer_t *rgz_layer, blit_rect_t *rect, rgz_out_params_t *params)
 {
+    hwc_layer_t *l = rgz_layer->hwc_layer;
     IMG_native_handle_t *handle = (IMG_native_handle_t *)l->handle;
 
     struct bvbuffdesc *src2desc = &e->src2desc;
     src2desc->structsize = sizeof(struct bvbuffdesc);
     src2desc->length = handle->iHeight * HANDLE_TO_STRIDE(handle);
-    src2desc->virtaddr = HANDLE_TO_BUFFER(handle); /* XXX caution virtaddr */
+    src2desc->virtaddr = IS_BVCMD(params)?
+        (void*)rgz_layer->buffidx : HANDLE_TO_BUFFER(handle);
 
     struct bvsurfgeom *src2geom = &e->src2geom;
     src2geom->structsize = sizeof(struct bvsurfgeom);
@@ -1045,14 +1058,15 @@ static void rgz_src2blend_prep(
     src2rect.left = effective_srcleft(l, rect);
     src2rect.bottom = src2rect.top + HEIGHT(*rect);
     src2rect.right = src2rect.left + WIDTH(*rect);
-    rgz_src2blend_prep2(e, l->transform, &src2rect, src2desc, src2geom);
+    rgz_src2blend_prep2(e, l->transform, &src2rect, src2desc, src2geom, 0);
 }
 
 static void rgz_src1_prep(
-    struct rgz_blt_entry* e, hwc_layer_t *l,
+    struct rgz_blt_entry* e, rgz_layer_t *rgz_layer,
     blit_rect_t *rect,
-    struct bvbuffdesc *scrdesc, struct bvsurfgeom *scrgeom)
+    struct bvbuffdesc *scrdesc, struct bvsurfgeom *scrgeom, rgz_out_params_t *params)
 {
+    hwc_layer_t *l = rgz_layer->hwc_layer;
     if (!l)
         return;
 
@@ -1061,11 +1075,8 @@ static void rgz_src1_prep(
     struct bvbuffdesc *src1desc = &e->src1desc;
     src1desc->structsize = sizeof(struct bvbuffdesc);
     src1desc->length = handle->iHeight * HANDLE_TO_STRIDE(handle);
-    /*
-     * The virtaddr isn't going to be used in the final 2D h/w integration
-     * because we will be handling buffers differently
-     */
-    src1desc->virtaddr = HANDLE_TO_BUFFER(handle);
+    src1desc->virtaddr = IS_BVCMD(params) ?
+        (void*)rgz_layer->buffidx : HANDLE_TO_BUFFER(handle);
 
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
@@ -1111,13 +1122,26 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
     e->bp.batchflags |= set;
 }
 
-static int rgz_hwc_subregion_blit(
-    blit_hregion_t *hregion, int sidx, struct bvbuffdesc *scrdesc,
-    struct bvsurfgeom *scrgeom, int noblend)
+static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params)
 {
+    int batch_enabled = 0; /* FIXME: Disable batching for now */
     static int loaded = 0;
     if (!loaded)
         loaded = loadbltsville() ? : 1; /* attempt load once */
+
+    struct bvbuffdesc *scrdesc;
+    struct bvsurfgeom *scrgeom;
+    int noblend;
+
+    if (IS_BVCMD(params)) {
+        scrdesc = NULL;
+        scrgeom = params->data.bvc.dstgeom;
+        noblend = params->data.bvc.noblend;
+    } else {
+        scrdesc = params->data.bv.dstdesc;
+        scrgeom = params->data.bv.dstgeom;
+        noblend = params->data.bv.noblend;
+    }
 
     int lix;
     int ldepth = get_layer_ops(hregion, sidx, &lix);
@@ -1126,7 +1150,7 @@ static int rgz_hwc_subregion_blit(
 
     if (!noblend && ldepth > 1) { /* BLEND */
         blit_rect_t *rect = &hregion->blitrects[lix][sidx];
-        struct rgz_blt_entry* e = rgz_blts_get(&blts);
+        struct rgz_blt_entry* e = rgz_blts_get(&blts, params);
 
         int s2lix = lix;
         lix = get_layer_ops_next(hregion, sidx, lix);
@@ -1135,18 +1159,25 @@ static int rgz_hwc_subregion_blit(
          * We save a read and a write from the FB if we blend the bottom
          * two layers
          */
-        rgz_src1_prep(e, hregion->layers[lix], rect, scrdesc, scrgeom);
-        rgz_src2blend_prep(e, hregion->layers[s2lix], rect);
-        rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
+        rgz_src1_prep(e, hregion->rgz_layers[lix], rect, scrdesc, scrgeom, params);
+        rgz_src2blend_prep(e, hregion->rgz_layers[s2lix], rect, params);
+        if (batch_enabled)
+            rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
 
         /* Rest of layers blended with FB */
         int first = 1;
         while((lix = get_layer_ops_next(hregion, sidx, lix)) != -1) {
             int batchflags = 0;
-            e = rgz_blts_get(&blts);
-            hwc_layer_t *layer = hregion->layers[lix];
-            rgz_src1_prep(e, layer, rect, scrdesc, scrgeom);
-            rgz_src2blend_prep2(e, layer->transform, rect, scrdesc, scrgeom);
+            e = rgz_blts_get(&blts, params);
+
+            rgz_layer_t *rgz_layer = hregion->rgz_layers[lix];
+            hwc_layer_t *layer = rgz_layer->hwc_layer;
+            rgz_src1_prep(e, rgz_layer, rect, scrdesc, scrgeom, params);
+            rgz_src2blend_prep2(e, layer->transform, rect, scrdesc, scrgeom, 1);
+
+            if (!batch_enabled)
+                continue;
+
             if (first) {
                 first = 0;
                 batchflags |= BVBATCH_DST | BVBATCH_SRC2 | \
@@ -1157,19 +1188,24 @@ static int rgz_hwc_subregion_blit(
                 batchflags |= BVBATCH_SRC1RECT_ORIGIN | BVBATCH_SRC1RECT_SIZE;
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
         }
-        if (e->bp.flags & BVFLAG_BATCH_BEGIN)
-            rgz_batch_entry(e, 0, 0);
-        else
-            rgz_batch_entry(e, BVFLAG_BATCH_END, 0);
+
+        if (batch_enabled) {
+            if (e->bp.flags & BVFLAG_BATCH_BEGIN)
+                rgz_batch_entry(e, 0, 0);
+            else
+                rgz_batch_entry(e, BVFLAG_BATCH_END, 0);
+        }
+
     } else { /* COPY */
         blit_rect_t *rect = &hregion->blitrects[lix][sidx];
         if (noblend)    /* get_layer_ops() doesn't understand this so get the top */
             lix = get_top_rect(hregion, sidx, &rect);
 
-        struct rgz_blt_entry* e = rgz_blts_get(&blts);
-        hwc_layer_t *l = hregion->layers[lix];
+        struct rgz_blt_entry* e = rgz_blts_get(&blts, params);
 
-        rgz_src1_prep(e, l, rect, scrdesc, scrgeom);
+        rgz_layer_t *rgz_layer = hregion->rgz_layers[lix];
+        hwc_layer_t *l = rgz_layer->hwc_layer;
+        rgz_src1_prep(e, rgz_layer, rect, scrdesc, scrgeom, params);
 
         struct bvsurfgeom *src1geom = &e->src1geom;
         unsigned long bpflags = BVFLAG_CLIP | BVFLAG_ROP;
@@ -1207,11 +1243,13 @@ static void rgz_blts_free(struct rgz_blts *blts)
     rgz_blts_init(blts);
 }
 
-static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts)
+static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts, rgz_out_params_t *params)
 {
     struct rgz_blt_entry *ne;
     if (blts->idx < (RGZ_MAXLAYERS * RGZ_SUBREGIONMAX)) {
         ne = &blts->bvcmds[blts->idx++];
+        if (IS_BVCMD(params))
+            params->data.bvc.out_blits++;
     } else {
         OUTE("!!! BIG PROBLEM !!! run out of blit entries");
         ne = &blts->bvcmds[blts->idx - 1]; /* Return last slot */
@@ -1242,7 +1280,7 @@ static int rgz_blts_bvdirect(rgz_t *rgz, struct rgz_blts *blts, rgz_out_params_t
     return rv;
 }
 
-static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params, int bvdirect)
+static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
 {
     if (!(rgz->state & RGZ_REGION_DATA)) {
         OUTE("rgz_out_region invoked with bad state");
@@ -1252,10 +1290,13 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params, int bvdirect)
     rgz_blts_init(&blts);
     LOGD_IF(debug, "rgz_out_region:");
 
+    if (IS_BVCMD(params)) {
+        params->data.bvc.out_blits = 0;
+        rgz_out_clrdst(rgz, params);
+    }
+
     int i;
     for (i = 0; i < rgz->nhregions; i++) {
-        struct bvbuffdesc *dstdesc = params->data.bv.dstdesc;
-        struct bvsurfgeom *dstgeom = params->data.bv.dstgeom;
         blit_hregion_t *hregion = &rgz->hregions[i];
         int s;
         LOGD_IF(debug, "h[%d] nsubregions = %d", i, hregion->nsubregions);
@@ -1263,19 +1304,33 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params, int bvdirect)
             continue;
         for (s = 0; s < hregion->nsubregions; s++) {
             LOGD_IF(debug, "h[%d] -> [%d]", i, s);
-            rgz_hwc_subregion_blit(hregion, s, dstdesc, dstgeom, params->data.bv.noblend);
+            rgz_hwc_subregion_blit(hregion, s, params);
         }
     }
 
     int rv = 0;
-    if (bvdirect){
-        rv = rgz_blts_bvdirect(rgz, &blts, params);
-    } else {
+
+    if (IS_BVCMD(params)) {
+        unsigned int j;
+        params->data.bvc.out_nhndls = 0;
+        for (j = 0; j < rgz->rgz_layerno; j++) {
+            hwc_layer_t *layer = rgz->rgz_layers[j].hwc_layer;
+            params->data.bvc.out_hndls[j] = layer->handle;
+            params->data.bvc.out_nhndls++;
+        }
+
+        /* FIXME: we want to be able to call rgz_blts_free and populate the actual
+         * composition data structure ourselves */
         params->data.bvc.cmdp = blts.bvcmds;
         params->data.bvc.cmdlen = blts.idx;
+        if (params->data.bvc.out_blits > RGZ_MAX_BLITS)
+            rv = -1;
+        //rgz_blts_free(&blts);
+    } else {
+        rv = rgz_blts_bvdirect(rgz, &blts, params);
+        rgz_blts_free(&blts);
     }
 
-    //rgz_blts_free(&blts);
     return rv;
 }
 
@@ -1375,9 +1430,9 @@ int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
     int rv = -1;
     switch (p->op) {
     case RGZ_IN_HWC:
-        bzero(rgz, sizeof(rgz_t));
+        rgz_release(rgz);
         int chk = rgz_in_hwccheck(p, rgz);
-        if (chk)  {
+        if (chk == RGZ_ALL)  {
             int rv = rgz_in_hwc(p, rgz);
             if (rv != 0)
                 return rv;
@@ -1411,12 +1466,11 @@ int rgz_out(rgz_t *rgz, rgz_out_params_t *params)
         return 0;
     case RGZ_OUT_BVDIRECT_PAINT:
         return rgz_out_bvdirect_paint(rgz, params);
-    case RGZ_OUT_BVDIRECT_REGION:
-        return rgz_out_region(rgz, params, 1);
     case RGZ_OUT_BVCMD_PAINT:
         return rgz_out_bvcmd_paint(rgz, params);
+    case RGZ_OUT_BVDIRECT_REGION:
     case RGZ_OUT_BVCMD_REGION:
-        return rgz_out_region(rgz, params, 0);
+        return rgz_out_region(rgz, params);
     default:
         return -1;
     }
