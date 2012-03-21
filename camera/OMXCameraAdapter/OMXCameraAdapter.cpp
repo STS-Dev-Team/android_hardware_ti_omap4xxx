@@ -302,6 +302,10 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     //and will not conditionally apply based on current values.
     mFirstTimeInit = true;
 
+    //Flag to avoid calling setVFramerate() before OMX_SetParameter(OMX_IndexParamPortDefinition)
+    //Ducati will return an error otherwise.
+    mSetFormatDone = false;
+
     memset(mExposureBracketingValues, 0, EXP_BRACKET_RANGE*sizeof(int));
     memset(mZoomBracketingValues, 0, ZOOM_BRACKET_RANGE*sizeof(int));
     mMeasurementEnabled = false;
@@ -1095,6 +1099,8 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         CAMHAL_LOGDB("\n *** VID portCheck.format.video.nStride = %ld\n",
                 portCheck.format.video.nStride);
     }
+
+    mSetFormatDone = true;
 
     LOG_FUNCTION_NAME_EXIT;
 
