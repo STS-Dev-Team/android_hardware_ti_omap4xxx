@@ -73,6 +73,9 @@
 #define BLAZE_TABLET1 1
 #define BLAZE_TABLET2 2
 
+#define MAX_LINES    80
+#define MAX_SYMBOLS  65
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 namespace android {
