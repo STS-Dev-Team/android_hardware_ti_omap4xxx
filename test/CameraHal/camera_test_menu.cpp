@@ -61,6 +61,7 @@ int ManualConvergenceDefaultValue = 0;
 int gbceIDX = 0;
 int glbceIDX = 0;
 int rotation = 0;
+int previewRotation = 0;
 bool reSizePreview = true;
 bool hardwareActive = false;
 bool recordingMode = false;
@@ -1788,6 +1789,7 @@ void initDefaults() {
     expBracketIdx = 0;
     flashIdx = getDefaultParameter("off", numflash, flash);
     rotation = 0;
+    previewRotation = 0;
     zoomIDX = 0;
     videoCodecIDX = 0;
     gbceIDX = 0;
@@ -1823,6 +1825,7 @@ void initDefaults() {
     params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
     params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
     params.set(CameraParameters::KEY_ROTATION, rotation);
+    params.set(KEY_SENSOR_ORIENTATION, previewRotation);
     params.set(KEY_COMPENSATION, (int) (compensation * 10));
     params.set(params.KEY_WHITE_BALANCE, awb[awb_mode]);
     params.set(KEY_MODE, (modevalues[capture_mode]));
@@ -1979,6 +1982,7 @@ int functional_menu() {
         printf("   W. Temporal Bracketing Range: [-%d;+%d]\n", tempBracketRange, tempBracketRange);
         printf("   $. Picture Format: %s\n", pictureFormatArray[pictureFormat]);
         printf("   3. Picture Rotation:       %3d degree\n", rotation );
+        printf("   V. Preview Rotation:       %3d degree\n", previewRotation );
         printf("   5. Picture size:   %4d x %4d - %s\n",capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height,              capture_Array[captureSizeIDX]->name);
         printf("   i. ISO mode:       %s\n", isoMode[iso_mode]);
         printf("   u. Capture Mode:   %s\n", modevalues[capture_mode]);
@@ -2138,6 +2142,16 @@ int functional_menu() {
             rotation += 90;
             rotation %= 360;
             params.set(CameraParameters::KEY_ROTATION, rotation);
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 'V':
+            previewRotation += 90;
+            previewRotation %= 360;
+            params.set(KEY_SENSOR_ORIENTATION, previewRotation);
+
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
 
