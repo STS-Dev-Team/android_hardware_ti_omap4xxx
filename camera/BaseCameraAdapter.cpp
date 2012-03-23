@@ -277,7 +277,7 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-void BaseCameraAdapter::addFramePointers(void *frameBuf, void *buf)
+void BaseCameraAdapter::addFramePointers(CameraBuffer *frameBuf, void *buf)
 {
   unsigned int *pBuf = (unsigned int *)buf;
   Mutex::Autolock lock(mSubscriberLock);
@@ -309,7 +309,7 @@ void BaseCameraAdapter::removeFramePointers()
   mFrameQueue.clear();
 }
 
-void BaseCameraAdapter::returnFrame(void* frameBuf, CameraFrame::FrameType frameType)
+void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameType frameType)
 {
     status_t res = NO_ERROR;
     size_t subscriberCount = 0;
@@ -410,18 +410,18 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                 if ( ret == NO_ERROR )
                     {
                     Mutex::Autolock lock(mPreviewBufferLock);
-                    mPreviewBuffers = (int *) desc->mBuffers;
+                    mPreviewBuffers = desc->mBuffers;
                     mPreviewBuffersLength = desc->mLength;
                     mPreviewBuffersAvailable.clear();
                     for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ )
                         {
-                        mPreviewBuffersAvailable.add(mPreviewBuffers[i], 0);
+                        mPreviewBuffersAvailable.add(&mPreviewBuffers[i], 0);
                         }
                     // initial ref count for undeqeueued buffers is 1 since buffer provider
                     // is still holding on to it
                     for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ )
                         {
-                        mPreviewBuffersAvailable.add(mPreviewBuffers[i], 1);
+                        mPreviewBuffersAvailable.add(&mPreviewBuffers[i], 1);
                         }
                     }
 
@@ -463,18 +463,18 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                     if ( ret == NO_ERROR )
                         {
                         Mutex::Autolock lock(mPreviewDataBufferLock);
-                        mPreviewDataBuffers = (int *) desc->mBuffers;
+                        mPreviewDataBuffers = desc->mBuffers;
                         mPreviewDataBuffersLength = desc->mLength;
                         mPreviewDataBuffersAvailable.clear();
                         for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ )
                             {
-                            mPreviewDataBuffersAvailable.add(mPreviewDataBuffers[i], 0);
+                            mPreviewDataBuffersAvailable.add(&mPreviewDataBuffers[i], 0);
                             }
                         // initial ref count for undeqeueued buffers is 1 since buffer provider
                         // is still holding on to it
                         for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ )
                             {
-                            mPreviewDataBuffersAvailable.add(mPreviewDataBuffers[i], 1);
+                            mPreviewDataBuffersAvailable.add(&mPreviewDataBuffers[i], 1);
                             }
                         }
 
@@ -516,18 +516,18 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                 if ( ret == NO_ERROR )
                     {
                     Mutex::Autolock lock(mCaptureBufferLock);
-                    mCaptureBuffers = (int *) desc->mBuffers;
+                    mCaptureBuffers = desc->mBuffers;
                     mCaptureBuffersLength = desc->mLength;
                     mCaptureBuffersAvailable.clear();
                     for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ )
                         {
-                        mCaptureBuffersAvailable.add(mCaptureBuffers[i], 0);
+                        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 0);
                         }
                     // initial ref count for undeqeueued buffers is 1 since buffer provider
                     // is still holding on to it
                     for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ )
                         {
-                        mCaptureBuffersAvailable.add(mCaptureBuffers[i], 1);
+                        mCaptureBuffersAvailable.add(&mCaptureBuffers[i], 1);
                         }
                     }
 
@@ -1019,16 +1019,16 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
              if ( ret == NO_ERROR ) {
                  Mutex::Autolock lock(mVideoBufferLock);
-                 mVideoBuffers = (int *) desc->mBuffers;
+                 mVideoBuffers = desc->mBuffers;
                  mVideoBuffersLength = desc->mLength;
                  mVideoBuffersAvailable.clear();
                  for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ ) {
-                     mVideoBuffersAvailable.add(mVideoBuffers[i], true);
+                     mVideoBuffersAvailable.add(&mVideoBuffers[i], 1);
                  }
                  // initial ref count for undeqeueued buffers is 1 since buffer provider
                  // is still holding on to it
                  for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ ) {
-                     mVideoBuffersAvailable.add(mPreviewBuffers[i], 1);
+                     mVideoBuffersAvailable.add(&mPreviewBuffers[i], 1);
                  }
              }
 
@@ -1339,7 +1339,7 @@ status_t BaseCameraAdapter::__sendFrameToSubscribers(CameraFrame* frame,
     return ret;
 }
 
-int BaseCameraAdapter::setInitFrameRefCount(void* buf, unsigned int mask)
+int BaseCameraAdapter::setInitFrameRefCount(CameraBuffer * buf, unsigned int mask)
 {
   int ret = NO_ERROR;
   unsigned int lmask;
@@ -1396,7 +1396,7 @@ int BaseCameraAdapter::setInitFrameRefCount(void* buf, unsigned int mask)
   return ret;
 }
 
-int BaseCameraAdapter::getFrameRefCount(void* frameBuf, CameraFrame::FrameType frameType)
+int BaseCameraAdapter::getFrameRefCount(CameraBuffer * frameBuf, CameraFrame::FrameType frameType)
 {
     int res = -1;
 
@@ -1408,26 +1408,26 @@ int BaseCameraAdapter::getFrameRefCount(void* frameBuf, CameraFrame::FrameType f
         case CameraFrame::RAW_FRAME:
                 {
                 Mutex::Autolock lock(mCaptureBufferLock);
-                res = mCaptureBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
+                res = mCaptureBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::PREVIEW_FRAME_SYNC:
         case CameraFrame::SNAPSHOT_FRAME:
                 {
                 Mutex::Autolock lock(mPreviewBufferLock);
-                res = mPreviewBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
+                res = mPreviewBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::FRAME_DATA_SYNC:
                 {
                 Mutex::Autolock lock(mPreviewDataBufferLock);
-                res = mPreviewDataBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
+                res = mPreviewDataBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::VIDEO_FRAME_SYNC:
                 {
                 Mutex::Autolock lock(mVideoBufferLock);
-                res = mVideoBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
+                res = mVideoBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         default:
@@ -1439,7 +1439,7 @@ int BaseCameraAdapter::getFrameRefCount(void* frameBuf, CameraFrame::FrameType f
     return res;
 }
 
-void BaseCameraAdapter::setFrameRefCount(void* frameBuf, CameraFrame::FrameType frameType, int refCount)
+void BaseCameraAdapter::setFrameRefCount(CameraBuffer * frameBuf, CameraFrame::FrameType frameType, int refCount)
 {
 
     LOG_FUNCTION_NAME;
@@ -1450,26 +1450,26 @@ void BaseCameraAdapter::setFrameRefCount(void* frameBuf, CameraFrame::FrameType 
         case CameraFrame::RAW_FRAME:
                 {
                 Mutex::Autolock lock(mCaptureBufferLock);
-                mCaptureBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
+                mCaptureBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::PREVIEW_FRAME_SYNC:
         case CameraFrame::SNAPSHOT_FRAME:
                 {
                 Mutex::Autolock lock(mPreviewBufferLock);
-                mPreviewBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
+                mPreviewBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::FRAME_DATA_SYNC:
                 {
                 Mutex::Autolock lock(mPreviewDataBufferLock);
-                mPreviewDataBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
+                mPreviewDataBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::VIDEO_FRAME_SYNC:
                 {
                 Mutex::Autolock lock(mVideoBufferLock);
-                mVideoBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
+                mVideoBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         default:
@@ -1526,7 +1526,7 @@ status_t BaseCameraAdapter::stopVideoCapture()
         {
         for ( unsigned int i = 0 ; i < mVideoBuffersAvailable.size() ; i++ )
             {
-            void *frameBuf = ( void * ) mVideoBuffersAvailable.keyAt(i);
+            CameraBuffer *frameBuf = mVideoBuffersAvailable.keyAt(i);
             if( getFrameRefCount(frameBuf,  CameraFrame::VIDEO_FRAME_SYNC) > 0)
                 {
                 returnFrame(frameBuf, CameraFrame::VIDEO_FRAME_SYNC);
@@ -1657,7 +1657,7 @@ status_t BaseCameraAdapter::stopPreview()
     return ret;
 }
 
-status_t BaseCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable)
+status_t BaseCameraAdapter::useBuffers(CameraMode mode, CameraBuffer* bufArr, int num, size_t length, unsigned int queueable)
 {
     status_t ret = NO_ERROR;
 
@@ -1668,7 +1668,7 @@ status_t BaseCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, s
     return ret;
 }
 
-status_t BaseCameraAdapter::fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType)
+status_t BaseCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::FrameType frameType)
 {
     status_t ret = NO_ERROR;
 

@@ -115,7 +115,7 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
     return ret;
 }
 
-status_t V4LCameraAdapter::fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType)
+status_t V4LCameraAdapter::fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::FrameType frameType)
 {
 
     status_t ret = NO_ERROR;
@@ -125,7 +125,7 @@ status_t V4LCameraAdapter::fillThisBuffer(void* frameBuf, CameraFrame::FrameType
         return NO_ERROR;
         }
 
-    int i = mPreviewBufs.valueFor(( unsigned int )frameBuf);
+    int i = mPreviewBufs.valueFor(frameBuf);
     if(i<0)
         {
         return BAD_VALUE;
@@ -195,7 +195,7 @@ void V4LCameraAdapter::getParameters(CameraParameters& params)
 
 
 ///API to give the buffers to Adapter
-status_t V4LCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable)
+status_t V4LCameraAdapter::useBuffers(CameraMode mode, CameraBuffer *bufArr, int num, size_t length, unsigned int queueable)
 {
     status_t ret = NO_ERROR;
 
@@ -223,10 +223,9 @@ status_t V4LCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, si
     return ret;
 }
 
-status_t V4LCameraAdapter::UseBuffersPreview(void* bufArr, int num)
+status_t V4LCameraAdapter::UseBuffersPreview(CameraBuffer *bufArr, int num)
 {
     int ret = NO_ERROR;
-    uint32_t *ptr = (uint32_t*) bufArr;
 
     if(NULL == bufArr) {
         return BAD_VALUE;
@@ -272,7 +271,7 @@ status_t V4LCameraAdapter::UseBuffersPreview(void* bufArr, int num)
         }
 
         //Associate each Camera internal buffer with the one from Overlay
-        mPreviewBufs.add((int)ptr[i], i);
+        mPreviewBufs.add(&bufArr[i], i);
     }
 
     // Update the preview buffer count
@@ -582,7 +581,7 @@ int V4LCameraAdapter::previewThread()
             return BAD_VALUE;
         }
 
-        uint8_t* ptr = (uint8_t*) mPreviewBufs.keyAt(index);
+        CameraBuffer *buffer = mPreviewBufs.keyAt(index);
         int stride = 4096;
 
         //Convert yuv422i ti yuv420sp(NV12) & dump the frame to a file
@@ -591,12 +590,12 @@ int V4LCameraAdapter::previewThread()
         saveFile( nv12_buff, ((width*height)*3/2) );
 #endif
 
-        CameraFrame *lframe = (CameraFrame *)mFrameQueue.valueFor(ptr);
+        CameraFrame *lframe = (CameraFrame *)mFrameQueue.valueFor(buffer->opaque);
         y_uv[0] = (void*) lframe->mYuv[0];
         //y_uv[1] = (void*) lframe->mYuv[1];
         y_uv[1] = (void*) lframe->mYuv[0] + height*stride;
 
-        CAMHAL_LOGVB("##...index= %d.;ptr= 0x%x; y= 0x%x; UV= 0x%x.",index, ptr, y_uv[0], y_uv[1] );
+        CAMHAL_LOGVB("##...index= %d.;ptr= 0x%x; y= 0x%x; UV= 0x%x.",index, buffer->opaque, y_uv[0], y_uv[1] );
 
         unsigned char *bufferDst = ( unsigned char * ) y_uv[0];
         unsigned char *bufferSrc = nv12_buff;
@@ -617,7 +616,7 @@ int V4LCameraAdapter::previewThread()
         }
 
         frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
-        frame.mBuffer = ptr;
+        frame.mBuffer = buffer;
         frame.mLength = width*height*3/2;
         frame.mAlignment = stride;
         frame.mOffset = 0;

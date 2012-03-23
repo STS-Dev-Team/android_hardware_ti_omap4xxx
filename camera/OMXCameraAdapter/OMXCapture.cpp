@@ -806,7 +806,8 @@ status_t OMXCameraAdapter::doBracketing(OMX_BUFFERHEADERTYPE *pBuffHeader,
 
     if ( NO_ERROR == ret )
         {
-        currentBufferIdx = ( unsigned int ) pBuffHeader->pAppPrivate;
+        CameraBuffer *buffer = (CameraBuffer *)pBuffHeader->pAppPrivate;
+        currentBufferIdx = buffer->index;
 
         if ( currentBufferIdx >= imgCaptureData->mNumBufs)
             {
@@ -826,8 +827,8 @@ status_t OMXCameraAdapter::doBracketing(OMX_BUFFERHEADERTYPE *pBuffHeader,
             mBracketingBuffersQueued[nextBufferIdx] = true;
             mBracketingBuffersQueuedCount++;
             mLastBracetingBufferIdx = nextBufferIdx;
-            setFrameRefCount(imgCaptureData->mBufferHeader[nextBufferIdx]->pBuffer, typeOfFrame, 1);
-            returnFrame(imgCaptureData->mBufferHeader[nextBufferIdx]->pBuffer, typeOfFrame);
+            setFrameRefCount((CameraBuffer *)imgCaptureData->mBufferHeader[nextBufferIdx]->pAppPrivate, typeOfFrame, 1);
+            returnFrame((CameraBuffer *)imgCaptureData->mBufferHeader[nextBufferIdx]->pAppPrivate, typeOfFrame);
             }
         }
 
@@ -1410,14 +1411,13 @@ EXIT:
 }
 
 
-status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
+status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 {
     LOG_FUNCTION_NAME;
 
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters * imgCaptureData = NULL;
-    uint32_t *buffers = (uint32_t*)bufArr;
     OMXCameraPortParameters cap;
 
     imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
@@ -1499,7 +1499,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
     {
         OMX_BUFFERHEADERTYPE *pBufferHdr;
         CAMHAL_LOGDB("OMX_UseBuffer Capture address: 0x%x, size = %d",
-                     (unsigned int)buffers[index],
+                     (unsigned int)bufArr[index].opaque,
                      (int)imgCaptureData->mBufSize);
 
         eError = OMX_UseBuffer(mCameraAdapterParameters.mHandleComp,
@@ -1507,12 +1507,13 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
                                mCameraAdapterParameters.mImagePortIndex,
                                0,
                                imgCaptureData->mBufSize,
-                               (OMX_U8*)buffers[index]);
+                               (OMX_U8*)bufArr[index].opaque);
 
         CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
         GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
 
-        pBufferHdr->pAppPrivate = (OMX_PTR) index;
+        pBufferHdr->pAppPrivate = (OMX_PTR) &bufArr[index];
+        bufArr[index].index = index;
         pBufferHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
         pBufferHdr->nVersion.s.nVersionMajor = 1 ;
         pBufferHdr->nVersion.s.nVersionMinor = 1 ;
@@ -1575,7 +1576,7 @@ EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
 }
-status_t OMXCameraAdapter::UseBuffersRawCapture(void* bufArr, int num)
+status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
 {
     LOG_FUNCTION_NAME
     status_t ret;

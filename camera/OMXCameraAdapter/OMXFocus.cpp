@@ -691,9 +691,10 @@ status_t OMXCameraAdapter::setTouchFocus()
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
 
-    OMX_ALGOAREASTYPE **focusAreas;
+    OMX_ALGOAREASTYPE *focusAreas;
     OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
     MemoryManager memMgr;
+    CameraBuffer *bufferlist;
     int areasSize = 0;
 
     LOG_FUNCTION_NAME;
@@ -708,7 +709,8 @@ status_t OMXCameraAdapter::setTouchFocus()
         {
 
         areasSize = ((sizeof(OMX_ALGOAREASTYPE)+4095)/4096)*4096;
-        focusAreas = (OMX_ALGOAREASTYPE**) memMgr.allocateBuffer(0, 0, NULL, areasSize, 1);
+        bufferlist = memMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
+        focusAreas = (OMX_ALGOAREASTYPE*) bufferlist[0].opaque;
 
         OMXCameraPortParameters * mPreviewData = NULL;
         mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -719,18 +721,18 @@ status_t OMXCameraAdapter::setTouchFocus()
             return -ENOMEM;
             }
 
-        OMX_INIT_STRUCT_PTR (focusAreas[0], OMX_ALGOAREASTYPE);
+        OMX_INIT_STRUCT_PTR (focusAreas, OMX_ALGOAREASTYPE);
 
-        focusAreas[0]->nPortIndex = OMX_ALL;
-        focusAreas[0]->nNumAreas = mFocusAreas.size();
-        focusAreas[0]->nAlgoAreaPurpose = OMX_AlgoAreaFocus;
+        focusAreas->nPortIndex = OMX_ALL;
+        focusAreas->nNumAreas = mFocusAreas.size();
+        focusAreas->nAlgoAreaPurpose = OMX_AlgoAreaFocus;
 
         // If the area is the special case of (0, 0, 0, 0, 0), then
         // the algorithm needs nNumAreas to be set to 0,
         // in order to automatically choose the best fitting areas.
         if ( mFocusAreas.itemAt(0)->isZeroArea() )
             {
-            focusAreas[0]->nNumAreas = 0;
+            focusAreas->nNumAreas = 0;
             }
 
         for ( unsigned int n = 0; n < mFocusAreas.size(); n++) {
@@ -747,32 +749,32 @@ status_t OMXCameraAdapter::setTouchFocus()
             // transform the coordinates to 3A-type coordinates
             mFocusAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
                                             (size_t)mPreviewData->mHeight/heightDivisor,
-                                            (size_t&)focusAreas[0]->tAlgoAreas[n].nTop,
-                                            (size_t&)focusAreas[0]->tAlgoAreas[n].nLeft,
-                                            (size_t&)focusAreas[0]->tAlgoAreas[n].nWidth,
-                                            (size_t&)focusAreas[0]->tAlgoAreas[n].nHeight);
+                                            (size_t&)focusAreas->tAlgoAreas[n].nTop,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nLeft,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nWidth,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nHeight);
 
-            focusAreas[0]->tAlgoAreas[n].nLeft =
-                    ( focusAreas[0]->tAlgoAreas[n].nLeft * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
-            focusAreas[0]->tAlgoAreas[n].nTop =
-                    ( focusAreas[0]->tAlgoAreas[n].nTop* TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
-            focusAreas[0]->tAlgoAreas[n].nWidth =
-                    ( focusAreas[0]->tAlgoAreas[n].nWidth * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
-            focusAreas[0]->tAlgoAreas[n].nHeight =
-                    ( focusAreas[0]->tAlgoAreas[n].nHeight * TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
-            focusAreas[0]->tAlgoAreas[n].nPriority = mFocusAreas.itemAt(n)->getWeight();
+            focusAreas->tAlgoAreas[n].nLeft =
+                    ( focusAreas->tAlgoAreas[n].nLeft * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
+            focusAreas->tAlgoAreas[n].nTop =
+                    ( focusAreas->tAlgoAreas[n].nTop* TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
+            focusAreas->tAlgoAreas[n].nWidth =
+                    ( focusAreas->tAlgoAreas[n].nWidth * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
+            focusAreas->tAlgoAreas[n].nHeight =
+                    ( focusAreas->tAlgoAreas[n].nHeight * TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
+            focusAreas->tAlgoAreas[n].nPriority = mFocusAreas.itemAt(n)->getWeight();
 
              CAMHAL_LOGDB("Focus area %d : top = %d left = %d width = %d height = %d prio = %d",
-                    n, (int)focusAreas[0]->tAlgoAreas[n].nTop, (int)focusAreas[0]->tAlgoAreas[n].nLeft,
-                    (int)focusAreas[0]->tAlgoAreas[n].nWidth, (int)focusAreas[0]->tAlgoAreas[n].nHeight,
-                    (int)focusAreas[0]->tAlgoAreas[n].nPriority);
+                    n, (int)focusAreas->tAlgoAreas[n].nTop, (int)focusAreas->tAlgoAreas[n].nLeft,
+                    (int)focusAreas->tAlgoAreas[n].nWidth, (int)focusAreas->tAlgoAreas[n].nHeight,
+                    (int)focusAreas->tAlgoAreas[n].nPriority);
         }
 
         OMX_INIT_STRUCT_PTR (&sharedBuffer, OMX_TI_CONFIG_SHAREDBUFFER);
 
         sharedBuffer.nPortIndex = OMX_ALL;
         sharedBuffer.nSharedBuffSize = areasSize;
-        sharedBuffer.pSharedBuff = (OMX_U8 *) focusAreas[0];
+        sharedBuffer.pSharedBuff = (OMX_U8 *) focusAreas;
 
         if ( NULL == sharedBuffer.pSharedBuff )
             {
@@ -791,10 +793,9 @@ status_t OMXCameraAdapter::setTouchFocus()
             }
 
     EXIT:
-        if (NULL != focusAreas)
+        if (NULL != bufferlist)
             {
-            memMgr.freeBuffer((void*) focusAreas);
-            focusAreas = NULL;
+            memMgr.freeBufferList (bufferlist);
             }
         }
 

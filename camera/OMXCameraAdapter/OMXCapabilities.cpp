@@ -2386,7 +2386,8 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     status_t ret = NO_ERROR;
     int caps_size = 0;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
-    OMX_TI_CAPTYPE** caps = NULL;;
+    CameraBuffer *bufferlist;
+    OMX_TI_CAPTYPE* caps;
     OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
     MemoryManager memMgr;
 
@@ -2394,7 +2395,8 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
 
     // allocate tiler (or ion) buffer for caps (size is always a multiple of 4K)
     caps_size = ((sizeof(OMX_TI_CAPTYPE)+4095)/4096)*4096;
-    caps = (OMX_TI_CAPTYPE**) memMgr.allocateBuffer(0, 0, NULL, caps_size, 1);
+    bufferlist = memMgr.allocateBufferList(0, 0, NULL, caps_size, 1);
+    caps = (OMX_TI_CAPTYPE*) bufferlist[0].opaque;
 
     if (!caps) {
         CAMHAL_LOGEB("Error allocating buffer for caps %d", eError);
@@ -2403,13 +2405,13 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     }
 
     // initialize structures to be passed to OMX Camera
-    OMX_INIT_STRUCT_PTR (caps[0], OMX_TI_CAPTYPE);
-    caps[0]->nPortIndex = OMX_ALL;
+    OMX_INIT_STRUCT_PTR (caps, OMX_TI_CAPTYPE);
+    caps->nPortIndex = OMX_ALL;
 
     OMX_INIT_STRUCT_PTR (&sharedBuffer, OMX_TI_CONFIG_SHAREDBUFFER);
     sharedBuffer.nPortIndex = OMX_ALL;
     sharedBuffer.nSharedBuffSize = caps_size;
-    sharedBuffer.pSharedBuff = (OMX_U8 *) caps[0];
+    sharedBuffer.pSharedBuff = (OMX_U8 *) caps;
 
     // Get capabilities from OMX Camera
     eError =  OMX_GetConfig(handle, (OMX_INDEXTYPE) OMX_TI_IndexConfigCamCapabilities, &sharedBuffer);
@@ -2427,16 +2429,15 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
 
     // Translate and insert Ducati capabilities to CameraProperties
     if ( NO_ERROR == ret ) {
-        ret = insertCapabilities(params, *caps[0]);
+        ret = insertCapabilities(params, *caps);
     }
 
-    CAMHAL_LOGDB("sen mount id=%u", (unsigned int)caps[0]->tSenMounting.nSenId);
-    CAMHAL_LOGDB("facing id=%u", (unsigned int)caps[0]->tSenMounting.eFacing);
+    CAMHAL_LOGDB("sen mount id=%u", (unsigned int)caps->tSenMounting.nSenId);
+    CAMHAL_LOGDB("facing id=%u", (unsigned int)caps->tSenMounting.eFacing);
 
  EXIT:
-    if (caps) {
-        memMgr.freeBuffer((void*) caps);
-        caps = NULL;
+    if (bufferlist) {
+        memMgr.freeBufferList(bufferlist);
     }
 
     LOG_FUNCTION_NAME_EXIT;

@@ -157,8 +157,7 @@ ANativeWindowDisplayAdapter::ANativeWindowDisplayAdapter():mDisplayThread(NULL),
 #endif
 
     mPixelFormat = NULL;
-    mBufferHandleMap = NULL;
-    mGrallocHandleMap = NULL;
+    mBuffers = NULL;
     mOffsetsMap = NULL;
     mFrameProvider = NULL;
     mANativeWindow = NULL;
@@ -509,18 +508,18 @@ void ANativeWindowDisplayAdapter::destroy()
 }
 
 // Implementation of inherited interfaces
-void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const char* format, int &bytes, int numBufs)
+CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs)
 {
     LOG_FUNCTION_NAME;
     status_t err;
     int i = -1;
     const int lnumBufs = numBufs;
-    mBufferHandleMap = new buffer_handle_t*[lnumBufs];
-    mGrallocHandleMap = new IMG_native_handle_t*[lnumBufs];
     int undequeued = 0;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     Rect bounds;
 
+    mBuffers = new CameraBuffer [lnumBufs];
+    memset (mBuffers, 0, sizeof(CameraBuffer) * lnumBufs);
 
     if ( NULL == mANativeWindow ) {
         return NULL;
@@ -577,7 +576,7 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
     ///We just return the buffers from ANativeWindow, if the width and height are same, else (vstab, vnf case)
     ///re-allocate buffers using ANativeWindow and then get them
     ///@todo - Re-allocate buffers for vnf and vstab using the width, height, format, numBufs etc
-    if ( mBufferHandleMap == NULL )
+    if ( mBuffers == NULL )
     {
         CAMHAL_LOGEA("Couldn't create array for ANativeWindow buffers");
         LOG_FUNCTION_NAME_EXIT;
@@ -588,12 +587,11 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
 
     for ( i=0; i < mBufferCount; i++ )
     {
-        IMG_native_handle_t** hndl2hndl;
-        IMG_native_handle_t* handle;
+        buffer_handle_t *handle;
         int stride;  // dummy variable to get stride
         // TODO(XXX): Do we need to keep stride information in camera hal?
 
-        err = mANativeWindow->dequeue_buffer(mANativeWindow, (buffer_handle_t**) &hndl2hndl, &stride);
+        err = mANativeWindow->dequeue_buffer(mANativeWindow, &handle, &stride);
 
         if (err != 0) {
             CAMHAL_LOGEB("dequeueBuffer failed: %s (%d)", strerror(-err), -err);
@@ -606,11 +604,10 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
             goto fail;
         }
 
-        handle = *hndl2hndl;
-
-        mBufferHandleMap[i] = (buffer_handle_t*) hndl2hndl;
-        mGrallocHandleMap[i] = handle;
-        mFramesWithCameraAdapterMap.add((int) mGrallocHandleMap[i], i);
+        CAMHAL_LOGDB("got handle %p", handle);
+        mBuffers[i].opaque = (void *)handle;
+        mBuffers[i].type = CAMERA_BUFFER_ANW;
+        mFramesWithCameraAdapterMap.add(handle, i);
 
         bytes =  getBufSize(format, width, height);
 
@@ -625,17 +622,20 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
     for( i = 0;  i < mBufferCount-undequeued; i++ )
     {
         void *y_uv[2];
+        buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
 
-        mANativeWindow->lock_buffer(mANativeWindow, mBufferHandleMap[i]);
+        mANativeWindow->lock_buffer(mANativeWindow, handle);
 
-        mapper.lock((buffer_handle_t) mGrallocHandleMap[i], CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mFrameProvider->addFramePointers(mGrallocHandleMap[i] , y_uv);
+        mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
+        mBuffers[i].mapped = y_uv[0];
+        mFrameProvider->addFramePointers(&mBuffers[i], y_uv);
     }
 
     // return the rest of the buffers back to ANativeWindow
     for(i = (mBufferCount-undequeued); i >= 0 && i < mBufferCount; i++)
     {
-        err = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[i]);
+        buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
+        err = mANativeWindow->cancel_buffer(mANativeWindow, handle);
         if (err != 0) {
             CAMHAL_LOGEB("cancel_buffer failed: %s (%d)", strerror(-err), -err);
 
@@ -646,12 +646,13 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
 
             goto fail;
         }
-        mFramesWithCameraAdapterMap.removeItem((int) mGrallocHandleMap[i]);
+        mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) mBuffers[i].opaque);
         //LOCK UNLOCK TO GET YUV POINTERS
         void *y_uv[2];
-        mapper.lock((buffer_handle_t) mGrallocHandleMap[i], CAMHAL_GRALLOC_USAGE, bounds, y_uv);
-        mFrameProvider->addFramePointers(mGrallocHandleMap[i] , y_uv);
-        mapper.unlock((buffer_handle_t) mGrallocHandleMap[i]);
+        mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
+        mBuffers[i].mapped = y_uv[0];
+        mFrameProvider->addFramePointers(&mBuffers[i], y_uv);
+        mapper.unlock(*(buffer_handle_t *) mBuffers[i].opaque);
     }
 
     mFirstInit = true;
@@ -659,20 +660,21 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
     mFrameWidth = width;
     mFrameHeight = height;
 
-    return mGrallocHandleMap;
+    return mBuffers;
 
  fail:
     // need to cancel buffers if any were dequeued
     for (int start = 0; start < i && i > 0; start++) {
-        int err = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[start]);
+        int err = mANativeWindow->cancel_buffer(mANativeWindow,
+                (buffer_handle_t *) mBuffers[start].opaque);
         if (err != 0) {
           CAMHAL_LOGEB("cancelBuffer failed w/ error 0x%08x", err);
           break;
         }
-        mFramesWithCameraAdapterMap.removeItem((int) mGrallocHandleMap[start]);
+        mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) mBuffers[start].opaque);
     }
 
-    freeBuffer(mGrallocHandleMap);
+    freeBufferList(mBuffers);
 
     CAMHAL_LOGEA("Error occurred, performing cleanup");
 
@@ -700,7 +702,7 @@ uint32_t * ANativeWindowDisplayAdapter::getOffsets()
         goto fail;
     }
 
-    if( mBufferHandleMap == NULL)
+    if( mBuffers == NULL)
     {
         CAMHAL_LOGEA("Buffers not allocated yet!!");
         goto fail;
@@ -711,7 +713,6 @@ uint32_t * ANativeWindowDisplayAdapter::getOffsets()
         mOffsetsMap = new uint32_t[lnumBufs];
         for(int i = 0; i < mBufferCount; i++)
         {
-            IMG_native_handle_t* handle =  (IMG_native_handle_t*) *(mBufferHandleMap[i]);
             mOffsetsMap[i] = 0;
         }
     }
@@ -781,10 +782,12 @@ int ANativeWindowDisplayAdapter::getFd()
 
     if(mFD == -1)
     {
-        IMG_native_handle_t* handle =  (IMG_native_handle_t*) *(mBufferHandleMap[0]);
+        buffer_handle_t *handle =  (buffer_handle_t *)mBuffers[0].opaque;
+        IMG_native_handle_t *img = (IMG_native_handle_t *)handle;
         // TODO: should we dup the fd? not really necessary and another thing for ANativeWindow
         // to manage and close...
-        mFD = dup(handle->fd[0]);
+
+        mFD = dup(img->fd[0]);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -802,6 +805,7 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
      if (mANativeWindow)
          for(unsigned int i = 0; i < mFramesWithCameraAdapterMap.size(); i++) {
              int value = mFramesWithCameraAdapterMap.valueAt(i);
+             buffer_handle_t *handle = (buffer_handle_t *) mBuffers[value].opaque;
 
              // if buffer index is out of bounds skip
              if ((value < 0) || (value >= mBufferCount)) {
@@ -810,9 +814,9 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
              }
 
              // unlock buffer before giving it up
-             mapper.unlock((buffer_handle_t) mGrallocHandleMap[value]);
+             mapper.unlock(*handle);
 
-             ret = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[value]);
+             ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
              if ( ENODEV == ret ) {
                  CAMHAL_LOGEA("Preview surface abandoned!");
                  mANativeWindow = NULL;
@@ -834,36 +838,35 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
 
 }
 
-int ANativeWindowDisplayAdapter::freeBuffer(void* buf)
+int ANativeWindowDisplayAdapter::freeBufferList(CameraBuffer * buflist)
 {
     LOG_FUNCTION_NAME;
 
-    int *buffers = (int *) buf;
     status_t ret = NO_ERROR;
 
     Mutex::Autolock lock(mLock);
 
-    if((int *)mGrallocHandleMap != buffers)
+    if(mBuffers != buflist)
     {
         CAMHAL_LOGEA("CameraHal passed wrong set of buffers to free!!!");
-        if (mGrallocHandleMap != NULL)
-            delete []mGrallocHandleMap;
-        mGrallocHandleMap = NULL;
+        if (mBuffers != NULL)
+            delete []mBuffers;
+        mBuffers = NULL;
     }
 
-
+    /* FIXME this will probably want the list that was just deleted */
     returnBuffersToWindow();
 
-    if ( NULL != buf )
+    if ( NULL != buflist )
     {
-        delete [] buffers;
-        mGrallocHandleMap = NULL;
+        delete [] buflist;
+        mBuffers = NULL;
     }
 
-    if( mBufferHandleMap != NULL)
+    if( mBuffers != NULL)
     {
-        delete [] mBufferHandleMap;
-        mBufferHandleMap = NULL;
+        delete [] mBuffers;
+        mBuffers = NULL;
     }
 
     if ( NULL != mOffsetsMap )
@@ -885,11 +888,6 @@ int ANativeWindowDisplayAdapter::freeBuffer(void* buf)
 bool ANativeWindowDisplayAdapter::supportsExternalBuffering()
 {
     return false;
-}
-
-int ANativeWindowDisplayAdapter::useBuffers(void *bufArr, int num)
-{
-    return NO_ERROR;
 }
 
 void ANativeWindowDisplayAdapter::displayThread()
@@ -1040,14 +1038,14 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     ///display or rendering rate whichever is lower
     ///Queue the buffer to overlay
 
-    if (!mGrallocHandleMap || !dispFrame.mBuffer) {
+    if (!mBuffers || !dispFrame.mBuffer) {
         CAMHAL_LOGEA("NULL sent to PostFrame");
         return -EINVAL;
     }
 
     for ( i = 0; i < mBufferCount; i++ )
         {
-        if ( ((int) dispFrame.mBuffer ) == (int)mGrallocHandleMap[i] )
+        if ( dispFrame.mBuffer == &mBuffers[i] )
             {
             break;
         }
@@ -1096,14 +1094,17 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
             mYOff = yOff;
         }
 
-        // unlock buffer before sending to display
-        mapper.unlock((buffer_handle_t) mGrallocHandleMap[i]);
-        ret = mANativeWindow->enqueue_buffer(mANativeWindow, mBufferHandleMap[i]);
+        {
+            buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
+            // unlock buffer before sending to display
+            mapper.unlock(*handle);
+            ret = mANativeWindow->enqueue_buffer(mANativeWindow, handle);
+        }
         if (ret != 0) {
             LOGE("Surface::queueBuffer returned error %d", ret);
         }
 
-        mFramesWithCameraAdapterMap.removeItem((int) dispFrame.mBuffer);
+        mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) dispFrame.mBuffer->opaque);
 
 
         // HWComposer has not minimum buffer requirement. We should be able to dequeue
@@ -1135,17 +1136,18 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     else
     {
         Mutex::Autolock lock(mLock);
+        buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
 
         // unlock buffer before giving it up
-        mapper.unlock((buffer_handle_t) mGrallocHandleMap[i]);
+        mapper.unlock(*handle);
 
         // cancel buffer and dequeue another one
-        ret = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[i]);
+        ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
         if (ret != 0) {
             LOGE("Surface::queueBuffer returned error %d", ret);
         }
 
-        mFramesWithCameraAdapterMap.removeItem((int) dispFrame.mBuffer);
+        mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) dispFrame.mBuffer->opaque);
 
         TIUTILS::Message msg;
         mDisplayQ.put(&msg);
@@ -1159,7 +1161,7 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
 bool ANativeWindowDisplayAdapter::handleFrameReturn()
 {
     status_t err;
-    buffer_handle_t* buf;
+    buffer_handle_t *buf;
     int i = 0;
     int stride;  // dummy variable to get stride
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
@@ -1198,8 +1200,11 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
 
     for(i = 0; i < mBufferCount; i++)
     {
-        if (mBufferHandleMap[i] == buf)
+        if (mBuffers[i].opaque == buf)
             break;
+    }
+    if (i == mBufferCount) {
+        CAMHAL_LOGEB("Failed to find handle %p", buf);
     }
 
     // lock buffer before sending to FrameProvider for filling
@@ -1209,7 +1214,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     bounds.bottom = mFrameHeight;
 
     int lock_try_count = 0;
-    while (mapper.lock((buffer_handle_t) mGrallocHandleMap[i], CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
+    while (mapper.lock(*(buffer_handle_t *) mBuffers[i].opaque, CAMHAL_GRALLOC_USAGE, bounds, y_uv) < 0){
       if (++lock_try_count > LOCK_BUFFER_TRIES){
         if ( NULL != mErrorNotifier.get() ){
           mErrorNotifier->errorNotify(CAMERA_ERROR_UNKNOWN);
@@ -1222,11 +1227,11 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
 
     {
         Mutex::Autolock lock(mLock);
-        mFramesWithCameraAdapterMap.add((int) mGrallocHandleMap[i], i);
+        mFramesWithCameraAdapterMap.add((buffer_handle_t *) mBuffers[i].opaque, i);
     }
 
     CAMHAL_LOGVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount-1);
-    mFrameProvider->returnFrame( (void*)mGrallocHandleMap[i], CameraFrame::PREVIEW_FRAME_SYNC);
+    mFrameProvider->returnFrame(&mBuffers[i], CameraFrame::PREVIEW_FRAME_SYNC);
     return true;
 }
 

@@ -49,8 +49,8 @@ public:
     //Message/Frame notification APIs
     virtual void enableMsgType(int32_t msgs, frame_callback callback=NULL, event_callback eventCb=NULL, void* cookie=NULL);
     virtual void disableMsgType(int32_t msgs, void* cookie);
-    virtual void returnFrame(void * frameBuf, CameraFrame::FrameType frameType);
-    virtual void addFramePointers(void *frameBuf, void *y_uv);
+    virtual void returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameType frameType);
+    virtual void addFramePointers(CameraBuffer *frameBuf, void *y_uv);
     virtual void removeFramePointers();
 
     //APIs to configure Camera adapter and get the current parameter set
@@ -125,10 +125,10 @@ protected:
     virtual status_t stopSmoothZoom();
 
     //Should be implemented by deriving classes in order to stop smooth zoom
-    virtual status_t useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable);
+    virtual status_t useBuffers(CameraMode mode, CameraBuffer* bufArr, int num, size_t length, unsigned int queueable);
 
     //Should be implemented by deriving classes in order queue a released buffer in CameraAdapter
-    virtual status_t fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType);
+    virtual status_t fillThisBuffer(CameraBuffer* frameBuf, CameraFrame::FrameType frameType);
 
     //API to get the frame size required to be allocated. This size is used to override the size passed
     //by camera service when VSTAB/VNF is turned ON for example
@@ -167,9 +167,9 @@ protected:
     status_t resetFrameRefCount(CameraFrame &frame);
 
     //A couple of helper functions
-    void setFrameRefCount(void* frameBuf, CameraFrame::FrameType frameType, int refCount);
-    int getFrameRefCount(void* frameBuf, CameraFrame::FrameType frameType);
-    int setInitFrameRefCount(void* buf, unsigned int mask);
+    void setFrameRefCount(CameraBuffer* frameBuf, CameraFrame::FrameType frameType, int refCount);
+    int getFrameRefCount(CameraBuffer* frameBuf, CameraFrame::FrameType frameType);
+    int setInitFrameRefCount(CameraBuffer* buf, unsigned int mask);
     static const char* getLUTvalue_translateHAL(int Value, LUTtypeHAL LUT);
 
 // private member functions
@@ -228,29 +228,29 @@ protected:
     KeyedVector<int, event_callback> mFaceSubscribers;
 
     //Preview buffer management data
-    int *mPreviewBuffers;
+    CameraBuffer *mPreviewBuffers;
     int mPreviewBufferCount;
     size_t mPreviewBuffersLength;
-    KeyedVector<int, int> mPreviewBuffersAvailable;
+    KeyedVector<CameraBuffer *, int> mPreviewBuffersAvailable;
     mutable Mutex mPreviewBufferLock;
 
     //Video buffer management data
-    int *mVideoBuffers;
-    KeyedVector<int, int> mVideoBuffersAvailable;
+    CameraBuffer *mVideoBuffers;
+    KeyedVector<CameraBuffer *, int> mVideoBuffersAvailable;
     int mVideoBuffersCount;
     size_t mVideoBuffersLength;
     mutable Mutex mVideoBufferLock;
 
     //Image buffer management data
-    int *mCaptureBuffers;
-    KeyedVector<int, bool> mCaptureBuffersAvailable;
+    CameraBuffer *mCaptureBuffers;
+    KeyedVector<CameraBuffer *, bool> mCaptureBuffersAvailable;
     int mCaptureBuffersCount;
     size_t mCaptureBuffersLength;
     mutable Mutex mCaptureBufferLock;
 
     //Metadata buffermanagement
-    int *mPreviewDataBuffers;
-    KeyedVector<int, bool> mPreviewDataBuffersAvailable;
+    CameraBuffer *mPreviewDataBuffers;
+    KeyedVector<CameraBuffer *, bool> mPreviewDataBuffersAvailable;
     int mPreviewDataBuffersCount;
     size_t mPreviewDataBuffersLength;
     mutable Mutex mPreviewDataBufferLock;

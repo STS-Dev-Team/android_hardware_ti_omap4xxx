@@ -236,7 +236,7 @@ status_t OMXCameraAdapter::setupEXIF()
     struct tm *pTime;
     OMXCameraPortParameters * capData = NULL;
     MemoryManager memMgr;
-    OMX_U8** memmgr_buf_array = NULL;
+    CameraBuffer *memmgr_buf_array;
     int buf_size = 0;
 
     LOG_FUNCTION_NAME;
@@ -268,8 +268,8 @@ status_t OMXCameraAdapter::setupEXIF()
         buf_size = ((buf_size+4095)/4096)*4096;
         sharedBuffer.nSharedBuffSize = buf_size;
 
-        memmgr_buf_array = (OMX_U8 **)memMgr.allocateBuffer(0, 0, NULL, buf_size, 1);
-        sharedBuffer.pSharedBuff =  ( OMX_U8 * ) memmgr_buf_array[0];
+        memmgr_buf_array = memMgr.allocateBufferList(0, 0, NULL, buf_size, 1);
+        sharedBuffer.pSharedBuff =  ( OMX_U8 * ) memmgr_buf_array[0].opaque;
 
         if ( NULL == sharedBuffer.pSharedBuff )
             {
@@ -496,7 +496,7 @@ status_t OMXCameraAdapter::setupEXIF()
 
     if ( NULL != memmgr_buf_array )
         {
-        memMgr.freeBuffer(memmgr_buf_array);
+        memMgr.freeBufferList(memmgr_buf_array);
         }
 
     LOG_FUNCTION_NAME_EXIT;
