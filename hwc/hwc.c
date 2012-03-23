@@ -42,7 +42,6 @@
 
 #include <linux/bltsville.h>
 
-#define MAX_BLIT_OPS RGZ_MAXLAYERS * RGZ_SUBREGIONMAX
 #define MAX_HWC_LAYERS 32
 
 #define ASPECT_RATIO_TOLERANCE 0.02f
@@ -1543,7 +1542,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
 
     struct rgz_blt_entry *res_blit_ops = (struct rgz_blt_entry *) out.data.bvc.cmdp;
     memcpy(hwc_dev->comp_data.blit_data.rgz_blts, res_blit_ops, sizeof(*res_blit_ops) * out.data.bvc.cmdlen);
-
+    LOGI_IF(debugblt, "blt struct sz %d", sizeof(*res_blit_ops) * out.data.bvc.cmdlen);
     LOGE_IF(hwc_dev->blit_num != out.data.bvc.cmdlen,"blit_num != out.data.bvc.cmdlen, %d != %d", hwc_dev->blit_num, out.data.bvc.cmdlen);
 
     /* all layers will be rendered without SGX help either via DSS or blitter */

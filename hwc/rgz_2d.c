@@ -90,7 +90,7 @@ static int rgz_handle_to_stride(IMG_native_handle_t *h);
 #define RGZ_NUM_FB 2
 
 struct rgz_blts {
-    struct rgz_blt_entry bvcmds[RGZ_MAXLAYERS * RGZ_SUBREGIONMAX];
+    struct rgz_blt_entry bvcmds[RGZ_MAX_BLITS];
     int idx;
 };
 
@@ -370,7 +370,7 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
     params->data.bvc.cmdp = blts.bvcmds;
     params->data.bvc.cmdlen = blts.idx;
 
-    if (params->data.bvc.out_blits > RGZ_MAX_BLITS) {
+    if (params->data.bvc.out_blits >= RGZ_MAX_BLITS) {
         rv = -1;
     // rgz_blts_free(&blts); // FIXME
     }
@@ -1248,7 +1248,7 @@ static void rgz_blts_free(struct rgz_blts *blts)
 static struct rgz_blt_entry* rgz_blts_get(struct rgz_blts *blts, rgz_out_params_t *params)
 {
     struct rgz_blt_entry *ne;
-    if (blts->idx < (RGZ_MAXLAYERS * RGZ_SUBREGIONMAX)) {
+    if (blts->idx < RGZ_MAX_BLITS) {
         ne = &blts->bvcmds[blts->idx++];
         if (IS_BVCMD(params))
             params->data.bvc.out_blits++;
@@ -1325,7 +1325,7 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
          * composition data structure ourselves */
         params->data.bvc.cmdp = blts.bvcmds;
         params->data.bvc.cmdlen = blts.idx;
-        if (params->data.bvc.out_blits > RGZ_MAX_BLITS)
+        if (params->data.bvc.out_blits >= RGZ_MAX_BLITS)
             rv = -1;
         //rgz_blts_free(&blts);
     } else {
