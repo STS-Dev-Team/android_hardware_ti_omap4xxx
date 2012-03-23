@@ -299,7 +299,7 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
 
     struct bvbuffdesc *src1desc = &e->src1desc;
     src1desc->structsize = sizeof(struct bvbuffdesc);
-    src1desc->length = 1;
+    src1desc->length = 4;
     /*
      * With the HWC we don't bother having a buffer for the fill we'll get the
      * OMAPLFB to fixup the src1desc if this address is -1
