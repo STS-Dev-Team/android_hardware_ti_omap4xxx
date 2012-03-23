@@ -1869,7 +1869,6 @@ status_t OMXCameraAdapter::startPreview()
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters *mPreviewData = NULL;
     OMXCameraPortParameters *measurementData = NULL;
-    OMX_CONFIG_EXTRADATATYPE extraDataControl;
 
     LOG_FUNCTION_NAME;
 
@@ -1883,15 +1882,7 @@ status_t OMXCameraAdapter::startPreview()
     // Enable Ancillary data. The nDCCStatus field is used to signify
     // whether the preview frame is a snapshot
     if ( OMX_ErrorNone == eError) {
-        OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
-        extraDataControl.nPortIndex = OMX_ALL;
-        extraDataControl.eExtraDataType = OMX_AncillaryData;
-        extraDataControl.bEnable = OMX_TRUE;
-
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                               ( OMX_INDEXTYPE ) OMX_IndexConfigOtherExtraDataControl,
-                               &extraDataControl);
-        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+        ret =  setExtraData(true, OMX_ALL, OMX_AncillaryData);
     }
 
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -3062,7 +3053,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     CameraFrame cameraFrame;
     OMX_TI_PLATFORMPRIVATE *platformPrivate;
     OMX_OTHER_EXTRADATATYPE *extraData;
-    OMX_TI_ANCILLARYDATATYPE *ancillaryData;
+    OMX_TI_ANCILLARYDATATYPE *ancillaryData = NULL;
     bool snapshotFrame = false;
 
     res1 = res2 = NO_ERROR;
@@ -3117,6 +3108,17 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             {
             typeOfFrame = CameraFrame::SNAPSHOT_FRAME;
             mask = (unsigned int)CameraFrame::SNAPSHOT_FRAME;
+
+            // video snapshot gets ancillary data and wb info from last snapshot frame
+            mCaptureAncillaryData = ancillaryData;
+            mWhiteBalanceData = NULL;
+            extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) platformPrivate->pMetaDataBuffer,
+                                      platformPrivate->nMetaDataSize,
+                                     (OMX_EXTRADATATYPE) OMX_WhiteBalance);
+            if ( NULL != extraData )
+                {
+                mWhiteBalanceData = (OMX_TI_WHITEBALANCERESULTTYPE*) extraData->data;
+                }
             }
         else
             {
@@ -3218,7 +3220,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             // populate exif data and pass to subscribers via quirk
             // subscriber is in charge of freeing exif data
             ExifElementsTable* exif = new ExifElementsTable();
-            setupEXIF_libjpeg(exif);
+            setupEXIF_libjpeg(exif, mCaptureAncillaryData, mWhiteBalanceData);
             cameraFrame.mQuirks |= CameraFrame::HAS_EXIF_DATA;
             cameraFrame.mCookie2 = (void*) exif;
         } else {
@@ -3568,6 +3570,38 @@ void OMXCameraAdapter::OMXCallbackHandler::flush()
         return;
 
     mCondition.wait(mLock);
+}
+
+status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT_EXTRADATATYPE eType) {
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_CONFIG_EXTRADATATYPE extraDataControl;
+
+    LOG_FUNCTION_NAME;
+
+    if (OMX_StateInvalid == mComponentState) {
+        CAMHAL_LOGEA("OMX component is in invalid state");
+        return -EINVAL;
+    }
+
+    OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
+
+    extraDataControl.nPortIndex = nPortIndex;
+    extraDataControl.eExtraDataType = eType;
+
+    if (enable) {
+        extraDataControl.bEnable = OMX_TRUE;
+    } else {
+        extraDataControl.bEnable = OMX_FALSE;
+    }
+
+    eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                           (OMX_INDEXTYPE) OMX_IndexConfigOtherExtraDataControl,
+                            &extraDataControl);
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
 OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type) {
