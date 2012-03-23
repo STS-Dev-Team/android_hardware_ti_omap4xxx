@@ -822,6 +822,12 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         }
     }
 
+    // need to enable wb data for video snapshot to fill in exif data
+    if ((ret == NO_ERROR) && (mCapMode == VIDEO_MODE)) {
+        // video snapshot uses wb data from snapshot frame
+        ret = setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
+    }
+
     //OMX shutter callback events are only available in hq mode
     if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode))
         {
@@ -925,6 +931,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
     mWaitingForSnapshot = false;
     mCaptureSignalled = false;
     performCleanupAfterError();
@@ -1006,6 +1013,13 @@ status_t OMXCameraAdapter::stopImageCapture()
             goto EXIT;
         }
     }
+
+    // had to enable wb data for video snapshot to fill in exif data
+    // now that we are done...disable
+    if ((ret == NO_ERROR) && (mCapMode == VIDEO_MODE)) {
+        ret = setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
+    }
+
     CAMHAL_LOGDB("Capture set - 0x%x", eError);
 
     mCaptureSignalled = true; //set this to true if we exited because of timeout

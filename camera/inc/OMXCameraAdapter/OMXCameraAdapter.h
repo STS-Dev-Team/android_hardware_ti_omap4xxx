@@ -460,7 +460,8 @@ private:
                                BaseCameraAdapter::AdapterState state);
     status_t convertGPSCoord(double coord, int &deg, int &min, int &sec, int &secDivisor);
     status_t setupEXIF();
-    status_t setupEXIF_libjpeg(ExifElementsTable*);
+    status_t setupEXIF_libjpeg(ExifElementsTable*, OMX_TI_ANCILLARYDATATYPE*,
+                               OMX_TI_WHITEBALANCERESULTTYPE*);
 
     //Focus functionality
     status_t doAutoFocus();
@@ -682,6 +683,7 @@ private:
     // AutoConvergence
     status_t setAutoConvergence(const char *valstr, const char *pValManualstr, const CameraParameters &params);
 
+    status_t setExtraData(bool enable, OMX_U32, OMX_EXT_EXTRADATATYPE);
     OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type);
 
     // Mechanical Misalignment Correction
@@ -971,6 +973,8 @@ private:
     bool mCaptureConfigured;
     unsigned int mPendingCaptureSettings;
     unsigned int mPendingPreviewSettings;
+    OMX_TI_ANCILLARYDATATYPE* mCaptureAncillaryData;
+    OMX_TI_WHITEBALANCERESULTTYPE* mWhiteBalanceData;
 
     //Temporal bracketing management data
     bool mBracketingSet;
