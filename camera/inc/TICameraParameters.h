@@ -131,7 +131,6 @@ static const char TEMP_BRACKETING[];
 
 // TI extensions to standard android pixel formats
 static const char PIXEL_FORMAT_UNUSED[];
-static const char PIXEL_FORMAT_RAW[];
 static const char PIXEL_FORMAT_JPS[];
 static const char PIXEL_FORMAT_MPO[];
 
