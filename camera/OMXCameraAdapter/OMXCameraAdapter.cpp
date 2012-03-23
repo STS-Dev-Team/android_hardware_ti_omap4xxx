@@ -515,14 +515,14 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
             }
         else
             {
-            CAMHAL_LOGDA("Invalid format, CbYCrY format selected as default");
-            pixFormat = OMX_COLOR_FormatCbYCrY;
+            CAMHAL_LOGDA("Invalid format, NV12 format selected as default");
+            pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
             }
         }
     else
         {
-        CAMHAL_LOGEA("Preview format is NULL, defaulting to CbYCrY");
-        pixFormat = OMX_COLOR_FormatCbYCrY;
+        CAMHAL_LOGEA("Preview format is NULL, defaulting to NV12");
+        pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
         }
 
     OMXCameraPortParameters *cap;

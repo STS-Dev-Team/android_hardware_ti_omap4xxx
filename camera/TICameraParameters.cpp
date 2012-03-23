@@ -120,7 +120,6 @@ const char TICameraParameters::IPP_NONE[] = "off";
 
 // TI extensions to standard android pixel formats
 const char TICameraParameters::PIXEL_FORMAT_UNUSED[] = "unused";
-const char TICameraParameters::PIXEL_FORMAT_RAW[] = "raw";
 const char TICameraParameters::PIXEL_FORMAT_JPS[] = "jps";
 const char TICameraParameters::PIXEL_FORMAT_MPO[] = "mpo";
 

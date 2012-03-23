@@ -183,7 +183,7 @@ const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
     { OMX_COLOR_Format16bitRGB565, CameraParameters::PIXEL_FORMAT_RGB565 },
     { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420P },
     { OMX_COLOR_FormatUnused, TICameraParameters::PIXEL_FORMAT_UNUSED },
-    { OMX_COLOR_FormatRawBayer10bit, TICameraParameters::PIXEL_FORMAT_RAW },
+    { OMX_COLOR_FormatRawBayer10bit, CameraParameters::PIXEL_FORMAT_BAYER_RGGB },
 };
 
 const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
