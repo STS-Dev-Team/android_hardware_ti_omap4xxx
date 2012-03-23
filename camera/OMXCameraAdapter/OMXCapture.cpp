@@ -105,10 +105,10 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingMPO;
             mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_MPO;
-        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_RAW) == 0) {
+        } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
-            mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_RAW;
+            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
         } else {
             CAMHAL_LOGEA("Invalid format, JPEG format selected as default");
             pixFormat = OMX_COLOR_FormatUnused;

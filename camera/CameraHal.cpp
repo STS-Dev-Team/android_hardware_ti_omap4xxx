@@ -2626,7 +2626,10 @@ status_t CameraHal::takePicture( )
         if (mRawCapture) {
             if ( NO_ERROR == ret ) {
                 CAMHAL_LOGDB("Raw capture buffers setup - %s", mParameters.getPictureFormat());
-                ret = allocRawBufs(mParameters.getInt(TICameraParameters::RAW_WIDTH), mParameters.getInt(TICameraParameters::RAW_HEIGHT), TICameraParameters::PIXEL_FORMAT_RAW, rawBufferCount);
+                ret = allocRawBufs(mParameters.getInt(TICameraParameters::RAW_WIDTH),
+                                   mParameters.getInt(TICameraParameters::RAW_HEIGHT),
+                                   CameraParameters::PIXEL_FORMAT_BAYER_RGGB,
+                                   rawBufferCount);
 
                 if ( NO_ERROR != ret ) {
                     CAMHAL_LOGEB("allocRawBufs (for RAW capture) returned error 0x%x", ret);
