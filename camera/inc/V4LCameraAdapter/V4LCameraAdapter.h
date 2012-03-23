@@ -107,7 +107,7 @@ public:
     virtual void getParameters(CameraParameters& params);
 
     // API
-    virtual status_t UseBuffersPreview(void* bufArr, int num);
+    virtual status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
 
     static status_t getCaps(const int sensorId, CameraProperties::Properties* params, V4L_HANDLETYPE handle);
 
@@ -116,8 +116,8 @@ protected:
 //----------Parent class method implementation------------------------------------
     virtual status_t startPreview();
     virtual status_t stopPreview();
-    virtual status_t useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable);
-    virtual status_t fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType);
+    virtual status_t useBuffers(CameraMode mode, CameraBuffer *bufArr, int num, size_t length, unsigned int queueable);
+    virtual status_t fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::FrameType frameType);
     virtual status_t getFrameSize(size_t &width, size_t &height);
     virtual status_t getPictureBufferSize(size_t &length, size_t bufferCount);
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
@@ -175,7 +175,7 @@ private:
     static status_t insertFrameRates(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
 
     int mPreviewBufferCount;
-    KeyedVector<int, int> mPreviewBufs;
+    KeyedVector<CameraBuffer *, int> mPreviewBufs;
     mutable Mutex mPreviewBufsLock;
 
     CameraParameters mParams;

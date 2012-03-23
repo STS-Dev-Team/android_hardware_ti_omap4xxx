@@ -56,7 +56,7 @@ int FrameProvider::disableFrameNotification(int32_t frameTypes)
     return ret;
 }
 
-int FrameProvider::returnFrame(void *frameBuf, CameraFrame::FrameType frameType)
+int FrameProvider::returnFrame(CameraBuffer *frameBuf, CameraFrame::FrameType frameType)
 {
     status_t ret = NO_ERROR;
 
@@ -65,7 +65,7 @@ int FrameProvider::returnFrame(void *frameBuf, CameraFrame::FrameType frameType)
     return ret;
 }
 
-void FrameProvider::addFramePointers(void *frameBuf, void *buf)
+void FrameProvider::addFramePointers(CameraBuffer *frameBuf, void *buf)
 {
   mFrameNotifier->addFramePointers(frameBuf, buf);
   return;

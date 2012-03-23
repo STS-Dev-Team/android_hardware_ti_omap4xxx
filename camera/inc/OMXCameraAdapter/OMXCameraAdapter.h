@@ -321,7 +321,7 @@ public:
     class OMXCameraPortParameters
     {
         public:
-            OMX_U32                         mHostBufaddr[MAX_NO_BUFFERS];
+            //CameraBuffer *                  mHostBufaddr[MAX_NO_BUFFERS];
             OMX_BUFFERHEADERTYPE           *mBufferHeader[MAX_NO_BUFFERS];
             OMX_U32                         mWidth;
             OMX_U32                         mHeight;
@@ -344,6 +344,8 @@ public:
             OMX_U32                         mMaxFrameRate;
             CameraFrame::FrameType          mImageType;
             OMX_TI_STEREOFRAMELAYOUTTYPE    mFrameLayoutType;
+
+        CameraBuffer * lookup_omx_buffer (OMX_BUFFERHEADERTYPE *pBufHeader);
     };
 
     ///Context of the OMX Camera component
@@ -373,7 +375,7 @@ public:
     virtual void getParameters(CameraParameters& params);
 
     // API
-    status_t UseBuffersPreview(void* bufArr, int num);
+    status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
 
     status_t flushBuffers();
 
@@ -416,8 +418,8 @@ protected:
     virtual status_t stopVideoCapture();
     virtual status_t startPreview();
     virtual status_t stopPreview();
-    virtual status_t useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable);
-    virtual status_t fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType);
+    virtual status_t useBuffers(CameraMode mode, CameraBuffer * bufArr, int num, size_t length, unsigned int queueable);
+    virtual status_t fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::FrameType frameType);
     virtual status_t getFrameSize(size_t &width, size_t &height);
     virtual status_t getPictureBufferSize(size_t &length, size_t bufferCount);
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
@@ -699,9 +701,9 @@ private:
 
     //Sets eithter HQ or HS mode and the frame count
     status_t setCaptureMode(OMXCameraAdapter::CaptureMode mode);
-    status_t UseBuffersCapture(void* bufArr, int num);
-    status_t UseBuffersPreviewData(void* bufArr, int num);
-    status_t UseBuffersRawCapture(void* bufArr, int num);
+    status_t UseBuffersCapture(CameraBuffer *bufArr, int num);
+    status_t UseBuffersPreviewData(CameraBuffer *bufArr, int num);
+    status_t UseBuffersRawCapture(CameraBuffer *bufArr, int num);
 
     //Used for calculation of the average frame rate during preview
     status_t recalculateFPS();

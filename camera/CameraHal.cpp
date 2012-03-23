@@ -1151,31 +1151,24 @@ status_t CameraHal::allocPreviewBufs(int width, int height, const char* previewF
         return NO_MEMORY;
     }
 
-    if(!mPreviewBufs)
+    if(!mPreviewBuffers)
     {
-        ///@todo Pluralise the name of this method to allocateBuffers
         mPreviewLength = 0;
-        mPreviewBufs = (int32_t *) mDisplayAdapter->allocateBuffer(width, height,
+        mPreviewBuffers = mDisplayAdapter->allocateBufferList(width, height,
                                                                     previewFormat,
                                                                     mPreviewLength,
                                                                     buffercount);
 
-	if (NULL == mPreviewBufs ) {
+        if (NULL == mPreviewBuffers ) {
             CAMHAL_LOGEA("Couldn't allocate preview buffers");
             return NO_MEMORY;
-         }
+        }
 
         mPreviewOffsets = (uint32_t *) mDisplayAdapter->getOffsets();
         if ( NULL == mPreviewOffsets ) {
             CAMHAL_LOGEA("Buffer mapping failed");
             return BAD_VALUE;
          }
-
-        mPreviewFd = mDisplayAdapter->getFd();
-        if ( -1 == mPreviewFd ) {
-            CAMHAL_LOGEA("Invalid handle");
-            return BAD_VALUE;
-          }
 
         mBufProvider = (BufferProvider*) mDisplayAdapter.get();
 
@@ -1197,12 +1190,11 @@ status_t CameraHal::freePreviewBufs()
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
-    CAMHAL_LOGDB("mPreviewBufs = 0x%x", (unsigned int)mPreviewBufs);
-    if(mPreviewBufs)
+    CAMHAL_LOGDB("mPreviewBuffers = %p", mPreviewBuffers);
+    if(mPreviewBuffers)
         {
-        ///@todo Pluralise the name of this method to freeBuffers
-        ret = mBufProvider->freeBuffer(mPreviewBufs);
-        mPreviewBufs = NULL;
+        ret = mBufProvider->freeBufferList(mPreviewBuffers);
+        mPreviewBuffers = NULL;
         LOG_FUNCTION_NAME_EXIT;
         return ret;
         }
@@ -1222,7 +1214,7 @@ status_t CameraHal::allocPreviewDataBufs(size_t size, size_t bufferCount)
 
     if ( NO_ERROR == ret )
         {
-        if( NULL != mPreviewDataBufs )
+        if( NULL != mPreviewDataBuffers )
             {
             ret = freePreviewDataBufs();
             }
@@ -1231,10 +1223,10 @@ status_t CameraHal::allocPreviewDataBufs(size_t size, size_t bufferCount)
     if ( NO_ERROR == ret )
         {
         bytes = ((bytes+4095)/4096)*4096;
-        mPreviewDataBufs = (int32_t *)mMemoryManager->allocateBuffer(0, 0, NULL, bytes, bufferCount);
+        mPreviewDataBuffers = mMemoryManager->allocateBufferList(0, 0, NULL, bytes, bufferCount);
 
         CAMHAL_LOGDB("Size of Preview data buffer = %d", bytes);
-        if( NULL == mPreviewDataBufs )
+        if( NULL == mPreviewDataBuffers )
             {
             CAMHAL_LOGEA("Couldn't allocate image buffers using memory manager");
             ret = -NO_MEMORY;
@@ -1272,12 +1264,11 @@ status_t CameraHal::freePreviewDataBufs()
     if ( NO_ERROR == ret )
         {
 
-        if( NULL != mPreviewDataBufs )
+        if( NULL != mPreviewDataBuffers )
             {
 
-            ///@todo Pluralise the name of this method to freeBuffers
-            ret = mMemoryManager->freeBuffer(mPreviewDataBufs);
-            mPreviewDataBufs = NULL;
+            ret = mMemoryManager->freeBufferList(mPreviewDataBuffers);
+            mPreviewDataBuffers = NULL;
 
             }
         }
@@ -1297,17 +1288,17 @@ status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size
     bytes = size;
 
     // allocate image buffers only if not already allocated
-    if(NULL != mImageBufs) {
+    if(NULL != mImageBuffers) {
         return NO_ERROR;
     }
 
     if ( NO_ERROR == ret )
         {
         bytes = ((bytes+4095)/4096)*4096;
-        mImageBufs = (int32_t *)mMemoryManager->allocateBuffer(0, 0, previewFormat, bytes, bufferCount);
+        mImageBuffers = mMemoryManager->allocateBufferList(0, 0, previewFormat, bytes, bufferCount);
 
         CAMHAL_LOGDB("Size of Image cap buffer = %d", bytes);
-        if( NULL == mImageBufs )
+        if( NULL == mImageBuffers )
             {
             CAMHAL_LOGEA("Couldn't allocate image buffers using memory manager");
             ret = -NO_MEMORY;
@@ -1341,36 +1332,38 @@ status_t CameraHal::allocVideoBufs(uint32_t width, uint32_t height, uint32_t buf
   status_t ret = NO_ERROR;
   LOG_FUNCTION_NAME;
 
-  if( NULL != mVideoBufs ){
-    ret = freeVideoBufs(mVideoBufs);
-    mVideoBufs = NULL;
+  if( NULL != mVideoBuffers ){
+    ret = freeVideoBufs(mVideoBuffers);
+    mVideoBuffers = NULL;
   }
 
   if ( NO_ERROR == ret ){
     int32_t stride;
-    buffer_handle_t *bufsArr = new buffer_handle_t [bufferCount];
+    CameraBuffer *buffers = new CameraBuffer [bufferCount];
 
-    if (bufsArr != NULL){
+    memset (buffers, 0, sizeof(CameraBuffer) * bufferCount);
+
+    if (buffers != NULL){
       for (unsigned int i = 0; i< bufferCount; i++){
         GraphicBufferAllocator &GrallocAlloc = GraphicBufferAllocator::get();
-        buffer_handle_t buf;
-        ret = GrallocAlloc.alloc(width, height, HAL_PIXEL_FORMAT_NV12, CAMHAL_GRALLOC_USAGE, &buf, &stride);
+        buffer_handle_t handle;
+        ret = GrallocAlloc.alloc(width, height, HAL_PIXEL_FORMAT_NV12, CAMHAL_GRALLOC_USAGE, &handle, &stride);
         if (ret != NO_ERROR){
           CAMHAL_LOGEA("Couldn't allocate video buffers using Gralloc");
           ret = -NO_MEMORY;
           for (unsigned int j=0; j< i; j++){
-            buf = (buffer_handle_t)bufsArr[j];
-            CAMHAL_LOGEB("Freeing Gralloc Buffer 0x%x", buf);
-            GrallocAlloc.free(buf);
+            CAMHAL_LOGEB("Freeing Gralloc Buffer %p", buffers[i].opaque);
+            GrallocAlloc.free((buffer_handle_t)buffers[i].opaque);
           }
-          delete [] bufsArr;
+          delete [] buffers;
           goto exit;
         }
-        bufsArr[i] = buf;
-        CAMHAL_LOGVB("*** Gralloc Handle =0x%x ***", buf);
+        buffers[i].type = CAMERA_BUFFER_GRALLOC;
+        buffers[i].opaque = (void *)handle;
+        CAMHAL_LOGVB("*** Gralloc Handle =0x%x ***", handle);
       }
 
-      mVideoBufs = (int32_t *)bufsArr;
+      mVideoBuffers = buffers;
     }
     else{
       CAMHAL_LOGEA("Couldn't allocate video buffers ");
@@ -1394,7 +1387,7 @@ status_t CameraHal::allocRawBufs(int width, int height, const char* previewForma
     ///@todo Enhance this method allocImageBufs() to take in a flag for burst capture
     ///Always allocate the buffers for image capture using MemoryManager
     if (NO_ERROR == ret) {
-        if(( NULL != mVideoBufs )) {
+        if(( NULL != mVideoBuffers )) {
             ret = freeRawBufs();
         }
     }
@@ -1402,10 +1395,11 @@ status_t CameraHal::allocRawBufs(int width, int height, const char* previewForma
     if ( NO_ERROR == ret ) {
         mVideoLength = 0;
         mVideoLength = (((width * height * 2) + 4095)/4096)*4096;
-        mVideoBufs = (int32_t *)mMemoryManager->allocateBuffer(width, height, previewFormat, mVideoLength, bufferCount);
+        mVideoBuffers = mMemoryManager->allocateBufferList(width, height, previewFormat,
+                                                           mVideoLength, bufferCount);
 
         CAMHAL_LOGDB("Size of Video cap buffer (used for RAW capture) %d", mVideoLength);
-        if( NULL == mVideoBufs ) {
+        if( NULL == mVideoBuffers ) {
             CAMHAL_LOGEA("Couldn't allocate Video buffers using memory manager");
             ret = -NO_MEMORY;
         }
@@ -1478,12 +1472,11 @@ status_t CameraHal::freeImageBufs()
     if ( NO_ERROR == ret )
         {
 
-        if( NULL != mImageBufs )
+        if( NULL != mImageBuffers )
             {
 
-            ///@todo Pluralise the name of this method to freeBuffers
-            ret = mMemoryManager->freeBuffer(mImageBufs);
-            mImageBufs = NULL;
+            ret = mMemoryManager->freeBufferList(mImageBuffers);
+            mImageBuffers = NULL;
 
             }
         else
@@ -1498,15 +1491,14 @@ status_t CameraHal::freeImageBufs()
     return ret;
 }
 
-status_t CameraHal::freeVideoBufs(void *bufs)
+status_t CameraHal::freeVideoBufs(CameraBuffer *bufs)
 {
   status_t ret = NO_ERROR;
 
   LOG_FUNCTION_NAME;
 
-  buffer_handle_t *pBuf = (buffer_handle_t*)bufs;
   int count = atoi(mCameraProperties->get(CameraProperties::REQUIRED_PREVIEW_BUFS));
-  if(pBuf == NULL)
+  if(bufs == NULL)
     {
       CAMHAL_LOGEA("NULL pointer passed to freeVideoBuffer");
       LOG_FUNCTION_NAME_EXIT;
@@ -1516,9 +1508,8 @@ status_t CameraHal::freeVideoBufs(void *bufs)
   GraphicBufferAllocator &GrallocAlloc = GraphicBufferAllocator::get();
 
   for(int i = 0; i < count; i++){
-    buffer_handle_t ptr = *pBuf++;
-    CAMHAL_LOGVB("Free Video Gralloc Handle 0x%x", ptr);
-    GrallocAlloc.free(ptr);
+    CAMHAL_LOGVB("Free Video Gralloc Handle 0x%x", bufs[i].opaque);
+    GrallocAlloc.free((buffer_handle_t)bufs[i].opaque);
   }
 
   LOG_FUNCTION_NAME_EXIT;
@@ -1533,10 +1524,10 @@ status_t CameraHal::freeRawBufs()
     LOG_FUNCTION_NAME
 
     if ( NO_ERROR == ret ) {
-        if( NULL != mVideoBufs ) {
+        if( NULL != mVideoBuffers ) {
             ///@todo Pluralise the name of this method to freeBuffers
-            ret = mMemoryManager->freeBuffer(mVideoBufs);
-            mVideoBufs = NULL;
+            ret = mMemoryManager->freeBufferList(mVideoBuffers);
+            mVideoBuffers = NULL;
         } else {
             ret = -EINVAL;
         }
@@ -1664,7 +1655,7 @@ status_t CameraHal::startPreview()
 
         if ( NO_ERROR == ret )
             {
-            desc.mBuffers = mPreviewDataBufs;
+            desc.mBuffers = mPreviewDataBuffers;
             desc.mOffsets = mPreviewDataOffsets;
             desc.mFd = mPreviewDataFd;
             desc.mLength = mPreviewDataLength;
@@ -1678,7 +1669,7 @@ status_t CameraHal::startPreview()
         }
 
     ///Pass the buffers to Camera Adapter
-    desc.mBuffers = mPreviewBufs;
+    desc.mBuffers = mPreviewBuffers;
     desc.mOffsets = mPreviewOffsets;
     desc.mFd = mPreviewFd;
     desc.mLength = mPreviewLength;
@@ -1695,7 +1686,7 @@ status_t CameraHal::startPreview()
         return ret;
         }
 
-    mAppCallbackNotifier->startPreviewCallbacks(mParameters, mPreviewBufs, mPreviewOffsets, mPreviewFd, mPreviewLength, required_buffer_count);
+    mAppCallbackNotifier->startPreviewCallbacks(mParameters, mPreviewBuffers, mPreviewOffsets, mPreviewFd, mPreviewLength, required_buffer_count);
 
     ///Start the callback notifier
     ret = mAppCallbackNotifier->start();
@@ -2008,13 +1999,13 @@ status_t CameraHal::startRecording( )
 
             mAppCallbackNotifier->useVideoBuffers(true);
             mAppCallbackNotifier->setVideoRes(mVideoWidth, mVideoHeight);
-            ret = mAppCallbackNotifier->initSharedVideoBuffers(mPreviewBufs, mPreviewOffsets, mPreviewFd, mPreviewLength, count, mVideoBufs);
+            ret = mAppCallbackNotifier->initSharedVideoBuffers(mPreviewBuffers, mPreviewOffsets, mPreviewFd, mPreviewLength, count, mVideoBuffers);
           }
         else
           {
             mAppCallbackNotifier->useVideoBuffers(false);
             mAppCallbackNotifier->setVideoRes(mPreviewWidth, mPreviewHeight);
-            ret = mAppCallbackNotifier->initSharedVideoBuffers(mPreviewBufs, mPreviewOffsets, mPreviewFd, mPreviewLength, count, NULL);
+            ret = mAppCallbackNotifier->initSharedVideoBuffers(mPreviewBuffers, mPreviewOffsets, mPreviewFd, mPreviewLength, count, NULL);
           }
       }
 
@@ -2223,12 +2214,12 @@ void CameraHal::stopRecording()
     mRecordingEnabled = false;
 
     if ( mAppCallbackNotifier->getUesVideoBuffers() ){
-      freeVideoBufs(mVideoBufs);
-      if (mVideoBufs){
-        CAMHAL_LOGVB(" FREEING mVideoBufs 0x%x", mVideoBufs);
-        delete [] mVideoBufs;
+      freeVideoBufs(mVideoBuffers);
+      if (mVideoBuffers){
+        CAMHAL_LOGVB(" FREEING mVideoBuffers %p", mVideoBuffers);
+        delete [] mVideoBuffers;
       }
-      mVideoBufs = NULL;
+      mVideoBuffers = NULL;
     }
 
     // reset internal recording hint in case camera adapter needs to make some
@@ -2488,7 +2479,7 @@ status_t CameraHal::startImageBracketing()
         if (  (NO_ERROR == ret) && ( NULL != mCameraAdapter ) )
             {
 
-            desc.mBuffers = mImageBufs;
+            desc.mBuffers = mImageBuffers;
             desc.mOffsets = mImageOffsets;
             desc.mFd = mImageFd;
             desc.mLength = mImageLength;
@@ -2679,7 +2670,7 @@ status_t CameraHal::takePicture( )
 
         if (  (NO_ERROR == ret) && ( NULL != mCameraAdapter ) )
             {
-            desc.mBuffers = mImageBufs;
+            desc.mBuffers = mImageBuffers;
             desc.mOffsets = mImageOffsets;
             desc.mFd = mImageFd;
             desc.mLength = mImageLength;
@@ -2703,7 +2694,7 @@ status_t CameraHal::takePicture( )
             }
 
             if ((NO_ERROR == ret) && ( NULL != mCameraAdapter )) {
-                desc.mBuffers = mVideoBufs;
+                desc.mBuffers = mVideoBuffers;
                 desc.mOffsets = mVideoOffsets;
                 desc.mFd = mVideoFd;
                 desc.mLength = mVideoLength;
@@ -2950,11 +2941,11 @@ CameraHal::CameraHal(int cameraId)
 
     ///Initialize all the member variables to their defaults
     mPreviewEnabled = false;
-    mPreviewBufs = NULL;
-    mImageBufs = NULL;
+    mPreviewBuffers = NULL;
+    mImageBuffers = NULL;
     mBufProvider = NULL;
     mPreviewStartInProgress = false;
-    mVideoBufs = NULL;
+    mVideoBuffers = NULL;
     mVideoBufProvider = NULL;
     mRecordingEnabled = false;
     mDisplayPaused = false;
@@ -2971,7 +2962,7 @@ CameraHal::CameraHal(int cameraId)
     mMaxZoomSupported = 0;
     mShutterEnabled = true;
     mMeasurementEnabled = false;
-    mPreviewDataBufs = NULL;
+    mPreviewDataBuffers = NULL;
     mCameraProperties = NULL;
     mCurrentTime = 0;
     mFalsePreview = 0;
