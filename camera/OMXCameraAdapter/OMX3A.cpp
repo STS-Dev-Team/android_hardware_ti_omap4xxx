@@ -1616,7 +1616,8 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
   status_t ret = NO_ERROR;
   OMX_ERRORTYPE eError = OMX_ErrorNone;
 
-  OMX_ALGOAREASTYPE **meteringAreas;
+  CameraBuffer *bufferlist;
+  OMX_ALGOAREASTYPE *meteringAreas;
   OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
   MemoryManager memMgr;
   int areasSize = 0;
@@ -1632,7 +1633,8 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
     }
 
   areasSize = ((sizeof(OMX_ALGOAREASTYPE)+4095)/4096)*4096;
-  meteringAreas = (OMX_ALGOAREASTYPE**) memMgr.allocateBuffer(0, 0, NULL, areasSize, 1);
+  bufferlist = memMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
+  meteringAreas = (OMX_ALGOAREASTYPE *)bufferlist[0].opaque;
 
   OMXCameraPortParameters * mPreviewData = NULL;
   mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -1643,11 +1645,11 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
       return -ENOMEM;
       }
 
-  OMX_INIT_STRUCT_PTR (meteringAreas[0], OMX_ALGOAREASTYPE);
+  OMX_INIT_STRUCT_PTR (meteringAreas, OMX_ALGOAREASTYPE);
 
-  meteringAreas[0]->nPortIndex = OMX_ALL;
-  meteringAreas[0]->nNumAreas = mMeteringAreas.size();
-  meteringAreas[0]->nAlgoAreaPurpose = OMX_AlgoAreaExposure;
+  meteringAreas->nPortIndex = OMX_ALL;
+  meteringAreas->nNumAreas = mMeteringAreas.size();
+  meteringAreas->nAlgoAreaPurpose = OMX_AlgoAreaExposure;
 
   for ( unsigned int n = 0; n < mMeteringAreas.size(); n++)
       {
@@ -1664,26 +1666,26 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
       // transform the coordinates to 3A-type coordinates
       mMeteringAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
                                       (size_t)mPreviewData->mHeight/heightDivisor,
-                                      (size_t&)meteringAreas[0]->tAlgoAreas[n].nTop,
-                                      (size_t&)meteringAreas[0]->tAlgoAreas[n].nLeft,
-                                      (size_t&)meteringAreas[0]->tAlgoAreas[n].nWidth,
-                                      (size_t&)meteringAreas[0]->tAlgoAreas[n].nHeight);
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nTop,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nLeft,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nWidth,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nHeight);
 
-      meteringAreas[0]->tAlgoAreas[n].nLeft =
-              ( meteringAreas[0]->tAlgoAreas[n].nLeft * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
-      meteringAreas[0]->tAlgoAreas[n].nTop =
-              ( meteringAreas[0]->tAlgoAreas[n].nTop* METERING_AREAS_RANGE ) / mPreviewData->mHeight;
-      meteringAreas[0]->tAlgoAreas[n].nWidth =
-              ( meteringAreas[0]->tAlgoAreas[n].nWidth * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
-      meteringAreas[0]->tAlgoAreas[n].nHeight =
-              ( meteringAreas[0]->tAlgoAreas[n].nHeight * METERING_AREAS_RANGE ) / mPreviewData->mHeight;
+      meteringAreas->tAlgoAreas[n].nLeft =
+              ( meteringAreas->tAlgoAreas[n].nLeft * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
+      meteringAreas->tAlgoAreas[n].nTop =
+              ( meteringAreas->tAlgoAreas[n].nTop* METERING_AREAS_RANGE ) / mPreviewData->mHeight;
+      meteringAreas->tAlgoAreas[n].nWidth =
+              ( meteringAreas->tAlgoAreas[n].nWidth * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
+      meteringAreas->tAlgoAreas[n].nHeight =
+              ( meteringAreas->tAlgoAreas[n].nHeight * METERING_AREAS_RANGE ) / mPreviewData->mHeight;
 
-      meteringAreas[0]->tAlgoAreas[n].nPriority = mMeteringAreas.itemAt(n)->getWeight();
+      meteringAreas->tAlgoAreas[n].nPriority = mMeteringAreas.itemAt(n)->getWeight();
 
       CAMHAL_LOGDB("Metering area %d : top = %d left = %d width = %d height = %d prio = %d",
-              n, (int)meteringAreas[0]->tAlgoAreas[n].nTop, (int)meteringAreas[0]->tAlgoAreas[n].nLeft,
-              (int)meteringAreas[0]->tAlgoAreas[n].nWidth, (int)meteringAreas[0]->tAlgoAreas[n].nHeight,
-              (int)meteringAreas[0]->tAlgoAreas[n].nPriority);
+              n, (int)meteringAreas->tAlgoAreas[n].nTop, (int)meteringAreas->tAlgoAreas[n].nLeft,
+              (int)meteringAreas->tAlgoAreas[n].nWidth, (int)meteringAreas->tAlgoAreas[n].nHeight,
+              (int)meteringAreas->tAlgoAreas[n].nPriority);
 
       }
 
@@ -1691,7 +1693,7 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
 
   sharedBuffer.nPortIndex = OMX_ALL;
   sharedBuffer.nSharedBuffSize = areasSize;
-  sharedBuffer.pSharedBuff = (OMX_U8 *) meteringAreas[0];
+  sharedBuffer.pSharedBuff = (OMX_U8 *) meteringAreas;
 
   if ( NULL == sharedBuffer.pSharedBuff )
       {
@@ -1714,10 +1716,9 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
       }
 
  EXIT:
-  if (NULL != meteringAreas)
+  if (NULL != bufferlist)
       {
-      memMgr.freeBuffer((void*) meteringAreas);
-      meteringAreas = NULL;
+      memMgr.freeBufferList(bufferlist);
       }
 
   return ret;

@@ -36,7 +36,7 @@ public:
 
     typedef struct
         {
-        void *mBuffer;
+        CameraBuffer *mBuffer;
         void *mUser;
         int mOffset;
         int mWidth;
@@ -77,14 +77,13 @@ public:
 
 #endif
 
-    virtual int useBuffers(void* bufArr, int num);
     virtual bool supportsExternalBuffering();
 
     //Implementation of inherited interfaces
-    virtual void* allocateBuffer(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
     virtual uint32_t * getOffsets() ;
     virtual int getFd() ;
-    virtual int freeBuffer(void* buf);
+    virtual int freeBufferList(CameraBuffer * buflist);
 
     virtual int maxQueueableBuffers(unsigned int& queueable);
 
@@ -156,11 +155,12 @@ private:
     mutable Mutex mLock;
     bool mDisplayEnabled;
     int mBufferCount;
-    buffer_handle_t** mBufferHandleMap;
-    IMG_native_handle_t** mGrallocHandleMap;
-    uint32_t* mOffsetsMap;
+    CameraBuffer *mBuffers;
+    //buffer_handle_t** mBufferHandleMap; // -> frames[i].BufferHandle
+    //IMG_native_handle_t** mGrallocHandleMap; // -> frames[i].GrallocHandle
+    uint32_t* mOffsetsMap; // -> frames[i].Offset
     int mFD;
-    KeyedVector<int, int> mFramesWithCameraAdapterMap;
+    KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
     sp<ErrorNotifier> mErrorNotifier;
 
     uint32_t mFrameWidth;

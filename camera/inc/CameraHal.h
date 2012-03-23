@@ -46,6 +46,15 @@
 #include <ui/GraphicBufferAllocator.h>
 #include <ui/GraphicBuffer.h>
 
+/* For IMG_native_handle_t */
+#include <ui/egl/android_natives.h>
+#include <ui/GraphicBufferMapper.h>
+#include <hal_public.h>
+
+extern "C" {
+#include <ion.h>
+}
+
 #define MIN_WIDTH           640
 #define MIN_HEIGHT          480
 #define PICTURE_WIDTH   3264 /* 5mp - 2560. 8mp - 3280 */ /* Make sure it is a multiple of 16. */
@@ -301,6 +310,43 @@ private:
     camera_frame_metadata_t *mFaceData;
 };
 
+typedef enum {
+    CAMERA_BUFFER_NONE = 0,
+    CAMERA_BUFFER_GRALLOC,
+    CAMERA_BUFFER_ANW,
+    CAMERA_BUFFER_MEMORY,
+    CAMERA_BUFFER_ION
+} CameraBufferType;
+
+typedef struct _CameraBuffer {
+    CameraBufferType type;
+    /* opaque is the generic drop-in replacement for the pointers
+     * that were used previously */
+    void *opaque;
+
+    /* opaque has different meanings depending on the buffer type:
+     *   GRALLOC - gralloc_handle_t
+     *   ANW - a pointer to the buffer_handle_t (which corresponds to
+     *         the ANativeWindowBuffer *)
+     *   MEMORY - address of allocated memory
+     *   ION - address of mapped ion allocation
+     *
+     * FIXME opaque should be split into several fields:
+     *   - handle/pointer we got from the allocator
+     *   - handle/value we pass to OMX
+     *   - pointer to mapped memory (if the buffer is mapped)
+     */
+
+    /* mapped holds ptr to mapped memory in userspace */
+    void *mapped;
+
+    /* These are specific to ION buffers */
+    struct ion_handle * ion_handle;
+    int fd;
+    size_t size;
+    int index;
+} CameraBuffer;
+
 class CameraFrame
 {
     public:
@@ -368,7 +414,7 @@ class CameraFrame
 
     void *mCookie;
     void *mCookie2;
-    void *mBuffer;
+    CameraBuffer *mBuffer;
     int mFrameType;
     nsecs_t mTimestamp;
     unsigned int mWidth, mHeight;
@@ -514,8 +560,8 @@ public:
 class FrameNotifier : public MessageNotifier
 {
 public:
-    virtual void returnFrame(void* frameBuf, CameraFrame::FrameType frameType) = 0;
-    virtual void addFramePointers(void *frameBuf, void *buf) = 0;
+    virtual void returnFrame(CameraBuffer* frameBuf, CameraFrame::FrameType frameType) = 0;
+    virtual void addFramePointers(CameraBuffer *frameBuf, void *buf) = 0;
     virtual void removeFramePointers() = 0;
 
     virtual ~FrameNotifier() {};
@@ -535,8 +581,8 @@ public:
 
     int enableFrameNotification(int32_t frameTypes);
     int disableFrameNotification(int32_t frameTypes);
-    int returnFrame(void *frameBuf, CameraFrame::FrameType frameType);
-    void addFramePointers(void *frameBuf, void *buf);
+    int returnFrame(CameraBuffer *frameBuf, CameraFrame::FrameType frameType);
+    void addFramePointers(CameraBuffer *frameBuf, void *buf);
     void removeFramePointers();
 };
 
@@ -564,13 +610,13 @@ public:
 class BufferProvider
 {
 public:
-    virtual void* allocateBuffer(int width, int height, const char* format, int &bytes, int numBufs) = 0;
+    virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs) = 0;
 
     //additional methods used for memory mapping
     virtual uint32_t * getOffsets() = 0;
     virtual int getFd() = 0;
 
-    virtual int freeBuffer(void* buf) = 0;
+    virtual int freeBufferList(CameraBuffer * buf) = 0;
 
     virtual ~BufferProvider() {}
 };
@@ -620,7 +666,7 @@ public:
     //All sub-components of Camera HAL call this whenever any error happens
     virtual void errorNotify(int error);
 
-    status_t startPreviewCallbacks(CameraParameters &params, void *buffers, uint32_t *offsets, int fd, size_t length, size_t count);
+    status_t startPreviewCallbacks(CameraParameters &params, CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count);
     status_t stopPreviewCallbacks();
 
     status_t enableMsgType(int32_t msgType);
@@ -652,12 +698,12 @@ public:
     //Notifications from CameraHal for video recording case
     status_t startRecording();
     status_t stopRecording();
-    status_t initSharedVideoBuffers(void *buffers, uint32_t *offsets, int fd, size_t length, size_t count, void *vidBufs);
+    status_t initSharedVideoBuffers(CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count, CameraBuffer *vidBufs);
     status_t releaseRecordingFrame(const void *opaque);
 
 	status_t useMetaDataBufferMode(bool enable);
 
-    void EncoderDoneCb(void*, void*, CameraFrame::FrameType type, void* cookie1, void* cookie2);
+    void EncoderDoneCb(void*, void*, CameraFrame::FrameType type, void* cookie1, void* cookie2, void *cookie3);
 
     void useVideoBuffers(bool useVideoBuffers);
 
@@ -715,11 +761,11 @@ private:
     //these objects
     KeyedVector<unsigned int, unsigned int> mVideoHeaps;
     KeyedVector<unsigned int, unsigned int> mVideoBuffers;
-    KeyedVector<unsigned int, unsigned int> mVideoMap;
+    KeyedVector<void *, CameraBuffer *> mVideoMap;
 
     //Keeps list of Gralloc handles and associated Video Metadata Buffers
-    KeyedVector<uint32_t, uint32_t> mVideoMetadataBufferMemoryMap;
-    KeyedVector<uint32_t, uint32_t> mVideoMetadataBufferReverseMap;
+    KeyedVector<void *, camera_memory_t *> mVideoMetadataBufferMemoryMap;
+    KeyedVector<void *, CameraBuffer *> mVideoMetadataBufferReverseMap;
 
     bool mBufferReleased;
 
@@ -732,7 +778,7 @@ private:
 
     bool mPreviewing;
     camera_memory_t* mPreviewMemory;
-    unsigned char* mPreviewBufs[MAX_BUFFERS];
+    CameraBuffer mPreviewBuffers[MAX_BUFFERS];
     int mPreviewBufCount;
     int mPreviewWidth;
     int mPreviewHeight;
@@ -770,18 +816,15 @@ public:
     status_t initialize() { return NO_ERROR; }
 
     int setErrorHandler(ErrorNotifier *errorNotifier);
-    virtual void* allocateBuffer(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
     virtual uint32_t * getOffsets();
     virtual int getFd() ;
-    virtual int freeBuffer(void* buf);
+    virtual int freeBufferList(CameraBuffer * buflist);
 
 private:
 
     sp<ErrorNotifier> mErrorNotifier;
     int mIonFd;
-    KeyedVector<unsigned int, unsigned int> mIonHandleMap;
-    KeyedVector<unsigned int, unsigned int> mIonFdMap;
-    KeyedVector<unsigned int, unsigned int> mIonBufLength;
 };
 
 
@@ -809,7 +852,7 @@ protected:
 public:
     typedef struct
         {
-         void *mBuffers;
+         CameraBuffer *mBuffers;
          uint32_t *mOffsets;
          int mFd;
          size_t mLength;
@@ -887,8 +930,8 @@ public:
                                event_callback eventCb = NULL,
                                void *cookie = NULL) = 0;
     virtual void disableMsgType(int32_t msgs, void* cookie) = 0;
-    virtual void returnFrame(void* frameBuf, CameraFrame::FrameType frameType) = 0;
-    virtual void addFramePointers(void *frameBuf, void *buf) = 0;
+    virtual void returnFrame(CameraBuffer* frameBuf, CameraFrame::FrameType frameType) = 0;
+    virtual void addFramePointers(CameraBuffer *frameBuf, void *buf) = 0;
     virtual void removeFramePointers() = 0;
 
     //APIs to configure Camera adapter and get the current parameter set
@@ -952,12 +995,11 @@ public:
     virtual int setSnapshotTimeRef(struct timeval *refTime = NULL) = 0;
 #endif
 
-    virtual int useBuffers(void *bufArr, int num) = 0;
     virtual bool supportsExternalBuffering() = 0;
 
     // Get max queueable buffers display supports
     // This function should only be called after
-    // allocateBuffer
+    // allocateBufferList
     virtual int maxQueueableBuffers(unsigned int& queueable) = 0;
 };
 
@@ -1199,7 +1241,7 @@ private:
     status_t freePreviewBufs();
 
     /** Free video bufs */
-    status_t freeVideoBufs(void *bufs);
+    status_t freeVideoBufs(CameraBuffer *bufs);
 
     /** Free RAW bufs */
     status_t freeRawBufs();
@@ -1307,19 +1349,19 @@ private:
     bool mRecordingEnabled;
     EventProvider *mEventProvider;
 
-    int32_t *mPreviewDataBufs;
+    CameraBuffer *mPreviewDataBuffers;
     uint32_t *mPreviewDataOffsets;
     int mPreviewDataFd;
     int mPreviewDataLength;
-    int32_t *mImageBufs;
+    CameraBuffer *mImageBuffers;
     uint32_t *mImageOffsets;
     int mImageFd;
     int mImageLength;
-    int32_t *mPreviewBufs;
+    CameraBuffer *mPreviewBuffers;
     uint32_t *mPreviewOffsets;
     int mPreviewLength;
     int mPreviewFd;
-    int32_t *mVideoBufs;
+    CameraBuffer *mVideoBuffers;
     uint32_t *mVideoOffsets;
     int mVideoFd;
     int mVideoLength;

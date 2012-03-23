@@ -243,7 +243,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     {
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("command handler thread already runnning!!");
-	    ret = NO_ERROR;
+            ret = NO_ERROR;
         } else
         {
             CAMHAL_LOGEA("Couldn't run command handlerthread");
@@ -266,7 +266,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     {
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("omx callback handler thread already runnning!!");
-	    ret = NO_ERROR;
+            ret = NO_ERROR;
         }else
         {
             CAMHAL_LOGEA("Couldn't run omx callback handler thread");
@@ -369,7 +369,7 @@ OMXCameraAdapter::OMXCameraPortParameters *OMXCameraAdapter::getPortParams(Camer
     return ret;
 }
 
-status_t OMXCameraAdapter::fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType)
+status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::FrameType frameType)
 {
     LOG_FUNCTION_NAME;
 
@@ -415,14 +415,14 @@ status_t OMXCameraAdapter::fillThisBuffer(void* frameBuf, CameraFrame::FrameType
 
         for ( int i = 0 ; i < port->mNumBufs ; i++)
             {
-            if ( port->mBufferHeader[i]->pBuffer == frameBuf )
+            if ( (CameraBuffer *) port->mBufferHeader[i]->pAppPrivate == frameBuf )
                 {
                 eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp, port->mBufferHeader[i]);
                 if ( eError != OMX_ErrorNone )
-                    {
+                {
                     CAMHAL_LOGEB("OMX_FillThisBuffer 0x%x", eError);
                     goto EXIT;
-                    }
+                }
                 mFramesWithDucati++;
                 break;
                 }
@@ -1136,7 +1136,7 @@ status_t OMXCameraAdapter::flushBuffers()
 }
 
 ///API to give the buffers to Adapter
-status_t OMXCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable)
+status_t OMXCameraAdapter::useBuffers(CameraMode mode, CameraBuffer * bufArr, int num, size_t length, unsigned int queueable)
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     status_t ret = NO_ERROR;
@@ -1176,12 +1176,11 @@ status_t OMXCameraAdapter::useBuffers(CameraMode mode, void* bufArr, int num, si
     return ret;
 }
 
-status_t OMXCameraAdapter::UseBuffersPreviewData(void* bufArr, int num)
+status_t OMXCameraAdapter::UseBuffersPreviewData(CameraBuffer * bufArr, int num)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters * measurementData = NULL;
-    uint32_t *buffers;
     Mutex::Autolock lock( mPreviewDataBufferLock);
 
     LOG_FUNCTION_NAME;
@@ -1209,7 +1208,6 @@ status_t OMXCameraAdapter::UseBuffersPreviewData(void* bufArr, int num)
         {
         measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
         measurementData->mNumBufs = num ;
-        buffers= (uint32_t*) bufArr;
         }
 
     if ( NO_ERROR == ret )
@@ -1594,7 +1592,7 @@ EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
-status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
+status_t OMXCameraAdapter::UseBuffersPreview(CameraBuffer * bufArr, int num)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -1614,7 +1612,6 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
     measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
     mPreviewData->mNumBufs = num ;
-    uint32_t *buffers = (uint32_t*)bufArr;
 
     if ( 0 != mUsePreviewSem.Count() )
         {
@@ -1753,21 +1750,30 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
 
     OMX_BUFFERHEADERTYPE *pBufferHdr;
     for(int index=0;index<num;index++) {
+        OMX_U8 *ptr;
 
-        CAMHAL_LOGDB("OMX_UseBuffer(0x%x)", buffers[index]);
+        CAMHAL_LOGDB("OMX_UseBuffer(%p) opaque=%p", &bufArr[index], bufArr[index].opaque);
+
+        /* This is a temporary hack until CameraBuffer is expanded */
+        if (bufArr[index].type == CAMERA_BUFFER_ANW) {
+            buffer_handle_t *handle = (buffer_handle_t *)bufArr[index].opaque;
+            ptr = (OMX_U8*)*handle;
+        } else {
+            ptr = (OMX_U8*)bufArr[index].opaque;
+        }
         eError = OMX_UseBuffer( mCameraAdapterParameters.mHandleComp,
                                 &pBufferHdr,
                                 mCameraAdapterParameters.mPrevPortIndex,
                                 0,
                                 mPreviewData->mBufSize,
-                                (OMX_U8*)buffers[index]);
+                                ptr);
         if(eError!=OMX_ErrorNone)
             {
             CAMHAL_LOGEB("OMX_UseBuffer-0x%x", eError);
             }
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
 
-        //pBufferHdr->pAppPrivate =  (OMX_PTR)pBufferHdr;
+        pBufferHdr->pAppPrivate = (OMX_PTR)&bufArr[index];
         pBufferHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
         pBufferHdr->nVersion.s.nVersionMajor = 1 ;
         pBufferHdr->nVersion.s.nVersionMinor = 1 ;
@@ -1782,15 +1788,25 @@ status_t OMXCameraAdapter::UseBuffersPreview(void* bufArr, int num)
         for( int i = 0; i < num; i++ )
             {
             OMX_BUFFERHEADERTYPE *pBufHdr;
+            OMX_U8 *ptr;
+
+            /* This is a temporary hack until CameraBuffer is expanded */
+            if (mPreviewDataBuffers[i].type == CAMERA_BUFFER_ANW) {
+                buffer_handle_t *handle = (buffer_handle_t *)mPreviewDataBuffers[i].opaque;
+                ptr = (OMX_U8*)*handle;
+            } else {
+                ptr = (OMX_U8*)mPreviewDataBuffers[i].opaque;
+            }
             eError = OMX_UseBuffer( mCameraAdapterParameters.mHandleComp,
                                     &pBufHdr,
                                     mCameraAdapterParameters.mMeasurementPortIndex,
                                     0,
                                     measurementData->mBufSize,
-                                    (OMX_U8*)(mPreviewDataBuffers[i]));
+                                    ptr);
 
              if ( eError == OMX_ErrorNone )
                 {
+                pBufHdr->pAppPrivate = (OMX_PTR *)&mPreviewDataBuffers[i];
                 pBufHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
                 pBufHdr->nVersion.s.nVersionMajor = 1 ;
                 pBufHdr->nVersion.s.nVersionMinor = 1 ;
@@ -1959,7 +1975,7 @@ status_t OMXCameraAdapter::startPreview()
             }
         mFramesWithDucati++;
 #ifdef CAMERAHAL_DEBUG
-        mBuffersWithDucati.add((uint32_t)mPreviewData->mBufferHeader[index]->pBuffer,1);
+        mBuffersWithDucati.add((int)mPreviewData->mBufferHeader[index]->pAppPrivate,1);
 #endif
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
@@ -3150,8 +3166,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         mFramesWithDucati--;
 
-#ifdef CAMERAHAL_DEBUG
-        if(mBuffersWithDucati.indexOfKey((int)pBuffHeader->pBuffer)<0)
+#ifdef DEBUG_LOG
+        if(mBuffersWithDucati.indexOfKey((uint32_t)pBuffHeader->pBuffer)<0)
             {
             LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
             for(unsigned int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
@@ -3314,10 +3330,15 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             goto EXIT;
         }
 
+
     if ( NO_ERROR != stat )
         {
+        CameraBuffer *camera_buffer;
+
+        camera_buffer = (CameraBuffer *)pBuffHeader->pAppPrivate;
+
         CAMHAL_LOGDB("sendFrameToSubscribers error: %d", stat);
-        returnFrame(pBuffHeader->pBuffer, typeOfFrame);
+        returnFrame(camera_buffer, typeOfFrame);
         }
 
     return eError;
@@ -3418,7 +3439,7 @@ status_t OMXCameraAdapter::sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEA
 
   //frame.mFrameType = typeOfFrame;
   frame.mFrameMask = mask;
-  frame.mBuffer = pBuffHeader->pBuffer;
+  frame.mBuffer = (CameraBuffer *)pBuffHeader->pAppPrivate;
   frame.mLength = pBuffHeader->nFilledLen;
   frame.mAlignment = port->mStride;
   frame.mOffset = pBuffHeader->nOffset;

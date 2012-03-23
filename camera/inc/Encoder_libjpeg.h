@@ -49,6 +49,7 @@ typedef void (*encoder_libjpeg_callback_t) (void* main_jpeg,
                                             void* cookie1,
                                             void* cookie2,
                                             void* cookie3,
+                                            void* cookie4,
                                             bool canceled);
 
 // these have to match strings defined in external/jhead/exif.c
@@ -134,9 +135,9 @@ class Encoder_libjpeg : public Thread {
                         CameraFrame::FrameType type,
                         void* cookie1,
                         void* cookie2,
-                        void* cookie3)
+                        void* cookie3, void *cookie4)
             : Thread(false), mMainInput(main_jpeg), mThumbnailInput(tn_jpeg), mCb(cb),
-              mCancelEncoding(false), mCookie1(cookie1), mCookie2(cookie2), mCookie3(cookie3),
+              mCancelEncoding(false), mCookie1(cookie1), mCookie2(cookie2), mCookie3(cookie3), mCookie4(cookie4),
               mType(type), mThumb(NULL) {
             this->incStrong(this);
             mCancelSem.Create(0);
@@ -151,7 +152,7 @@ class Encoder_libjpeg : public Thread {
             sp<Encoder_libjpeg> tn = NULL;
             if (mThumbnailInput) {
                 // start thread to encode thumbnail
-                mThumb = new Encoder_libjpeg(mThumbnailInput, NULL, NULL, mType, NULL, NULL, NULL);
+                mThumb = new Encoder_libjpeg(mThumbnailInput, NULL, NULL, mType, NULL, NULL, NULL, NULL);
                 mThumb->run();
             }
 
@@ -170,7 +171,7 @@ class Encoder_libjpeg : public Thread {
             }
 
             if(mCb) {
-                mCb(mMainInput, mThumbnailInput, mType, mCookie1, mCookie2, mCookie3, mCancelEncoding);
+                mCb(mMainInput, mThumbnailInput, mType, mCookie1, mCookie2, mCookie3, mCookie4, mCancelEncoding);
             }
 
             // encoder thread runs, self-destructs, and then exits
@@ -200,6 +201,7 @@ class Encoder_libjpeg : public Thread {
         void* mCookie1;
         void* mCookie2;
         void* mCookie3;
+        void* mCookie4;
         CameraFrame::FrameType mType;
         sp<Encoder_libjpeg> mThumb;
         Semaphore mCancelSem;

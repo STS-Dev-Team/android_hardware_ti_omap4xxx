@@ -33,11 +33,12 @@ void AppCallbackNotifierEncoderCallback(void* main_jpeg,
                                         void* cookie1,
                                         void* cookie2,
                                         void* cookie3,
+                                        void* cookie4,
                                         bool canceled)
 {
     if (cookie1 && !canceled) {
         AppCallbackNotifier* cb = (AppCallbackNotifier*) cookie1;
-        cb->EncoderDoneCb(main_jpeg, thumb_jpeg, type, cookie2, cookie3);
+        cb->EncoderDoneCb(main_jpeg, thumb_jpeg, type, cookie2, cookie3, cookie4);
     }
 
     if (main_jpeg) {
@@ -54,12 +55,13 @@ void AppCallbackNotifierEncoderCallback(void* main_jpeg,
 
 /*--------------------NotificationHandler Class STARTS here-----------------------------*/
 
-void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, CameraFrame::FrameType type, void* cookie1, void* cookie2)
+void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, CameraFrame::FrameType type, void* cookie1, void* cookie2, void *cookie3)
 {
     camera_memory_t* encoded_mem = NULL;
     Encoder_libjpeg::params *main_param = NULL, *thumb_param = NULL;
     size_t jpeg_size;
     uint8_t* src = NULL;
+    CameraBuffer *camera_buffer;
     sp<Encoder_libjpeg> encoder = NULL;
 
     LOG_FUNCTION_NAME;
@@ -76,6 +78,7 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
     encoded_mem = (camera_memory_t*) cookie1;
     main_param = (Encoder_libjpeg::params *) main_jpeg;
     jpeg_size = main_param->jpeg_size;
+    camera_buffer = (CameraBuffer *)cookie3;
     src = main_param->src;
 
     if(encoded_mem && encoded_mem->data && (jpeg_size > 0)) {
@@ -153,7 +156,7 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
             gEncoderQueue.removeItem(src);
             encoder.clear();
         }
-        mFrameProvider->returnFrame(src, type);
+        mFrameProvider->returnFrame(camera_buffer, type);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -628,7 +631,7 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
         if (NULL != picture) {
             dest = picture->data;
             if (NULL != dest) {
-                src = (void *) ((unsigned int) frame->mBuffer + frame->mOffset);
+                src = (void *) ((unsigned int) frame->mBuffer->mapped + frame->mOffset);
                 memcpy(dest, src, frame->mLength);
             }
         }
@@ -649,7 +652,7 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
 void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t msgType)
 {
     camera_memory_t* picture = NULL;
-    void* dest = NULL;
+    CameraBuffer * dest = NULL;
 
     // scope for lock
     {
@@ -664,8 +667,7 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
             goto exit;
         }
 
-
-        dest = (void*) mPreviewBufs[mPreviewBufCount];
+        dest = &mPreviewBuffers[mPreviewBufCount];
 
         CAMHAL_LOGVB("%d:copy2Dto1D(%p, %p, %d, %d, %d, %d, %d,%s)",
                      __LINE__,
@@ -678,13 +680,14 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
                       frame->mLength,
                       mPreviewPixelFormat);
 
-        if ( NULL != dest ) {
+        /* FIXME map dest */
+        if ( NULL != dest && dest->mapped != NULL ) {
             // data sync frames don't need conversion
             if (CameraFrame::FRAME_DATA_SYNC == frame->mFrameType) {
                 if ( (mPreviewMemory->size / MAX_BUFFERS) >= frame->mLength ) {
-                    memcpy(dest, (void*) frame->mBuffer, frame->mLength);
+                    memcpy(dest->mapped, (void*) frame->mBuffer->mapped, frame->mLength);
                 } else {
-                    memset(dest, 0, (mPreviewMemory->size / MAX_BUFFERS));
+                    memset(dest->mapped, 0, (mPreviewMemory->size / MAX_BUFFERS));
                 }
             } else {
               if ((NULL == frame->mYuv[0]) || (NULL == frame->mYuv[1])){
@@ -692,7 +695,7 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
                 goto exit;
               }
               else{
-                copy2Dto1D(dest,
+                copy2Dto1D(dest->mapped,
                            frame->mYuv,
                            mPreviewWidth,
                            mPreviewHeight,
@@ -711,7 +714,7 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
 
     if((mNotifierState == AppCallbackNotifier::NOTIFIER_STARTED) &&
        mCameraHal->msgTypeEnabled(msgType) &&
-       (dest != NULL)) {
+       (dest != NULL) && (dest->mapped != NULL)) {
         AutoMutex locker(mLock);
         if ( mPreviewMemory )
             mDataCb(msgType, mPreviewMemory, mPreviewBufCount, NULL, mCallbackCookie);
@@ -862,7 +865,7 @@ void AppCallbackNotifier::notifyFrame()
                     CAMHAL_LOGDB("Video snapshot offset = %d", frame->mOffset);
 
                     if (main_jpeg) {
-                        main_jpeg->src = (uint8_t*) frame->mBuffer;
+                        main_jpeg->src = (uint8_t *)frame->mBuffer->mapped;
                         main_jpeg->src_size = frame->mLength;
                         main_jpeg->dst = (uint8_t*) buf;
                         main_jpeg->dst_size = frame->mLength;
@@ -893,7 +896,7 @@ void AppCallbackNotifier::notifyFrame()
                         int width, height;
                         parameters.getPreviewSize(&width,&height);
                         current_snapshot = (mPreviewBufCount + MAX_BUFFERS - 1) % MAX_BUFFERS;
-                        tn_jpeg->src = (uint8_t*) mPreviewBufs[current_snapshot];
+                        tn_jpeg->src = (uint8_t *)mPreviewBuffers[current_snapshot].mapped;
                         tn_jpeg->src_size = mPreviewMemory->size / MAX_BUFFERS;
                         tn_jpeg->dst_size = calculateBufferSize(tn_width,
                                                                 tn_height,
@@ -915,7 +918,7 @@ void AppCallbackNotifier::notifyFrame()
                                                       (CameraFrame::FrameType)frame->mFrameType,
                                                       this,
                                                       raw_picture,
-                                                      exif_data);
+                                                      exif_data, frame->mBuffer);
                     gEncoderQueue.add(frame->mBuffer, encoder);
                     encoder->run();
                     encoder.clear();
@@ -968,7 +971,7 @@ void AppCallbackNotifier::notifyFrame()
                         if(mUseMetaDataBufferMode)
                             {
                             camera_memory_t *videoMedatadaBufferMemory =
-                                             (camera_memory_t *) mVideoMetadataBufferMemoryMap.valueFor((uint32_t) frame->mBuffer);
+                                             mVideoMetadataBufferMemoryMap.valueFor(frame->mBuffer->opaque);
                             video_metadata_t *videoMetadataBuffer = (video_metadata_t *) videoMedatadaBufferMemory->data;
 
                             if( (NULL == videoMedatadaBufferMemory) || (NULL == videoMetadataBuffer) || (NULL == frame->mBuffer) )
@@ -979,7 +982,7 @@ void AppCallbackNotifier::notifyFrame()
 
                             if ( mUseVideoBuffers )
                               {
-                                int vBuf = mVideoMap.valueFor((uint32_t) frame->mBuffer);
+                                CameraBuffer *vBuf = mVideoMap.valueFor(frame->mBuffer->opaque);
                                 GraphicBufferMapper &mapper = GraphicBufferMapper::get();
                                 Rect bounds;
                                 bounds.left = 0;
@@ -1008,20 +1011,21 @@ void AppCallbackNotifier::notifyFrame()
                                                           0};
 
                                 VT_resizeFrame_Video_opt2_lp(&input, &output, NULL, 0);
-                                mapper.unlock((buffer_handle_t)vBuf);
+                                mapper.unlock((buffer_handle_t)vBuf->opaque);
                                 videoMetadataBuffer->metadataBufferType = (int) kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = (void *)vBuf;
+                                /* FIXME remove cast */
+                                videoMetadataBuffer->handle = (void *)vBuf->opaque;
                                 videoMetadataBuffer->offset = 0;
                               }
                             else
                               {
                                 videoMetadataBuffer->metadataBufferType = (int) kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = frame->mBuffer;
+                                videoMetadataBuffer->handle = frame->mBuffer->opaque;
                                 videoMetadataBuffer->offset = frame->mOffset;
                               }
 
                             CAMHAL_LOGVB("mDataCbTimestamp : frame->mBuffer=0x%x, videoMetadataBuffer=0x%x, videoMedatadaBufferMemory=0x%x",
-                                            frame->mBuffer, videoMetadataBuffer, videoMedatadaBufferMemory);
+                                            frame->mBuffer->opaque, videoMetadataBuffer, videoMedatadaBufferMemory);
 
                             mDataCbTimestamp(frame->mTimestamp, CAMERA_MSG_VIDEO_FRAME,
                                                 videoMedatadaBufferMemory, 0, mCallbackCookie);
@@ -1036,7 +1040,7 @@ void AppCallbackNotifier::notifyFrame()
                                 break;
                                 }
 
-                            *reinterpret_cast<buffer_handle_t*>(fakebuf->data) = reinterpret_cast<buffer_handle_t>(frame->mBuffer);
+                            *reinterpret_cast<buffer_handle_t*>(fakebuf->data) = reinterpret_cast<buffer_handle_t>(frame->mBuffer->mapped);
                             mDataCbTimestamp(frame->mTimestamp, CAMERA_MSG_VIDEO_FRAME, fakebuf, 0, mCallbackCookie);
                             fakebuf->release(fakebuf);
                             }
@@ -1303,11 +1307,11 @@ void AppCallbackNotifier::releaseSharedVideoBuffers()
         camera_memory_t* videoMedatadaBufferMemory;
         for (unsigned int i = 0; i < mVideoMetadataBufferMemoryMap.size();  i++)
             {
-            videoMedatadaBufferMemory = (camera_memory_t*) mVideoMetadataBufferMemoryMap.valueAt(i);
+            videoMedatadaBufferMemory = mVideoMetadataBufferMemoryMap.valueAt(i);
             if(NULL != videoMedatadaBufferMemory)
                 {
                 videoMedatadaBufferMemory->release(videoMedatadaBufferMemory);
-                CAMHAL_LOGDB("Released  videoMedatadaBufferMemory=0x%x", videoMedatadaBufferMemory);
+                CAMHAL_LOGDB("Released  videoMedatadaBufferMemory=%p", videoMedatadaBufferMemory);
                 }
             }
 
@@ -1402,11 +1406,11 @@ const char* AppCallbackNotifier::getContstantForPixelFormat(const char *pixelFor
         return CameraParameters::PIXEL_FORMAT_YUV420SP;
     }
 }
-status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, void *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
+
+status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
 {
     sp<MemoryHeapBase> heap;
     sp<MemoryBase> buffer;
-    unsigned int *bufArr;
     size_t size = 0;
 
     LOG_FUNCTION_NAME;
@@ -1442,7 +1446,9 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
     }
 
     for (int i=0; i < AppCallbackNotifier::MAX_BUFFERS; i++) {
-        mPreviewBufs[i] = (unsigned char*) mPreviewMemory->data + (i*size);
+        mPreviewBuffers[i].type = CAMERA_BUFFER_MEMORY;
+        mPreviewBuffers[i].opaque = (unsigned char*) mPreviewMemory->data + (i*size);
+        mPreviewBuffers[i].mapped = mPreviewBuffers[i].opaque;
     }
 
     if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_PREVIEW_FRAME ) ) {
@@ -1567,14 +1573,13 @@ status_t AppCallbackNotifier::startRecording()
 }
 
 //Allocate metadata buffers for video recording
-status_t AppCallbackNotifier::initSharedVideoBuffers(void *buffers, uint32_t *offsets, int fd, size_t length, size_t count, void *vidBufs)
+status_t AppCallbackNotifier::initSharedVideoBuffers(CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count, CameraBuffer *vidBufs)
 {
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
     if(mUseMetaDataBufferMode)
         {
-        uint32_t *bufArr = NULL;
         camera_memory_t* videoMedatadaBufferMemory = NULL;
 
         if(NULL == buffers)
@@ -1582,7 +1587,6 @@ status_t AppCallbackNotifier::initSharedVideoBuffers(void *buffers, uint32_t *of
             CAMHAL_LOGEA("Error! Video buffers are NULL");
             return BAD_VALUE;
             }
-        bufArr = (uint32_t *) buffers;
 
         for (uint32_t i = 0; i < count; i++)
             {
@@ -1593,16 +1597,18 @@ status_t AppCallbackNotifier::initSharedVideoBuffers(void *buffers, uint32_t *of
                 return NO_MEMORY;
                 }
 
-            mVideoMetadataBufferMemoryMap.add(bufArr[i], (uint32_t)(videoMedatadaBufferMemory));
-            mVideoMetadataBufferReverseMap.add((uint32_t)(videoMedatadaBufferMemory->data), bufArr[i]);
-            CAMHAL_LOGDB("bufArr[%d]=0x%x, videoMedatadaBufferMemory=0x%x, videoMedatadaBufferMemory->data=0x%x",
-                    i, bufArr[i], videoMedatadaBufferMemory, videoMedatadaBufferMemory->data);
+            // FIXME remove cast
+            mVideoMetadataBufferMemoryMap.add((void *)buffers[i].opaque, videoMedatadaBufferMemory);
+            mVideoMetadataBufferReverseMap.add(videoMedatadaBufferMemory->data, &buffers[i]);
+            CAMHAL_LOGDB("buffers[%d]=%p, videoMedatadaBufferMemory=%p, videoMedatadaBufferMemory->data=%p",
+                    i, &buffers[i], videoMedatadaBufferMemory, videoMedatadaBufferMemory->data);
 
             if (vidBufs != NULL)
               {
-                uint32_t *vBufArr = (uint32_t *) vidBufs;
-                mVideoMap.add(bufArr[i], vBufArr[i]);
-                CAMHAL_LOGVB("bufArr[%d]=0x%x, vBuffArr[%d]=0x%x", i, bufArr[i], i, vBufArr[i]);
+                //ASSERT(buffers[i].type == CAMERA_BUFFER_GRALLOC);
+                // FIXME remove cast
+                mVideoMap.add((void *)buffers[i].opaque, &vidBufs[i]);
+                CAMHAL_LOGVB("buffers[%d]=%p, vBuffArr[%d]=%p", i, &buffers[i], i, &vidBufs[i]);
               }
             }
         }
@@ -1650,7 +1656,7 @@ status_t AppCallbackNotifier::stopRecording()
 status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
 {
     status_t ret = NO_ERROR;
-    void *frame = NULL;
+    CameraBuffer *frame = NULL;
 
     LOG_FUNCTION_NAME;
     if ( NULL == mFrameProvider )
@@ -1673,13 +1679,15 @@ status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
     if(mUseMetaDataBufferMode)
         {
         video_metadata_t *videoMetadataBuffer = (video_metadata_t *) mem ;
-        frame = (void*) mVideoMetadataBufferReverseMap.valueFor((uint32_t) videoMetadataBuffer);
+        /* FIXME remove cast */
+        frame = mVideoMetadataBufferReverseMap.valueFor(videoMetadataBuffer);
         CAMHAL_LOGVB("Releasing frame with videoMetadataBuffer=0x%x, videoMetadataBuffer->handle=0x%x & frame handle=0x%x\n",
                        videoMetadataBuffer, videoMetadataBuffer->handle, frame);
         }
     else
         {
-        frame = (void*)(*((uint32_t *)mem));
+        /* FIXME this won't work */
+        frame = (CameraBuffer *)(void*)(*((uint32_t *)mem));
         }
 
     if ( NO_ERROR == ret )
