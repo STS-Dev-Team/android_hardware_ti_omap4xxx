@@ -250,7 +250,7 @@ typedef struct blit_rect {
  * region and layers 0 and 2 intersect with the second region.
  */
 #define RGZ_SUBREGIONMAX ((RGZ_MAXLAYERS << 1) - 1)
-#define RGZ_MAX_BLITS (RGZ_MAXLAYERS * RGZ_SUBREGIONMAX)
+#define RGZ_MAX_BLITS (RGZ_SUBREGIONMAX * RGZ_SUBREGIONMAX)
 
 typedef struct rgz_layer {
    hwc_layer_t *hwc_layer;
