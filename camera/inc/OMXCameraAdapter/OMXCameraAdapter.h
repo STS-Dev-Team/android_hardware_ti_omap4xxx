@@ -274,6 +274,12 @@ public:
         EPreviewSettingsAll = ( ((EPreviewSettingMax -1 ) << 1) -1 ) /// all possible flags raised
     };
 
+    enum BracketingValueMode {
+        BracketingValueAbsolute,
+        BracketingValueRelative,
+        BracketingValueForcedRelative
+    };
+
     class GPSData
     {
         public:
@@ -668,13 +674,16 @@ private:
                                   BaseCameraAdapter::AdapterState state);
 
     //Exposure Bracketing
-    status_t setVectorShot(int *evValues, int *evValues2, size_t evCount, size_t frameCount);
+    status_t setVectorShot(int *evValues, int *evValues2, int *evModes2, size_t evCount, size_t frameCount);
     status_t setVectorStop(bool toPreview = false);
     status_t setExposureBracketing(int *evValues, int *evValues2,
                                    size_t evCount, size_t frameCount);
     status_t doExposureBracketing(int *evValues, int *evValues2,
+                                  int *evModes2,
                                    size_t evCount, size_t frameCount);
+    int getBracketingValueMode(const char *a, const char *b) const;
     status_t parseExpRange(const char *rangeStr, int *expRange, int *gainRange,
+                           int *expGainModes,
                            size_t count, size_t &validEntries);
 
     //Temporal Bracketing
@@ -928,6 +937,7 @@ private:
     //Exposure Bracketing
     int mExposureBracketingValues[EXP_BRACKET_RANGE];
     int mExposureGainBracketingValues[EXP_BRACKET_RANGE];
+    int mExposureGainBracketingModes[EXP_BRACKET_RANGE];
     size_t mExposureBracketingValidEntries;
     OMX_BRACKETMODETYPE mExposureBracketMode;
 
