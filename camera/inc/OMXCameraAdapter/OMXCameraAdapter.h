@@ -667,8 +667,10 @@ private:
                                   BaseCameraAdapter::AdapterState state);
 
     //Exposure Bracketing
-    status_t setExposureBracketing(int *evValues, size_t evCount, size_t frameCount);
-    status_t parseExpRange(const char *rangeStr, int * expRange, size_t count, size_t &validEntries);
+    status_t setExposureBracketing(int *evValues, int *evValues2,
+                                   size_t evCount, size_t frameCount);
+    status_t parseExpRange(const char *rangeStr, int *expRange, int *gainRange,
+                           size_t count, size_t &validEntries);
 
     //Temporal Bracketing
     status_t doBracketing(OMX_BUFFERHEADERTYPE *pBuffHeader, CameraFrame::FrameType typeOfFrame);
@@ -920,7 +922,9 @@ private:
 
     //Exposure Bracketing
     int mExposureBracketingValues[EXP_BRACKET_RANGE];
+    int mExposureGainBracketingValues[EXP_BRACKET_RANGE];
     size_t mExposureBracketingValidEntries;
+    OMX_BRACKETMODETYPE mExposureBracketMode;
 
     mutable Mutex mFaceDetectionLock;
     //Face detection status

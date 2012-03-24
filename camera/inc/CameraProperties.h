@@ -134,6 +134,9 @@ public:
     static const char MAX_FD_HW_FACES[];
     static const char MAX_FD_SW_FACES[];
 
+    static const char MAX_PICTURE_WIDTH[];
+    static const char MAX_PICTURE_HEIGHT[];
+
     static const char PARAMS_DELIMITER [];
 
     static const char S3D_PRV_FRAME_LAYOUT[];

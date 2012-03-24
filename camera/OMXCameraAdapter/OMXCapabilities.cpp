@@ -709,6 +709,8 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
         } else {
             params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
         }
+        params->set(CameraProperties::MAX_PICTURE_WIDTH, caps.tImageResRange.nWidthMax);
+        params->set(CameraProperties::MAX_PICTURE_HEIGHT, caps.tImageResRange.nHeightMax);
     }
     else // 3d mode
     {

@@ -496,6 +496,24 @@ int CameraHal::setParameters(const CameraParameters& params)
 
         CAMHAL_LOGDB("Picture Size by App %d x %d", w, h);
 
+        if ( (valstr = params.getPictureFormat()) != NULL ) {
+            if (isParameterValid(params.getPictureFormat(),mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS))) {
+                if ((strcmp(valstr, CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) &&
+                    mCameraProperties->get(CameraProperties::MAX_PICTURE_WIDTH) &&
+                    mCameraProperties->get(CameraProperties::MAX_PICTURE_HEIGHT)) {
+                    unsigned int width = 0, height = 0;
+                    // Set picture size to full frame for raw bayer capture
+                    width = atoi(mCameraProperties->get(CameraProperties::MAX_PICTURE_WIDTH));
+                    height = atoi(mCameraProperties->get(CameraProperties::MAX_PICTURE_HEIGHT));
+                    mParameters.setPictureSize(width,height);
+                }
+                mParameters.setPictureFormat(valstr);
+            } else {
+                CAMHAL_LOGEB("ERROR: Invalid picture format: %s",valstr);
+                ret = -EINVAL;
+            }
+        }
+
         if ((valstr = params.get(TICameraParameters::KEY_BURST)) != NULL) {
             if (params.getInt(TICameraParameters::KEY_BURST) >=0) {
                 CAMHAL_LOGDB("Burst set %s", params.get(TICameraParameters::KEY_BURST));
@@ -914,8 +932,13 @@ int CameraHal::setParameters(const CameraParameters& params)
             {
             CAMHAL_LOGDB("Exposure Bracketing set %s", params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE));
             mParameters.set(TICameraParameters::KEY_EXP_BRACKETING_RANGE, valstr);
+            mParameters.remove(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE);
             }
-        else
+        else if ((valstr = params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE)) != NULL) {
+            CAMHAL_LOGDB("ABS Exposure+Gain Bracketing set %s", params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE));
+            mParameters.set(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE, valstr);
+            mParameters.remove(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
+        } else
             {
             mParameters.remove(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
             }
