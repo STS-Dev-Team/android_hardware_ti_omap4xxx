@@ -158,11 +158,13 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     if ( (str = params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE)) != NULL ) {
         parseExpRange(str, mExposureBracketingValues, NULL,
+                      NULL,
                       EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
         mExposureBracketMode = OMX_BracketExposureRelativeInEV;
         mPendingCaptureSettings |= SetExpBracket;
     } else if ( (str = params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE)) != NULL) {
         parseExpRange(str, mExposureBracketingValues, mExposureGainBracketingValues,
+                      mExposureGainBracketingModes,
                       EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
         // TODO(XXX): Use bracket shot for cpcam. Should we let user use exposure
         // bracketing too?
@@ -360,9 +362,24 @@ status_t OMXCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCou
     return ret;
 }
 
+int OMXCameraAdapter::getBracketingValueMode(const char *a, const char *b) const
+{
+    BracketingValueMode bvm = BracketingValueAbsolute;
+
+    if ( (NULL != b) &&
+         (NULL != a) &&
+         (a < b) &&
+         ( (NULL != memchr(a, '+', b - a)) ||
+           (NULL != memchr(a, '-', b - a)) ) ) {
+        bvm = BracketingValueRelative;
+    }
+    return bvm;
+}
+
 status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
                                          int *expRange,
                                          int *gainRange,
+                                         int *expGainModes,
                                          size_t count,
                                          size_t &validEntries)
 {
@@ -385,22 +402,43 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
         startPtr = rangeStr;
         do {
             // Relative Exposure example: "-30,-10, 0, 10, 30"
-            // Absolute Gain ex. (exposure,gain) pairs: "(-30,0),(-10, 0),(0,0),(10,0),(30,0)"
+            // Absolute Gain ex. (exposure,gain) pairs: "(100,300),(200,300),(400,300),(800,300),(1600,300)"
+            // Relative Gain ex. (exposure,gain) pairs: "(-30,+0),(-10, +0),(+0,+0),(+10,+0),(+30,+0)"
+            // Forced relative Gain ex. (exposure,gain) pairs: "(-30,+0)F,(-10, +0)F,(+0,+0)F,(+10,+0)F,(+30,+0)F"
 
             // skip '(' and ','
             while ((*startPtr == '(') ||  (*startPtr == ',')) startPtr++;
 
             expRange[i] = (int)strtol(startPtr, &end, 10);
+
+            int bvm_exp = getBracketingValueMode(startPtr, end);
+
             // if gainRange is given rangeStr should be (exposure, gain) pair
-            if (gainRange) {
+            if (gainRange && expGainModes) {
                 startPtr = end + 1; // for the ','
                 gainRange[i] = (int)strtol(startPtr, &end, 10);
+
+                if (BracketingValueAbsolute == bvm_exp) {
+                    expGainModes[i] = getBracketingValueMode(startPtr, end);
+                } else {
+                    expGainModes[i] = bvm_exp;
+                }
             }
             startPtr = end;
-            i++;
 
             // skip ')'
             while (*startPtr == ')') startPtr++;
+
+            // Check for "forced" key
+            if (expGainModes) {
+                while ((*startPtr == 'F') || (*startPtr == 'f')) {
+                    expGainModes[i] = BracketingValueForcedRelative;
+                    startPtr++;
+                }
+            }
+
+            i++;
+
         } while ((startPtr[0] != '\0') && (i < count));
         validEntries = i;
     }
@@ -412,6 +450,7 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
 
 status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
                                                  int *evValues2,
+                                                 int *evModes2,
                                                  size_t evCount,
                                                  size_t frameCount)
 {
@@ -431,7 +470,7 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
 
     if ( NO_ERROR == ret ) {
         if (mExposureBracketMode == OMX_BracketVectorShot) {
-            ret = setVectorShot(evValues, evValues2, evCount, frameCount);
+            ret = setVectorShot(evValues, evValues2, evModes2, evCount, frameCount);
         } else {
             ret = setExposureBracketing(evValues, evValues2, evCount, frameCount);
         }
@@ -476,6 +515,7 @@ status_t OMXCameraAdapter::setVectorStop(bool toPreview)
 
 status_t OMXCameraAdapter::setVectorShot(int *evValues,
                                          int *evValues2,
+                                         int *evModes2,
                                          size_t evCount,
                                          size_t frameCount)
 {
@@ -557,10 +597,26 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
     {
         unsigned int i;
         for ( i = 0 ; i < evCount ; i++ ) {
+                CAMHAL_LOGD("%d: (%d,%d) mode: %d", i, evValues[i], evValues2[i], evModes2[i]);
                 enqueueShotConfigs.nShotConfig[i].nConfigId = i;
                 enqueueShotConfigs.nShotConfig[i].nFrames = 1;
                 enqueueShotConfigs.nShotConfig[i].nExp = evValues[i];
                 enqueueShotConfigs.nShotConfig[i].nGain = evValues2[i];
+                enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
+                switch (evModes2[i]) {
+                    case BracketingValueAbsolute: // (exp,gain) pairs directly program sensor values
+                    default :
+                    enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
+                        break;
+                    case BracketingValueRelative: // (exp,gain) pairs relative to AE settings and constraints
+                    enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_RELATIVE;
+                        break;
+                    case BracketingValueForcedRelative: // (exp, gain) pairs relative to AE settings AND settings
+                                                        // are forced over constraints due to flicker, etc.
+                    enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_FORCE_RELATIVE;
+                        break;
+                }
+                enqueueShotConfigs.nShotConfig[i].bNoSnapshot = OMX_FALSE; // TODO: Make this configurable
         }
 
         // Repeat last exposure and again
@@ -1003,11 +1059,13 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             if ( mBracketingSet ) {
                 ret = doExposureBracketing(mExposureBracketingValues,
                                             mExposureGainBracketingValues,
+                                            mExposureGainBracketingModes,
                                             0,
                                             0);
             } else {
                 ret = doExposureBracketing(mExposureBracketingValues,
                                     mExposureGainBracketingValues,
+                                    mExposureGainBracketingModes,
                                     mExposureBracketingValidEntries,
                                     mBurstFrames);
             }
