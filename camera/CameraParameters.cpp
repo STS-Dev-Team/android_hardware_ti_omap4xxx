@@ -137,6 +137,9 @@ const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] = "prop
 const char CameraProperties::CAP_MODE_VALUES[] = "prop-mode-values";
 const char CameraProperties::RAW_WIDTH[] = "prop-raw-width-values";
 const char CameraProperties::RAW_HEIGHT[] = "prop-raw-height-values";
+const char CameraProperties::MAX_PICTURE_WIDTH[] = "prop-max-picture-width";
+const char CameraProperties::MAX_PICTURE_HEIGHT[] = "prop-max-picture-height";
+
 const char CameraProperties::DEFAULT_VALUE[] = "";
 
 const char CameraProperties::PARAMS_DELIMITER []= ",";
