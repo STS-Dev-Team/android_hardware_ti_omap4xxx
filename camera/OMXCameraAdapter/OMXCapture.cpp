@@ -156,9 +156,15 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         mBracketingSet = false;
     }
 
-    str = params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
-    if ( NULL != str ) {
-        parseExpRange(str, mExposureBracketingValues, EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
+    if ( (str = params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE)) != NULL ) {
+        parseExpRange(str, mExposureBracketingValues, NULL,
+                      EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
+        mExposureBracketMode = OMX_BracketExposureRelativeInEV;
+        mPendingCaptureSettings |= SetExpBracket;
+    } else if ( (str = params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE)) != NULL) {
+        parseExpRange(str, mExposureBracketingValues, mExposureGainBracketingValues,
+                      EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
+        mExposureBracketMode = OMX_BracketExposureGainAbsolute;
         mPendingCaptureSettings |= SetExpBracket;
     } else {
         // if bracketing was previously set...we set again before capturing to clear
@@ -349,59 +355,49 @@ status_t OMXCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCou
 }
 
 status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
-                                         int * expRange,
+                                         int *expRange,
+                                         int *gainRange,
                                          size_t count,
                                          size_t &validEntries)
 {
     status_t ret = NO_ERROR;
-    char *ctx, *expVal;
-    char *tmp = NULL;
+    char *end = NULL;
+    const char *startPtr = NULL;
     size_t i = 0;
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == rangeStr )
-        {
+    if ( NULL == rangeStr ){
         return -EINVAL;
-        }
+    }
 
-    if ( NULL == expRange )
-        {
+    if ( NULL == expRange ){
         return -EINVAL;
-        }
+    }
 
-    if ( NO_ERROR == ret )
-        {
-        tmp = ( char * ) malloc( strlen(rangeStr) + 1 );
+    if ( NO_ERROR == ret ) {
+        startPtr = rangeStr;
+        do {
+            // Relative Exposure example: "-30,-10, 0, 10, 30"
+            // Absolute Gain ex. (exposure,gain) pairs: "(-30,0),(-10, 0),(0,0),(10,0),(30,0)"
 
-        if ( NULL == tmp )
-            {
-            CAMHAL_LOGEA("No resources for temporary buffer");
-            return -1;
+            // skip '(' and ','
+            while ((*startPtr == '(') ||  (*startPtr == ',')) startPtr++;
+
+            expRange[i] = (int)strtol(startPtr, &end, 10);
+            // if gainRange is given rangeStr should be (exposure, gain) pair
+            if (gainRange) {
+                startPtr = end + 1; // for the ','
+                gainRange[i] = (int)strtol(startPtr, &end, 10);
             }
-        memset(tmp, '\0', strlen(rangeStr) + 1);
-
-        }
-
-    if ( NO_ERROR == ret )
-        {
-        strncpy(tmp, rangeStr, strlen(rangeStr) );
-        expVal = strtok_r( (char *) tmp, CameraHal::PARAMS_DELIMITER, &ctx);
-
-        i = 0;
-        while ( ( NULL != expVal ) && ( i < count ) )
-            {
-            expRange[i] = atoi(expVal);
-            expVal = strtok_r(NULL, CameraHal::PARAMS_DELIMITER, &ctx);
+            startPtr = end;
             i++;
-            }
-        validEntries = i;
-        }
 
-    if ( NULL != tmp )
-        {
-        free(tmp);
-        }
+            // skip ')'
+            while (*startPtr == ')') startPtr++;
+        } while ((startPtr[0] != '\0') && (i < count));
+        validEntries = i;
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -409,6 +405,7 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
 }
 
 status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
+                                                 int *evValues2,
                                                  size_t evCount,
                                                  size_t frameCount)
 {
@@ -474,13 +471,19 @@ status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
         else
             {
             extExpCapMode.bEnableBracketing = OMX_TRUE;
-            extExpCapMode.tBracketConfigType.eBracketMode = OMX_BracketExposureRelativeInEV;
+            extExpCapMode.tBracketConfigType.eBracketMode = mExposureBracketMode;
             extExpCapMode.tBracketConfigType.nNbrBracketingValues = evCount - 1;
             }
 
         for ( unsigned int i = 0 ; i < evCount ; i++ )
             {
-            extExpCapMode.tBracketConfigType.nBracketValues[i]  =  ( evValues[i] * ( 1 << Q16_OFFSET ) )  / 10;
+            if (mExposureBracketMode == OMX_BracketExposureGainAbsolute) {
+                extExpCapMode.tBracketConfigType.nBracketValues[i]  =  evValues[i];
+                extExpCapMode.tBracketConfigType.nBracketValues2[i]  =  evValues2[i];
+            } else {
+                // assuming OMX_BracketExposureRelativeInEV
+                extExpCapMode.tBracketConfigType.nBracketValues[i]  =  ( evValues[i] * ( 1 << Q16_OFFSET ) )  / 10;
+            }
             }
 
         eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
@@ -1215,10 +1218,12 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
         mPendingCaptureSettings &= ~SetExpBracket;
         if ( mBracketingSet ) {
             ret = setExposureBracketing(mExposureBracketingValues,
+                                        mExposureGainBracketingValues,
                                         0,
                                         0);
         } else {
             ret = setExposureBracketing(mExposureBracketingValues,
+                                        mExposureGainBracketingValues,
                                         mExposureBracketingValidEntries,
                                         mBurstFrames);
         }
