@@ -383,9 +383,46 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         }
     }
 
+// TI extensions for enable/disable algos
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_FIXED_GAMMA,
+                       mParameters3A.AlgoFixedGamma, SetAlgoFixedGamma, "Fixed Gamma");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_NSF1,
+                       mParameters3A.AlgoNSF1, SetAlgoNSF1, "NSF1");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_NSF2,
+                       mParameters3A.AlgoNSF2, SetAlgoNSF2, "NSF2");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_SHARPENING,
+                       mParameters3A.AlgoSharpening, SetAlgoSharpening, "Sharpening");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_THREELINCOLORMAP,
+                       mParameters3A.AlgoThreeLinColorMap, SetAlgoThreeLinColorMap, "ThreeLinColorMap");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_GIC, mParameters3A.AlgoGIC, SetAlgoGIC, "GIC");
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
+}
+
+void OMXCameraAdapter::declareParameter3ABool(const CameraParameters &params, const char *key,
+                                              OMX_BOOL &current_setting, E3ASettingsFlags pending,
+                                              const char *msg)
+{
+    OMX_BOOL val = OMX_TRUE;
+    const char *str = params.get(key);
+
+    if (str && ((strcmp(str, CameraParameters::FALSE)) == 0))
+        {
+        CAMHAL_LOGVB("Disabling %s", msg);
+        val = OMX_FALSE;
+        }
+    else
+        {
+        CAMHAL_LOGVB("Enabling %s", msg);
+        }
+    if (current_setting != val)
+        {
+        current_setting = val;
+        CAMHAL_LOGDB("%s %s", msg, current_setting ? "enabled" : "disabled");
+        mPending3Asettings |= pending;
+        }
 }
 
 int OMXCameraAdapter::getLUTvalue_HALtoOMX(const char * HalValue, LUTtype LUT)
@@ -1686,6 +1723,90 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
   return ret;
 }
 
+//TI extensions for enable/disable algos
+status_t OMXCameraAdapter::setParameter3ABoolInvert(const OMX_INDEXTYPE omx_idx,
+                                                    const OMX_BOOL data, const char *msg)
+{
+    OMX_BOOL inv_data;
+
+    if (OMX_TRUE == data)
+        {
+        inv_data = OMX_FALSE;
+        }
+    else if (OMX_FALSE == data)
+        {
+        inv_data = OMX_TRUE;
+        }
+    else
+        {
+        return BAD_VALUE;
+        }
+    return setParameter3ABool(omx_idx, inv_data, msg);
+}
+
+status_t OMXCameraAdapter::setParameter3ABool(const OMX_INDEXTYPE omx_idx,
+                                              const OMX_BOOL data, const char *msg)
+{
+  OMX_ERRORTYPE eError = OMX_ErrorNone;
+  OMX_CONFIG_BOOLEANTYPE cfgdata;
+
+  LOG_FUNCTION_NAME
+
+  if ( OMX_StateInvalid == mComponentState )
+    {
+      CAMHAL_LOGEA("OMX component is in invalid state");
+      return NO_INIT;
+    }
+
+  OMX_INIT_STRUCT_PTR (&cfgdata, OMX_CONFIG_BOOLEANTYPE);
+  cfgdata.bEnabled = data;
+  eError = OMX_SetConfig( mCameraAdapterParameters.mHandleComp,
+                          omx_idx,
+                          &cfgdata);
+  if ( OMX_ErrorNone != eError )
+    {
+      CAMHAL_LOGEB("Error while configuring %s error = 0x%x", msg, eError);
+    }
+  else
+    {
+      CAMHAL_LOGDB("%s configured successfully %d ", msg, cfgdata.bEnabled);
+    }
+
+  LOG_FUNCTION_NAME_EXIT
+
+  return ErrorUtils::omxToAndroidError(eError);
+}
+
+status_t OMXCameraAdapter::setAlgoFixedGamma(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABool((OMX_INDEXTYPE) OMX_TI_IndexConfigFixedGamma, Gen3A.AlgoFixedGamma, "Fixed Gamma");
+}
+
+status_t OMXCameraAdapter::setAlgoNSF1(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableNSF1, Gen3A.AlgoNSF1, "NSF1");
+}
+
+status_t OMXCameraAdapter::setAlgoNSF2(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableNSF2, Gen3A.AlgoNSF2, "NSF2");
+}
+
+status_t OMXCameraAdapter::setAlgoSharpening(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableSharpening, Gen3A.AlgoSharpening, "Sharpening");
+}
+
+status_t OMXCameraAdapter::setAlgoThreeLinColorMap(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableThreeLinColorMap, Gen3A.AlgoThreeLinColorMap, "Color Conversion");
+}
+
+status_t OMXCameraAdapter::setAlgoGIC(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableGIC, Gen3A.AlgoGIC, "Green Inballance Correction");
+}
+
 status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
 {
     status_t ret = NO_ERROR;
@@ -1819,6 +1940,44 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
                     ret |= setMeteringAreas(Gen3A);
                   }
                   break;
+
+                //TI extensions for enable/disable algos
+                case SetAlgoFixedGamma:
+                  {
+                    ret |= setAlgoFixedGamma(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoNSF1:
+                  {
+                    ret |= setAlgoNSF1(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoNSF2:
+                  {
+                    ret |= setAlgoNSF2(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoSharpening:
+                  {
+                    ret |= setAlgoSharpening(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoThreeLinColorMap:
+                  {
+                    ret |= setAlgoThreeLinColorMap(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoGIC:
+                  {
+                    ret |= setAlgoGIC(Gen3A);
+                  }
+                  break;
+
                 default:
                     CAMHAL_LOGEB("this setting (0x%x) is still not supported in CameraAdapter ",
                                  currSett);

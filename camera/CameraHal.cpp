@@ -967,6 +967,43 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.set(TICameraParameters::RAW_HEIGHT, valstr);
         }
 
+        //TI extensions for enable/disable algos
+        if( (valstr = params.get(TICameraParameters::KEY_ALGO_FIXED_GAMMA)) != NULL )
+            {
+            CAMHAL_LOGDB("Fixed Gamma set %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, valstr);
+            }
+
+        if( (valstr = params.get(TICameraParameters::KEY_ALGO_NSF1)) != NULL )
+            {
+            CAMHAL_LOGDB("NSF1 set %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ALGO_NSF1, valstr);
+            }
+
+        if( (valstr = params.get(TICameraParameters::KEY_ALGO_NSF2)) != NULL )
+            {
+            CAMHAL_LOGDB("NSF2 set %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ALGO_NSF2, valstr);
+            }
+
+        if( (valstr = params.get(TICameraParameters::KEY_ALGO_SHARPENING)) != NULL )
+            {
+            CAMHAL_LOGDB("Sharpening set %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ALGO_SHARPENING, valstr);
+            }
+
+        if( (valstr = params.get(TICameraParameters::KEY_ALGO_THREELINCOLORMAP)) != NULL )
+            {
+            CAMHAL_LOGDB("Color Conversion set %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, valstr);
+            }
+
+        if( (valstr = params.get(TICameraParameters::KEY_ALGO_GIC)) != NULL )
+            {
+            CAMHAL_LOGDB("Green Inballance Correction set %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ALGO_GIC, valstr);
+            }
+
         CameraParameters adapterParams = mParameters;
 
         if( NULL != params.get(TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS) )
@@ -3508,6 +3545,16 @@ void CameraHal::initDefaultParameters()
     p.set(CameraParameters::KEY_MAX_NUM_METERING_AREAS, mCameraProperties->get(CameraProperties::MAX_NUM_METERING_AREAS));
     p.set(TICameraParameters::RAW_WIDTH, mCameraProperties->get(CameraProperties::RAW_WIDTH));
     p.set(TICameraParameters::RAW_HEIGHT,mCameraProperties->get(CameraProperties::RAW_HEIGHT));
+
+    // TI extensions for enable/disable algos
+    // Hadcoded for now
+    p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_NSF1, CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_NSF2, CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_SHARPENING, CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_GIC, CameraParameters::FALSE);
+
     LOG_FUNCTION_NAME_EXIT;
 }
 
