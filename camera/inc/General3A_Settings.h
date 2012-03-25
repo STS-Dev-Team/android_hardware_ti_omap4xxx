@@ -244,6 +244,14 @@ class Gen3A_settings{
     OMX_BOOL ExposureLock;
     OMX_BOOL FocusLock;
     OMX_BOOL WhiteBalanceLock;
+
+    OMX_BOOL AlgoFixedGamma;
+    OMX_BOOL AlgoNSF1;
+    OMX_BOOL AlgoNSF2;
+    OMX_BOOL AlgoSharpening;
+    OMX_BOOL AlgoThreeLinColorMap;
+    OMX_BOOL AlgoGIC;
+
 };
 
 /*
@@ -269,6 +277,14 @@ enum E3ASettingsFlags
     SetWBLock               = 1 << 17,
     SetMeteringAreas        = 1 << 18,
     SetManualExposure       = 1 << 19,
+
+    SetAlgoFixedGamma       = 1 << 20,
+    SetAlgoNSF1             = 1 << 21,
+    SetAlgoNSF2             = 1 << 22,
+    SetAlgoSharpening       = 1 << 23,
+    SetAlgoThreeLinColorMap = 1 << 24,
+    SetAlgoGIC              = 1 << 25,
+
 
     E3aSettingMax,
     E3AsettingsAll = ( ((E3aSettingMax -1 ) << 1) -1 ) /// all possible flags raised

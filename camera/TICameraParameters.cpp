@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <TICameraParameters.h>
 
+#define TI_KEY_ALGO_PREFIX "ti-algo-"
+
 namespace android {
 
 //TI extensions to camera mode
@@ -205,5 +207,14 @@ const char TICameraParameters::ORIENTATION_SENSOR_270[] = "270";
 
 const char TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[] = "mechanical-misalignment-correction-supported";
 const char TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION[] = "mechanical-misalignment-correction";
+
+//TI extensions for enable/disable algos
+const char TICameraParameters::KEY_ALGO_FIXED_GAMMA[] = TI_KEY_ALGO_PREFIX "fixed-gamma";
+const char TICameraParameters::KEY_ALGO_NSF1[] = TI_KEY_ALGO_PREFIX "nsf1";
+const char TICameraParameters::KEY_ALGO_NSF2[] = TI_KEY_ALGO_PREFIX "nsf2";
+const char TICameraParameters::KEY_ALGO_SHARPENING[] = TI_KEY_ALGO_PREFIX "sharpening";
+const char TICameraParameters::KEY_ALGO_THREELINCOLORMAP[] = TI_KEY_ALGO_PREFIX "threelinecolormap";
+const char TICameraParameters::KEY_ALGO_GIC[] = TI_KEY_ALGO_PREFIX "gic";
+
 };
 

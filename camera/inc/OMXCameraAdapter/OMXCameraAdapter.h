@@ -495,6 +495,9 @@ private:
     //3A related parameters
     status_t setParameters3A(const CameraParameters &params,
                              BaseCameraAdapter::AdapterState state);
+    void declareParameter3ABool(const CameraParameters &params, const char *key,
+                                OMX_BOOL &current_setting, E3ASettingsFlags pending,
+                                const char *msg);
 
     // scene modes
     status_t setScene(Gen3A_settings& Gen3A);
@@ -523,6 +526,18 @@ private:
     status_t setISO(Gen3A_settings& Gen3A);
     status_t setEffect(Gen3A_settings& Gen3A);
     status_t setMeteringAreas(Gen3A_settings& Gen3A);
+
+    //TI extensions for enable/disable algos
+    status_t setParameter3ABool(const OMX_INDEXTYPE omx_idx,
+                                const OMX_BOOL data, const char *msg);
+    status_t setParameter3ABoolInvert(const OMX_INDEXTYPE omx_idx,
+                                      const OMX_BOOL data, const char *msg);
+    status_t setAlgoFixedGamma(Gen3A_settings& Gen3A);
+    status_t setAlgoNSF1(Gen3A_settings& Gen3A);
+    status_t setAlgoNSF2(Gen3A_settings& Gen3A);
+    status_t setAlgoSharpening(Gen3A_settings& Gen3A);
+    status_t setAlgoThreeLinColorMap(Gen3A_settings& Gen3A);
+    status_t setAlgoGIC(Gen3A_settings& Gen3A);
 
     status_t getEVCompensation(Gen3A_settings& Gen3A);
     status_t getWBMode(Gen3A_settings& Gen3A);
