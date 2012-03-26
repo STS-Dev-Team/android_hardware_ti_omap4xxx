@@ -125,13 +125,13 @@ extern double latitude;
 extern double degree_by_step;
 extern double longitude;
 extern double altitude;
-extern char dir_path[80];
+extern char output_dir_path[];
+extern char images_dir_path[];
 extern int AutoConvergenceModeIDX;
 extern const char *autoconvergencemode[];
 extern const int ManualConvergenceDefaultValue;
 extern size_t length_cam;
 extern char script_name[];
-extern int restartCount;
 extern int bufferStarvationTest;
 extern size_t length_previewSize;
 extern size_t length_thumbnailSize;
@@ -1172,12 +1172,14 @@ int execute_functional_script(char *script) {
 
             case 'X':
             {
-                char rem_str[50];
-                printf("Deleting images from %s \n", dir_path);
-                if(!sprintf(rem_str,"rm %s/*.jpg",dir_path))
+                char rem_str[384];
+                printf("Deleting images from %s \n", images_dir_path);
+                if (!sprintf(rem_str, "rm %s/*.jpg", images_dir_path)) {
                     printf("Sprintf Error");
-                if(system(rem_str))
+                }
+                if (system(rem_str)) {
                     printf("Images were not deleted\n");
+                }
                 break;
             }
 
@@ -1289,43 +1291,14 @@ char *load_script(const char *config) {
     size_t fileSize;
     char *script;
     size_t nRead = 0;
-    char dir_name[40];
-    size_t count;
-    char rCount [5];
-
-    count = 0;
 
     infile = fopen(config, "r");
 
     strcpy(script_name,config);
 
-    // remove just the '.txt' part of the config
-    while((config[count] != '.') && (count < sizeof(dir_name)/sizeof(dir_name[0])))
-        count++;
+    printf("\n SCRIPT : <%s> is currently being executed \n", script_name);
 
-    printf("\n SCRIPT : <%s> is currently being executed \n",script_name);
-    if(strncpy(dir_name,config,count) == NULL)
-        printf("Strcpy error");
-
-    dir_name[count]=NULL;
-
-    if(strcat(dir_path,dir_name) == NULL)
-        printf("Strcat error");
-
-    if(restartCount)
-    {
-      sprintf(rCount,"_%d",restartCount);
-      if(strcat(dir_path, rCount) == NULL)
-        printf("Strcat error RestartCount");
-    }
-
-    printf("\n COMPLETE FOLDER PATH : %s \n",dir_path);
-    if(mkdir(dir_path,0777) == -1) {
-        printf("\n Directory %s was not created \n",dir_path);
-    } else {
-        printf("\n Directory %s was created \n",dir_path);
-    }
-    printf("\n DIRECTORY CREATED FOR TEST RESULT IMAGES IN MMC CARD : %s \n",dir_name);
+    printf("\n DIRECTORY CREATED FOR TEST RESULT IMAGES IN MMC CARD : %s \n", output_dir_path);
 
     if( (NULL == infile)){
         printf("Error while opening script file %s!\n", config);
@@ -1357,9 +1330,7 @@ char *load_script(const char *config) {
     return script;
 }
 
-int start_logging(const char *config, int flags, int &pid) {
-    char dir_name[40];
-    size_t count = 0;
+int start_logging(int flags, int &pid) {
     int status = 0;
 
     if (flags == 0) {
@@ -1367,20 +1338,11 @@ int start_logging(const char *config, int flags, int &pid) {
         return 0;
     }
 
-    // remove just the '.txt' part of the config
-    while((config[count] != '.') && (count < sizeof(dir_name)/sizeof(dir_name[0])))
-        count++;
-
-    if(strncpy(dir_name,config,count) == NULL)
-        printf("Strcpy error");
-
-    dir_name[count]=NULL;
-
     pid = fork();
     if (pid == 0)
     {
         char *command_list[] = {"sh", "-c", NULL, NULL};
-        char log_cmd[120];
+        char log_cmd[1024];
         // child process to run logging
 
         // set group id of this process to itself
@@ -1390,14 +1352,16 @@ int start_logging(const char *config, int flags, int &pid) {
 
         /* Start logcat */
         if (flags & LOGGING_LOGCAT) {
-            if(!sprintf(log_cmd,"logcat > /sdcard/%s/log.txt &",dir_name))
+            if (!sprintf(log_cmd,"logcat > %s/log.txt &", output_dir_path)) {
                 printf(" Sprintf Error");
+            }
         }
 
         /* Start Syslink Trace */
         if (flags & LOGGING_SYSLINK) {
-            if(!sprintf(log_cmd,"%s /system/bin/syslink_trace_daemon.out -l /sdcard/%s/syslink_trace.txt -f &",log_cmd, dir_name))
+            if (!sprintf(log_cmd,"%s /system/bin/syslink_trace_daemon.out -l %s/syslink_trace.txt -f &", log_cmd, output_dir_path)) {
                 printf(" Sprintf Error");
+            }
         }
 
         command_list[2] = (char *)log_cmd;
@@ -1429,11 +1393,11 @@ int stop_logging(int flags, int &pid)
             printf("\nlogging for script %s is complete\n", script_name);
 
             if (flags & LOGGING_LOGCAT) {
-                printf("   logcat saved @ location: %s\n", dir_path);
+                printf("   logcat saved @ location: %s\n", output_dir_path);
             }
 
             if (flags & LOGGING_SYSLINK) {
-                printf("   syslink_trace is saved @ location: %s\n\n", dir_path);
+                printf("   syslink_trace is saved @ location: %s\n\n", output_dir_path);
             }
         }
     }

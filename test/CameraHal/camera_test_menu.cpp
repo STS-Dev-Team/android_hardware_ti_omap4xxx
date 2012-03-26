@@ -188,7 +188,9 @@ int stereoCapLayoutIDX = 0;
 char *layoutstr =0;
 char *capturelayoutstr =0;
 
-char dir_path[80] = SDCARD_PATH;
+char output_dir_path[256];
+char videos_dir_path[256 + 8];
+char images_dir_path[256 + 8];
 
 const char *cameras[] = {"Primary Camera", "Secondary Camera 1", "Stereo Camera"};
 const char *measurement[] = {"disable", "enable"};
@@ -455,7 +457,7 @@ void my_raw_callback(const sp<IMemory>& mem) {
     unsigned char   *buff = NULL;
     int             size;
     int             fd = -1;
-    char            fn[256];
+    char            fn[384];
 
     LOG_FUNCTION_NAME;
 
@@ -466,7 +468,7 @@ void my_raw_callback(const sp<IMemory>& mem) {
     camera->startPreview();
 
     fn[0] = 0;
-    sprintf(fn, "/sdcard/img%03d.raw", counter);
+    sprintf(fn, "%s/img%03d.raw", images_dir_path, counter);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
 
     if (fd < 0)
@@ -502,7 +504,7 @@ void saveFile(const sp<IMemory>& mem) {
     unsigned char   *buff = NULL;
     int             size;
     int             fd = -1;
-    char            fn[256];
+    char            fn[384];
 
     LOG_FUNCTION_NAME;
 
@@ -510,7 +512,7 @@ void saveFile(const sp<IMemory>& mem) {
         goto out;
 
     fn[0] = 0;
-    sprintf(fn, "/sdcard/preview%03d.yuv", counter);
+    sprintf(fn, "%s/preview%03d.yuv", images_dir_path, counter);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
     if(fd < 0) {
         LOGE("Unable to open file %s: %s", fn, strerror(fd));
@@ -588,7 +590,7 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
     unsigned char   *buff = NULL;
     int     size;
     int     fd = -1;
-    char        fn[256];
+    char        fn[384];
 
     LOG_FUNCTION_NAME;
 
@@ -599,7 +601,7 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
         goto out;
 
     fn[0] = 0;
-    sprintf(fn, "%s/img%03d.jpg", dir_path,counter);
+    sprintf(fn, "%s/img%03d.jpg", images_dir_path, counter);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
 
     if(fd < 0) {
@@ -875,7 +877,7 @@ int closeRecorder() {
 
 int configureRecorder() {
 
-    char videoFile[256],vbit_string[50];
+    char videoFile[384],vbit_string[50];
     videoFd = -1;
 
     if ( ( NULL == recorder.get() ) || ( NULL == camera.get() ) ) {
@@ -921,9 +923,7 @@ int configureRecorder() {
         return -1;
     }
 
-    if(mkdir("/mnt/sdcard/videos",0777) == -1)
-         printf("\n Directory --videos-- was not created \n");
-    sprintf(videoFile, "/mnt/sdcard/videos/video%d.%s", recording_counter,outputFormat[outputFormatIDX].desc);
+    sprintf(videoFile, "%s/video%d.%s", videos_dir_path, recording_counter, outputFormat[outputFormatIDX].desc);
 
     videoFd = open(videoFile, O_CREAT | O_RDWR);
 
@@ -2927,6 +2927,8 @@ void print_usage() {
     printf("                  ---------\n");
     printf("                   l -> logcat [default]\n");
     printf("                   s -> syslink [default]\n");
+    printf(" -o <path>     -> Output directory to store the test results. Image and video\n");
+    printf("                  files are stored in corresponding sub-directories.\n");
     printf(" -p <platform> -> Target platform. Only for stress tests.\n");
     printf("                   <platform>\n");
     printf("                  ------------\n");
@@ -3133,8 +3135,6 @@ int error_scenario() {
 
 int restartCamera() {
 
-  const char dir_path_name[80] = SDCARD_PATH;
-
   printf("+++Restarting Camera After Error+++\n");
   stopPreview();
 
@@ -3148,12 +3148,6 @@ int restartCamera() {
   sleep(3); //Wait a bit before restarting
 
   restartCount++;
-
-  if (strcpy(dir_path, dir_path_name) == NULL)
-  {
-    printf("Error reseting dir name");
-    return -1;
-  }
 
   if ( openCamera() < 0 )
   {
@@ -3260,9 +3254,77 @@ int parseCommandLine(int argc, char *argv[], cmd_args_t *cmd_args) {
                 }
                 break;
 
+            case 'o':
+                if (a < argc - 1) {
+                    cmd_args->output_path = argv[++a];
+                } else {
+                    printf("Error: No output path is specified.\n");
+                    return -2;
+                }
+                break;
+
             default:
                 printf("Error: Unknown option \"%s\"\n", argv[a]);
                 return -2;
+        }
+    }
+
+    return 0;
+}
+
+int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
+    if ((cmd_args->output_path != NULL) &&
+            (strlen(cmd_args->output_path) < sizeof(output_dir_path))) {
+        strcpy(output_dir_path, cmd_args->output_path);
+    } else {
+        strcpy(output_dir_path, SDCARD_PATH);
+
+        if (cmd_args->script_file_name != NULL) {
+            const char *config = cmd_args->script_file_name;
+            char dir_name[40];
+            size_t count = 0;
+
+            // remove just the '.txt' part of the config
+            while ((config[count] != '.') && ((count + 1) < sizeof(dir_name))) {
+                count++;
+            }
+
+            strncpy(dir_name, config, count);
+
+            dir_name[count] = NULL;
+
+            strcat(output_dir_path, dir_name);
+        }
+    }
+
+    if (restart_count && (strlen(output_dir_path) + 16) < sizeof(output_dir_path)) {
+        char count[16];
+        sprintf(count, "_%d", restart_count);
+        strcat(output_dir_path, count);
+    }
+
+    if (access(output_dir_path, F_OK) == -1) {
+        if (mkdir(output_dir_path, 0777) == -1) {
+             printf("\nError: Output directory \"%s\" was not created\n", output_dir_path);
+             return -1;
+        }
+    }
+
+    sprintf(videos_dir_path, "%s/videos", output_dir_path);
+
+    if (access(videos_dir_path, F_OK) == -1) {
+        if (mkdir(videos_dir_path, 0777) == -1) {
+             printf("\nError: Videos directory \"%s\" was not created\n", videos_dir_path);
+             return -1;
+        }
+    }
+
+    sprintf(images_dir_path, "%s/images", output_dir_path);
+
+    if (access(images_dir_path, F_OK) == -1) {
+        if (mkdir(images_dir_path, 0777) == -1) {
+             printf("\nError: Images directory \"%s\" was not created\n", images_dir_path);
+             return -1;
         }
     }
 
@@ -3296,7 +3358,7 @@ int runRegressionTest(cmd_args_t *cmd_args) {
     cmd = load_script(cmd_args->script_file_name);
 
     if (cmd != NULL) {
-        start_logging(cmd_args->script_file_name, cmd_args->logging, pid);
+        start_logging(cmd_args->logging, pid);
         stressTest = true;
 
         while (1) {
@@ -3311,6 +3373,12 @@ int runRegressionTest(cmd_args_t *cmd_args) {
 
             if ( (restartCamera() != 0)  || ((cmd = load_script(cmd_args->script_file_name)) == NULL) ) {
                 printf("ERROR::CameraTest Restarting Camera...\n");
+                res = -1;
+                break;
+            }
+
+            res = setOutputDirPath(cmd_args, restartCount);
+            if (res != 0) {
                 break;
             }
         }
@@ -3357,7 +3425,7 @@ int runErrorTest(cmd_args_t *cmd_args) {
         cmd = load_script(cmd_args->script_file_name);
 
         if (cmd != NULL) {
-            start_logging(cmd_args->script_file_name, cmd_args->logging, pid);
+            start_logging(cmd_args->logging, pid);
             execute_error_script(cmd);
             free(cmd);
             stop_logging(cmd_args->logging, pid);
@@ -3386,6 +3454,11 @@ int main(int argc, char *argv[]) {
     res = parseCommandLine(argc, argv, &cmd_args);
     if (res != 0) {
         print_usage();
+        return res;
+    }
+
+    res = setOutputDirPath(&cmd_args, 0);
+    if (res != 0) {
         return res;
     }
 
