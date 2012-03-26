@@ -21,10 +21,6 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-//temporarily define format here
-#define HAL_PIXEL_FORMAT_TI_NV12 0x100
-#define HAL_PIXEL_FORMAT_TI_NV12_1D 0x102
-
 namespace android {
 
 /**
@@ -82,11 +78,13 @@ public:
 
     //Implementation of inherited interfaces
     virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer *getBufferList(int *numBufs);
     virtual uint32_t * getOffsets() ;
     virtual int getFd() ;
     virtual int freeBufferList(CameraBuffer * buflist);
 
     virtual int maxQueueableBuffers(unsigned int& queueable);
+    virtual int minUndequeueableBuffers(int& unqueueable);
 
     ///Class specific functions
     static void frameCallbackRelay(CameraFrame* caFrame);

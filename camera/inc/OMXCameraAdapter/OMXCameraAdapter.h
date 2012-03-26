@@ -260,6 +260,7 @@ public:
         SetExpBracket           = 1 << 2,
         SetQuality              = 1 << 3,
         SetRotation             = 1 << 4,
+        SetBurst                = 1 << 5,
         ECaptureSettingMax,
         ECapturesettingsAll = ( ((ECaptureSettingMax -1 ) << 1) -1 ) /// all possible flags raised
     };

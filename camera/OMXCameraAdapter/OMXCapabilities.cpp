@@ -2424,7 +2424,7 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     }
 
 #ifdef CAMERAHAL_DEBUG
-    _dumpOmxTiCap(sensorId, *caps[0]);
+    _dumpOmxTiCap(sensorId, *caps);
 #endif
 
     // Translate and insert Ducati capabilities to CameraProperties

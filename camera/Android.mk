@@ -40,6 +40,7 @@ OMAP4_CAMERA_HAL_SRC := \
 	CameraHalUtilClasses.cpp \
 	AppCallbackNotifier.cpp \
 	ANativeWindowDisplayAdapter.cpp \
+	BufferSourceAdapter.cpp \
 	CameraProperties.cpp \
 	BaseCameraAdapter.cpp \
 	MemoryManager.cpp \
