@@ -137,6 +137,13 @@ error:
     return NULL;
 }
 
+CameraBuffer* MemoryManager::getBufferList(int *numBufs) {
+    LOG_FUNCTION_NAME;
+    if (numBufs) *numBufs = -1;
+
+    return NULL;
+}
+
 //TODO: Get needed data to map tiler buffers
 //Return dummy data for now
 uint32_t * MemoryManager::getOffsets()

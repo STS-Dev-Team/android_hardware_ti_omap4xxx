@@ -243,14 +243,14 @@ protected:
 
     //Image buffer management data
     CameraBuffer *mCaptureBuffers;
-    KeyedVector<CameraBuffer *, bool> mCaptureBuffersAvailable;
+    KeyedVector<CameraBuffer *, int> mCaptureBuffersAvailable;
     int mCaptureBuffersCount;
     size_t mCaptureBuffersLength;
     mutable Mutex mCaptureBufferLock;
 
     //Metadata buffermanagement
     CameraBuffer *mPreviewDataBuffers;
-    KeyedVector<CameraBuffer *, bool> mPreviewDataBuffersAvailable;
+    KeyedVector<CameraBuffer *, int> mPreviewDataBuffersAvailable;
     int mPreviewDataBuffersCount;
     size_t mPreviewDataBuffersLength;
     mutable Mutex mPreviewDataBufferLock;

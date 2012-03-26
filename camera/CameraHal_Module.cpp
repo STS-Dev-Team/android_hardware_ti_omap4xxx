@@ -88,6 +88,25 @@ int camera_set_preview_window(struct camera_device * device,
     return rv;
 }
 
+int camera_set_buffer_source(struct camera_device * device,
+        struct preview_stream_ops *tapin,
+        struct preview_stream_ops *tapout)
+{
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
+
+    LOGV("%s", __FUNCTION__);
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->setBufferSource(tapin, tapout);
+
+    return rv;
+}
+
 void camera_set_callbacks(struct camera_device * device,
         camera_notify_callback notify_cb,
         camera_data_callback data_cb,
@@ -546,6 +565,7 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_device->base.ops = camera_ops;
 
         camera_ops->set_preview_window = camera_set_preview_window;
+        camera_ops->set_buffer_source = camera_set_buffer_source;
         camera_ops->set_callbacks = camera_set_callbacks;
         camera_ops->enable_msg_type = camera_enable_msg_type;
         camera_ops->disable_msg_type = camera_disable_msg_type;

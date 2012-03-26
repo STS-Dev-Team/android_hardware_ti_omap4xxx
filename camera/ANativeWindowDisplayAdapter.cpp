@@ -65,7 +65,7 @@ OMX_COLOR_FORMATTYPE toOMXPixFormat(const char* parameters_format)
     return pixFormat;
 }
 
-const char* getPixFormatConstant(const char* parameters_format)
+const char* DisplayAdapter::getPixFormatConstant(const char* parameters_format) const
 {
     const char* pixFormat;
 
@@ -103,7 +103,7 @@ const char* getPixFormatConstant(const char* parameters_format)
     return pixFormat;
 }
 
-const size_t getBufSize(const char* parameters_format, int width, int height)
+size_t DisplayAdapter::getBufSize(const char* parameters_format, int width, int height) const
 {
     int buf_size;
 
@@ -686,6 +686,13 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
 }
 
+CameraBuffer* ANativeWindowDisplayAdapter::getBufferList(int *numBufs) {
+    LOG_FUNCTION_NAME;
+    if (numBufs) *numBufs = -1;
+
+    return NULL;
+}
+
 uint32_t * ANativeWindowDisplayAdapter::getOffsets()
 {
     const int lnumBufs = mBufferCount;
@@ -736,32 +743,46 @@ uint32_t * ANativeWindowDisplayAdapter::getOffsets()
     return NULL;
 }
 
-status_t ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueable)
-{
+int ANativeWindowDisplayAdapter::minUndequeueableBuffers(int& undequeueable) {
     LOG_FUNCTION_NAME;
-    status_t ret = NO_ERROR;
-    int undequeued = 0;
-
-    if(mBufferCount == 0) {
-        ret = INVALID_OPERATION;
-        goto end;
-    }
+    int ret = NO_ERROR;
 
     if(!mANativeWindow) {
         ret = INVALID_OPERATION;
         goto end;
     }
 
-    ret = mANativeWindow->get_min_undequeued_buffer_count(mANativeWindow, &undequeued);
+    ret = mANativeWindow->get_min_undequeued_buffer_count(mANativeWindow, &undequeueable);
     if ( NO_ERROR != ret ) {
         CAMHAL_LOGEB("get_min_undequeued_buffer_count failed: %s (%d)", strerror(-ret), -ret);
-
-        if ( NO_INIT == ret ) {
+        if ( ENODEV == ret ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
+        return -ret;
+    }
 
-        return ret;
+ end:
+    return ret;
+    LOG_FUNCTION_NAME_EXIT;
+
+}
+
+status_t ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueable)
+{
+    LOG_FUNCTION_NAME;
+    status_t ret = NO_ERROR;
+    int undequeued = 0;
+
+    if(mBufferCount == 0)
+    {
+        ret = -ENOSYS;
+        goto end;
+    }
+
+    ret = minUndequeueableBuffers(undequeued);
+    if (ret != NO_ERROR) {
+        goto end;
     }
 
     queueable = mBufferCount - undequeued;

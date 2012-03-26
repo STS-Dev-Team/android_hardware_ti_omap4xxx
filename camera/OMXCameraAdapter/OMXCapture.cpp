@@ -220,13 +220,13 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     if ( params.getInt(TICameraParameters::KEY_BURST)  >= 1 )
         {
         if (params.getInt(TICameraParameters::KEY_BURST) != (int) mBurstFrames) {
-            mPendingCaptureSettings |= SetExpBracket;
+            mPendingCaptureSettings |= SetBurst;
         }
         mBurstFrames = params.getInt(TICameraParameters::KEY_BURST);
         }
     else
         {
-        if (mBurstFrames != 1) mPendingCaptureSettings |= SetExpBracket;
+        if (mBurstFrames != 1) mPendingCaptureSettings |= SetBurst;
         mBurstFrames = 1;
         }
 
@@ -1060,7 +1060,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         }
 
         if (mPendingCaptureSettings & SetExpBracket) {
-            mPendingCaptureSettings &= ~SetExpBracket;
+            mPendingCaptureSettings &= ~(SetExpBracket|SetBurst);
             if ( mBracketingSet ) {
                 ret = doExposureBracketing(mExposureBracketingValues,
                                             mExposureGainBracketingValues,
@@ -1132,7 +1132,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         }
     } else if ( NO_ERROR == ret ) {
         ///Queue all the buffers on capture port
-        for ( int index = 0 ; index < capData->mNumBufs ; index++ ) {
+        for ( int index = 0 ; index < capData->mMaxQueueable ; index++ ) {
             CAMHAL_LOGDB("Queuing buffer on Capture port - 0x%x",
                          ( unsigned int ) capData->mBufferHeader[index]->pBuffer);
             if (mBurstFramesQueued < mBurstFramesAccum) {
@@ -1161,6 +1161,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         }
         mWaitingForSnapshot = true;
         mCaptureSignalled = false;
+        mPendingCaptureSettings &= ~SetBurst;
 
         // Capturing command is not needed when capturing in video mode
         // Only need to queue buffers on image ports
@@ -1521,6 +1522,26 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 
     CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
     GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
+
+    // Configure DOMX to use either gralloc handles or vptrs
+    if ((imgCaptureData->mNumBufs > 0)) {
+        OMX_TI_PARAMUSENATIVEBUFFER domxUseGrallocHandles;
+        OMX_INIT_STRUCT_PTR (&domxUseGrallocHandles, OMX_TI_PARAMUSENATIVEBUFFER);
+
+        domxUseGrallocHandles.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        if (bufArr[0].type == CAMERA_BUFFER_ANW) {
+            domxUseGrallocHandles.bEnable = OMX_TRUE;
+        } else {
+            domxUseGrallocHandles.bEnable = OMX_FALSE;
+        }
+
+        eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+                                (OMX_INDEXTYPE)OMX_TI_IndexUseNativeBuffers, &domxUseGrallocHandles);
+        if (eError!=OMX_ErrorNone) {
+            CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+        }
+        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+    }
 
     for ( int index = 0 ; index < imgCaptureData->mNumBufs ; index++ )
     {
