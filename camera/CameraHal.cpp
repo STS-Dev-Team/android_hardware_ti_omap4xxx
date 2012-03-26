@@ -23,6 +23,7 @@
 
 #include "CameraHal.h"
 #include "ANativeWindowDisplayAdapter.h"
+#include "BufferSourceAdapter.h"
 #include "TICameraParameters.h"
 #include "CameraProperties.h"
 #include <cutils/properties.h>
@@ -46,7 +47,12 @@ const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 9;
 const int CameraHal::SW_SCALING_FPS_LIMIT = 15;
 
 const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 16;
+
 const uint32_t MessageNotifier::FRAME_BIT_FIELD_POSITION = 0;
+
+// TODO(XXX): Temporarily increase number of buffers we can allocate from ANW
+// until faux-NPA mode is implemented
+const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP = 15;
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
 // HACK: Default path to directory where RAW images coming from video port will be saved to.
@@ -1277,7 +1283,9 @@ status_t CameraHal::freePreviewDataBufs()
     return ret;
 }
 
-status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size_t size, const char* previewFormat, unsigned int bufferCount)
+status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size_t size,
+                                   const char* previewFormat, unsigned int bufferCount,
+                                   unsigned int *max_queueable)
 {
     status_t ret = NO_ERROR;
     int bytes;
@@ -1288,38 +1296,41 @@ status_t CameraHal::allocImageBufs(unsigned int width, unsigned int height, size
 
     // allocate image buffers only if not already allocated
     if(NULL != mImageBuffers) {
+        if (mBufferSourceAdapter_Out.get()) {
+            mBufferSourceAdapter_Out->maxQueueableBuffers(*max_queueable);
+        } else {
+            *max_queueable = bufferCount;
+        }
         return NO_ERROR;
     }
 
-    if ( NO_ERROR == ret )
-        {
-        bytes = ((bytes+4095)/4096)*4096;
+    if (mBufferSourceAdapter_Out.get()) {
+        mImageBuffers = mBufferSourceAdapter_Out->allocateBufferList(width, height, previewFormat,
+                                                                     bytes, bufferCount);
+        mBufferSourceAdapter_Out->maxQueueableBuffers(*max_queueable);
+    } else {
+        bytes = ((bytes + 4095) / 4096) * 4096;
         mImageBuffers = mMemoryManager->allocateBufferList(0, 0, previewFormat, bytes, bufferCount);
+        *max_queueable = bufferCount;
+    }
 
-        CAMHAL_LOGDB("Size of Image cap buffer = %d", bytes);
-        if( NULL == mImageBuffers )
-            {
-            CAMHAL_LOGEA("Couldn't allocate image buffers using memory manager");
-            ret = -NO_MEMORY;
-            }
-        else
-            {
-            bytes = size;
-            }
-        }
+    CAMHAL_LOGDB("Size of Image cap buffer = %d", bytes);
+    if ( NULL == mImageBuffers ) {
+        CAMHAL_LOGEA("Couldn't allocate image buffers using memory manager");
+        ret = -NO_MEMORY;
+    } else {
+        bytes = size;
+    }
 
-    if ( NO_ERROR == ret )
-        {
+    if ( NO_ERROR == ret ) {
         mImageFd = mMemoryManager->getFd();
         mImageLength = bytes;
         mImageOffsets = mMemoryManager->getOffsets();
-        }
-    else
-        {
+    } else {
         mImageFd = -1;
         mImageLength = 0;
         mImageOffsets = NULL;
-        }
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1451,6 +1462,14 @@ status_t CameraHal::signalEndImageCapture()
 
     LOG_FUNCTION_NAME;
 
+    if (mBufferSourceAdapter_Out.get()) {
+        mBufferSourceAdapter_Out->disableDisplay();
+    }
+
+    if (mBufferSourceAdapter_In.get()) {
+        mBufferSourceAdapter_In->disableDisplay();
+    }
+
     if ( mBracketingRunning ) {
         stopImageBracketing();
     } else {
@@ -1468,22 +1487,19 @@ status_t CameraHal::freeImageBufs()
 
     LOG_FUNCTION_NAME;
 
-    if ( NO_ERROR == ret )
-        {
+    if (NULL == mImageBuffers) {
+        return -EINVAL;
+    }
 
-        if( NULL != mImageBuffers )
-            {
+    if (mBufferSourceAdapter_Out.get()) {
+        ret = mBufferSourceAdapter_Out->freeBufferList(mImageBuffers);
+    } else {
+        ret = mMemoryManager->freeBufferList(mImageBuffers);
+    }
 
-            ret = mMemoryManager->freeBufferList(mImageBuffers);
-            mImageBuffers = NULL;
-
-            }
-        else
-            {
-            ret = -EINVAL;
-            }
-
-        }
+    if (ret == NO_ERROR) {
+        mImageBuffers = NULL;
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1620,9 +1636,7 @@ status_t CameraHal::startPreview()
             mAppCallbackNotifier->enableMsgType (CAMERA_MSG_PREVIEW_FRAME);
         }
 
-        if (mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE) {
-            mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_IMAGE_CAPTURE);
-        }
+        signalEndImageCapture();
         return ret;
         }
 
@@ -1871,6 +1885,137 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
 
     return ret;
 
+}
+/**
+   @brief Sets ANativeWindow object.
+
+   Buffers provided to CameraHal via this object for tap-in/tap-out
+   functionality.
+
+   TODO(XXX): this is just going to use preview_stream_ops for now, but we
+   most likely need to extend it when we want more functionality
+
+   @param[in] window The ANativeWindow object created by Surface flinger
+   @return NO_ERROR If the ANativeWindow object passes validation criteria
+   @todo Define validation criteria for ANativeWindow object. Define error codes for scenarios
+
+ */
+status_t CameraHal::setBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout)
+{
+    status_t ret = NO_ERROR;
+
+    LOG_FUNCTION_NAME;
+
+   // If either a tapin or tapout was previously set
+   // we need to clean up and clear capturing
+   if ((!tapout && mBufferSourceAdapter_Out.get()) ||
+       (!tapin && mBufferSourceAdapter_In.get())) {
+       signalEndImageCapture();
+   }
+
+   // Set tapout point
+   // destroy current buffer tapout if NULL tapout is passed
+    if (!tapout) {
+        if (mBufferSourceAdapter_Out.get() != NULL) {
+            CAMHAL_LOGD("NULL tapout passed, destroying buffer tapout adapter");
+            mBufferSourceAdapter_Out.clear();
+            mBufferSourceAdapter_Out = 0;
+        }
+        ret = NO_ERROR;
+    } else if (mBufferSourceAdapter_Out.get() == NULL) {
+        mBufferSourceAdapter_Out = new BufferSourceAdapter();
+        if(!mBufferSourceAdapter_Out.get()) {
+            CAMHAL_LOGEA("Couldn't create DisplayAdapter");
+            ret = NO_MEMORY;
+            goto exit;
+        }
+
+        ret = mBufferSourceAdapter_Out->initialize();
+        if (ret != NO_ERROR)
+        {
+            mBufferSourceAdapter_Out.clear();
+            mBufferSourceAdapter_Out = 0;
+            CAMHAL_LOGEA("DisplayAdapter initialize failed");
+            goto exit;
+        }
+
+        // CameraAdapter will be the frame provider for BufferSourceAdapter
+        mBufferSourceAdapter_Out->setFrameProvider(mCameraAdapter);
+
+        // BufferSourceAdapter will use ErrorHandler to send errors back to
+        // the application
+        mBufferSourceAdapter_Out->setErrorHandler(mAppCallbackNotifier.get());
+
+        // Update the display adapter with the new window that is passed from CameraService
+        ret  = mBufferSourceAdapter_Out->setPreviewWindow(tapout);
+        if(ret != NO_ERROR) {
+            CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
+            goto exit;
+        }
+    } else {
+        // Update the display adapter with the new window that is passed from CameraService
+        freeImageBufs();
+        ret = mBufferSourceAdapter_Out->setPreviewWindow(tapout);
+        if (ret == ALREADY_EXISTS) {
+            // ALREADY_EXISTS should be treated as a noop in this case
+            ret = NO_ERROR;
+        }
+    }
+
+    if (ret != NO_ERROR) {
+       CAMHAL_LOGE("Error while trying to set tapout point");
+       goto exit;
+    }
+
+   // 1. Set tapin point
+    if (!tapin) {
+        if (mBufferSourceAdapter_In.get() != NULL) {
+            CAMHAL_LOGD("NULL tapin passed, destroying buffer tapin adapter");
+            mBufferSourceAdapter_In.clear();
+            mBufferSourceAdapter_In = 0;
+        }
+        ret = NO_ERROR;
+    } else if (mBufferSourceAdapter_In.get() == NULL) {
+        mBufferSourceAdapter_In = new BufferSourceAdapter();
+        if(!mBufferSourceAdapter_In.get()) {
+            CAMHAL_LOGEA("Couldn't create DisplayAdapter");
+            ret = NO_MEMORY;
+            goto exit;
+        }
+
+        ret = mBufferSourceAdapter_In->initialize();
+        if (ret != NO_ERROR)
+        {
+            mBufferSourceAdapter_In.clear();
+            mBufferSourceAdapter_In = 0;
+            CAMHAL_LOGEA("DisplayAdapter initialize failed");
+            goto exit;
+        }
+
+        // We need to set a frame provider so camera adapter can return the frame back to us 
+        mBufferSourceAdapter_In->setFrameProvider(mCameraAdapter);
+
+        // BufferSourceAdapter will use ErrorHandler to send errors back to
+        // the application
+        mBufferSourceAdapter_In->setErrorHandler(mAppCallbackNotifier.get());
+
+        // Update the display adapter with the new window that is passed from CameraService
+        ret  = mBufferSourceAdapter_In->setPreviewWindow(tapin);
+        if(ret != NO_ERROR) {
+            CAMHAL_LOGEB("DisplayAdapter setPreviewWindow returned error %d", ret);
+            goto exit;
+        }
+    } else {
+        // Update the display adapter with the new window that is passed from CameraService
+        ret = mBufferSourceAdapter_In->setPreviewWindow(tapin);
+        if (ret == ALREADY_EXISTS) {
+            // ALREADY_EXISTS should be treated as a noop in this case
+            ret = NO_ERROR;
+        }
+    }
+
+ exit:
+    return ret;
 }
 
 
@@ -2414,9 +2559,12 @@ void CameraHal::eventCallback(CameraHalEvent* event)
 
 status_t CameraHal::startImageBracketing()
 {
-        status_t ret = NO_ERROR;
-        CameraFrame frame;
-        CameraAdapter::BuffersDescriptor desc;
+    status_t ret = NO_ERROR;
+    CameraFrame frame;
+    CameraAdapter::BuffersDescriptor desc;
+    unsigned int max_queueable = 0;
+
+
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
@@ -2464,6 +2612,7 @@ status_t CameraHal::startImageBracketing()
 
         if ( NO_ERROR == ret )
             {
+            unsigned int bufferCount = mBracketRangeNegative + 1;
             mParameters.getPictureSize(( int * ) &frame.mWidth,
                                        ( int * ) &frame.mHeight);
 
@@ -2471,7 +2620,9 @@ status_t CameraHal::startImageBracketing()
                                  frame.mHeight,
                                  frame.mLength,
                                  mParameters.getPictureFormat(),
-                                 ( mBracketRangeNegative + 1 ));
+                                 bufferCount,
+                                 &max_queueable);
+            mBracketRangeNegative = bufferCount - 1;
             if ( NO_ERROR != ret )
               {
                 CAMHAL_LOGEB("allocImageBufs returned error 0x%x", ret);
@@ -2486,7 +2637,7 @@ status_t CameraHal::startImageBracketing()
             desc.mFd = mImageFd;
             desc.mLength = mImageLength;
             desc.mCount = ( size_t ) ( mBracketRangeNegative + 1 );
-            desc.mMaxQueueable = ( size_t ) ( mBracketRangeNegative + 1 );
+            desc.mMaxQueueable = ( size_t) max_queueable;
 
             ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_IMAGE_CAPTURE,
                                               ( int ) &desc);
@@ -2547,6 +2698,7 @@ status_t CameraHal::takePicture(const char *params)
     int burst = -1;
     const char *valstr = NULL;
     unsigned int bufferCount = 1;
+    unsigned int max_queueable = 0;
     unsigned int rawBufferCount = 1;
     bool isCPCamMode = false;
 
@@ -2648,6 +2800,13 @@ status_t CameraHal::takePicture(const char *params)
              // For CPCam mode...allocate for worst case burst
              bufferCount = isCPCamMode || (burst > CameraHal::NO_BUFFERS_IMAGE_CAPTURE) ?
                                CameraHal::NO_BUFFERS_IMAGE_CAPTURE : burst;
+
+             if (mBufferSourceAdapter_Out.get()) {
+                 // TODO(XXX): Temporarily increase number of buffers we can allocate from ANW
+                 // until faux-NPA mode is implemented
+                 bufferCount = NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
+             }
+
              if ( NULL != mAppCallbackNotifier.get() ) {
                  mAppCallbackNotifier->setBurst(true);
              }
@@ -2713,7 +2872,8 @@ status_t CameraHal::takePicture(const char *params)
                                  frame.mHeight,
                                  frame.mLength,
                                  mParameters.getPictureFormat(),
-                                 bufferCount);
+                                 bufferCount,
+                                 &max_queueable);
             if ( NO_ERROR != ret )
                 {
                 CAMHAL_LOGEB("allocImageBufs returned error 0x%x", ret);
@@ -2727,7 +2887,7 @@ status_t CameraHal::takePicture(const char *params)
             desc.mFd = mImageFd;
             desc.mLength = mImageLength;
             desc.mCount = ( size_t ) bufferCount;
-            desc.mMaxQueueable = ( size_t ) bufferCount;
+            desc.mMaxQueueable = ( size_t ) max_queueable;
 
             ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_IMAGE_CAPTURE,
                                               ( int ) &desc);
@@ -2757,6 +2917,10 @@ status_t CameraHal::takePicture(const char *params)
                         ( int ) &desc);
             }
         }
+    }
+
+    if ((ret == NO_ERROR) && mBufferSourceAdapter_Out.get()) {
+        mBufferSourceAdapter_Out->enableDisplay(0, 0, NULL);
     }
 
     if ((NO_ERROR == ret) && (NULL != mCameraAdapter)) {
@@ -2790,11 +2954,9 @@ status_t CameraHal::takePicture(const char *params)
 status_t CameraHal::cancelPicture( )
 {
     LOG_FUNCTION_NAME;
+    status_t ret = NO_ERROR;
 
-    Mutex::Autolock lock(mLock);
-
-    mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_IMAGE_CAPTURE);
-
+    ret = signalEndImageCapture();
     return NO_ERROR;
 }
 

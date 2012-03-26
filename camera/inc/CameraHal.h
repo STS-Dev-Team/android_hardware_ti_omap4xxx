@@ -56,6 +56,10 @@ extern "C" {
 #include <ion.h>
 }
 
+//temporarily define format here
+#define HAL_PIXEL_FORMAT_TI_NV12 0x100
+#define HAL_PIXEL_FORMAT_TI_NV12_1D 0x102
+
 #define MIN_WIDTH           640
 #define MIN_HEIGHT          480
 #define PICTURE_WIDTH   3264 /* 5mp - 2560. 8mp - 3280 */ /* Make sure it is a multiple of 16. */
@@ -347,6 +351,11 @@ typedef struct _CameraBuffer {
     int fd;
     size_t size;
     int index;
+
+    /* These describe the camera buffer */
+    int width;
+    int height;
+    const char *format;
 } CameraBuffer;
 
 void * camera_buffer_get_omx_ptr (CameraBuffer *buffer);
@@ -367,6 +376,7 @@ class CameraFrame
             FRAME_DATA= 0x80,
             RAW_FRAME = 0x100,
             SNAPSHOT_FRAME = 0x200,
+            REPROCESS_INPUT_FRAME = 0x400,
             ALL_FRAMES = 0xFFFF   ///Maximum of 16 frame types supported
         };
 
@@ -414,6 +424,25 @@ class CameraFrame
 
       mYuv[0] = frame.mYuv[0];
       mYuv[1] = frame.mYuv[1];
+    }
+
+    //copy constructor 2
+    CameraFrame(const CameraFrame *frame) :
+    mCookie(frame->mCookie),
+    mCookie2(frame->mCookie2),
+    mBuffer(frame->mBuffer),
+    mFrameType(frame->mFrameType),
+    mTimestamp(frame->mTimestamp),
+    mWidth(frame->mWidth),
+    mHeight(frame->mHeight),
+    mOffset(frame->mOffset),
+    mAlignment(frame->mAlignment),
+    mFd(frame->mFd),
+    mLength(frame->mLength),
+    mFrameMask(frame->mFrameMask),
+    mQuirks(frame->mQuirks) {
+      mYuv[0] = frame->mYuv[0];
+      mYuv[1] = frame->mYuv[1];
     }
 
     void *mCookie;
@@ -615,6 +644,11 @@ class BufferProvider
 {
 public:
     virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs) = 0;
+
+    // gets a buffer list from BufferProvider when buffers are sent from external source and already pre-allocated
+    // only call this function for an input source into CameraHal. If buffers are not from a pre-allocated source
+    // this function will return NULL and numBufs of -1
+    virtual CameraBuffer *getBufferList(int *numBufs) = 0;
 
     //additional methods used for memory mapping
     virtual uint32_t * getOffsets() = 0;
@@ -821,6 +855,7 @@ public:
 
     int setErrorHandler(ErrorNotifier *errorNotifier);
     virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer *getBufferList(int *numBufs);
     virtual uint32_t * getOffsets();
     virtual int getFd() ;
     virtual int freeBufferList(CameraBuffer * buflist);
@@ -1005,6 +1040,12 @@ public:
     // This function should only be called after
     // allocateBufferList
     virtual int maxQueueableBuffers(unsigned int& queueable) = 0;
+
+    // Get min buffers display needs at any given time
+    virtual int minUndequeueableBuffers(int& unqueueable) = 0;
+protected:
+    virtual const char* getPixFormatConstant(const char* parameters_format) const;
+    virtual size_t getBufSize(const char* parameters_format, int width, int height) const;
 };
 
 static void releaseImageBuffers(void *userData);
@@ -1026,6 +1067,7 @@ public:
     ///Constants
     static const int NO_BUFFERS_PREVIEW;
     static const int NO_BUFFERS_IMAGE_CAPTURE;
+    static const int NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP;
     static const uint32_t VFR_SCALE = 1000;
 
 
@@ -1076,6 +1118,11 @@ public:
      * Only used if overlays are used for camera preview.
      */
     int setPreviewWindow(struct preview_stream_ops *window);
+
+    /**
+     * Set a tap-in or tap-out point.
+     */
+    int setBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout);
 
     /**
      * Stop a previously started preview.
@@ -1236,7 +1283,9 @@ private:
     status_t allocVideoBufs(uint32_t width, uint32_t height, uint32_t bufferCount);
 
     /** Allocate image capture buffers */
-    status_t allocImageBufs(unsigned int width, unsigned int height, size_t length, const char* previewFormat, unsigned int bufferCount);
+    status_t allocImageBufs(unsigned int width, unsigned int height, size_t length,
+                            const char* previewFormat, unsigned int bufferCount,
+                            unsigned int *max_queueable);
 
     /** Allocate Raw buffers */
     status_t allocRawBufs(int width, int height, const char* previewFormat, int bufferCount);
@@ -1304,6 +1353,10 @@ public:
     sp<AppCallbackNotifier> mAppCallbackNotifier;
     sp<DisplayAdapter> mDisplayAdapter;
     sp<MemoryManager> mMemoryManager;
+    // TODO(XXX): May need to keep this as a vector in the future
+    // when we can have multiple tap-in/tap-out points
+    sp<DisplayAdapter> mBufferSourceAdapter_In;
+    sp<DisplayAdapter> mBufferSourceAdapter_Out;
 
     sp<IMemoryHeap> mPictureHeap;
 
