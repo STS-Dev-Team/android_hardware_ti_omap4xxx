@@ -9,7 +9,7 @@
 #define KEY_CAMERA          "camera-index"
 #define KEY_SATURATION      "saturation"
 #define KEY_BRIGHTNESS      "brightness"
-#define KEY_BURST           "burst-capture"
+#define KEY_TI_BURST           "burst-capture"
 #define KEY_EXPOSURE        "exposure"
 #define KEY_CONTRAST        "contrast"
 #define KEY_SHARPNESS       "sharpness"

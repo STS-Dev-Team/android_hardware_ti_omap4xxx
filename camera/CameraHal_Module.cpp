@@ -307,10 +307,17 @@ int camera_cancel_auto_focus(struct camera_device * device)
     return rv;
 }
 
+#ifdef OMAP_ENHANCEMENT
+int camera_take_picture(struct camera_device * device, const char *params)
+#else
 int camera_take_picture(struct camera_device * device)
+#endif
 {
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
+#ifndef OMAP_ENHANCEMENT
+    const char* params = NULL;
+#endif
 
     LOGV("%s", __FUNCTION__);
 
@@ -319,7 +326,7 @@ int camera_take_picture(struct camera_device * device)
 
     ti_dev = (ti_camera_device_t*) device;
 
-    rv = gCameraHals[ti_dev->cameraid]->takePicture();
+    rv = gCameraHals[ti_dev->cameraid]->takePicture(params);
     return rv;
 }
 
