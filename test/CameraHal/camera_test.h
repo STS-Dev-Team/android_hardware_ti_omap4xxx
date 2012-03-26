@@ -93,6 +93,7 @@ enum logging {
 typedef struct cmd_args {
     test_type_t test_type;
     const char *script_file_name;
+    const char *output_path;
     int platform_id;
     int logging;
 } cmd_args_t;
@@ -173,7 +174,7 @@ int openRecorder();
 int configureRecorder();
 void printSupportedParams();
 char *load_script(const char *config);
-int start_logging(const char *config, int flags, int &pid);
+int start_logging(int flags, int &pid);
 int stop_logging(int flags, int &pid);
 int execute_error_script(char *script);
 int getParametersFromCapabilities();
