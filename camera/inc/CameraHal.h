@@ -36,6 +36,7 @@
 #include "binder/MemoryHeapBase.h"
 #include <utils/threads.h>
 #include <camera/CameraParameters.h>
+#include <camera/ShotParameters.h>
 #include <hardware/camera.h>
 #include "MessageQueue.h"
 #include "Semaphore.h"
@@ -1126,7 +1127,7 @@ public:
     /**
      * Take a picture.
      */
-    int    takePicture();
+    int    takePicture(const char* params);
 
     /**
      * Cancel a picture that was started with takePicture.  Calling this

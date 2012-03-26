@@ -22,6 +22,7 @@
 #include <binder/IServiceManager.h>
 #include <cutils/properties.h>
 #include <camera/CameraParameters.h>
+#include <camera/ShotParameters.h>
 
 #include <sys/wait.h>
 
@@ -739,7 +740,7 @@ int execute_functional_script(char *script) {
 
             case '#':
 
-                params.set(KEY_BURST, atoi(cmd + 1));
+                params.set(KEY_TI_BURST, atoi(cmd + 1));
 
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
@@ -1050,11 +1051,17 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'p':
+            {
+                int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                              CAMERA_MSG_RAW_IMAGE |
+                              CAMERA_MSG_RAW_BURST;
+                ShotParameters shotParams;
+
                 if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
                     if(strcmp(videosnapshotstr, "true") == 0) {
                         gettimeofday(&picture_start, 0);
                         if ( hardwareActive ) {
-                            ret = camera->takePicture(CAMERA_MSG_COMPRESSED_IMAGE|CAMERA_MSG_RAW_IMAGE);
+                            ret = camera->takePicture(msgType, shotParams.flatten());
                             if ( ret != NO_ERROR ) {
                                 printf("Error returned while taking a picture");
                             }
@@ -1064,16 +1071,22 @@ int execute_functional_script(char *script) {
                         return -1;
                     }
                 }
+
                 gettimeofday(&picture_start, 0);
 
                 if (hardwareActive) {
-                    ret = camera->takePicture(CAMERA_MSG_POSTVIEW_FRAME | CAMERA_MSG_RAW_IMAGE_NOTIFY | CAMERA_MSG_COMPRESSED_IMAGE | CAMERA_MSG_SHUTTER);
+                    msgType = CAMERA_MSG_POSTVIEW_FRAME |
+                              CAMERA_MSG_RAW_IMAGE_NOTIFY |
+                              CAMERA_MSG_COMPRESSED_IMAGE |
+                              CAMERA_MSG_SHUTTER |
+                              CAMERA_MSG_RAW_BURST;
+                    ret = camera->takePicture(msgType, shotParams.flatten());
                 }
 
                 if ( ret != NO_ERROR )
                     printf("Error returned while taking a picture");
                 break;
-
+            }
             case 'd':
                 dly = atoi(cmd + 1);
                 sleep(dly);

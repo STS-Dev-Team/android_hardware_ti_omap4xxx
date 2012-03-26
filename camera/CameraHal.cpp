@@ -2539,12 +2539,12 @@ status_t CameraHal::stopImageBracketing()
    @todo Define error codes if unable to switch to image capture
 
  */
-status_t CameraHal::takePicture( )
+status_t CameraHal::takePicture(const char *params)
 {
     status_t ret = NO_ERROR;
     CameraFrame frame;
     CameraAdapter::BuffersDescriptor desc;
-    int burst;
+    int burst = -1;
     const char *valstr = NULL;
     unsigned int bufferCount = 1;
     unsigned int rawBufferCount = 1;
@@ -2588,6 +2588,39 @@ status_t CameraHal::takePicture( )
         return INVALID_OPERATION;
     }
 
+    // check if camera application is using shots parameters
+    // api. parameters set here override anything set using setParameters
+    // TODO(XXX): Just going to use legacy TI parameters for now. Need
+    // add new APIs in CameraHal to utilize ShotParameters later, so
+    // we don't have to parse through the whole set of parameters
+    // in camera adapter
+    if (strlen(params) > 0) {
+        ShotParameters shotParams;
+        const char* valStr;
+        int valNum;
+
+        String8 shotParams8(params);
+
+        shotParams.unflatten(shotParams8);
+        mParameters.remove(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE);
+        mParameters.remove(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
+
+        valStr = shotParams.get(ShotParameters::KEY_EXP_GAIN_PAIRS);
+        if (valStr!= NULL) {
+            mParameters.set(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE, valStr);
+        }
+
+        valNum = shotParams.getInt(ShotParameters::KEY_BURST);
+        if (valNum >= 0) {
+            mParameters.set(TICameraParameters::KEY_BURST, valNum);
+            burst = valNum;
+        }
+        mCameraAdapter->setParameters(mParameters);
+    } else {
+        // TODO(XXX): Should probably reset burst and bracketing params
+        // when we remove legacy TI parameters implementation
+    }
+
     // if we are already in the middle of a capture...then we just need
     // setParameters and start image capture to queue more shots
     if ((mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE &&
@@ -2604,11 +2637,11 @@ status_t CameraHal::takePicture( )
 
     if ( !mBracketingRunning )
     {
-
-         if ( NO_ERROR == ret )
-            {
+         // if application didn't set burst through ShotParameters
+         // then query from TICameraParameters
+         if ((burst == -1) && (NO_ERROR == ret)) {
             burst = mParameters.getInt(TICameraParameters::KEY_BURST);
-            }
+         }
 
          //Allocate all buffers only in burst capture case
          if ( burst > 0 ) {

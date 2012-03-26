@@ -22,6 +22,7 @@
 #include <binder/IServiceManager.h>
 #include <cutils/properties.h>
 #include <camera/CameraParameters.h>
+#include <camera/ShotParameters.h>
 #include <system/audio.h>
 #include <system/camera.h>
 
@@ -42,6 +43,7 @@ sp<SurfaceComposerClient> client;
 sp<SurfaceControl> surfaceControl;
 sp<Surface> previewSurface;
 CameraParameters params;
+CameraParameters shotParams;
 float compensation = 0.0;
 double latitude = 0.0;
 double longitude = 0.0;
@@ -2491,7 +2493,7 @@ int functional_menu() {
             } else {
                 burst += BURST_INC;
             }
-            params.set(KEY_BURST, burst);
+            params.set(KEY_TI_BURST, burst);
 
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
@@ -2789,11 +2791,16 @@ int functional_menu() {
             break;
 
         case 'p':
+        {
+            int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                          CAMERA_MSG_RAW_IMAGE |
+                          CAMERA_MSG_RAW_BURST;
+
             if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
                 if(strcmp(videosnapshotstr, "true") == 0) {
                     gettimeofday(&picture_start, 0);
                     if ( hardwareActive ) {
-                        camera->takePicture(CAMERA_MSG_COMPRESSED_IMAGE|CAMERA_MSG_RAW_IMAGE);
+                        camera->takePicture(msgType, shotParams.flatten());
                     }
                 } else {
                     printf("Video Snapshot is not supported\n");
@@ -2803,10 +2810,15 @@ int functional_menu() {
             gettimeofday(&picture_start, 0);
 
             if (hardwareActive) {
-                camera->takePicture(CAMERA_MSG_POSTVIEW_FRAME | CAMERA_MSG_RAW_IMAGE_NOTIFY | CAMERA_MSG_COMPRESSED_IMAGE | CAMERA_MSG_SHUTTER);
+                msgType = CAMERA_MSG_POSTVIEW_FRAME |
+                          CAMERA_MSG_RAW_IMAGE_NOTIFY |
+                          CAMERA_MSG_COMPRESSED_IMAGE |
+                          CAMERA_MSG_SHUTTER |
+                          CAMERA_MSG_RAW_BURST;
+                camera->takePicture(msgType, shotParams.flatten());
             }
-
             break;
+        }
 
         case '&':
             printf("Enabling Preview Callback");
