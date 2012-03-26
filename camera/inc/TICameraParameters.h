@@ -81,17 +81,9 @@ static const char  KEY_CURRENT_ISO[];
 static const char KEY_SENSOR_ORIENTATION[];
 static const char KEY_SENSOR_ORIENTATION_VALUES[];
 
-//TI extensions for zoom
-static const char ZOOM_SUPPORTED[];
-static const char ZOOM_UNSUPPORTED[];
-
 //TI extensions for camera capabilies
 static const char INITIAL_VALUES_TRUE[];
 static const char INITIAL_VALUES_FALSE[];
-
-//TI extensions for enabling/disabling measurements
-static const char MEASUREMENT_ENABLE[];
-static const char MEASUREMENT_DISABLE[];
 
 //  TI extensions to add values for ManualConvergence and AutoConvergence mode
 static const char KEY_AUTOCONVERGENCE_MODE[];
@@ -123,14 +115,6 @@ static const char  KEY_GPS_DATESTAMP[];
 static const char  RAW_WIDTH[];
 static const char  RAW_HEIGHT[];
 static const char  KEY_FILENAME_TIMESTAMP[];
-
-//TI extensions for enabling/disabling shutter sound
-static const char SHUTTER_ENABLE[];
-static const char SHUTTER_DISABLE[];
-
-//TI extensions for Temporal bracketing
-static const char BRACKET_ENABLE[];
-static const char BRACKET_DISABLE[];
 
 //TI extensions to Image post-processing
 static const char IPP_LDCNSF[];
@@ -253,9 +237,6 @@ static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[];
 
 static const char MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE[];
 static const char MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE[];
-
-static const char VIDEO_SNAPSHOT_SUPPORTED[];
-static const char VIDEO_SNAPSHOT_UNSUPPORTED[];
 };
 
 };

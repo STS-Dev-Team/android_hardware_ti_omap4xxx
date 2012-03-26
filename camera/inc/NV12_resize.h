@@ -45,22 +45,6 @@ typedef struct
 	mmInt32 	second;
 } TmDateTime;
 
-/*----------------------------------------------------------------------------
-    Define : TRUE/FALSE for boolean operations
-----------------------------------------------------------------------------*/
-
-#ifndef TRUE
-    #define TRUE    1
-#endif
-
-#ifndef FALSE
-    #define FALSE   0
-#endif
-
-#ifndef NULL
-   #define NULL        0
-#endif
-
 const mmUint8 bWeights[8][8][4] = {
   {{64, 0, 0, 0}, {56, 0, 0, 8}, {48, 0, 0,16}, {40, 0, 0,24},
    {32, 0, 0,32}, {24, 0, 0,40}, {16, 0, 0,48}, { 8, 0, 0,56}},
