@@ -668,6 +668,12 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         return;
     }
 
+    frame->mMetaData.setTime(CameraMetadata::KEY_TIMESTAMP, frame->mTimestamp);
+    ret = mBufferSource->set_metadata(mBufferSource, frame->mMetaData.flatten().string());
+    if (ret != 0) {
+        CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+    }
+
     // unlock buffer before enqueueing
     mapper.unlock(*handle);
 

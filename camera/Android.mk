@@ -64,6 +64,7 @@ OMAP4_CAMERA_OMX_SRC:= \
 	OMXCameraAdapter/OMXExif.cpp \
 	OMXCameraAdapter/OMXFD.cpp \
 	OMXCameraAdapter/OMXFocus.cpp \
+	OMXCameraAdapter/OMXMetadata.cpp \
 	OMXCameraAdapter/OMXZoom.cpp \
 	OMXCameraAdapter/OMXDccDataSave.cpp \
 
