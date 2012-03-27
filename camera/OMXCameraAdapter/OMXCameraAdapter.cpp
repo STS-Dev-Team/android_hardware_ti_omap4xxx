@@ -3218,7 +3218,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         mFramesWithDucati--;
 
-#ifdef DEBUG_LOG
+#ifdef CAMERAHAL_DEBUG
         if(mBuffersWithDucati.indexOfKey((uint32_t)pBuffHeader->pBuffer)<0)
             {
             LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
