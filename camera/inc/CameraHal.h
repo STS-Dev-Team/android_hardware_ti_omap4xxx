@@ -43,6 +43,7 @@
 #include "CameraProperties.h"
 #include "DebugUtils.h"
 #include "SensorListener.h"
+#include <camera/CameraMetadata.h>
 
 #include <ui/GraphicBufferAllocator.h>
 #include <ui/GraphicBuffer.h>
@@ -421,7 +422,8 @@ class CameraFrame
     mFd(frame.mFd),
     mLength(frame.mLength),
     mFrameMask(frame.mFrameMask),
-    mQuirks(frame.mQuirks) {
+    mQuirks(frame.mQuirks),
+    mMetaData(frame.mMetaData) {
 
       mYuv[0] = frame.mYuv[0];
       mYuv[1] = frame.mYuv[1];
@@ -441,7 +443,8 @@ class CameraFrame
     mFd(frame->mFd),
     mLength(frame->mLength),
     mFrameMask(frame->mFrameMask),
-    mQuirks(frame->mQuirks) {
+    mQuirks(frame->mQuirks),
+    mMetaData(frame->mMetaData) {
       mYuv[0] = frame->mYuv[0];
       mYuv[1] = frame->mYuv[1];
     }
@@ -459,6 +462,7 @@ class CameraFrame
     unsigned mFrameMask;
     unsigned int mQuirks;
     unsigned int mYuv[2];
+    CameraMetadata mMetaData;
     ///@todo add other member vars like  stride etc
 };
 
