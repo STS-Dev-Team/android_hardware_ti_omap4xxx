@@ -3327,6 +3327,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             goto EXIT;
             }
 
+        setMetaData(cameraFrame.mMetaData, platformPrivate);
+
         CAMHAL_LOGDB("Captured Frames: %d", mCapturedFrames);
 
         mCapturedFrames--;
@@ -3687,7 +3689,8 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
-OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type) {
+OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type) const
+{
     OMX_U32 remainingSize = extraDataSize;
 
     if ( NULL != extraData ) {

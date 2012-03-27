@@ -1106,13 +1106,11 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         }
     }
 
-    // need to enable wb data for video snapshot to fill in exif data
-    if ((ret == NO_ERROR) && (mCapMode == VIDEO_MODE)) {
-        // video snapshot uses wb data from snapshot frame
-        ret = setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
-    }
-
     capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+
+    // Enable WB and vector shot extra data for metadata
+    ret = setExtraData(true, OMX_ALL, OMX_WhiteBalance);
+    ret = setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
 
     //OMX shutter callback events are only available in hq mode
     if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode)) {
@@ -1245,6 +1243,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
+    setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_TI_VectShotInfo);
     mWaitingForSnapshot = false;
     mCaptureSignalled = false;
     performCleanupAfterError();
@@ -1332,11 +1331,9 @@ status_t OMXCameraAdapter::stopImageCapture()
         }
     }
 
-    // had to enable wb data for video snapshot to fill in exif data
-    // now that we are done...disable
-    if ((ret == NO_ERROR) && (mCapMode == VIDEO_MODE)) {
-        ret = setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
-    }
+    // Disable WB and vector shot extra data for metadata
+    ret = setExtraData(false, OMX_ALL, OMX_WhiteBalance);
+    ret = setExtraData(false, OMX_ALL, OMX_TI_VectShotInfo);
 
     CAMHAL_LOGDB("Capture set - 0x%x", eError);
 
