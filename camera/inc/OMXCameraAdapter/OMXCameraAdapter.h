@@ -370,6 +370,19 @@ public:
             OMXCameraPortParameters     mCameraPortParams[MAX_NO_PORTS];
     };
 
+    class CachedCaptureParameters
+    {
+        public:
+            unsigned int mPendingCaptureSettings;
+            unsigned int mPictureRotation;
+            int mExposureBracketingValues[EXP_BRACKET_RANGE];
+            int mExposureGainBracketingValues[EXP_BRACKET_RANGE];
+            int mExposureGainBracketingModes[EXP_BRACKET_RANGE];
+            size_t mExposureBracketingValidEntries;
+            OMX_BRACKETMODETYPE mExposureBracketMode;
+            unsigned int mBurstFrames;
+    };
+
 public:
 
     OMXCameraAdapter(size_t sensor_index);
@@ -437,6 +450,9 @@ protected:
     virtual void onOrientationEvent(uint32_t orientation, uint32_t tilt);
 
 private:
+
+    // Caches and returns current set of parameters
+    CachedCaptureParameters* cacheCaptureParameters();
 
     status_t doSwitchToExecuting();
 
@@ -684,13 +700,16 @@ private:
                                   BaseCameraAdapter::AdapterState state);
 
     //Exposure Bracketing
-    status_t setVectorShot(int *evValues, int *evValues2, int *evModes2, size_t evCount, size_t frameCount);
+    status_t setVectorShot(int *evValues, int *evValues2, int *evModes2,
+                           size_t evCount, size_t frameCount, OMX_BRACKETMODETYPE bracketMode);
     status_t setVectorStop(bool toPreview = false);
     status_t setExposureBracketing(int *evValues, int *evValues2,
-                                   size_t evCount, size_t frameCount);
+                                   size_t evCount, size_t frameCount,
+                                   OMX_BRACKETMODETYPE bracketMode);
     status_t doExposureBracketing(int *evValues, int *evValues2,
                                   int *evModes2,
-                                   size_t evCount, size_t frameCount);
+                                  size_t evCount, size_t frameCount,
+                                  OMX_BRACKETMODETYPE bracketMode);
     int getBracketingValueMode(const char *a, const char *b) const;
     status_t parseExpRange(const char *rangeStr, int *expRange, int *gainRange,
                            int *expGainModes,
@@ -701,7 +720,7 @@ private:
     status_t sendBracketFrames(size_t &framesSent);
 
     // Image Capture Service
-    status_t startImageCapture(bool bracketing);
+    status_t startImageCapture(bool bracketing, CachedCaptureParameters*);
     status_t disableImagePort();
 
     //Shutter callback notifications
