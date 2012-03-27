@@ -231,7 +231,6 @@ typedef struct omap4_hwc_device omap4_hwc_device_t;
 static int debug = 0;
 static int debugpost2 = 0;
 static int debugblt = 0;
-static int gshowfps;
 static rgz_t grgz;
 static struct bvsurfgeom gscrngeom;
 
@@ -241,6 +240,13 @@ static void showfps(void)
     static int lastframecount = 0;
     static nsecs_t lastfpstime = 0;
     static float fps = 0;
+    char value[PROPERTY_VALUE_MAX];
+
+    property_get("debug.hwc.showfps", value, "0");
+    if (!atoi(value)) {
+        return;
+    }
+
     framecount++;
     if (!(framecount & 0x7)) {
         nsecs_t now = systemTime(SYSTEM_TIME_MONOTONIC);
@@ -1949,8 +1955,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
                 err = err ? : -errno;
             }
         }
-        if (gshowfps)
-            showfps();
+        showfps();
     }
     hwc_dev->last_ext_ovls = hwc_dev->ext_ovls;
     hwc_dev->last_int_ovls = hwc_dev->post2_layers;
@@ -2566,9 +2571,6 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
             goto done;
         }
     }
-
-    property_get("debug.hwc.showfps", value, "0");
-    gshowfps = atoi(value);
 
 done:
     if (err && hwc_dev) {
