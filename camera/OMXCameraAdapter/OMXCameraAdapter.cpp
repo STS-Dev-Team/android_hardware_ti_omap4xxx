@@ -1075,7 +1075,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
     return ErrorUtils::omxToAndroidError(eError);
 }
 
-status_t OMXCameraAdapter::flushBuffers()
+status_t OMXCameraAdapter::flushBuffers(OMX_U32 nPort)
 {
     LOG_FUNCTION_NAME;
 
@@ -1090,7 +1090,7 @@ status_t OMXCameraAdapter::flushBuffers()
         }
 
     OMXCameraPortParameters * mPreviewData = NULL;
-    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
+    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[nPort];
 
     ///Register for the FLUSH event
     ///This method just inserts a message in Event Q, which is checked in the callback
@@ -1098,7 +1098,7 @@ status_t OMXCameraAdapter::flushBuffers()
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
                                 OMX_EventCmdComplete,
                                 OMX_CommandFlush,
-                                OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW,
+                                nPort,
                                 mFlushSem);
     if(ret!=NO_ERROR)
         {
@@ -1109,7 +1109,7 @@ status_t OMXCameraAdapter::flushBuffers()
     ///Send FLUSH command to preview port
     eError = OMX_SendCommand (mCameraAdapterParameters.mHandleComp,
                               OMX_CommandFlush,
-                              mCameraAdapterParameters.mPrevPortIndex,
+                              nPort,
                               NULL);
 
     if(eError!=OMX_ErrorNone)
@@ -1139,7 +1139,7 @@ status_t OMXCameraAdapter::flushBuffers()
         ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
                            OMX_EventCmdComplete,
                            OMX_CommandFlush,
-                           OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW,
+                           nPort,
                            NULL);
         CAMHAL_LOGDA("Flush event timeout expired");
         goto EXIT;
