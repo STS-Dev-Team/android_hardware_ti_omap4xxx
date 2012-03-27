@@ -2488,6 +2488,7 @@ status_t OMXCameraAdapter::takePicture()
     }
 
     msg.arg1 = mErrorNotifier;
+    msg.arg2 = cacheCaptureParameters();
     ret = mCommandHandler->put(&msg);
 
  EXIT:
@@ -3551,7 +3552,10 @@ bool OMXCameraAdapter::CommandHandler::Handler()
         switch ( msg.command ) {
             case CommandHandler::CAMERA_START_IMAGE_CAPTURE:
             {
-                stat = mCameraAdapter->startImageCapture(false);
+                OMXCameraAdapter::CachedCaptureParameters* cap_params =
+                        static_cast<OMXCameraAdapter::CachedCaptureParameters*>(msg.arg2);
+                stat = mCameraAdapter->startImageCapture(false, cap_params);
+                delete cap_params;
                 break;
             }
             case CommandHandler::CAMERA_PERFORM_AUTOFOCUS:
@@ -3572,8 +3576,11 @@ bool OMXCameraAdapter::CommandHandler::Handler()
             }
             case CommandHandler::CAMERA_START_REPROCESS:
             {
+                OMXCameraAdapter::CachedCaptureParameters* cap_params =
+                        static_cast<OMXCameraAdapter::CachedCaptureParameters*>(msg.arg2);
                 stat = mCameraAdapter->startReprocess();
-                stat = mCameraAdapter->startImageCapture(false);
+                stat = mCameraAdapter->startImageCapture(false, cap_params);
+                delete cap_params;
                 break;
             }
         }
@@ -3706,6 +3713,27 @@ OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE 
 
     // Required extradata type wasn't found
     return NULL;
+}
+
+OMXCameraAdapter::CachedCaptureParameters* OMXCameraAdapter::cacheCaptureParameters() {
+    CachedCaptureParameters* params = new CachedCaptureParameters();
+
+    params->mPendingCaptureSettings = mPendingCaptureSettings;
+    params->mPictureRotation = mPictureRotation;
+    memcpy(params->mExposureBracketingValues,
+           mExposureBracketingValues,
+           sizeof(mExposureBracketingValues));
+    memcpy(params->mExposureGainBracketingValues,
+           mExposureGainBracketingValues,
+           sizeof(mExposureGainBracketingValues));
+    memcpy(params->mExposureGainBracketingModes,
+           mExposureGainBracketingModes,
+           sizeof(mExposureGainBracketingModes));
+    params->mExposureBracketingValidEntries = mExposureBracketingValidEntries;
+    params->mExposureBracketMode = mExposureBracketMode;
+    params->mBurstFrames = mBurstFrames;
+
+   return params;
 }
 
 OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)

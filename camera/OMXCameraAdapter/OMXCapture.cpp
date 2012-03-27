@@ -457,7 +457,8 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
                                                  int *evValues2,
                                                  int *evModes2,
                                                  size_t evCount,
-                                                 size_t frameCount)
+                                                 size_t frameCount,
+                                                 OMX_BRACKETMODETYPE bracketMode)
 {
     status_t ret = NO_ERROR;
 
@@ -474,10 +475,10 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
     }
 
     if ( NO_ERROR == ret ) {
-        if (mExposureBracketMode == OMX_BracketVectorShot) {
-            ret = setVectorShot(evValues, evValues2, evModes2, evCount, frameCount);
+        if (bracketMode == OMX_BracketVectorShot) {
+            ret = setVectorShot(evValues, evValues2, evModes2, evCount, frameCount, bracketMode);
         } else {
-            ret = setExposureBracketing(evValues, evValues2, evCount, frameCount);
+            ret = setExposureBracketing(evValues, evValues2, evCount, frameCount, bracketMode);
         }
     }
 
@@ -522,7 +523,8 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
                                          int *evValues2,
                                          int *evModes2,
                                          size_t evCount,
-                                         size_t frameCount)
+                                         size_t frameCount,
+                                         OMX_BRACKETMODETYPE bracketMode)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -579,7 +581,7 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
             extExpCapMode.bEnableBracketing = OMX_FALSE;
         } else {
             extExpCapMode.bEnableBracketing = OMX_TRUE;
-            extExpCapMode.tBracketConfigType.eBracketMode = mExposureBracketMode;
+            extExpCapMode.tBracketConfigType.eBracketMode = bracketMode;
         }
 
         eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
@@ -629,7 +631,7 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
             enqueueShotConfigs.nShotConfig[i-1].nFrames = frameCount - evCount;
         }
 
-        if (mExposureBracketMode == OMX_BracketVectorShot) {
+        if (bracketMode == OMX_BracketVectorShot) {
             enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
             enqueueShotConfigs.bFlushQueue = OMX_FALSE;
             enqueueShotConfigs.nNumConfigs = evCount;
@@ -654,7 +656,8 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
 status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
                                                  int *evValues2,
                                                  size_t evCount,
-                                                 size_t frameCount)
+                                                 size_t frameCount,
+                                                 OMX_BRACKETMODETYPE bracketMode)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -706,13 +709,13 @@ status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
         else
             {
             extExpCapMode.bEnableBracketing = OMX_TRUE;
-            extExpCapMode.tBracketConfigType.eBracketMode = mExposureBracketMode;
+            extExpCapMode.tBracketConfigType.eBracketMode = bracketMode;
             extExpCapMode.tBracketConfigType.nNbrBracketingValues = evCount - 1;
             }
 
         for ( unsigned int i = 0 ; i < evCount ; i++ )
             {
-            if (mExposureBracketMode == OMX_BracketExposureGainAbsolute) {
+            if (bracketMode == OMX_BracketExposureGainAbsolute) {
                 extExpCapMode.tBracketConfigType.nBracketValues[i]  =  evValues[i];
                 extExpCapMode.tBracketConfigType.nBracketValues2[i]  =  evValues2[i];
             } else {
@@ -945,8 +948,9 @@ status_t OMXCameraAdapter::startBracketing(int range)
 
     if ( NO_ERROR == ret )
         {
-
-        ret = startImageCapture(true);
+        CachedCaptureParameters* cap_params = cacheCaptureParameters();
+        ret = startImageCapture(true, cap_params);
+        delete cap_params;
             {
             Mutex::Autolock lock(mBracketingLock);
 
@@ -991,7 +995,7 @@ status_t OMXCameraAdapter::stopBracketing()
     return ret;
 }
 
-status_t OMXCameraAdapter::startImageCapture(bool bracketing)
+status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParameters* capParams)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -1020,6 +1024,11 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             CAMHAL_LOGDA("trying starting capture when already canceled");
             return NO_ERROR;
         }
+    }
+
+    if (!capParams) {
+        CAMHAL_LOGE("Invalid cached parameters sent!");
+        return BAD_VALUE;
     }
 
     // Camera framework doesn't expect face callbacks once capture is triggered
@@ -1075,7 +1084,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
     }
 
     if ( NO_ERROR == ret ) {
-        if (mPendingCaptureSettings & SetRotation) {
+        if (capParams->mPendingCaptureSettings & SetRotation) {
             mPendingCaptureSettings &= ~SetRotation;
             ret = setPictureRotation(mPictureRotation);
             if ( NO_ERROR != ret ) {
@@ -1083,20 +1092,22 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             }
         }
 
-        if (mPendingCaptureSettings & SetExpBracket) {
+        if (capParams->mPendingCaptureSettings & SetExpBracket) {
             mPendingCaptureSettings &= ~(SetExpBracket|SetBurst);
             if ( mBracketingSet ) {
-                ret = doExposureBracketing(mExposureBracketingValues,
-                                            mExposureGainBracketingValues,
-                                            mExposureGainBracketingModes,
+                ret = doExposureBracketing(capParams->mExposureBracketingValues,
+                                            capParams->mExposureGainBracketingValues,
+                                            capParams->mExposureGainBracketingModes,
                                             0,
-                                            0);
+                                            0,
+                                            capParams->mExposureBracketMode);
             } else {
-                ret = doExposureBracketing(mExposureBracketingValues,
-                                    mExposureGainBracketingValues,
-                                    mExposureGainBracketingModes,
-                                    mExposureBracketingValidEntries,
-                                    mBurstFrames);
+                ret = doExposureBracketing(capParams->mExposureBracketingValues,
+                                    capParams->mExposureGainBracketingValues,
+                                    capParams->mExposureGainBracketingModes,
+                                    capParams->mExposureBracketingValidEntries,
+                                    capParams->mBurstFrames,
+                                    capParams->mExposureBracketMode);
             }
 
             if ( ret != NO_ERROR ) {
@@ -1588,7 +1599,6 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 
     // capture is already configured...we can skip this step
     if (mCaptureConfigured) {
-
         if ( NO_ERROR == ret )
             {
             ret = setupEXIF();
