@@ -619,7 +619,7 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
     void *dest = NULL, *src = NULL;
 
     // scope for lock
-    {
+    if (mCameraHal->msgTypeEnabled(msgType)) {
         Mutex::Autolock lock(mLock);
 
         if(mNotifierState != AppCallbackNotifier::NOTIFIER_STARTED) {

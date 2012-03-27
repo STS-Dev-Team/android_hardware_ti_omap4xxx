@@ -43,7 +43,7 @@ extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t);
 ////       Currently, they are hard-coded
 
 const int CameraHal::NO_BUFFERS_PREVIEW = MAX_CAMERA_BUFFERS;
-const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 9;
+const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 5;
 const int CameraHal::SW_SCALING_FPS_LIMIT = 15;
 
 const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 16;
@@ -2692,6 +2692,20 @@ status_t CameraHal::stopImageBracketing()
  */
 status_t CameraHal::takePicture(const char *params)
 {
+    Mutex::Autolock lock(mLock);
+    return __takePicture(params);
+}
+
+/**
+   @brief Internal function for getting a captured image.
+          shared by takePicture and reprocess.
+   @param none
+   @return NO_ERROR If able to switch to image capture
+   @todo Define error codes if unable to switch to image capture
+
+ */
+status_t CameraHal::__takePicture(const char *params)
+{
     status_t ret = NO_ERROR;
     CameraFrame frame;
     CameraAdapter::BuffersDescriptor desc;
@@ -2701,8 +2715,6 @@ status_t CameraHal::takePicture(const char *params)
     unsigned int max_queueable = 0;
     unsigned int rawBufferCount = 1;
     bool isCPCamMode = false;
-
-    Mutex::Autolock lock(mLock);
 
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
@@ -2775,8 +2787,9 @@ status_t CameraHal::takePicture(const char *params)
 
     // if we are already in the middle of a capture...then we just need
     // setParameters and start image capture to queue more shots
-    if ((mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE &&
-         mCameraAdapter->getNextState() != CameraAdapter::PREVIEW_STATE)) {
+    if (((mCameraAdapter->getState() & CameraAdapter::CAPTURE_STATE) ==
+              CameraAdapter::CAPTURE_STATE) &&
+         (mCameraAdapter->getNextState() != CameraAdapter::PREVIEW_STATE)) {
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
         //pass capture timestamp along with the camera adapter command
         ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_IMAGE_CAPTURE,
@@ -3030,6 +3043,73 @@ char* CameraHal::getParameters()
     ///Return the current set of parameters
 
     return params_string;
+}
+
+/**
+   @brief Starts reprocessing operation.
+ */
+status_t CameraHal::reprocess(const char *params)
+{
+    status_t ret = NO_ERROR;
+    int bufferCount = 0;
+    CameraAdapter::BuffersDescriptor desc;
+    CameraBuffer *reprocBuffers = NULL;
+    ShotParameters shotParams;
+
+    Mutex::Autolock lock(mLock);
+
+    LOG_FUNCTION_NAME;
+
+    // 1. Get buffers
+    if (mBufferSourceAdapter_In.get()) reprocBuffers = mBufferSourceAdapter_In->getBufferList(&bufferCount);
+    if (!reprocBuffers) {
+        CAMHAL_LOGE("Error: couldn't get input buffers for reprocess()");
+        goto exit;
+    }
+
+    // 2. Get buffer information and parse parameters
+    {
+        shotParams.setBurst(bufferCount);
+    }
+
+    // 3. Give buffer to camera adapter
+    desc.mBuffers = reprocBuffers;
+    desc.mOffsets = 0;
+    desc.mFd = 0;
+    desc.mLength = 0;
+    desc.mCount = (size_t) bufferCount;
+    desc.mMaxQueueable = (size_t) bufferCount;
+    ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_USE_BUFFERS_REPROCESS, (int) &desc);
+    if (ret != NO_ERROR) {
+        CAMHAL_LOGE("Error calling camera use buffers");
+        goto exit;
+    }
+
+    // 4. Start reprocessing
+    ret = mBufferSourceAdapter_In->enableDisplay(0, 0, NULL);
+    if (ret != NO_ERROR) {
+        CAMHAL_LOGE("Error enabling tap in point");
+        goto exit;
+    }
+
+    // 5. Start capturing
+    ret = __takePicture(shotParams.flatten().string());
+
+ exit:
+    return ret;
+}
+
+/**
+   @brief Cancels current reprocessing operation
+
+ */
+status_t CameraHal::cancel_reprocess( )
+{
+    LOG_FUNCTION_NAME;
+    status_t ret = NO_ERROR;
+
+    ret = signalEndImageCapture();
+    return NO_ERROR;
 }
 
 void CameraHal::putParameters(char *parms)
@@ -3962,7 +4042,7 @@ void CameraHal::resetPreviewRes(CameraParameters *mParams, int width, int height
 void *
 camera_buffer_get_omx_ptr (CameraBuffer *buffer)
 {
-    CAMHAL_LOGD("buffer_type %d opaque %p", buffer->type, buffer->opaque);
+    CAMHAL_LOGV("buffer_type %d opaque %p", buffer->type, buffer->opaque);
 
     if (buffer->type == CAMERA_BUFFER_ANW) {
         buffer_handle_t *handle = (buffer_handle_t *)buffer->opaque;

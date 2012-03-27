@@ -46,7 +46,9 @@ const LUT cameraCommandsUserToHAL[] = {
     { "CAMERA_START_FD",                        CameraAdapter::CAMERA_START_FD },
     { "CAMERA_STOP_FD",                         CameraAdapter::CAMERA_STOP_FD },
     { "CAMERA_SWITCH_TO_EXECUTING",             CameraAdapter::CAMERA_SWITCH_TO_EXECUTING },
-    { "CAMERA_USE_BUFFERS_VIDEO_CAPTURE",       CameraAdapter::CAMERA_USE_BUFFERS_VIDEO_CAPTURE }
+    { "CAMERA_USE_BUFFERS_VIDEO_CAPTURE",       CameraAdapter::CAMERA_USE_BUFFERS_VIDEO_CAPTURE },
+    { "CAMERA_USE_BUFFERS_REPROCESS",           CameraAdapter::CAMERA_USE_BUFFERS_REPROCESS },
+    { "CAMERA_START_REPROCESS",                 CameraAdapter::CAMERA_START_REPROCESS }
 };
 
 const LUTtypeHAL CamCommandsLUT =
@@ -103,6 +105,7 @@ BaseCameraAdapter::~BaseCameraAdapter()
      mImageSubscribers.clear();
      mRawSubscribers.clear();
      mVideoSubscribers.clear();
+     mVideoInSubscribers.clear();
      mFocusSubscribers.clear();
      mShutterSubscribers.clear();
      mZoomSubscribers.clear();
@@ -190,6 +193,9 @@ void BaseCameraAdapter::enableMsgType(int32_t msgs, frame_callback callback, eve
             case CameraFrame::VIDEO_FRAME_SYNC:
                 mVideoSubscribers.add((int) cookie, callback);
                 break;
+            case CameraFrame::REPROCESS_INPUT_FRAME:
+                mVideoInSubscribers.add((int) cookie, callback);
+                break;
             default:
                 CAMHAL_LOGEA("Frame message type id=0x%x subscription no supported yet!", frameMsg);
                 break;
@@ -244,12 +250,16 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
             case CameraFrame::VIDEO_FRAME_SYNC:
                 mVideoSubscribers.removeItem((int) cookie);
                 break;
+            case CameraFrame::REPROCESS_INPUT_FRAME:
+                mVideoInSubscribers.removeItem((int) cookie);
+                break;
             case CameraFrame::ALL_FRAMES:
                 mFrameSubscribers.removeItem((int) cookie);
                 mFrameDataSubscribers.removeItem((int) cookie);
                 mImageSubscribers.removeItem((int) cookie);
                 mRawSubscribers.removeItem((int) cookie);
                 mVideoSubscribers.removeItem((int) cookie);
+                mVideoInSubscribers.removeItem((int) cookie);
                 break;
             default:
                 CAMHAL_LOGEA("Frame message type id=0x%x subscription remove not supported yet!", frameMsg);
@@ -550,6 +560,46 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                     }
 
                 break;
+
+        case CameraAdapter::CAMERA_USE_BUFFERS_REPROCESS:
+            CAMHAL_LOGDA("Use buffers for reprocessing");
+            desc = (BuffersDescriptor *) value1;
+
+            if (NULL == desc) {
+                CAMHAL_LOGEA("Invalid capture buffers!");
+                return -EINVAL;
+            }
+
+            if (ret == NO_ERROR) {
+                ret = setState(operation);
+            }
+
+            if (ret == NO_ERROR) {
+                Mutex::Autolock lock(mVideoInBufferLock);
+                mVideoInBuffers = desc->mBuffers;
+                mVideoInBuffersAvailable.clear();
+                for (uint32_t i = 0 ; i < desc->mMaxQueueable ; i++) {
+                    mVideoInBuffersAvailable.add(&mVideoInBuffers[i], 0);
+                }
+                // initial ref count for undeqeueued buffers is 1 since buffer provider
+                // is still holding on to it
+                for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ ) {
+                    mVideoInBuffersAvailable.add(&mVideoInBuffers[i], 1);
+                }
+                ret = useBuffers(CameraAdapter::CAMERA_REPROCESS,
+                                 desc->mBuffers,
+                                 desc->mCount,
+                                 desc->mLength,
+                                 desc->mMaxQueueable);
+            }
+
+            if ( ret == NO_ERROR ) {
+                ret = commitState();
+            } else {
+                ret |= rollbackState();
+            }
+
+            break;
 
         case CameraAdapter::CAMERA_START_SMOOTH_ZOOM:
             {
@@ -1262,6 +1312,11 @@ status_t BaseCameraAdapter::sendFrameToSubscribers(CameraFrame *frame)
             ret = __sendFrameToSubscribers(frame, &mFrameDataSubscribers, CameraFrame::FRAME_DATA_SYNC);
           }
           break;
+        case CameraFrame::REPROCESS_INPUT_FRAME:
+          {
+            ret = __sendFrameToSubscribers(frame, &mVideoInSubscribers, CameraFrame::REPROCESS_INPUT_FRAME);
+          }
+          break;
         default:
           CAMHAL_LOGEB("FRAMETYPE NOT SUPPORTED 0x%x", mask);
         break;
@@ -1385,6 +1440,11 @@ int BaseCameraAdapter::setInitFrameRefCount(CameraBuffer * buf, unsigned int mas
           setFrameRefCount(buf, CameraFrame::FRAME_DATA_SYNC, mFrameDataSubscribers.size());
         }
         break;
+      case CameraFrame::REPROCESS_INPUT_FRAME:
+        {
+          setFrameRefCount(buf,CameraFrame::REPROCESS_INPUT_FRAME, mVideoInSubscribers.size());
+        }
+        break;
       default:
         CAMHAL_LOGEB("FRAMETYPE NOT SUPPORTED 0x%x", lmask);
         break;
@@ -1430,6 +1490,11 @@ int BaseCameraAdapter::getFrameRefCount(CameraBuffer * frameBuf, CameraFrame::Fr
                 res = mVideoBuffersAvailable.valueFor(frameBuf );
                 }
             break;
+        case CameraFrame::REPROCESS_INPUT_FRAME: {
+            Mutex::Autolock lock(mVideoInBufferLock);
+            res = mVideoInBuffersAvailable.valueFor(frameBuf );
+        }
+            break;
         default:
             break;
         };
@@ -1471,6 +1536,11 @@ void BaseCameraAdapter::setFrameRefCount(CameraBuffer * frameBuf, CameraFrame::F
                 Mutex::Autolock lock(mVideoBufferLock);
                 mVideoBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
+            break;
+        case CameraFrame::REPROCESS_INPUT_FRAME: {
+            Mutex::Autolock lock(mVideoInBufferLock);
+            mVideoInBuffersAvailable.replaceValueFor(frameBuf, refCount);
+        }
             break;
         default:
             break;
@@ -1860,6 +1930,12 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = LOADED_CAPTURE_STATE;
                     break;
 
+                case CAMERA_USE_BUFFERS_REPROCESS:
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->LOADED_REPROCESS_STATE event = %s",
+                                 printState);
+                    mNextState = LOADED_REPROCESS_STATE;
+                    break;
+
                 case CAMERA_START_VIDEO:
                     CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->VIDEO_STATE event = %s",
                             printState);
@@ -1882,6 +1958,42 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
 
                 }
 
+            break;
+
+        case LOADED_REPROCESS_STATE:
+            switch (operation) {
+                case CAMERA_USE_BUFFERS_IMAGE_CAPTURE:
+                    CAMHAL_LOGDB("Adapter state switch LOADED_REPROCESS_STATE->LOADED_REPROCESS_CAPTURE_STATE event = %s",
+                                 printState);
+                    mNextState = LOADED_REPROCESS_CAPTURE_STATE;
+                    break;
+                case CAMERA_QUERY_BUFFER_SIZE_IMAGE_CAPTURE:
+                    CAMHAL_LOGDB("Adapter state switch LOADED_REPROCESS_STATE->LOADED_REPROCESS_STATE event = %s",
+                                 printState);
+                    mNextState = LOADED_REPROCESS_STATE;
+                    break;
+                default:
+                    CAMHAL_LOGEB("Adapter state switch LOADED_REPROCESS_STATE Invalid Op! event = %s",
+                                 printState);
+                    ret = INVALID_OPERATION;
+                    break;
+                }
+
+            break;
+
+        case LOADED_REPROCESS_CAPTURE_STATE:
+            switch (operation) {
+                case CAMERA_START_IMAGE_CAPTURE:
+                    CAMHAL_LOGDB("Adapter state switch LOADED_REPROCESS_CAPTURE_STATE->REPROCESS_STATE event = %s",
+                                 printState);
+                    mNextState = REPROCESS_STATE;
+                    break;
+                default:
+                    CAMHAL_LOGEB("Adapter state switch LOADED_REPROCESS_CAPTURE_STATE Invalid Op! event = %s",
+                                 printState);
+                    ret = INVALID_OPERATION;
+                    break;
+            }
             break;
 
         case LOADED_CAPTURE_STATE:
@@ -1923,9 +2035,15 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     break;
 
                 case CAMERA_START_IMAGE_CAPTURE:
-                     CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->CAPTURE_STATE event = 0x%x",
-                                 operation);
+                     CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->CAPTURE_STATE event = %s",
+                                 printState);
                     mNextState = CAPTURE_STATE;
+                    break;
+
+                case CAMERA_USE_BUFFERS_REPROCESS:
+                    CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->->LOADED_REPROCESS_STATE event = %s",
+                                 printState);
+                    mNextState = LOADED_REPROCESS_STATE;
                     break;
 
                 default:
@@ -2213,6 +2331,31 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 }
 
             break;
+
+        case REPROCESS_STATE:
+            switch (operation) {
+                case CAMERA_STOP_IMAGE_CAPTURE:
+                    CAMHAL_LOGDB("Adapter state switch REPROCESS_STATE->PREVIEW_STATE event = %s",
+                                 printState);
+                    mNextState = PREVIEW_STATE;
+                    break;
+                case CAMERA_START_IMAGE_CAPTURE:
+                case CAMERA_USE_BUFFERS_REPROCESS:
+                     CAMHAL_LOGDB("Adapter state switch REPROCESS_STATE->REPROCESS_STATE event = %s",
+                                 printState);
+                    mNextState = REPROCESS_STATE;
+                    break;
+
+                default:
+                    CAMHAL_LOGEB("Adapter state switch REPROCESS_STATE Invalid Op! event = %s",
+                                 printState);
+                    ret = INVALID_OPERATION;
+                    break;
+
+                }
+
+            break;
+
 
         default:
             CAMHAL_LOGEA("Invalid Adapter state!");

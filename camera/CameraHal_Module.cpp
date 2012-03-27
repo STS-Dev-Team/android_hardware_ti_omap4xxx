@@ -365,6 +365,38 @@ int camera_cancel_picture(struct camera_device * device)
     return rv;
 }
 
+int camera_reprocess(struct camera_device * device, const char *params)
+{
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
+
+    LOGV("%s", __FUNCTION__);
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->reprocess(params);
+    return rv;
+}
+
+int camera_cancel_reprocess(struct camera_device * device)
+{
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
+
+    LOGV("%s", __FUNCTION__);
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->cancel_reprocess();
+    return rv;
+}
+
 int camera_set_parameters(struct camera_device * device, const char *params)
 {
     int rv = -EINVAL;
@@ -588,6 +620,10 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_ops->send_command = camera_send_command;
         camera_ops->release = camera_release;
         camera_ops->dump = camera_dump;
+#ifdef OMAP_ENHANCEMENT
+        camera_ops->reprocess = camera_reprocess;
+        camera_ops->cancel_reprocess = camera_cancel_reprocess;
+#endif
 
         *device = &camera_device->base.common;
 

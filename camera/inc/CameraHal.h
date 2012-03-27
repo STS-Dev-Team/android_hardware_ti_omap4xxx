@@ -354,6 +354,7 @@ typedef struct _CameraBuffer {
 
     /* These describe the camera buffer */
     int width;
+    int stride;
     int height;
     const char *format;
 } CameraBuffer;
@@ -878,15 +879,17 @@ class CameraAdapter: public FrameNotifier, public virtual RefBase
 {
 protected:
     enum AdapterActiveStates {
-        INTIALIZED_ACTIVE =     1 << 0,
-        LOADED_PREVIEW_ACTIVE = 1 << 1,
-        PREVIEW_ACTIVE =        1 << 2,
-        LOADED_CAPTURE_ACTIVE = 1 << 3,
-        CAPTURE_ACTIVE =        1 << 4,
-        BRACKETING_ACTIVE =     1 << 5,
-        AF_ACTIVE =             1 << 6,
-        ZOOM_ACTIVE =           1 << 7,
-        VIDEO_ACTIVE =          1 << 8,
+        INTIALIZED_ACTIVE =         1 << 0,
+        LOADED_PREVIEW_ACTIVE =     1 << 1,
+        PREVIEW_ACTIVE =            1 << 2,
+        LOADED_CAPTURE_ACTIVE =     1 << 3,
+        CAPTURE_ACTIVE =            1 << 4,
+        BRACKETING_ACTIVE =         1 << 5,
+        AF_ACTIVE =                 1 << 6,
+        ZOOM_ACTIVE =               1 << 7,
+        VIDEO_ACTIVE =              1 << 8,
+        LOADED_REPROCESS_ACTIVE =   1 << 9,
+        REPROCESS_ACTIVE =          1 << 10,
     };
 public:
     typedef struct
@@ -927,6 +930,8 @@ public:
         CAMERA_STOP_FD                              = 23,
         CAMERA_SWITCH_TO_EXECUTING                  = 24,
         CAMERA_USE_BUFFERS_VIDEO_CAPTURE            = 25,
+        CAMERA_USE_BUFFERS_REPROCESS                = 26,
+        CAMERA_START_REPROCESS                      = 27,
         };
 
     enum CameraMode
@@ -934,25 +939,29 @@ public:
         CAMERA_PREVIEW,
         CAMERA_IMAGE_CAPTURE,
         CAMERA_VIDEO,
-        CAMERA_MEASUREMENT
+        CAMERA_MEASUREMENT,
+        CAMERA_REPROCESS,
         };
 
     enum AdapterState {
-        INTIALIZED_STATE           = INTIALIZED_ACTIVE,
-        LOADED_PREVIEW_STATE       = LOADED_PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        PREVIEW_STATE              = PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        LOADED_CAPTURE_STATE       = LOADED_CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        CAPTURE_STATE              = CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        BRACKETING_STATE           = BRACKETING_ACTIVE | CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE ,
-        AF_STATE                   = AF_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        ZOOM_STATE                 = ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        VIDEO_STATE                = VIDEO_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        VIDEO_AF_STATE             = VIDEO_ACTIVE | AF_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        VIDEO_ZOOM_STATE           = VIDEO_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        VIDEO_LOADED_CAPTURE_STATE = VIDEO_ACTIVE | LOADED_CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        VIDEO_CAPTURE_STATE        = VIDEO_ACTIVE | CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        AF_ZOOM_STATE              = AF_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
-        BRACKETING_ZOOM_STATE      = BRACKETING_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        INTIALIZED_STATE                = INTIALIZED_ACTIVE,
+        LOADED_PREVIEW_STATE            = LOADED_PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        PREVIEW_STATE                   = PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        LOADED_CAPTURE_STATE            = LOADED_CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        CAPTURE_STATE                   = CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        BRACKETING_STATE                = BRACKETING_ACTIVE | CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE ,
+        AF_STATE                        = AF_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        ZOOM_STATE                      = ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        VIDEO_STATE                     = VIDEO_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        VIDEO_AF_STATE                  = VIDEO_ACTIVE | AF_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        VIDEO_ZOOM_STATE                = VIDEO_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        VIDEO_LOADED_CAPTURE_STATE      = VIDEO_ACTIVE | LOADED_CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        VIDEO_CAPTURE_STATE             = VIDEO_ACTIVE | CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        AF_ZOOM_STATE                   = AF_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        BRACKETING_ZOOM_STATE           = BRACKETING_ACTIVE | ZOOM_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        LOADED_REPROCESS_STATE          = LOADED_REPROCESS_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        LOADED_REPROCESS_CAPTURE_STATE  = LOADED_REPROCESS_ACTIVE | LOADED_CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
+        REPROCESS_STATE                 = REPROCESS_ACTIVE | CAPTURE_ACTIVE | PREVIEW_ACTIVE | INTIALIZED_ACTIVE,
     };
 
 
@@ -1206,6 +1215,16 @@ public:
      */
     int dump(int fd) const;
 
+    /**
+     * start a reprocessing operation.
+     */
+    int    reprocess(const char* params);
+
+    /**
+     * cancels current reprocessing operation
+     */
+    int    cancel_reprocess();
+
 
 		status_t storeMetaDataInBuffers(bool enable);
 
@@ -1330,6 +1349,8 @@ private:
     bool setPreferredPreviewRes(const CameraParameters &params, int width, int height);
     void resetPreviewRes(CameraParameters *mParams, int width, int height);
 
+    // Internal __takePicture function - used in public takePicture() and reprocess()
+    int   __takePicture(const char* params);
     //@}
 
 
