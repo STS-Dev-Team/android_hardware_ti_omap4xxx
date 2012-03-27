@@ -398,7 +398,8 @@ public:
     // API
     status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
 
-    status_t flushBuffers();
+    //API to flush the buffers
+    status_t flushBuffers(OMX_U32 port = OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW);
 
     // API
     virtual status_t setFormat(OMX_U32 port, OMXCameraPortParameters &cap);
