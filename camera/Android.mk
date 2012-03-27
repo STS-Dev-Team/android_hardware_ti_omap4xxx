@@ -59,6 +59,7 @@ OMAP4_CAMERA_OMX_SRC:= \
 	OMXCameraAdapter/OMXCameraAdapter.cpp \
 	OMXCameraAdapter/OMXCapabilities.cpp \
 	OMXCameraAdapter/OMXCapture.cpp \
+	OMXCameraAdapter/OMXReprocess.cpp \
 	OMXCameraAdapter/OMXDefaults.cpp \
 	OMXCameraAdapter/OMXExif.cpp \
 	OMXCameraAdapter/OMXFD.cpp \

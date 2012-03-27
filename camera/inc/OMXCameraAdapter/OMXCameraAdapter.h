@@ -366,6 +366,7 @@ public:
             OMX_U32                     mPrevPortIndex;
             OMX_U32                     mImagePortIndex;
             OMX_U32                     mMeasurementPortIndex;
+            OMX_U32                     mVideoInPortIndex;
             OMXCameraPortParameters     mCameraPortParams[MAX_NO_PORTS];
     };
 
@@ -739,7 +740,16 @@ private:
     FILE * parseDCCsubDir(DIR *pDir, char *path);
 
     // Internal buffers
-    status_t initInternalBuffers (void);
+    status_t initInternalBuffers (OMX_U32);
+    status_t deinitInternalBuffers (OMX_U32);
+
+    // Reprocess Methods -- implementation in OMXReprocess.cpp
+    status_t setParametersReprocess(const CameraParameters &params, CameraBuffer* bufs,
+                                  BaseCameraAdapter::AdapterState state);
+    status_t startReprocess();
+    status_t disableReprocess();
+    status_t stopReprocess();
+    status_t UseBuffersReprocess(CameraBuffer *bufArr, int num);
 
     class CommandHandler : public Thread {
         public:
@@ -766,8 +776,9 @@ private:
             enum {
                 COMMAND_EXIT = -1,
                 CAMERA_START_IMAGE_CAPTURE = 0,
-                CAMERA_PERFORM_AUTOFOCUS = 1,
-                CAMERA_SWITCH_TO_EXECUTING
+                CAMERA_PERFORM_AUTOFOCUS,
+                CAMERA_SWITCH_TO_EXECUTING,
+                CAMERA_START_REPROCESS
             };
 
         private:
@@ -1027,6 +1038,7 @@ private:
     unsigned int mPendingPreviewSettings;
     OMX_TI_ANCILLARYDATATYPE* mCaptureAncillaryData;
     OMX_TI_WHITEBALANCERESULTTYPE* mWhiteBalanceData;
+    bool mReprocConfigured;
 
     //Temporal bracketing management data
     bool mBracketingSet;
@@ -1054,6 +1066,8 @@ private:
     Semaphore mStopCaptureSem;
     Semaphore mSwitchToLoadedSem;
     Semaphore mSwitchToExecSem;
+    Semaphore mStopReprocSem;
+    Semaphore mUseReprocessSem;
 
     mutable Mutex mStateSwitchLock;
 

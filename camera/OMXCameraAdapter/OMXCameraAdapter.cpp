@@ -80,6 +80,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mCameraAdapterParameters.mMeasurementPortIndex = OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT;
     //currently not supported use preview port instead
     mCameraAdapterParameters.mVideoPortIndex = OMX_CAMERA_PORT_VIDEO_OUT_VIDEO;
+    mCameraAdapterParameters.mVideoInPortIndex = OMX_CAMERA_PORT_VIDEO_IN_VIDEO;
 
     eError = OMX_Init();
     if (eError != OMX_ErrorNone) {
@@ -180,6 +181,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 
     mCaptureSignalled = false;
     mCaptureConfigured = false;
+    mReprocConfigured = false;
     mRecording = false;
     mWaitingForSnapshot = false;
     mSnapshotCount = 0;
@@ -294,6 +296,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex], 0, sizeof(OMXCameraPortParameters));
+    memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoInPortIndex], 0, sizeof(OMXCameraPortParameters));
 
     // initialize 3A defaults
     mParameters3A.Effect = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_EFFECT, EffLUT);
@@ -983,6 +986,13 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         portCheck.format.image.nStride          =  0;
         portCheck.nBufferSize                   =  portParams.mStride * portParams.mWidth * portParams.mHeight;
         portCheck.nBufferCountActual = portParams.mNumBufs;
+     } else if (OMX_CAMERA_PORT_VIDEO_IN_VIDEO == port) {
+        portCheck.format.video.nFrameWidth      = portParams.mWidth;
+        portCheck.format.video.nStride          = portParams.mStride;
+        portCheck.format.video.nFrameHeight     = portParams.mHeight;
+        portCheck.format.video.eColorFormat     = portParams.mColorFormat;
+        portCheck.format.video.xFramerate       = 30 << 16;
+        portCheck.nBufferCountActual            = portParams.mNumBufs;
     } else {
         CAMHAL_LOGEB("Unsupported port index (%lu)", port);
     }
@@ -1182,6 +1192,11 @@ status_t OMXCameraAdapter::useBuffers(CameraMode mode, CameraBuffer * bufArr, in
             ret = UseBuffersPreviewData(bufArr, num);
             break;
 
+        case CAMERA_REPROCESS:
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoInPortIndex].mNumBufs = num;
+            mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoInPortIndex].mMaxQueueable = queueable;
+            ret = UseBuffersReprocess(bufArr, num);
+            break;
         }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -2464,7 +2479,14 @@ status_t OMXCameraAdapter::takePicture()
         }
     }
 
-    msg.command = CommandHandler::CAMERA_START_IMAGE_CAPTURE;
+    // TODO(XXX): re-using take picture to kick off reprocessing pipe
+    // Need to rethink this approach during reimplementation
+    if (mNextState == REPROCESS_STATE) {
+        msg.command = CommandHandler::CAMERA_START_REPROCESS;
+    } else {
+        msg.command = CommandHandler::CAMERA_START_IMAGE_CAPTURE;
+    }
+
     msg.arg1 = mErrorNotifier;
     ret = mCommandHandler->put(&msg);
 
@@ -2998,11 +3020,36 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterEmptyBufferDone(OMX_IN OMX_HANDL
                                    OMX_IN OMX_BUFFERHEADERTYPE* pBuffHeader)
 {
 
-   LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME;
+    status_t  stat = NO_ERROR;
+    status_t  res1, res2;
+    OMXCameraPortParameters  *pPortParam;
+    CameraFrame::FrameType typeOfFrame = CameraFrame::ALL_FRAMES;
+    unsigned int refCount = 0;
+    unsigned int mask = 0xFFFF;
+    CameraFrame cameraFrame;
+    OMX_TI_PLATFORMPRIVATE *platformPrivate;
 
-   LOG_FUNCTION_NAME_EXIT;
+    res1 = res2 = NO_ERROR;
 
-   return OMX_ErrorNone;
+    if (!pBuffHeader || !pBuffHeader->pBuffer) {
+        CAMHAL_LOGE("NULL Buffer from OMX");
+        return OMX_ErrorNone;
+    }
+
+    pPortParam = &(mCameraAdapterParameters.mCameraPortParams[pBuffHeader->nInputPortIndex]);
+    platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
+
+    if (pBuffHeader->nInputPortIndex == OMX_CAMERA_PORT_VIDEO_IN_VIDEO) {
+        typeOfFrame = CameraFrame::REPROCESS_INPUT_FRAME;
+        mask = (unsigned int)CameraFrame::REPROCESS_INPUT_FRAME;
+
+        stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+   }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return OMX_ErrorNone;
 }
 
 static void debugShowFPS()
@@ -3518,8 +3565,14 @@ bool OMXCameraAdapter::CommandHandler::Handler()
             }
             case CommandHandler::CAMERA_SWITCH_TO_EXECUTING:
             {
-              stat = mCameraAdapter->doSwitchToExecuting();
-              break;
+                stat = mCameraAdapter->doSwitchToExecuting();
+                break;
+            }
+            case CommandHandler::CAMERA_START_REPROCESS:
+            {
+                stat = mCameraAdapter->startReprocess();
+                stat = mCameraAdapter->startImageCapture(false);
+                break;
             }
         }
 
@@ -3670,10 +3723,12 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
     mUsePreviewDataSem.Create(0);
     mUsePreviewSem.Create(0);
     mUseCaptureSem.Create(0);
+    mUseReprocessSem.Create(0);
     mStartPreviewSem.Create(0);
     mStopPreviewSem.Create(0);
     mStartCaptureSem.Create(0);
     mStopCaptureSem.Create(0);
+    mStopReprocSem.Create(0);
     mSwitchToLoadedSem.Create(0);
     mCaptureSem.Create(0);
 
