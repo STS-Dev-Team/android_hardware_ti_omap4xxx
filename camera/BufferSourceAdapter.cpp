@@ -429,7 +429,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     LOG_FUNCTION_NAME;
     status_t err;
     const int lnumBufs = 1;
-    int format, stride;
+    int format;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     buffer_handle_t *handle;
 
@@ -442,7 +442,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
         return NULL;
     }
 
-    err = mBufferSource->update_and_get_buffer(mBufferSource, &handle, &stride);
+    err = mBufferSource->update_and_get_buffer(mBufferSource, &handle, &mBuffers[0].stride);
     if (err != 0) {
         CAMHAL_LOGEB("update and get buffer failed: %s (%d)", strerror(-err), -err);
         if ( ENODEV == err ) {

@@ -304,6 +304,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     // shots
     inCaptureState = (CAPTURE_ACTIVE & mAdapterState) && (CAPTURE_ACTIVE & mNextState);
     if ((mPendingCaptureSettings & ~SetExpBracket) && !inCaptureState) {
+        disableReprocess();
         disableImagePort();
         if ( NULL != mReleaseImageBuffersCallback ) {
             mReleaseImageBuffersCallback(mReleaseData);
@@ -479,8 +480,6 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
             ret = setExposureBracketing(evValues, evValues2, evCount, frameCount);
         }
     }
-
-    if (0) initInternalBuffers();
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1052,6 +1051,29 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         }
     }
 
+    // Choose proper single preview mode for cpcapture capture (reproc or hs)
+    if (( NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mCapMode)) {
+        OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE singlePrevMode;
+        OMX_INIT_STRUCT_PTR (&singlePrevMode, OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE);
+        if (mAdapterState == CAPTURE_STATE) {
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
+        } else if (mAdapterState == REPROCESS_STATE) {
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_Reprocess;
+        } else {
+            CAMHAL_LOGE("Wrong state trying to start a capture in CPCAM mode?");
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
+        }
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                (OMX_INDEXTYPE) OMX_TI_IndexConfigSinglePreviewMode,
+                                &singlePrevMode);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while configuring single preview mode 0x%x", eError);
+            ret = ErrorUtils::omxToAndroidError(eError);
+        } else {
+            CAMHAL_LOGDA("single preview mode configured successfully");
+        }
+    }
+
     if ( NO_ERROR == ret ) {
         if (mPendingCaptureSettings & SetRotation) {
             mPendingCaptureSettings &= ~SetRotation;
@@ -1124,6 +1146,8 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
 
         while ((mBurstFramesQueued < mBurstFramesAccum) && (index < capData->mNumBufs)) {
             if (capData->mStatus[index] == OMXCameraPortParameters::IDLE) {
+                CAMHAL_LOGDB("Queuing buffer on Capture port - %p",
+                             capData->mBufferHeader[index]->pBuffer);
                 capData->mStatus[index] = OMXCameraPortParameters::FILL;
                 eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
                             (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
@@ -1135,9 +1159,9 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
     } else if ( NO_ERROR == ret ) {
         ///Queue all the buffers on capture port
         for ( int index = 0 ; index < capData->mMaxQueueable ; index++ ) {
-            CAMHAL_LOGDB("Queuing buffer on Capture port - 0x%x",
-                         ( unsigned int ) capData->mBufferHeader[index]->pBuffer);
             if (mBurstFramesQueued < mBurstFramesAccum) {
+                CAMHAL_LOGDB("Queuing buffer on Capture port - %p",
+                              capData->mBufferHeader[index]->pBuffer);
                 capData->mStatus[index] = OMXCameraPortParameters::FILL;
                 eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
                         (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
@@ -1249,6 +1273,11 @@ status_t OMXCameraAdapter::stopImageCapture()
         goto EXIT;
     }
 
+    // TODO(XXX): Reprocessing is currently piggy-backing capture commands
+    if (mAdapterState == REPROCESS_STATE) {
+        ret = stopReprocess();
+    }
+
     //Disable the callback first
     mWaitingForSnapshot = false;
     mSnapshotCount = 0;
@@ -1317,6 +1346,16 @@ status_t OMXCameraAdapter::stopImageCapture()
         Mutex::Autolock lock(mFrameCountMutex);
         mFrameCount = 0;
         mFirstFrameCondition.broadcast();
+    }
+
+    // Stop is always signalled externally in CPCAM mode
+    // We need to make sure we really stop
+    if ((mCapMode == CP_CAM)) {
+        disableReprocess();
+        disableImagePort();
+        if ( NULL != mReleaseImageBuffersCallback ) {
+            mReleaseImageBuffersCallback(mReleaseData);
+        }
     }
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
@@ -1401,6 +1440,8 @@ status_t OMXCameraAdapter::disableImagePort(){
         goto EXIT;
     }
 
+    deinitInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
+
     if (mRawCapture) {
 
         ///Register for Video port Disable event
@@ -1439,16 +1480,15 @@ EXIT:
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
-status_t OMXCameraAdapter::initInternalBuffers(void)
+status_t OMXCameraAdapter::initInternalBuffers(OMX_U32 portIndex)
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
-    int ion_fd;
     int index = 0;
     OMX_TI_PARAM_USEBUFFERDESCRIPTOR bufferdesc;
 
     /* Indicate to Ducati that we're planning to use dynamically-mapped buffers */
     OMX_INIT_STRUCT_PTR (&bufferdesc, OMX_TI_PARAM_USEBUFFERDESCRIPTOR);
-    bufferdesc.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+    bufferdesc.nPortIndex = portIndex;
     bufferdesc.bEnabled = OMX_FALSE;
     bufferdesc.eBufferType = OMX_TI_BufferTypePhysicalPageList;
 
@@ -1460,14 +1500,12 @@ status_t OMXCameraAdapter::initInternalBuffers(void)
         return -EINVAL;
     }
 
-    ion_fd = ion_open ();
-
     CAMHAL_LOGDA("Initializing internal buffers");
     do {
         OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferalloc;
         OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferallocset;
         OMX_INIT_STRUCT_PTR (&bufferalloc, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
-        bufferalloc.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        bufferalloc.nPortIndex = portIndex;
         bufferalloc.nIndex = index;
 
         eError = OMX_GetParameter (mCameraAdapterParameters.mHandleComp,
@@ -1488,7 +1526,7 @@ status_t OMXCameraAdapter::initInternalBuffers(void)
         bufferalloc.eBufType = OMX_TI_BufferTypeHardwareReserved1D;
 
         OMX_INIT_STRUCT_PTR (&bufferallocset, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
-        bufferallocset.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        bufferallocset.nPortIndex = portIndex;
         bufferallocset.nIndex = index;
         bufferallocset.eBufType = OMX_TI_BufferTypeHardwareReserved1D;
         bufferallocset.nAllocWidth = bufferalloc.nAllocWidth;
@@ -1499,6 +1537,7 @@ status_t OMXCameraAdapter::initInternalBuffers(void)
                 &bufferallocset);
         if (eError != OMX_ErrorNone) {
             CAMHAL_LOGE("SetParameter failed, error=%08x", eError);
+            if (eError == OMX_ErrorNoMore) return NO_ERROR;
             break;
         }
 
@@ -1510,6 +1549,27 @@ status_t OMXCameraAdapter::initInternalBuffers(void)
     CAMHAL_LOGEA("Ducati requested too many (>10) internal buffers");
 
     return -EINVAL;
+}
+
+status_t OMXCameraAdapter::deinitInternalBuffers(OMX_U32 portIndex)
+{
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_TI_PARAM_USEBUFFERDESCRIPTOR bufferdesc;
+
+    OMX_INIT_STRUCT_PTR (&bufferdesc, OMX_TI_PARAM_USEBUFFERDESCRIPTOR);
+    bufferdesc.nPortIndex = portIndex;
+    bufferdesc.bEnabled = OMX_FALSE;
+    bufferdesc.eBufferType = OMX_TI_BufferTypeDefault;
+
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE) OMX_TI_IndexUseBufferDescriptor,
+            &bufferdesc);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+        return -EINVAL;
+    }
+
+    return ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
@@ -1581,6 +1641,8 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         }
     }
 
+    initInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
+
     ///Register for Image port ENABLE event
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
                            OMX_EventCmdComplete,
@@ -1604,8 +1666,10 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 
         domxUseGrallocHandles.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
         if (bufArr[0].type == CAMERA_BUFFER_ANW) {
+            CAMHAL_LOGD ("Using ANW Buffers");
             domxUseGrallocHandles.bEnable = OMX_TRUE;
         } else {
+            CAMHAL_LOGD ("Using ION Buffers");
             domxUseGrallocHandles.bEnable = OMX_FALSE;
         }
 

@@ -220,6 +220,7 @@ protected:
     KeyedVector<int, frame_callback> mFrameSubscribers;
     KeyedVector<int, frame_callback> mFrameDataSubscribers;
     KeyedVector<int, frame_callback> mVideoSubscribers;
+    KeyedVector<int, frame_callback> mVideoInSubscribers;
     KeyedVector<int, frame_callback> mImageSubscribers;
     KeyedVector<int, frame_callback> mRawSubscribers;
     KeyedVector<int, event_callback> mFocusSubscribers;
@@ -254,6 +255,11 @@ protected:
     int mPreviewDataBuffersCount;
     size_t mPreviewDataBuffersLength;
     mutable Mutex mPreviewDataBufferLock;
+
+    //Video input buffer management data (used for reproc pipe)
+    CameraBuffer *mVideoInBuffers;
+    KeyedVector<CameraBuffer *, int> mVideoInBuffersAvailable;
+    mutable Mutex mVideoInBufferLock;
 
     TIUTILS::MessageQueue mFrameQ;
     TIUTILS::MessageQueue mAdapterQ;
