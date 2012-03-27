@@ -379,7 +379,9 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
         if ( 0 == refCount )
             {
 #ifdef CAMERAHAL_DEBUG
-            if(mBuffersWithDucati.indexOfKey((int)camera_buffer_get_omx_ptr(frameBuf))>=0)
+            if((mBuffersWithDucati.indexOfKey((int)camera_buffer_get_omx_ptr(frameBuf)) >= 0) &&
+               ((CameraFrame::PREVIEW_FRAME_SYNC == frameType) ||
+                 (CameraFrame::SNAPSHOT_FRAME == frameType)))
                 {
                 LOGE("Buffer already with Ducati!! 0x%x", frameBuf);
                 for(int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
@@ -1855,6 +1857,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = INTIALIZED_STATE;
                     break;
                 case CAMERA_STOP_BRACKET_CAPTURE:
+                case CAMERA_STOP_IMAGE_CAPTURE:
                     ret = INVALID_OPERATION;
                     break;
                 case CAMERA_CANCEL_AUTOFOCUS:
@@ -1948,6 +1951,13 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     CAMHAL_LOGDB("Adapter state switch PREVIEW_ACTIVE->PREVIEW_ACTIVE event = %s",
                             printState);
                     mNextState = PREVIEW_STATE;
+                    break;
+
+                case CAMERA_STOP_IMAGE_CAPTURE:
+                case CAMERA_STOP_BRACKET_CAPTURE:
+                    CAMHAL_LOGDB("Adapter state switch PREVIEW_ACTIVE->PREVIEW_ACTIVE event = %s",
+                                 printState);
+                    ret = INVALID_OPERATION;
                     break;
 
                 default:
