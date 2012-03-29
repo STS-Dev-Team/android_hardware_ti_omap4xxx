@@ -1105,36 +1105,34 @@ status_t CameraHal::allocPreviewBufs(int width, int height, const char* previewF
                                                                     mPreviewLength,
                                                                     buffercount);
 
-	if (NULL == mPreviewBufs ) {
+        if (NULL == mPreviewBufs ) {
             CAMHAL_LOGEA("Couldn't allocate preview buffers");
             return NO_MEMORY;
-         }
+        }
 
         mPreviewOffsets = (uint32_t *) mDisplayAdapter->getOffsets();
         if ( NULL == mPreviewOffsets ) {
             CAMHAL_LOGEA("Buffer mapping failed");
             return BAD_VALUE;
-         }
+        }
 
         mPreviewFd = mDisplayAdapter->getFd();
         if ( -1 == mPreviewFd ) {
             CAMHAL_LOGEA("Invalid handle");
             return BAD_VALUE;
-          }
+        }
 
         mBufProvider = (BufferProvider*) mDisplayAdapter.get();
 
         ret = mDisplayAdapter->maxQueueableBuffers(max_queueable);
         if (ret != NO_ERROR) {
             return ret;
-         }
-
+        }
     }
 
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
-
 }
 
 status_t CameraHal::freePreviewBufs()

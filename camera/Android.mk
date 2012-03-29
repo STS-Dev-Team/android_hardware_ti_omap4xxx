@@ -40,38 +40,38 @@ endif
 CAMERAHAL_CFLAGS += -DLOG_TAG=\"CameraHal\"
 
 OMAP4_CAMERA_HAL_SRC := \
-	CameraHal_Module.cpp \
-	CameraHal.cpp \
-	CameraHalUtilClasses.cpp \
-	AppCallbackNotifier.cpp \
-	ANativeWindowDisplayAdapter.cpp \
-	CameraProperties.cpp \
-	BaseCameraAdapter.cpp \
-	MemoryManager.cpp \
-	Encoder_libjpeg.cpp \
-	SensorListener.cpp  \
-	NV12_resize.c
+    CameraHal_Module.cpp \
+    CameraHal.cpp \
+    CameraHalUtilClasses.cpp \
+    AppCallbackNotifier.cpp \
+    ANativeWindowDisplayAdapter.cpp \
+    CameraProperties.cpp \
+    BaseCameraAdapter.cpp \
+    MemoryManager.cpp \
+    Encoder_libjpeg.cpp \
+    SensorListener.cpp  \
+    NV12_resize.c
 
 OMAP4_CAMERA_COMMON_SRC:= \
-	CameraParameters.cpp \
-	TICameraParameters.cpp \
-	CameraHalCommon.cpp
+    CameraParameters.cpp \
+    TICameraParameters.cpp \
+    CameraHalCommon.cpp
 
 OMAP4_CAMERA_OMX_SRC:= \
-	OMXCameraAdapter/OMX3A.cpp \
-	OMXCameraAdapter/OMXAlgo.cpp \
-	OMXCameraAdapter/OMXCameraAdapter.cpp \
-	OMXCameraAdapter/OMXCapabilities.cpp \
-	OMXCameraAdapter/OMXCapture.cpp \
-	OMXCameraAdapter/OMXDefaults.cpp \
-	OMXCameraAdapter/OMXExif.cpp \
-	OMXCameraAdapter/OMXFD.cpp \
-	OMXCameraAdapter/OMXFocus.cpp \
-	OMXCameraAdapter/OMXZoom.cpp \
-	OMXCameraAdapter/OMXDccDataSave.cpp \
+    OMXCameraAdapter/OMX3A.cpp \
+    OMXCameraAdapter/OMXAlgo.cpp \
+    OMXCameraAdapter/OMXCameraAdapter.cpp \
+    OMXCameraAdapter/OMXCapabilities.cpp \
+    OMXCameraAdapter/OMXCapture.cpp \
+    OMXCameraAdapter/OMXDefaults.cpp \
+    OMXCameraAdapter/OMXExif.cpp \
+    OMXCameraAdapter/OMXFD.cpp \
+    OMXCameraAdapter/OMXFocus.cpp \
+    OMXCameraAdapter/OMXZoom.cpp \
+    OMXCameraAdapter/OMXDccDataSave.cpp \
 
 OMAP4_CAMERA_USB_SRC:= \
-	V4LCameraAdapter/V4LCameraAdapter.cpp \
+    V4LCameraAdapter/V4LCameraAdapter.cpp \
     V4LCameraAdapter/V4LCapabilities.cpp \
 
 #
@@ -83,9 +83,9 @@ ifeq ($(OMAP4_CAMERA_HAL_USES),OMX)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
-	$(OMAP4_CAMERA_HAL_SRC) \
-	$(OMAP4_CAMERA_OMX_SRC) \
-	$(OMAP4_CAMERA_COMMON_SRC)
+    $(OMAP4_CAMERA_HAL_SRC) \
+    $(OMAP4_CAMERA_OMX_SRC) \
+    $(OMAP4_CAMERA_COMMON_SRC)
 
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/ \
@@ -140,9 +140,9 @@ include $(CLEAR_VARS)
 CAMERAHAL_CFLAGS += -DV4L_CAMERA_ADAPTER
 
 LOCAL_SRC_FILES:= \
-	$(OMAP4_CAMERA_HAL_SRC) \
-	$(OMAP4_CAMERA_USB_SRC) \
-	$(OMAP4_CAMERA_COMMON_SRC)
+    $(OMAP4_CAMERA_HAL_SRC) \
+    $(OMAP4_CAMERA_USB_SRC) \
+    $(OMAP4_CAMERA_COMMON_SRC)
 
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/ \
@@ -185,10 +185,10 @@ ifeq ($(OMAP4_CAMERA_HAL_USES),ALL)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= \
-	$(OMAP4_CAMERA_HAL_SRC) \
-	$(OMAP4_CAMERA_OMX_SRC) \
-	$(OMAP4_CAMERA_USB_SRC) \
-	$(OMAP4_CAMERA_COMMON_SRC)
+    $(OMAP4_CAMERA_HAL_SRC) \
+    $(OMAP4_CAMERA_OMX_SRC) \
+    $(OMAP4_CAMERA_USB_SRC) \
+    $(OMAP4_CAMERA_COMMON_SRC)
 
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/ \
