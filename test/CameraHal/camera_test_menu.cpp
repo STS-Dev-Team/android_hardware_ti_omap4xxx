@@ -1135,165 +1135,191 @@ int startPreview() {
 }
 
 int getParametersFromCapabilities() {
+    const char *valstr = NULL;
+
     params.unflatten(camera->getParameters());
 
-    if (params.get(KEY_AUTOCONVERGENCE_MODE_VALUES) != NULL) {
-        strcpy(autoconvergencestr, params.get(KEY_AUTOCONVERGENCE_MODE_VALUES));
+    valstr = params.get(KEY_AUTOCONVERGENCE_MODE_VALUES);
+    if (NULL != valstr) {
+        strcpy(autoconvergencestr, valstr);
         getSupportedParameters(autoconvergencestr,&numAutoConvergence,(char***)&autoconvergencemode);
     } else {
         printf("no supported parameteters for autoconvergence\n\t");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_EFFECTS) != NULL) {
-        strcpy(effectssStr, params.get(CameraParameters::KEY_SUPPORTED_EFFECTS));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_EFFECTS);
+    if (NULL != valstr) {
+        strcpy(effectssStr, valstr);
         getSupportedParameters(effectssStr, &numEffects, (char***)&effectss);
     } else {
         printf("Color effects are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_ANTIBANDING) != NULL) {
-        strcpy(antibandStr, params.get(CameraParameters::KEY_SUPPORTED_ANTIBANDING));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_ANTIBANDING);
+    if (NULL != valstr) {
+        strcpy(antibandStr, valstr);
         getSupportedParameters(antibandStr, &numAntibanding, (char***)&antiband);
     } else {
         printf("Antibanding not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE) != NULL) {
-        strcpy(awbStr, params.get(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE);
+    if (NULL != valstr) {
+        strcpy(awbStr, valstr);
         getSupportedParameters(awbStr, &numawb, (char***)&awb);
     } else {
         printf("White balance is not supported\n");
     }
 
-    if (strcmp(params.get(KEY_S3D_PRV_FRAME_LAYOUT_VALUES),"none") != 0) {
-        strcpy(layoutstr, params.get(KEY_S3D_PRV_FRAME_LAYOUT_VALUES));
+    valstr = params.get(KEY_S3D_PRV_FRAME_LAYOUT_VALUES);
+    if ((NULL != valstr) && (0 != strcmp(valstr, "none"))) {
+        strcpy(layoutstr, valstr);
         getSupportedParameters(layoutstr,&numLay,(char***)&stereoLayout);
     } else {
         printf("layout is not supported\n");
     }
 
-    if(strcmp(params.get(KEY_S3D_CAP_FRAME_LAYOUT_VALUES),"none") != 0) {
-        strcpy(capturelayoutstr, params.get(KEY_S3D_CAP_FRAME_LAYOUT_VALUES));
+    valstr = params.get(KEY_S3D_CAP_FRAME_LAYOUT_VALUES);
+    if ((NULL != valstr) && (0 != strcmp(valstr, "none"))) {
+        strcpy(capturelayoutstr, valstr);
         getSupportedParameters(capturelayoutstr,&numCLay,(char***)&stereoCapLayout);
     } else {
         printf("capture layout is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_SCENE_MODES) != NULL) {
-        strcpy(sceneStr, params.get(CameraParameters::KEY_SUPPORTED_SCENE_MODES));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_SCENE_MODES);
+    if (NULL != valstr) {
+        strcpy(sceneStr, valstr);
         getSupportedParameters(sceneStr, &numscene, (char***)&scene);
     } else {
         printf("Scene modes are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_FOCUS_MODES) != NULL) {
-        strcpy(focusStr, params.get(CameraParameters::KEY_SUPPORTED_FOCUS_MODES));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_FOCUS_MODES);
+    if (NULL != valstr) {
+        strcpy(focusStr, valstr);
         getSupportedParameters(focusStr, &numfocus, (char***)&focus);
     } else {
         printf("Focus modes are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_FLASH_MODES) != NULL) {
-        strcpy(flashStr, params.get(CameraParameters::KEY_SUPPORTED_FLASH_MODES));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_FLASH_MODES);
+    if (NULL != valstr) {
+        strcpy(flashStr, valstr);
         getSupportedParameters(flashStr, &numflash, (char***)&flash);
     } else {
         printf("Flash modes are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
-        strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES);
+    if (NULL != valstr) {
+        strcpy(VcaptureSizeStr, valstr);
         getSupportedParametersVideoCaptureSize(VcaptureSizeStr, &numVcaptureSize, VcaptureSize, lenght_Vcapture_size);
     } else {
         printf("Preview sizes are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE) != NULL) {
-        strcpy(fpsstr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE);
+    if (NULL != valstr) {
+        strcpy(fpsstr, valstr);
         getSupportedParametersfps(fpsstr, &numfps);
     } else {
         printf("Preview fps range is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS) != NULL) {
-        strcpy(previewFormatStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS);
+    if (NULL != valstr) {
+        strcpy(previewFormatStr, valstr);
         getSupportedParameters(previewFormatStr, &numpreviewFormat, (char ***)&previewFormatArray);
     } else {
         printf("Preview formats are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS) != NULL) {
-        strcpy(pictureFormatStr, params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS);
+    if (NULL != valstr) {
+        strcpy(pictureFormatStr, valstr);
         getSupportedParameters(pictureFormatStr, &numpictureFormat, (char ***)&pictureFormatArray);
     } else {
         printf("Picture formats are not supported\n");
     }
 
-    if (params.get("exposure-mode-values") != NULL) {
-        strcpy(exposureModeStr, params.get("exposure-mode-values"));
+    valstr = params.get("exposure-mode-values");
+    if (NULL != valstr) {
+        strcpy(exposureModeStr, valstr);
         getSupportedParameters(exposureModeStr, &numExposureMode, (char***)&exposureMode);
     } else {
         printf("Exposure modes are not supported\n");
     }
 
-    if (params.get("iso-mode-values") != NULL) {
-        strcpy(isoModeStr, params.get("iso-mode-values"));
+    valstr = params.get("iso-mode-values");
+    if (NULL != valstr) {
+        strcpy(isoModeStr, valstr);
         getSupportedParameters(isoModeStr, &numisoMode , (char***)&isoMode);
     } else {
         printf("iso modes are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES) != NULL) {
-        strcpy(thumbnailSizeStr, params.get(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES));
+    valstr = params.get(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES);
+    if (NULL != valstr) {
+        strcpy(thumbnailSizeStr, valstr);
         getSupportedParametersThumbnailSize(thumbnailSizeStr, &numthumbnailSize, thumbnailSize, length_thumbnailSize);
     } else {
         printf("Thumbnail sizes are not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED) != NULL) {
-        strcpy(vstabstr, params.get(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED));
+    valstr = params.get(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED);
+    if (NULL != valstr) {
+        strcpy(vstabstr, valstr);
     } else {
         printf("VSTAB is not supported\n");
     }
 
-    if (params.get("vnf-supported") != NULL) {
-        strcpy(vnfstr, params.get("vnf-supported"));
+    valstr = params.get("vnf-supported");
+    if (NULL != valstr) {
+        strcpy(vnfstr, valstr);
     } else {
         printf("VNF is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED) != NULL) {
-        strcpy(AutoExposureLockstr, params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED));
+    valstr = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED);
+    if (NULL != valstr) {
+        strcpy(AutoExposureLockstr, valstr);
     } else {
         printf("AutoExposureLock is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED) != NULL) {
-        strcpy(AutoWhiteBalanceLockstr, params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED));
+    valstr = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED);
+    if (NULL != valstr) {
+        strcpy(AutoWhiteBalanceLockstr, valstr);
     } else {
         printf("AutoWhiteBalanceLock is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_ZOOM_SUPPORTED) != NULL) {
-        strcpy(zoomstr, params.get(CameraParameters::KEY_ZOOM_SUPPORTED));
+    valstr = params.get(CameraParameters::KEY_ZOOM_SUPPORTED);
+    if (NULL != valstr) {
+        strcpy(zoomstr, valstr);
     } else {
         printf("Zoom is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_SMOOTH_ZOOM_SUPPORTED) != NULL) {
-        strcpy(smoothzoomstr, params.get(CameraParameters::KEY_SMOOTH_ZOOM_SUPPORTED));
+    valstr = params.get(CameraParameters::KEY_SMOOTH_ZOOM_SUPPORTED);
+    if (NULL != valstr) {
+        strcpy(smoothzoomstr, valstr);
     } else {
         printf("SmoothZoom is not supported\n");
     }
 
-    if (params.get("mode-values") != NULL) {
-        strcpy(modevaluesstr, params.get("mode-values"));
+    valstr = params.get("mode-values");
+    if (NULL != valstr) {
+        strcpy(modevaluesstr, valstr);
         getSupportedParameters(modevaluesstr, &nummodevalues , (char***)&modevalues);
     } else {
         printf("Mode values is not supported\n");
     }
 
-    if (params.get(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED) != NULL) {
-        strcpy(videosnapshotstr, params.get(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED));
+    valstr = params.get(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED);
+    if (NULL != valstr) {
+        strcpy(videosnapshotstr, valstr);
     } else {
         printf("Video Snapshot is not supported\n");
     }
@@ -1394,7 +1420,16 @@ void getSizeParametersFromCapabilities() {
 int getDefaultParameter(const char* val, int numOptions,  char **array) {
     int cnt = 0;
 
+    if ((NULL == val) || (NULL == array)) {
+        printf("Some default parameters are not valid");
+        return 0;
+    }
+
     for(cnt=0;cnt<numOptions;cnt++) {
+        if (NULL == array[cnt]) {
+            printf("Some parameter arrays are not valid");
+            continue;
+        }
         if (strcmp(val, array[cnt]) ==0 ) {
             return cnt;
         }
@@ -1947,6 +1982,7 @@ int functional_menu() {
     char area2[MAX_LINES][MAX_SYMBOLS+1];
     int j = 0;
     int k = 0;
+    const char *valstr = NULL;
 
     memset(area1, '\0', MAX_LINES*(MAX_SYMBOLS+1));
     memset(area2, '\0', MAX_LINES*(MAX_SYMBOLS+1));
@@ -2828,13 +2864,14 @@ int functional_menu() {
             break;
 
         case '{':
-            if ( strcmp(params.get(KEY_S3D2D_PREVIEW_MODE), "off") == 0 )
+            valstr = params.get(KEY_S3D2D_PREVIEW_MODE);
+            if ( (NULL != valstr) && (0 == strcmp(valstr, "on")) )
                 {
-                params.set(KEY_S3D2D_PREVIEW_MODE, "on");
+                params.set(KEY_S3D2D_PREVIEW_MODE, "off");
                 }
             else
                 {
-                params.set(KEY_S3D2D_PREVIEW_MODE, "off");
+                params.set(KEY_S3D2D_PREVIEW_MODE, "on");
                 }
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
