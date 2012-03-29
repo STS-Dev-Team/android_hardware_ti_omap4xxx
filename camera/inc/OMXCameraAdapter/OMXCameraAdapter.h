@@ -118,27 +118,27 @@ namespace android {
 #define OMX_CAMERA_PORT_IMAGE_OUT_IMAGE (OMX_CAMERA_PORT_IMAGE_START + 0)
 
 
-#define OMX_INIT_STRUCT(_s_, _name_)	\
-    memset(&(_s_), 0x0, sizeof(_name_));	\
-    (_s_).nSize = sizeof(_name_);		\
-    (_s_).nVersion.s.nVersionMajor = 0x1;	\
-    (_s_).nVersion.s.nVersionMinor = 0x1;	\
-    (_s_).nVersion.s.nRevision = 0x0;		\
+#define OMX_INIT_STRUCT(_s_, _name_)       \
+    memset(&(_s_), 0x0, sizeof(_name_));   \
+    (_s_).nSize = sizeof(_name_);          \
+    (_s_).nVersion.s.nVersionMajor = 0x1;  \
+    (_s_).nVersion.s.nVersionMinor = 0x1;  \
+    (_s_).nVersion.s.nRevision = 0x0;      \
     (_s_).nVersion.s.nStep = 0x0
 
 #define OMX_INIT_STRUCT_PTR(_s_, _name_)   \
-    memset((_s_), 0x0, sizeof(_name_));         \
-    (_s_)->nSize = sizeof(_name_);              \
-    (_s_)->nVersion.s.nVersionMajor = 0x1;      \
-    (_s_)->nVersion.s.nVersionMinor = 0x1;      \
-    (_s_)->nVersion.s.nRevision = 0x0;          \
+    memset((_s_), 0x0, sizeof(_name_));    \
+    (_s_)->nSize = sizeof(_name_);         \
+    (_s_)->nVersion.s.nVersionMajor = 0x1; \
+    (_s_)->nVersion.s.nVersionMinor = 0x1; \
+    (_s_)->nVersion.s.nRevision = 0x0;     \
     (_s_)->nVersion.s.nStep = 0x0
 
-#define GOTO_EXIT_IF(_CONDITION,_ERROR) {                                       \
-    if ((_CONDITION)) {                                                         \
-        eError = (_ERROR);                                                      \
-        goto EXIT;                                                              \
-    }                                                                           \
+#define GOTO_EXIT_IF(_CONDITION,_ERROR) {  \
+    if ((_CONDITION)) {                    \
+        eError = (_ERROR);                 \
+        goto EXIT;                         \
+    }                                      \
 }
 
 const int64_t kCameraBufferLatencyNs = 250000000LL; // 250 ms

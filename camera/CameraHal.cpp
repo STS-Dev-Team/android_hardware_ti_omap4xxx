@@ -1175,21 +1175,19 @@ status_t CameraHal::allocPreviewBufs(int width, int height, const char* previewF
         if ( NULL == mPreviewOffsets ) {
             CAMHAL_LOGEA("Buffer mapping failed");
             return BAD_VALUE;
-         }
+        }
 
         mBufProvider = (BufferProvider*) mDisplayAdapter.get();
 
         ret = mDisplayAdapter->maxQueueableBuffers(max_queueable);
         if (ret != NO_ERROR) {
             return ret;
-         }
-
+        }
     }
 
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
-
 }
 
 status_t CameraHal::freePreviewBufs()

@@ -263,8 +263,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("command handler thread already runnning!!");
             ret = NO_ERROR;
-        } else
-        {
+        } else {
             CAMHAL_LOGEA("Couldn't run command handlerthread");
             return ret;
         }
@@ -286,8 +285,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("omx callback handler thread already runnning!!");
             ret = NO_ERROR;
-        }else
-        {
+        } else {
             CAMHAL_LOGEA("Couldn't run omx callback handler thread");
             return ret;
         }

@@ -745,7 +745,7 @@ public:
     status_t initSharedVideoBuffers(CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count, CameraBuffer *vidBufs);
     status_t releaseRecordingFrame(const void *opaque);
 
-	status_t useMetaDataBufferMode(bool enable);
+    status_t useMetaDataBufferMode(bool enable);
 
     void EncoderDoneCb(void*, void*, CameraFrame::FrameType type, void* cookie1, void* cookie2, void *cookie3);
 
@@ -1231,7 +1231,7 @@ public:
     int    cancel_reprocess();
 
 
-		status_t storeMetaDataInBuffers(bool enable);
+    status_t storeMetaDataInBuffers(bool enable);
 
      //@}
 
