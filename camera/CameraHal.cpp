@@ -378,15 +378,6 @@ int CameraHal::setParameters(const CameraParameters& params)
                 }
             }
 
-        params.getPreviewSize(&w, &h);
-        if (w == -1 && h == -1) {
-            CAMHAL_LOGEA("Unable to get preview size");
-            return BAD_VALUE;
-        }
-
-        int oldWidth, oldHeight;
-        mParameters.getPreviewSize(&oldWidth, &oldHeight);
-
         int orientation =0;
         if((valstr = params.get(TICameraParameters::KEY_SENSOR_ORIENTATION)) != NULL)
             {
@@ -404,52 +395,39 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.set(TICameraParameters::KEY_SENSOR_ORIENTATION, valstr);
             }
 
-        if ( (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
-                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES)))
-                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES)))
-                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES))) ) {
-            CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
+        params.getPreviewSize(&w, &h);
+        if (w == -1 && h == -1) {
+            CAMHAL_LOGEA("Unable to get preview size");
             return BAD_VALUE;
-        } else {
-            mParameters.setPreviewSize(w, h);
         }
 
-        if ( ( oldWidth != w ) || ( oldHeight != h ) )
-            {
-            restartPreviewRequired |= true;
-            }
-
-        CAMHAL_LOGDB("PreviewResolution by App %d x %d", w, h);
+        mVideoWidth = w;
+        mVideoHeight = h;
 
         // Handle RECORDING_HINT to Set/Reset Video Mode Parameters
         valstr = params.get(CameraParameters::KEY_RECORDING_HINT);
         if(valstr != NULL)
             {
+            CAMHAL_LOGDB("Recording Hint is set to %s", valstr);
             if(strcmp(valstr, CameraParameters::TRUE) == 0)
                 {
-                CAMHAL_LOGDB("Recording Hint is set to %s", valstr);
-                mParameters.set(CameraParameters::KEY_RECORDING_HINT, valstr);
-                int w, h;
-
-                params.getPreviewSize(&w, &h);
-                CAMHAL_LOGVB("%s Preview Width=%d Height=%d\n", __FUNCTION__, w, h);
-                //HACK FOR MMS
-                mVideoWidth = w;
-                mVideoHeight = h;
-                CAMHAL_LOGVB("%s Video Width=%d Height=%d\n", __FUNCTION__, mVideoWidth, mVideoHeight);
+                CAMHAL_LOGVB("Video Resolution: %d x %d", mVideoWidth, mVideoHeight);
                 if (!mVTCUseCase) {
-                    restartPreviewRequired = setPreferredPreviewRes(params, w, h);
-                    mParameters.getPreviewSize(&w, &h);
-                    CAMHAL_LOGVB("%s Preview Width=%d Height=%d\n", __FUNCTION__, w, h);
+                    int maxFPS, minFPS;
+
+                    params.getPreviewFpsRange(&minFPS, &maxFPS);
+                    maxFPS /= CameraHal::VFR_SCALE;
+                    if ( ( maxFPS <= SW_SCALING_FPS_LIMIT ) ) {
+                        getPreferredPreviewRes(&w, &h);
+                    }
                 }
+                mParameters.set(CameraParameters::KEY_RECORDING_HINT, valstr);
                 restartPreviewRequired |= setVideoModeParameters(params);
                 }
             else if(strcmp(valstr, CameraParameters::FALSE) == 0)
                 {
-                CAMHAL_LOGDB("Recording Hint is set to %s", valstr);
                 mParameters.set(CameraParameters::KEY_RECORDING_HINT, valstr);
                 restartPreviewRequired |= resetVideoModeParameters();
-                params.getPreviewSize(&mVideoWidth, &mVideoHeight);
                 }
             else
                 {
@@ -466,8 +444,25 @@ int CameraHal::setParameters(const CameraParameters& params)
             CAMHAL_LOGDA("Recording Hint is set to NULL");
             mParameters.set(CameraParameters::KEY_RECORDING_HINT, "");
             restartPreviewRequired |= resetVideoModeParameters();
-            params.getPreviewSize(&mVideoWidth, &mVideoHeight);
             }
+
+        if ( (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES)))
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES)))
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES))) ) {
+            CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
+            return BAD_VALUE;
+        }
+
+        int oldWidth, oldHeight;
+        mParameters.getPreviewSize(&oldWidth, &oldHeight);
+        if ( ( oldWidth != w ) || ( oldHeight != h ) )
+            {
+            mParameters.setPreviewSize(w, h);
+            restartPreviewRequired = true;
+            }
+
+        CAMHAL_LOGDB("Preview Resolution: %d x %d", w, h);
 
         if ((valstr = params.get(CameraParameters::KEY_FOCUS_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_FOCUS_MODES))) {
@@ -2304,7 +2299,6 @@ bool CameraHal::setVideoModeParameters(const CameraParameters& params)
 {
     const char *valstr = NULL;
     bool restartPreviewRequired = false;
-    status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
 
@@ -2318,52 +2312,51 @@ bool CameraHal::setVideoModeParameters(const CameraParameters& params)
         restartPreviewRequired = true;
         }
 
-    // Check if CAPTURE_MODE is VIDEO_MODE, since VSTAB & VNF work only in VIDEO_MODE.
-    valstr = mParameters.get(TICameraParameters::KEY_CAP_MODE);
-    if (strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) == 0) {
-       // set VSTAB. restart is required if vstab value has changed
-       if (params.get(CameraParameters::KEY_VIDEO_STABILIZATION) != NULL) {
-            // make sure we support vstab
-            if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
-                       CameraParameters::TRUE) == 0) {
-                valstr = mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION);
-                // vstab value has changed
-                if ((valstr != NULL) &&
-                     strcmp(valstr, params.get(CameraParameters::KEY_VIDEO_STABILIZATION)) != 0) {
-                    restartPreviewRequired = true;
-                }
-                mParameters.set(CameraParameters::KEY_VIDEO_STABILIZATION,
-                                params.get(CameraParameters::KEY_VIDEO_STABILIZATION));
-            }
-        } else if (mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION)) {
-            // vstab was configured but now unset
-            restartPreviewRequired = true;
-            mParameters.remove(CameraParameters::KEY_VIDEO_STABILIZATION);
-        }
-
-        // Set VNF
-        if (params.get(TICameraParameters::KEY_VNF) == NULL) {
-            CAMHAL_LOGDA("Enable VNF");
-            mParameters.set(TICameraParameters::KEY_VNF, CameraParameters::TRUE);
-            restartPreviewRequired = true;
-        } else {
-            valstr = mParameters.get(TICameraParameters::KEY_VNF);
-            if (valstr && strcmp(valstr, params.get(TICameraParameters::KEY_VNF)) != 0) {
+   // set VSTAB. restart is required if vstab value has changed
+   if (params.get(CameraParameters::KEY_VIDEO_STABILIZATION) != NULL) {
+        // make sure we support vstab
+        if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
+                   CameraParameters::TRUE) == 0) {
+            valstr = mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION);
+            // vstab value has changed
+            if ((valstr != NULL) &&
+                 strcmp(valstr, params.get(CameraParameters::KEY_VIDEO_STABILIZATION)) != 0) {
                 restartPreviewRequired = true;
             }
-            mParameters.set(TICameraParameters::KEY_VNF, params.get(TICameraParameters::KEY_VNF));
+            mParameters.set(CameraParameters::KEY_VIDEO_STABILIZATION,
+                            params.get(CameraParameters::KEY_VIDEO_STABILIZATION));
         }
+    } else if (mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION)) {
+        // vstab was configured but now unset
+        restartPreviewRequired = true;
+        mParameters.remove(CameraParameters::KEY_VIDEO_STABILIZATION);
+    }
 
-        // For VSTAB alone for 1080p resolution, padded width goes > 2048, which cannot be rendered by GPU.
-        // In such case, there is support in Ducati for combination of VSTAB & VNF requiring padded width < 2048.
-        // So we are forcefully enabling VNF, if VSTAB is enabled for 1080p resolution.
-        valstr = mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION);
-        if (valstr && (strcmp(valstr, CameraParameters::TRUE) == 0) && (mPreviewWidth == 1920)) {
-            CAMHAL_LOGDA("Force Enable VNF for 1080p");
-            mParameters.set(TICameraParameters::KEY_VNF, CameraParameters::TRUE);
+    // Set VNF
+    if (params.get(TICameraParameters::KEY_VNF) == NULL) {
+        CAMHAL_LOGDA("Enable VNF");
+        mParameters.set(TICameraParameters::KEY_VNF, CameraParameters::TRUE);
+        restartPreviewRequired = true;
+    } else {
+        valstr = mParameters.get(TICameraParameters::KEY_VNF);
+        if (valstr && strcmp(valstr, params.get(TICameraParameters::KEY_VNF)) != 0) {
             restartPreviewRequired = true;
         }
+        mParameters.set(TICameraParameters::KEY_VNF, params.get(TICameraParameters::KEY_VNF));
     }
+
+    // For VSTAB alone for 1080p resolution, padded width goes > 2048, which cannot be rendered by GPU.
+    // In such case, there is support in Ducati for combination of VSTAB & VNF requiring padded width < 2048.
+    // So we are forcefully enabling VNF, if VSTAB is enabled for 1080p resolution.
+    int w, h;
+    params.getPreviewSize(&w, &h);
+    valstr = mParameters.get(CameraParameters::KEY_VIDEO_STABILIZATION);
+    if (valstr && (strcmp(valstr, CameraParameters::TRUE) == 0) && (w == 1920)) {
+        CAMHAL_LOGDA("Force Enable VNF for 1080p");
+        mParameters.set(TICameraParameters::KEY_VNF, CameraParameters::TRUE);
+        restartPreviewRequired = true;
+    }
+
     LOG_FUNCTION_NAME_EXIT;
 
     return restartPreviewRequired;
@@ -3156,7 +3149,7 @@ char* CameraHal::getParameters()
         if(strcmp(valstr, CameraParameters::TRUE) == 0)
           {
             //HACK FOR MMS MODE
-            resetPreviewRes(&mParams, mVideoWidth, mVideoHeight);
+            resetPreviewRes(&mParams);
           }
       }
 
@@ -4122,78 +4115,30 @@ status_t CameraHal::storeMetaDataInBuffers(bool enable)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-bool CameraHal::checkFramerateThr(const CameraParameters &params)
+void CameraHal::getPreferredPreviewRes(int *width, int *height)
 {
-    static CameraParameters current_Params = mParameters;
-    int maxFPS, minFPS, current_maxFPS, current_minFPS;
-    int framerate, current_framerate;
-    bool ret = false;
-
     LOG_FUNCTION_NAME;
 
-    params.getPreviewFpsRange(&minFPS, &maxFPS);
-    maxFPS /= CameraHal::VFR_SCALE;
-    framerate = params.getPreviewFrameRate();
-
-    current_Params.getPreviewFpsRange(&current_minFPS, &current_maxFPS);
-    current_maxFPS /= CameraHal::VFR_SCALE;
-    current_framerate = current_Params.getPreviewFrameRate();
-
-    if ( current_framerate != framerate ) {
-        if ( ( ( current_framerate > SW_SCALING_FPS_LIMIT ) && ( framerate <= SW_SCALING_FPS_LIMIT ) ) ||
-             ( ( current_framerate <= SW_SCALING_FPS_LIMIT) && ( framerate > SW_SCALING_FPS_LIMIT) ) ) {
-            ret = true;
-        }
-    }
-
-    if ( current_maxFPS != maxFPS ) {
-        if ( ( ( current_maxFPS > SW_SCALING_FPS_LIMIT ) && ( maxFPS <= SW_SCALING_FPS_LIMIT ) ) ||
-             ( ( current_maxFPS <= SW_SCALING_FPS_LIMIT) && ( maxFPS > SW_SCALING_FPS_LIMIT) ) ) {
-            ret = true;
-        }
-    }
-
-    current_Params = params;
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
-}
-
-bool CameraHal::setPreferredPreviewRes(const CameraParameters &params, int width, int height)
-{
-    int maxFPS, minFPS, framerate;
-
-    LOG_FUNCTION_NAME;
-
-    params.getPreviewFpsRange(&minFPS, &maxFPS);
-    maxFPS /= CameraHal::VFR_SCALE;
-    framerate = params.getPreviewFrameRate();
-
-    if ( ( maxFPS > SW_SCALING_FPS_LIMIT ) ||
-         ( framerate > SW_SCALING_FPS_LIMIT ) ) {
-        mParameters.setPreviewSize(width, height);
-    } else {
-        if ( ( width == 320 ) && ( height == 240 ) ) {
-            mParameters.setPreviewSize(640, 480);
-
-        }
-        if ( ( width == 176 ) && ( height == 144 ) ) {
-            mParameters.setPreviewSize(704, 576);
-        }
+    // We request Ducati for a higher resolution so preview looks better and then downscale the frame before the callback.
+    // TODO: This should be moved to configuration constants and boolean flag whether to provide such optimization
+    // Also consider providing this configurability of the desired display resolution from the application
+    if ( ( *width == 320 ) && ( *height == 240 ) ) {
+        *width = 640;
+        *height = 480;
+    } else if ( ( *width == 176 ) && ( *height == 144 ) ) {
+        *width = 704;
+        *height = 576;
     }
 
     LOG_FUNCTION_NAME_EXIT;
-
-    return checkFramerateThr(params);;
 }
 
-void CameraHal::resetPreviewRes(CameraParameters *mParams, int width, int height)
+void CameraHal::resetPreviewRes(CameraParameters *params)
 {
   LOG_FUNCTION_NAME;
 
-  if ( (width <= 320) && (height <= 240)){
-    mParams->setPreviewSize(mVideoWidth, mVideoHeight);
+  if ( (mVideoWidth <= 320) && (mVideoHeight <= 240)){
+    params->setPreviewSize(mVideoWidth, mVideoHeight);
   }
 
   LOG_FUNCTION_NAME_EXIT;
