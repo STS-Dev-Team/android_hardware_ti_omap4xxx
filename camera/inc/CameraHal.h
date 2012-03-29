@@ -1358,9 +1358,8 @@ private:
 
     void forceStopPreview();
 
-    bool checkFramerateThr(const CameraParameters &params);
-    bool setPreferredPreviewRes(const CameraParameters &params, int width, int height);
-    void resetPreviewRes(CameraParameters *mParams, int width, int height);
+    void getPreferredPreviewRes(int *width, int *height);
+    void resetPreviewRes(CameraParameters *params);
 
     // Internal __takePicture function - used in public takePicture() and reprocess()
     int   __takePicture(const char* params);
