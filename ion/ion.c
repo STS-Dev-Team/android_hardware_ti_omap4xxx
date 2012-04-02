@@ -81,6 +81,8 @@ int ion_alloc_tiler(int fd, size_t w, size_t h, int fmt, unsigned int flags,
                 .h = h,
                 .fmt = fmt,
                 .flags = flags,
+                .out_align = PAGE_SIZE,
+                .token = 0,
         };
 
         struct ion_custom_data custom_data = {
