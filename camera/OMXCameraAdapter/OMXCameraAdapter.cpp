@@ -1752,15 +1752,7 @@ status_t OMXCameraAdapter::UseBuffersPreview(CameraBuffer * bufArr, int num)
     for(int index=0;index<num;index++) {
         OMX_U8 *ptr;
 
-        CAMHAL_LOGDB("OMX_UseBuffer(%p) opaque=%p", &bufArr[index], bufArr[index].opaque);
-
-        /* This is a temporary hack until CameraBuffer is expanded */
-        if (bufArr[index].type == CAMERA_BUFFER_ANW) {
-            buffer_handle_t *handle = (buffer_handle_t *)bufArr[index].opaque;
-            ptr = (OMX_U8*)*handle;
-        } else {
-            ptr = (OMX_U8*)bufArr[index].opaque;
-        }
+        ptr = (OMX_U8 *)camera_buffer_get_omx_ptr (&bufArr[index]);
         eError = OMX_UseBuffer( mCameraAdapterParameters.mHandleComp,
                                 &pBufferHdr,
                                 mCameraAdapterParameters.mPrevPortIndex,
@@ -1790,13 +1782,7 @@ status_t OMXCameraAdapter::UseBuffersPreview(CameraBuffer * bufArr, int num)
             OMX_BUFFERHEADERTYPE *pBufHdr;
             OMX_U8 *ptr;
 
-            /* This is a temporary hack until CameraBuffer is expanded */
-            if (mPreviewDataBuffers[i].type == CAMERA_BUFFER_ANW) {
-                buffer_handle_t *handle = (buffer_handle_t *)mPreviewDataBuffers[i].opaque;
-                ptr = (OMX_U8*)*handle;
-            } else {
-                ptr = (OMX_U8*)mPreviewDataBuffers[i].opaque;
-            }
+            ptr = (OMX_U8 *)camera_buffer_get_omx_ptr (&mPreviewDataBuffers[i]);
             eError = OMX_UseBuffer( mCameraAdapterParameters.mHandleComp,
                                     &pBufHdr,
                                     mCameraAdapterParameters.mMeasurementPortIndex,

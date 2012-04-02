@@ -231,6 +231,7 @@ status_t OMXCameraAdapter::setupEXIF()
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
     OMX_TI_CONFIG_EXIF_TAGS *exifTags;
+    unsigned char *startPtr = NULL;
     unsigned char *sharedPtr = NULL;
     struct timeval sTv;
     struct tm *pTime;
@@ -269,21 +270,22 @@ status_t OMXCameraAdapter::setupEXIF()
         sharedBuffer.nSharedBuffSize = buf_size;
 
         memmgr_buf_array = memMgr.allocateBufferList(0, 0, NULL, buf_size, 1);
-        sharedBuffer.pSharedBuff =  ( OMX_U8 * ) memmgr_buf_array[0].opaque;
+        sharedBuffer.pSharedBuff = (OMX_U8*)camera_buffer_get_omx_ptr(&memmgr_buf_array[0]);
+        startPtr =  ( OMX_U8 * ) memmgr_buf_array[0].opaque;
 
-        if ( NULL == sharedBuffer.pSharedBuff )
+        if ( NULL == startPtr)
             {
             CAMHAL_LOGEA("No resources to allocate OMX shared buffer");
             ret = -1;
             }
 
         //Extra data begins right after the EXIF configuration structure.
-        sharedPtr = sharedBuffer.pSharedBuff + sizeof(OMX_TI_CONFIG_EXIF_TAGS);
+        sharedPtr = startPtr + sizeof(OMX_TI_CONFIG_EXIF_TAGS);
         }
 
     if ( NO_ERROR == ret )
         {
-        exifTags = ( OMX_TI_CONFIG_EXIF_TAGS * ) sharedBuffer.pSharedBuff;
+        exifTags = ( OMX_TI_CONFIG_EXIF_TAGS * ) startPtr;
         OMX_INIT_STRUCT_PTR (exifTags, OMX_TI_CONFIG_EXIF_TAGS);
         exifTags->nPortIndex = mCameraAdapterParameters.mImagePortIndex;
 
@@ -306,7 +308,7 @@ status_t OMXCameraAdapter::setupEXIF()
                     mEXIFData.mModel,
                     EXIF_MODEL_SIZE - 1);
 
-            exifTags->pModelBuff = ( OMX_S8 * ) ( sharedPtr - sharedBuffer.pSharedBuff );
+            exifTags->pModelBuff = ( OMX_S8 * ) ( sharedPtr - startPtr );
             exifTags->ulModelBuffSizeBytes = strlen((char*)sharedPtr) + 1;
             sharedPtr += EXIF_MODEL_SIZE;
             exifTags->eStatusModel = OMX_TI_TagUpdated;
@@ -319,7 +321,7 @@ status_t OMXCameraAdapter::setupEXIF()
                       mEXIFData.mMake,
                       EXIF_MAKE_SIZE - 1);
 
-             exifTags->pMakeBuff = ( OMX_S8 * ) ( sharedPtr - sharedBuffer.pSharedBuff );
+             exifTags->pMakeBuff = ( OMX_S8 * ) ( sharedPtr - startPtr );
              exifTags->ulMakeBuffSizeBytes = strlen((char*)sharedPtr) + 1;
              sharedPtr += EXIF_MAKE_SIZE;
              exifTags->eStatusMake = OMX_TI_TagUpdated;
@@ -353,7 +355,7 @@ status_t OMXCameraAdapter::setupEXIF()
                          pTime->tm_sec );
                 }
 
-             exifTags->pDateTimeBuff = ( OMX_S8 * ) ( sharedPtr - sharedBuffer.pSharedBuff );
+             exifTags->pDateTimeBuff = ( OMX_S8 * ) ( sharedPtr - startPtr );
              sharedPtr += EXIF_DATE_TIME_SIZE;
              exifTags->ulDateTimeBuffSizeBytes = EXIF_DATE_TIME_SIZE;
              exifTags->eStatusDateTime = OMX_TI_TagUpdated;
@@ -431,7 +433,7 @@ status_t OMXCameraAdapter::setupEXIF()
             {
             memcpy(sharedPtr, mEXIFData.mGPSData.mMapDatum, GPS_MAPDATUM_SIZE);
 
-            exifTags->pGpsMapDatumBuff = ( OMX_S8 * ) ( sharedPtr - sharedBuffer.pSharedBuff );
+            exifTags->pGpsMapDatumBuff = ( OMX_S8 * ) ( sharedPtr - startPtr );
             exifTags->ulGpsMapDatumBuffSizeBytes = GPS_MAPDATUM_SIZE;
             exifTags->eStatusGpsMapDatum = OMX_TI_TagUpdated;
             sharedPtr += GPS_MAPDATUM_SIZE;
@@ -440,7 +442,7 @@ status_t OMXCameraAdapter::setupEXIF()
         if ( ( OMX_TI_TagReadWrite == exifTags->eStatusGpsProcessingMethod ) &&
              ( mEXIFData.mGPSData.mProcMethodValid ) )
             {
-            exifTags->pGpsProcessingMethodBuff = ( OMX_S8 * ) ( sharedPtr - sharedBuffer.pSharedBuff );
+            exifTags->pGpsProcessingMethodBuff = ( OMX_S8 * ) ( sharedPtr - startPtr );
             memcpy(sharedPtr, ExifAsciiPrefix, sizeof(ExifAsciiPrefix));
             sharedPtr += sizeof(ExifAsciiPrefix);
 
