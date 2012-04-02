@@ -442,6 +442,38 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
     return ret;
 }
 
+status_t OMXCameraAdapter::setVectorStop(bool toPreview)
+{
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE vecShotStop;
+
+
+    LOG_FUNCTION_NAME;
+
+    OMX_INIT_STRUCT_PTR(&vecShotStop, OMX_TI_CONFIG_VECTSHOTSTOPMETHODTYPE);
+
+    vecShotStop.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+    if (toPreview) {
+        vecShotStop.eStopMethod =  OMX_TI_VECTSHOTSTOPMETHOD_GOTO_PREVIEW;
+    } else {
+        vecShotStop.eStopMethod =  OMX_TI_VECTSHOTSTOPMETHOD_WAIT_IN_CAPTURE;
+    }
+
+    eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                           (OMX_INDEXTYPE) OMX_TI_IndexConfigVectShotStopMethod,
+                           &vecShotStop);
+    if (OMX_ErrorNone != eError) {
+        CAMHAL_LOGEB("Error while configuring bracket shot 0x%x", eError);
+    } else {
+        CAMHAL_LOGDA("Bracket shot configured successfully");
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+}
+
 status_t OMXCameraAdapter::setVectorShot(int *evValues,
                                          int *evValues2,
                                          size_t evCount,
@@ -514,6 +546,11 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
         } else {
             CAMHAL_LOGDA("Extended camera capture mode configured successfully");
         }
+    }
+
+    if (NO_ERROR == ret) {
+        // set vector stop method to stop in capture
+        ret = setVectorStop(false);
     }
 
     if ( NO_ERROR == ret )

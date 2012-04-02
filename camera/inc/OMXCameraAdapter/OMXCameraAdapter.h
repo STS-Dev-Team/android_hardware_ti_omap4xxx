@@ -669,6 +669,7 @@ private:
 
     //Exposure Bracketing
     status_t setVectorShot(int *evValues, int *evValues2, size_t evCount, size_t frameCount);
+    status_t setVectorStop(bool toPreview = false);
     status_t setExposureBracketing(int *evValues, int *evValues2,
                                    size_t evCount, size_t frameCount);
     status_t doExposureBracketing(int *evValues, int *evValues2,
