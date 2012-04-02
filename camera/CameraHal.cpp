@@ -42,7 +42,7 @@ extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t);
 ////       Currently, they are hard-coded
 
 const int CameraHal::NO_BUFFERS_PREVIEW = MAX_CAMERA_BUFFERS;
-const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 2;
+const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE = 9;
 const int CameraHal::SW_SCALING_FPS_LIMIT = 15;
 
 const uint32_t MessageNotifier::EVENT_BIT_FIELD_POSITION = 16;
@@ -1619,9 +1619,12 @@ status_t CameraHal::startPreview()
         {
             mAppCallbackNotifier->enableMsgType (CAMERA_MSG_PREVIEW_FRAME);
         }
+
+        if (mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE) {
+            mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_IMAGE_CAPTURE);
+        }
         return ret;
         }
-
 
     required_buffer_count = atoi(mCameraProperties->get(CameraProperties::REQUIRED_PREVIEW_BUFS));
 
@@ -2545,6 +2548,7 @@ status_t CameraHal::takePicture( )
     const char *valstr = NULL;
     unsigned int bufferCount = 1;
     unsigned int rawBufferCount = 1;
+    bool isCPCamMode = false;
 
     Mutex::Autolock lock(mLock);
 
@@ -2563,21 +2567,39 @@ status_t CameraHal::takePicture( )
         return NO_INIT;
         }
 
+    valstr = mParameters.get(TICameraParameters::KEY_CAP_MODE);
+
+    isCPCamMode = valstr && !strcmp(valstr, TICameraParameters::CP_CAM_MODE);
     // return error if we are already capturing
-    if ( (mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE &&
+    // however, we can queue a capture when in cpcam mode
+    if ( ((mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE &&
           mCameraAdapter->getNextState() != CameraAdapter::PREVIEW_STATE) ||
          (mCameraAdapter->getState() == CameraAdapter::VIDEO_CAPTURE_STATE &&
-          mCameraAdapter->getNextState() != CameraAdapter::VIDEO_STATE) ) {
+          mCameraAdapter->getNextState() != CameraAdapter::VIDEO_STATE)) &&
+         !isCPCamMode) {
         CAMHAL_LOGEA("Already capturing an image...");
         return NO_INIT;
     }
 
     // we only support video snapshot if we are in video mode (recording hint is set)
-    valstr = mParameters.get(TICameraParameters::KEY_CAP_MODE);
     if ( (mCameraAdapter->getState() == CameraAdapter::VIDEO_STATE) &&
          (valstr && strcmp(valstr, TICameraParameters::VIDEO_MODE)) ) {
         CAMHAL_LOGEA("Trying to capture while recording without recording hint set...");
         return INVALID_OPERATION;
+    }
+
+    // if we are already in the middle of a capture...then we just need
+    // setParameters and start image capture to queue more shots
+    if ((mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE &&
+         mCameraAdapter->getNextState() != CameraAdapter::PREVIEW_STATE)) {
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+        //pass capture timestamp along with the camera adapter command
+        ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_IMAGE_CAPTURE,
+                                          (int) &mStartCapture);
+#else
+        ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_IMAGE_CAPTURE);
+#endif
+        return ret;
     }
 
     if ( !mBracketingRunning )
@@ -2588,8 +2610,11 @@ status_t CameraHal::takePicture( )
             burst = mParameters.getInt(TICameraParameters::KEY_BURST);
             }
 
-         if ( burst > 1 ) {
-             bufferCount = CameraHal::NO_BUFFERS_IMAGE_CAPTURE;
+         //Allocate all buffers only in burst capture case
+         if ( burst > 0 ) {
+             // For CPCam mode...allocate for worst case burst
+             bufferCount = isCPCamMode || (burst > CameraHal::NO_BUFFERS_IMAGE_CAPTURE) ?
+                               CameraHal::NO_BUFFERS_IMAGE_CAPTURE : burst;
              if ( NULL != mAppCallbackNotifier.get() ) {
                  mAppCallbackNotifier->setBurst(true);
              }
@@ -2606,9 +2631,9 @@ status_t CameraHal::takePicture( )
 
         // pause preview during normal image capture
         // do not pause preview if recording (video state)
-        if (NO_ERROR == ret &&
-                NULL != mDisplayAdapter.get() &&
-                burst < 1) {
+        if ((NO_ERROR == ret) &&
+                (NULL != mDisplayAdapter.get()) &&
+                (burst < 1 || isCPCamMode)) {
             if (mCameraAdapter->getState() != CameraAdapter::VIDEO_STATE) {
                 mDisplayPaused = true;
                 mPreviewEnabled = false;
