@@ -700,6 +700,7 @@ private:
                                   BaseCameraAdapter::AdapterState state);
 
     //Exposure Bracketing
+    status_t initVectorShot();
     status_t setVectorShot(int *evValues, int *evValues2, int *evModes2,
                            size_t evCount, size_t frameCount, OMX_BRACKETMODETYPE bracketMode);
     status_t setVectorStop(bool toPreview = false);
