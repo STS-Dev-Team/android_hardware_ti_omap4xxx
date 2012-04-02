@@ -774,7 +774,7 @@ status_t OMXCameraAdapter::setTouchFocus()
 
         sharedBuffer.nPortIndex = OMX_ALL;
         sharedBuffer.nSharedBuffSize = areasSize;
-        sharedBuffer.pSharedBuff = (OMX_U8 *) focusAreas;
+        sharedBuffer.pSharedBuff = (OMX_U8 *) camera_buffer_get_omx_ptr (&bufferlist[0]);
 
         if ( NULL == sharedBuffer.pSharedBuff )
             {

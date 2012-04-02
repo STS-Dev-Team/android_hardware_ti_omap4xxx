@@ -342,10 +342,13 @@ typedef struct _CameraBuffer {
 
     /* These are specific to ION buffers */
     struct ion_handle * ion_handle;
+    int ion_fd;
     int fd;
     size_t size;
     int index;
 } CameraBuffer;
+
+void * camera_buffer_get_omx_ptr (CameraBuffer *buffer);
 
 class CameraFrame
 {

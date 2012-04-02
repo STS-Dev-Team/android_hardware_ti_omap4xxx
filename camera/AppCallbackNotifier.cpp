@@ -1020,7 +1020,7 @@ void AppCallbackNotifier::notifyFrame()
                             else
                               {
                                 videoMetadataBuffer->metadataBufferType = (int) kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = frame->mBuffer->opaque;
+                                videoMetadataBuffer->handle = camera_buffer_get_omx_ptr(frame->mBuffer);
                                 videoMetadataBuffer->offset = frame->mOffset;
                               }
 
