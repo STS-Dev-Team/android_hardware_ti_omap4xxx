@@ -190,6 +190,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mVstabEnabled = false;
     mVnfEnabled = false;
     mBurstFrames = 1;
+    mBurstFramesAccum = 0;
     mCapturedFrames = 0;
     mPictureQuality = 100;
     mCurrentZoomIdx = 0;
@@ -352,7 +353,11 @@ OMXCameraAdapter::OMXCameraPortParameters *OMXCameraAdapter::getPortParams(Camer
         ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
         break;
     case CameraFrame::RAW_FRAME:
-        ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+        if (mRawCapture) {
+            ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
+        } else {
+            ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+        }
         break;
     case CameraFrame::PREVIEW_FRAME_SYNC:
     case CameraFrame::SNAPSHOT_FRAME:
@@ -378,6 +383,7 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     BaseCameraAdapter::AdapterState state;
     BaseCameraAdapter::getState(state);
+    bool isCaptureFrame = false;
 
     if ( ( PREVIEW_ACTIVE & state ) != PREVIEW_ACTIVE )
         {
@@ -389,16 +395,19 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
         return -EINVAL;
         }
 
-    if ( (NO_ERROR == ret) &&
-         ((CameraFrame::IMAGE_FRAME == frameType) || (CameraFrame::RAW_FRAME == frameType)) &&
-         (1 > mCapturedFrames) &&
-         (!mBracketingEnabled)) {
-        // Signal end of image capture
-        if ( NULL != mEndImageCaptureCallback) {
-            mEndImageCaptureCallback(mEndCaptureData);
+    isCaptureFrame = (CameraFrame::IMAGE_FRAME == frameType) ||
+                     (CameraFrame::RAW_FRAME == frameType);
+
+    if ( isCaptureFrame && (NO_ERROR == ret) ) {
+        // In CP_CAM mode, end image capture will be signalled when application starts preview
+        if ((1 > mCapturedFrames) && !mBracketingEnabled && (mCapMode != CP_CAM)) {
+            // Signal end of image capture
+            if ( NULL != mEndImageCaptureCallback) {
+                mEndImageCaptureCallback(mEndCaptureData);
+            }
+            return NO_ERROR;
         }
-        return NO_ERROR;
-     }
+    }
 
     if ( NO_ERROR == ret )
         {
@@ -410,13 +419,18 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
             }
         }
 
-    if ( NO_ERROR == ret )
-        {
-
-        for ( int i = 0 ; i < port->mNumBufs ; i++)
-            {
-            if ( (CameraBuffer *) port->mBufferHeader[i]->pAppPrivate == frameBuf )
-                {
+    if ( NO_ERROR == ret ) {
+        for ( int i = 0 ; i < port->mNumBufs ; i++) {
+            if ((CameraBuffer *) port->mBufferHeader[i]->pAppPrivate == frameBuf) {
+                if (isCaptureFrame) {
+                    Mutex::Autolock lock(mBurstLock);
+                    if (mBurstFramesQueued >= mBurstFramesAccum) {
+                        port->mStatus[i] = OMXCameraPortParameters::IDLE;
+                        return NO_ERROR;
+                    }
+                    mBurstFramesQueued++;
+                }
+                port->mStatus[i] = OMXCameraPortParameters::FILL;
                 eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp, port->mBufferHeader[i]);
                 if ( eError != OMX_ErrorNone )
                 {
@@ -425,10 +439,9 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
                 }
                 mFramesWithDucati++;
                 break;
-                }
-            }
-
-        }
+           }
+       }
+    }
 
     LOG_FUNCTION_NAME_EXIT;
     return ret;
@@ -1953,6 +1966,7 @@ status_t OMXCameraAdapter::startPreview()
     for(int index=0;index< mPreviewData->mMaxQueueable;index++)
         {
         CAMHAL_LOGDB("Queuing buffer on Preview port - 0x%x", (uint32_t)mPreviewData->mBufferHeader[index]->pBuffer);
+        mPreviewData->mStatus[index] = OMXCameraPortParameters::FILL;
         eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
                     (OMX_BUFFERHEADERTYPE*)mPreviewData->mBufferHeader[index]);
         if(eError!=OMX_ErrorNone)
@@ -1972,6 +1986,7 @@ status_t OMXCameraAdapter::startPreview()
         for(int index=0;index< mPreviewData->mNumBufs;index++)
             {
             CAMHAL_LOGDB("Queuing buffer on Measurement port - 0x%x", (uint32_t) measurementData->mBufferHeader[index]->pBuffer);
+            measurementData->mStatus[index] = OMXCameraPortParameters::FILL;
             eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
                             (OMX_BUFFERHEADERTYPE*) measurementData->mBufferHeader[index]);
             if(eError!=OMX_ErrorNone)
@@ -3059,11 +3074,20 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     bool snapshotFrame = false;
 
     res1 = res2 = NO_ERROR;
-    pPortParam = &(mCameraAdapterParameters.mCameraPortParams[pBuffHeader->nOutputPortIndex]);
 
     if ( !pBuffHeader || !pBuffHeader->pBuffer ) {
         CAMHAL_LOGEA("NULL Buffer from OMX");
         return OMX_ErrorNone;
+    }
+
+    pPortParam = &(mCameraAdapterParameters.mCameraPortParams[pBuffHeader->nOutputPortIndex]);
+    platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
+
+    // Find buffer and mark it as filled
+    for (int i = 0; i < pPortParam->mNumBufs; i++) {
+        if (pPortParam->mBufferHeader[i] == pBuffHeader) {
+            pPortParam->mStatus[i] = OMXCameraPortParameters::DONE;
+        }
     }
 
     if (pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_PREVIEW)
@@ -3076,7 +3100,6 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         if ( mWaitingForSnapshot )
             {
-            platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
             extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) platformPrivate->pMetaDataBuffer,
                     platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE) OMX_AncillaryData);
 
@@ -3198,11 +3221,11 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
        }
     else if( pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_IMAGE_OUT_IMAGE )
-        {
+    {
         OMX_COLOR_FORMATTYPE pixFormat;
         const char *valstr = NULL;
 
-        pixFormat = mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex].mColorFormat;
+        pixFormat = pPortParam->mColorFormat;
 
         if ( OMX_COLOR_FormatUnused == pixFormat )
             {

@@ -323,6 +323,7 @@ public:
         public:
             //CameraBuffer *                  mHostBufaddr[MAX_NO_BUFFERS];
             OMX_BUFFERHEADERTYPE           *mBufferHeader[MAX_NO_BUFFERS];
+            OMX_U8                          mStatus[MAX_NO_BUFFERS];
             OMX_U32                         mWidth;
             OMX_U32                         mHeight;
             OMX_U32                         mStride;
@@ -345,7 +346,12 @@ public:
             CameraFrame::FrameType          mImageType;
             OMX_TI_STEREOFRAMELAYOUTTYPE    mFrameLayoutType;
 
-        CameraBuffer * lookup_omx_buffer (OMX_BUFFERHEADERTYPE *pBufHeader);
+            CameraBuffer * lookup_omx_buffer (OMX_BUFFERHEADERTYPE *pBufHeader);
+            enum {
+               IDLE = 0, // buffer is neither with HAL or Ducati
+               FILL, // buffer is with Ducati
+               DONE, // buffer is filled and sent to HAL
+            };
     };
 
     ///Context of the OMX Camera component
@@ -931,7 +937,13 @@ private:
     mutable Mutex mMeteringAreasLock;
 
     CaptureMode mCapMode;
+    // TODO(XXX): Do we really need this lock? Let's
+    // try to merge temporal bracketing and burst
+    // capture later
+    mutable Mutex mBurstLock;
     size_t mBurstFrames;
+    size_t mBurstFramesAccum;
+    size_t mBurstFramesQueued;
     size_t mCapturedFrames;
 
     bool mMeasurementEnabled;

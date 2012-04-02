@@ -38,6 +38,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     CodingMode codingMode = mCodingMode;
     const char *valstr = NULL;
     OMX_TI_STEREOFRAMELAYOUTTYPE capFrmLayout;
+    bool inCaptureState = false;
 
     LOG_FUNCTION_NAME;
 
@@ -299,7 +300,10 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         mPendingCaptureSettings = ECapturesettingsAll;
     }
 
-    if (mPendingCaptureSettings) {
+    // we are already capturing and in cpcam mode...just need to enqueue
+    // shots
+    inCaptureState = (CAPTURE_ACTIVE & mAdapterState) && (CAPTURE_ACTIVE & mNextState);
+    if ((mPendingCaptureSettings & ~SetExpBracket) && !inCaptureState) {
         disableImagePort();
         if ( NULL != mReleaseImageBuffersCallback ) {
             mReleaseImageBuffersCallback(mReleaseData);
@@ -1084,10 +1088,10 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
         ret = setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
     }
 
-    //OMX shutter callback events are only available in hq mode
-    if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode))
-        {
+    capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
 
+    //OMX shutter callback events are only available in hq mode
+    if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode)) {
         if ( NO_ERROR == ret )
             {
             ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
@@ -1102,22 +1106,43 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             ret = setShutterCallback(true);
             }
 
-        }
+    }
 
     if (mPending3Asettings) {
         apply3Asettings(mParameters3A);
     }
 
-    if ( NO_ERROR == ret ) {
-        capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+    // check is we are already in capture state...which means we are
+    // accumulating shots
+    if ((ret == NO_ERROR) && (mBurstFramesQueued > 0)) {
+        int index = 0;
+        Mutex::Autolock lock(mBurstLock);
+        mCapturedFrames += mBurstFrames;
+        mBurstFramesAccum += mBurstFrames;
 
+        while ((mBurstFramesQueued < mBurstFramesAccum) && (index < capData->mNumBufs)) {
+            if (capData->mStatus[index] == OMXCameraPortParameters::IDLE) {
+                capData->mStatus[index] = OMXCameraPortParameters::FILL;
+                eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
+                            (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
+                GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+                mBurstFramesQueued++;
+            }
+            index++;
+        }
+    } else if ( NO_ERROR == ret ) {
         ///Queue all the buffers on capture port
         for ( int index = 0 ; index < capData->mNumBufs ; index++ ) {
             CAMHAL_LOGDB("Queuing buffer on Capture port - 0x%x",
                          ( unsigned int ) capData->mBufferHeader[index]->pBuffer);
-            eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
+            if (mBurstFramesQueued < mBurstFramesAccum) {
+                capData->mStatus[index] = OMXCameraPortParameters::FILL;
+                eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
                         (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
-
+                mBurstFramesQueued++;
+            } else {
+                capData->mStatus[index] = OMXCameraPortParameters::IDLE;
+            }
             GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
@@ -1127,6 +1152,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
             ///Queue all the buffers on capture port
             for ( int index = 0 ; index < capData->mNumBufs ; index++ ) {
                 CAMHAL_LOGDB("Queuing buffer on Video port (for RAW capture) - 0x%x", ( unsigned int ) capData->mBufferHeader[index]->pBuffer);
+                capData->mStatus[index] = OMXCameraPortParameters::FILL;
                 eError = OMX_FillThisBuffer(mCameraAdapterParameters.mHandleComp,
                         (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
 
@@ -1154,9 +1180,9 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing)
     }
 
     //OMX shutter callback events are only available in hq mode
+
     if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode))
         {
-
         if ( NO_ERROR == ret )
             {
             ret = mStartCaptureSem.WaitTimeout(OMX_CAPTURE_TIMEOUT);
@@ -1441,6 +1467,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             }
 
         mCapturedFrames = mBurstFrames;
+        mBurstFramesQueued = 0;
         return NO_ERROR;
     }
 
@@ -1558,6 +1585,8 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         }
 
     mCapturedFrames = mBurstFrames;
+    mBurstFramesAccum = mBurstFrames;
+    mBurstFramesQueued = 0;
 
     if (!mRawCapture) {
         mCaptureConfigured = true;
@@ -1680,6 +1709,7 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
     }
 
     mCapturedFrames = mBurstFrames;
+    mBurstFramesQueued = 0;
     mCaptureConfigured = true;
 
     EXIT:

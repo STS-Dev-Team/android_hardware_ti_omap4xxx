@@ -1922,6 +1922,12 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = PREVIEW_STATE;
                     break;
 
+                case CAMERA_START_IMAGE_CAPTURE:
+                     CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->CAPTURE_STATE event = 0x%x",
+                                 operation);
+                    mNextState = CAPTURE_STATE;
+                    break;
+
                 default:
                     CAMHAL_LOGEB("Adapter state switch CAPTURE_STATE Invalid Op! event = %s",
                             printState);
