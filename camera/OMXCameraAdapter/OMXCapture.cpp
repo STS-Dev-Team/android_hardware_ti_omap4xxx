@@ -1507,7 +1507,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
                                mCameraAdapterParameters.mImagePortIndex,
                                0,
                                imgCaptureData->mBufSize,
-                               (OMX_U8*)bufArr[index].opaque);
+                               (OMX_U8*)camera_buffer_get_omx_ptr(&bufArr[index]));
 
         CAMHAL_LOGDB("OMX_UseBuffer = 0x%x", eError);
         GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);

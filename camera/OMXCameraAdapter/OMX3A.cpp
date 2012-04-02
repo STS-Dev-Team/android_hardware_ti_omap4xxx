@@ -1693,7 +1693,7 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
 
   sharedBuffer.nPortIndex = OMX_ALL;
   sharedBuffer.nSharedBuffSize = areasSize;
-  sharedBuffer.pSharedBuff = (OMX_U8 *) meteringAreas;
+  sharedBuffer.pSharedBuff = (OMX_U8 *)camera_buffer_get_omx_ptr (&bufferlist[0]);
 
   if ( NULL == sharedBuffer.pSharedBuff )
       {

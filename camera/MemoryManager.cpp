@@ -78,7 +78,8 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
         ///1D buffers
         for (int i = 0; i < numBufs; i++)
             {
-            int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT, &handle);
+            int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT,
+                    &handle);
             unsigned char *data;
 
             if(ret < 0)
@@ -100,6 +101,7 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
             buffers[i].opaque = data;
             buffers[i].mapped = data;
             buffers[i].ion_handle = handle;
+            buffers[i].ion_fd = mIonFd;
             buffers[i].fd = mmap_fd;
             buffers[i].size = size;
 

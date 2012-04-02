@@ -369,12 +369,12 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
         if ( 0 == refCount )
             {
 #ifdef CAMERAHAL_DEBUG
-            if(mBuffersWithDucati.indexOfKey((int)frameBuf)>=0)
+            if(mBuffersWithDucati.indexOfKey((int)camera_buffer_get_omx_ptr(frameBuf))>=0)
                 {
                 LOGE("Buffer already with Ducati!! 0x%x", frameBuf);
                 for(int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
                 }
-            mBuffersWithDucati.add((int)frameBuf,1);
+            mBuffersWithDucati.add((int)camera_buffer_get_omx_ptr(frameBuf),1);
 #endif
             res = fillThisBuffer(frameBuf, frameType);
             }
