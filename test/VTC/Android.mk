@@ -20,7 +20,7 @@ LOCAL_C_INCLUDES += \
     $(TOP)/frameworks/base/include/media \
     $(TOP)/frameworks/base/include/media/stagefright \
     $(TOP)/frameworks/base/include/media/stagefright/openmax \
-    $(TOP)/hardware/ti/omap4xxx/domx/omx_core/inc \
+    $(DOMX_PATH)/omx_core/inc \
 
 LOCAL_CFLAGS +=-Wall -fno-short-enums -O0 -g -D___ANDROID___
 
