@@ -519,6 +519,62 @@ status_t OMXCameraAdapter::setVectorStop(bool toPreview)
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
+status_t OMXCameraAdapter::initVectorShot()
+{
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_CONFIG_CAPTUREMODETYPE expCapMode;
+    OMX_CONFIG_EXTCAPTUREMODETYPE extExpCapMode;
+
+    LOG_FUNCTION_NAME;
+
+    if (NO_ERROR == ret) {
+        OMX_INIT_STRUCT_PTR (&expCapMode, OMX_CONFIG_CAPTUREMODETYPE);
+        expCapMode.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+
+        expCapMode.bFrameLimited = OMX_FALSE;
+
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                OMX_IndexConfigCaptureMode,
+                                &expCapMode);
+        if (OMX_ErrorNone != eError) {
+            CAMHAL_LOGEB("Error while configuring capture mode 0x%x", eError);
+            goto exit;
+        } else {
+            CAMHAL_LOGDA("Camera capture mode configured successfully");
+        }
+    }
+
+    if (NO_ERROR == ret) {
+        OMX_INIT_STRUCT_PTR (&extExpCapMode, OMX_CONFIG_EXTCAPTUREMODETYPE);
+        extExpCapMode.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+
+        extExpCapMode.bEnableBracketing = OMX_TRUE;
+        extExpCapMode.tBracketConfigType.eBracketMode = OMX_BracketVectorShot;
+
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                ( OMX_INDEXTYPE ) OMX_IndexConfigExtCaptureMode,
+                                &extExpCapMode);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while configuring extended capture mode 0x%x", eError);
+            goto exit;
+        } else {
+            CAMHAL_LOGDA("Extended camera capture mode configured successfully");
+        }
+    }
+
+
+    if (NO_ERROR == ret) {
+        // set vector stop method to stop in capture
+        ret = setVectorStop(false);
+    }
+
+ exit:
+    LOG_FUNCTION_NAME_EXIT;
+
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+}
+
 status_t OMXCameraAdapter::setVectorShot(int *evValues,
                                          int *evValues2,
                                          int *evModes2,
@@ -528,11 +584,8 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
-    OMX_CONFIG_CAPTUREMODETYPE expCapMode;
-    OMX_CONFIG_EXTCAPTUREMODETYPE extExpCapMode;
     OMX_TI_CONFIG_ENQUEUESHOTCONFIGS enqueueShotConfigs;
     OMX_TI_CONFIG_QUERYAVAILABLESHOTS queryAvailableShots;
-
 
     LOG_FUNCTION_NAME;
 
@@ -557,51 +610,6 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
     }
 
     if (NO_ERROR == ret) {
-        OMX_INIT_STRUCT_PTR (&expCapMode, OMX_CONFIG_CAPTUREMODETYPE);
-        expCapMode.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
-
-        expCapMode.bFrameLimited = OMX_FALSE;
-
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                                OMX_IndexConfigCaptureMode,
-                                &expCapMode);
-        if (OMX_ErrorNone != eError) {
-            CAMHAL_LOGEB("Error while configuring capture mode 0x%x", eError);
-            goto exit;
-        } else {
-            CAMHAL_LOGDA("Camera capture mode configured successfully");
-        }
-    }
-
-    if (NO_ERROR == ret) {
-        OMX_INIT_STRUCT_PTR (&extExpCapMode, OMX_CONFIG_EXTCAPTUREMODETYPE);
-        extExpCapMode.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
-
-        if ( 0 == evCount ) {
-            extExpCapMode.bEnableBracketing = OMX_FALSE;
-        } else {
-            extExpCapMode.bEnableBracketing = OMX_TRUE;
-            extExpCapMode.tBracketConfigType.eBracketMode = bracketMode;
-        }
-
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                                ( OMX_INDEXTYPE ) OMX_IndexConfigExtCaptureMode,
-                                &extExpCapMode);
-        if ( OMX_ErrorNone != eError ) {
-            CAMHAL_LOGEB("Error while configuring extended capture mode 0x%x", eError);
-            goto exit;
-        } else {
-            CAMHAL_LOGDA("Extended camera capture mode configured successfully");
-        }
-    }
-
-    if (NO_ERROR == ret) {
-        // set vector stop method to stop in capture
-        ret = setVectorStop(false);
-    }
-
-    if ( NO_ERROR == ret )
-    {
         unsigned int i;
         for ( i = 0 ; i < evCount ; i++ ) {
                 CAMHAL_LOGD("%d: (%d,%d) mode: %d", i, evValues[i], evValues2[i], evModes2[i]);
@@ -631,19 +639,17 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
             enqueueShotConfigs.nShotConfig[i-1].nFrames = frameCount - evCount;
         }
 
-        if (bracketMode == OMX_BracketVectorShot) {
-            enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
-            enqueueShotConfigs.bFlushQueue = OMX_FALSE;
-            enqueueShotConfigs.nNumConfigs = evCount;
-            eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                            ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
-                                &enqueueShotConfigs);
-            if ( OMX_ErrorNone != eError ) {
-                CAMHAL_LOGEB("Error while configuring bracket shot 0x%x", eError);
-                goto exit;
-            } else {
-                 CAMHAL_LOGDA("Bracket shot configured successfully");
-            }
+        enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
+        enqueueShotConfigs.bFlushQueue = OMX_FALSE;
+        enqueueShotConfigs.nNumConfigs = evCount;
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                        ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
+                            &enqueueShotConfigs);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while configuring bracket shot 0x%x", eError);
+            goto exit;
+        } else {
+            CAMHAL_LOGDA("Bracket shot configured successfully");
         }
     }
 
@@ -1060,29 +1066,6 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
         }
     }
 
-    // Choose proper single preview mode for cpcapture capture (reproc or hs)
-    if (( NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mCapMode)) {
-        OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE singlePrevMode;
-        OMX_INIT_STRUCT_PTR (&singlePrevMode, OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE);
-        if (mAdapterState == CAPTURE_STATE) {
-            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
-        } else if (mAdapterState == REPROCESS_STATE) {
-            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_Reprocess;
-        } else {
-            CAMHAL_LOGE("Wrong state trying to start a capture in CPCAM mode?");
-            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
-        }
-        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                                (OMX_INDEXTYPE) OMX_TI_IndexConfigSinglePreviewMode,
-                                &singlePrevMode);
-        if ( OMX_ErrorNone != eError ) {
-            CAMHAL_LOGEB("Error while configuring single preview mode 0x%x", eError);
-            ret = ErrorUtils::omxToAndroidError(eError);
-        } else {
-            CAMHAL_LOGDA("single preview mode configured successfully");
-        }
-    }
-
     if ( NO_ERROR == ret ) {
         if (capParams->mPendingCaptureSettings & SetRotation) {
             mPendingCaptureSettings &= ~SetRotation;
@@ -1118,10 +1101,6 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
     }
 
     capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
-
-    // Enable WB and vector shot extra data for metadata
-    ret = setExtraData(true, OMX_ALL, OMX_WhiteBalance);
-    ret = setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
 
     //OMX shutter callback events are only available in hq mode
     if ( (HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode)) {
@@ -1253,8 +1232,6 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
-    setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
-    setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_TI_VectShotInfo);
     mWaitingForSnapshot = false;
     mCaptureSignalled = false;
     performCleanupAfterError();
@@ -1365,6 +1342,12 @@ status_t OMXCameraAdapter::stopImageCapture()
             mReleaseImageBuffersCallback(mReleaseData);
         }
     }
+
+    // Moving code for below commit here as an optimization for continuous capture,
+    // so focus settings don't have to reapplied after each capture
+    // c78fa2a CameraHAL: Always reset focus mode after capture
+    // Workaround when doing many consecutive shots, CAF wasn't getting restarted.
+    mPending3Asettings |= SetFocus;
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
@@ -1750,6 +1733,37 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
             }
         }
 
+    // Enable WB and vector shot extra data for metadata
+    ret = setExtraData(true, OMX_ALL, OMX_WhiteBalance);
+    ret = setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
+
+    // CPCam mode only supports vector shot
+    // Regular capture is not supported
+    if (mCapMode == CP_CAM) initVectorShot();
+
+    // Choose proper single preview mode for cpcapture capture (reproc or hs)
+    if (( NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mCapMode)) {
+        OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE singlePrevMode;
+        OMX_INIT_STRUCT_PTR (&singlePrevMode, OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE);
+        if (mNextState == LOADED_CAPTURE_STATE) {
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
+        } else if (mNextState == LOADED_REPROCESS_CAPTURE_STATE) {
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_Reprocess;
+        } else {
+            CAMHAL_LOGE("Wrong state trying to start a capture in CPCAM mode?");
+            singlePrevMode.eMode = OMX_TI_SinglePreviewMode_ImageCaptureHighSpeed;
+        }
+        eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                (OMX_INDEXTYPE) OMX_TI_IndexConfigSinglePreviewMode,
+                                &singlePrevMode);
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGEB("Error while configuring single preview mode 0x%x", eError);
+            ret = ErrorUtils::omxToAndroidError(eError);
+        } else {
+            CAMHAL_LOGDA("single preview mode configured successfully");
+        }
+    }
+
     mCapturedFrames = mBurstFrames;
     mBurstFramesAccum = mBurstFrames;
     mBurstFramesQueued = 0;
@@ -1762,6 +1776,8 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_WhiteBalance);
+    setExtraData(false, mCameraAdapterParameters.mPrevPortIndex, OMX_TI_VectShotInfo);
     //Release image buffers
     if ( NULL != mReleaseImageBuffersCallback ) {
         mReleaseImageBuffersCallback(mReleaseData);
