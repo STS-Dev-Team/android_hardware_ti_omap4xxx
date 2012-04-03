@@ -18,6 +18,7 @@
 #include <gui/SurfaceTexture.h>
 #include <gui/SurfaceTextureClient.h>
 #include <ui/GraphicBuffer.h>
+#include <ui/GraphicBufferMapper.h>
 
 #include <camera/Camera.h>
 #include <camera/ICamera.h>
@@ -46,6 +47,11 @@
            return; \
        } \
     } while(0);
+
+#define ALIGN_DOWN(x, n) ((x) & (~((n) - 1)))
+#define ALIGN_UP(x, n) ((((x) + (n) - 1)) & (~((n) - 1)))
+#define ALIGN_WIDTH 32 // Should be 32...but the calculated dimension causes an ion crash
+#define ALIGN_HEIGHT 2 // Should be 2...but the calculated dimension causes an ion crash
 
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
@@ -372,40 +378,130 @@ void SurfaceTextureGL::drawTexture() {
 }
 
 // buffer source stuff
-void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer) {
+void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t *buffer, unsigned int count) {
     int size;
+    buffer_info_t info;
     int fd = -1;
     char fn[256];
-    uint8_t *buffer = NULL;
 
     if (!graphic_buffer.get()) {
         return;
     }
 
-    graphic_buffer->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &buffer);
-
     size = calcBufSize((int)graphic_buffer->getPixelFormat(),
                               graphic_buffer->getWidth(),
                               graphic_buffer->getHeight());
     if ((size <= 0) || !buffer) {
-        goto out;
+        return;
     }
 
+    info.size = size;
+    info.width = graphic_buffer->getWidth();
+    info.height = graphic_buffer->getHeight();
+    info.format = graphic_buffer->getPixelFormat();
+
+    {
+        // Just saving last 5 buffers
+        Mutex::Autolock lock(mReturnedBuffersMutex);
+        info.buf = NULL;
+        if (mReturnedBuffers.size() > 4) {
+            info.buf = mReturnedBuffers.itemAt(0).buf;
+            mReturnedBuffers.removeAt(0);
+        }
+    }
+
+    if (!info.buf) {
+        info.buf = (uint8_t*) malloc(size);
+    }
+    if(info.buf) memcpy(info.buf, buffer, size);
+    mReturnedBuffers.add(info);
+
     fn[0] = 0;
-    sprintf(fn, "/sdcard/img%03d.raw", mCounter);
+    sprintf(fn, "/sdcard/img%03d.raw", count);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
-
-    if (fd < 0)
-        goto out;
-
-    if (size != write(fd, buffer, size))
-        printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
-
-    printf("%s: buffer=%08X, size=%d stored at %s\n",
-           __FUNCTION__, (int)buffer, size, fn);
-out:
-    if (fd >= 0)
+    if (fd >= 0) {
+        if (size != write(fd, buffer, size)) {
+            printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
+        }
+        printf("%s: buffer=%08X, size=%d stored at %s\n",
+                    __FUNCTION__, (int)info.buf, info.size, fn);
         close(fd);
+    } else {
+        printf("error opening or creating %s\n", fn);
+    }
+}
 
-    graphic_buffer->unlock();
+void BufferSourceInput::setInput(buffer_info_t bufinfo) {
+    sp<SurfaceTexture> surface_texture;
+    sp<ANativeWindow> window_tapin;
+    ANativeWindowBuffer* anb;
+    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    void *data = NULL;
+    static int count = 0;
+
+    int aligned_width, aligned_height;
+    aligned_width = ALIGN_UP(bufinfo.width, ALIGN_WIDTH);
+    aligned_height = bufinfo.height; //aligned_width * bufinfo.height / bufinfo.width;
+    // aligned_height = ALIGN_DOWN(aligned_height, ALIGN_HEIGHT);
+    printf("aligned width: %d height: %d", aligned_width, aligned_height);
+
+    Rect bounds(bufinfo.width, bufinfo.height);
+
+    surface_texture = mSurfaceTexture->getST();
+
+    surface_texture->setDefaultBufferSize(bufinfo.width, bufinfo.height);
+    window_tapin = new SurfaceTextureClient(surface_texture);
+    native_window_set_usage(window_tapin.get(), GRALLOC_USAGE_HW_TEXTURE |
+                     GRALLOC_USAGE_HW_RENDER |
+                     GRALLOC_USAGE_SW_READ_RARELY |
+                     GRALLOC_USAGE_SW_WRITE_NEVER);
+    native_window_set_buffer_count(window_tapin.get(), 1);
+    native_window_set_buffers_geometry(window_tapin.get(),
+                  aligned_width, aligned_height, bufinfo.format);
+    window_tapin->dequeueBuffer(window_tapin.get(), &anb);
+    mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
+    // copy buffer to input buffer if available
+    if (bufinfo.buf) {
+        if (bufinfo.width == aligned_width) {
+            memcpy(data, bufinfo.buf, bufinfo.size);
+        } else {
+            // need to copy line by line to adjust for stride
+            uint8_t *dst = (uint8_t*) data;
+            uint8_t *src = bufinfo.buf;
+            // hrmm this copy only works for NV12 and YV12
+            // copy Y first
+            for (int i = 0; i < aligned_height; i++) {
+                memcpy(dst, src, bufinfo.width);
+                dst += aligned_width;
+                src += bufinfo.width;
+            }
+            // copy UV plane
+            for (int i = 0; i < (aligned_height / 2); i++) {
+                memcpy(dst, src, bufinfo.width);
+                dst += aligned_width ;
+                src += bufinfo.width ;
+            }
+        }
+    }
+
+    int fd = -1;
+    char fn[256];
+    fn[0] = 0;
+    sprintf(fn, "/sdcard/img%03d_in.raw", count++);
+    fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+    if (fd >= 0) {
+        int size = calcBufSize(bufinfo.format, aligned_width, aligned_height);
+        if (size != write(fd, data, size)) {
+            printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
+        }
+        printf("%s: buffer=%08X, size=%d stored at %s\n",
+                    __FUNCTION__, (int)data, size, fn);
+        close(fd);
+    } else {
+        printf("error opening or creating %s\n", fn);
+    }
+
+    mapper.unlock(anb->handle);
+    window_tapin->queueBuffer(window_tapin.get(), anb);
+    mCamera->setBufferSource(surface_texture, NULL);
 }

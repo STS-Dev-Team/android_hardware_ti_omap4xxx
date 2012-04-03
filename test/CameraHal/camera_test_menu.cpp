@@ -51,7 +51,8 @@ sp<MediaRecorder> recorder;
 sp<SurfaceComposerClient> client;
 sp<SurfaceControl> surfaceControl;
 sp<Surface> previewSurface;
-sp<BufferSourceThread> bufferSourceThread;
+sp<BufferSourceThread> bufferSourceOutputThread;
+sp<BufferSourceInput> bufferSourceInput;
 
 CameraParameters params;
 CameraParameters shotParams;
@@ -1124,12 +1125,13 @@ int closeCamera() {
     hardwareActive = false;
     return 0;
 }
-void setBufferSource() {
-    if(!bufferSourceThread.get()) {
-        bufferSourceThread = new BufferSourceThread(false, 123, camera);
-        bufferSourceThread->run();
-        bufferSourceThread->waitForInit();
+
+void setBufferOutputSource() {
+    if(!bufferSourceOutputThread.get()) {
+        bufferSourceOutputThread = new BufferSourceThread(false, 123, camera);
+        bufferSourceOutputThread->run();
     }
+    bufferSourceOutputThread->setBuffer();
 }
 
 int startPreview() {
@@ -2401,7 +2403,10 @@ int functional_menu() {
             } else {
                 stopPreview();
             }
-
+            if (bufferSourceOutputThread.get()) {
+                bufferSourceOutputThread->requestExit();
+                bufferSourceOutputThread.clear();
+            }
             break;
 
         case '3':
@@ -3063,7 +3068,7 @@ int functional_menu() {
             int msgType = 0;
 
             if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
-                setBufferSource();
+                setBufferOutputSource();
             } else {
                 msgType = CAMERA_MSG_COMPRESSED_IMAGE |
                           CAMERA_MSG_RAW_IMAGE |
@@ -3076,7 +3081,38 @@ int functional_menu() {
             } else {
                 gettimeofday(&picture_start, 0);
                 if ( hardwareActive ) {
+                    camera->setParameters(params.flatten());
                     camera->takePicture(msgType, shotParams.flatten());
+                }
+            }
+            break;
+        }
+
+        case 'P':
+        {
+            int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                          CAMERA_MSG_RAW_IMAGE |
+                          CAMERA_MSG_RAW_BURST;
+            gettimeofday(&picture_start, 0);
+            if (!bufferSourceInput.get()) {
+                bufferSourceInput = new BufferSourceInput(false, 1234, camera);
+                bufferSourceInput->init();
+            }
+
+            if (bufferSourceOutputThread.get() &&
+                bufferSourceOutputThread->hasBuffer())
+            {
+                CameraParameters temp = params;
+                // Set pipeline to capture 2592x1944 JPEG
+                temp.setPictureFormat(CameraParameters::PIXEL_FORMAT_JPEG);
+                temp.setPictureSize(2592, 1944);
+                if (hardwareActive) camera->setParameters(temp.flatten());
+
+                if (bufferSourceInput.get()) {
+                    buffer_info_t info = bufferSourceOutputThread->popBuffer();
+                    bufferSourceInput->setInput(info);
+                    if (hardwareActive) camera->reprocess(msgType, String8());
+                    if (info.buf) free(info.buf);
                 }
             }
             break;
