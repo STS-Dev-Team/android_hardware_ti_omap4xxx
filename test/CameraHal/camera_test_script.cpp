@@ -34,6 +34,7 @@ extern bool stopScript;
 extern bool hardwareActive;
 extern sp<Camera> camera;
 extern sp<BufferSourceThread> bufferSourceOutputThread;
+extern sp<BufferSourceInput> bufferSourceInput;
 extern CameraParameters params;
 extern CameraParameters shotParams;
 extern bool recordingMode;
@@ -309,6 +310,10 @@ int execute_functional_script(char *script) {
                     stopPreview();
                 }
                 printf("%dx%d", captureSize[i].width, captureSize[i].height);
+                if (bufferSourceOutputThread.get()) {
+                    bufferSourceOutputThread->requestExit();
+                    bufferSourceOutputThread.clear();
+                }
 
                 break;
 
@@ -1097,6 +1102,35 @@ int execute_functional_script(char *script) {
                             printf("Error returned while taking a picture");
                             break;
                         }
+                    }
+                }
+                break;
+            }
+
+            case 'P':
+            {
+                int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                              CAMERA_MSG_RAW_IMAGE |
+                              CAMERA_MSG_RAW_BURST;
+                gettimeofday(&picture_start, 0);
+                if (!bufferSourceInput.get()) {
+                    bufferSourceInput = new BufferSourceInput(false, 1234, camera);
+                    bufferSourceInput->init();
+                }
+
+                if (bufferSourceOutputThread.get() &&
+                    bufferSourceOutputThread->hasBuffer())
+                {
+                    CameraParameters temp = params;
+                    // Set pipeline to capture 2592x1944 JPEG
+                    temp.setPictureFormat(CameraParameters::PIXEL_FORMAT_JPEG);
+                    temp.setPictureSize(2592, 1944);
+                    if (hardwareActive) camera->setParameters(temp.flatten());
+
+                    if (bufferSourceInput.get()) {
+                        buffer_info_t info = bufferSourceOutputThread->popBuffer();
+                        bufferSourceInput->setInput(info);
+                        if (hardwareActive) camera->reprocess(msgType, String8());
                     }
                 }
                 break;

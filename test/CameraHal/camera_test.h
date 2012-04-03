@@ -165,6 +165,15 @@ typedef struct fps_ranges_t {
     int rangeMax;
 } fps_Array;
 
+typedef struct buffer_info {
+    int size;
+    int width;
+    int height;
+    int format;
+    uint8_t *buf;
+} buffer_info_t;
+
+
 char * get_cycle_cmd(const char *aSrc);
 int execute_functional_script(char *script);
 status_t dump_mem_status();
@@ -225,6 +234,10 @@ class FrameWaiter : public SurfaceTexture::FrameAvailableListener {
 public:
     FrameWaiter():
             mPendingFrames(0) {
+    }
+
+    virtual ~FrameWaiter() {
+        onFrameAvailable();
     }
 
     void waitForFrame() {
@@ -312,63 +325,121 @@ private:
 
 class BufferSourceThread : public Thread {
 public:
+    class Defer : public Thread {
+        public:
+            Defer(sp<GraphicBuffer> &gbuf, BufferSourceThread* bst, unsigned int count) :
+                    Thread(false), mGraphicBuffer(gbuf), mBST(bst), mCount(count)
+            {
+                mGraphicBuffer->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &mBuffer);
+            }
+            virtual ~Defer() {mGraphicBuffer->unlock();}
+            virtual bool threadLoop() {
+                printf ("=== handling buffer %d\n", mCount);
+                mBST->handleBuffer(mGraphicBuffer, mBuffer, mCount);
+                return false;
+            }
+        private:
+            sp<GraphicBuffer> mGraphicBuffer;
+            uint8_t *mBuffer;
+            BufferSourceThread* mBST;
+            unsigned int mCount;
+    };
+public:
     BufferSourceThread(bool display, int tex_id, sp<Camera> camera) :
-                 Thread(false), mCounter(0), mInit(true),
-                 mDisplayable(display), mTexId(tex_id), mCamera(camera) {
-        mSurfaceTexture = new SurfaceTextureBase();
+                 Thread(false), mCounter(0), mDisplayable(display),
+                 mTexId(tex_id), mCamera(camera), mDestroying(false) {
+        mSurfaceTextureBase = new SurfaceTextureBase();
+        mSurfaceTextureBase->initialize(mTexId);
+        mSurfaceTexture = mSurfaceTextureBase->getST();
+        mSurfaceTexture->setSynchronousMode(true);
+        mFW = new FrameWaiter();
+        mSurfaceTexture->setFrameAvailableListener(mFW);
     }
     virtual ~BufferSourceThread() {
-        delete mSurfaceTexture;
+        mDestroying = true;
+
+        delete mSurfaceTextureBase;
+        for (unsigned int i = 0; i < mReturnedBuffers.size(); i++) {
+            buffer_info_t info = mReturnedBuffers.itemAt(i);
+            if (info.buf) free(info.buf);
+            mReturnedBuffers.removeAt(i);
+        }
     }
 
     virtual bool threadLoop() {
-        sp<SurfaceTexture> surface_texture;
         sp<GraphicBuffer> graphic_buffer;
 
-        Mutex::Autolock lock(mMutex);
-
-        if(mInit) {
-            mSurfaceTexture->initialize(mTexId);
-            surface_texture = mSurfaceTexture->getST();
-            surface_texture->setSynchronousMode(true);
-            mFW = new FrameWaiter();
-            surface_texture->setFrameAvailableListener(mFW);
-            mCamera->setBufferSource(surface_texture);
-            mInit = false;
-            mCondition.signal();
-            mMutex.unlock();
-        }
-        surface_texture = mSurfaceTexture->getST();
         mFW->waitForFrame();
-        surface_texture->updateTexImage();
-        graphic_buffer = surface_texture->getCurrentBuffer();
-        handleBuffer(graphic_buffer);
-
-        mCounter++;
-        return true;
-    }
-
-    void waitForInit() {
-        Mutex::Autolock lock(mMutex);
-        while (mInit) {
-            mCondition.wait(mMutex);
+        if (!mDestroying) {
+            mSurfaceTexture->updateTexImage();
+            graphic_buffer = mSurfaceTexture->getCurrentBuffer();
+            sp<Defer> defer = new Defer(graphic_buffer, this, mCounter++);
+            defer->run();
+            return true;
         }
+        return false;
     }
 
-private:
-    void handleBuffer(sp<GraphicBuffer> &);
+    void setBuffer() {
+        mCamera->setBufferSource(NULL, mSurfaceTexture);
+    }
+
+    buffer_info_t popBuffer() {
+        buffer_info_t buffer;
+        Mutex::Autolock lock(mReturnedBuffersMutex);
+        printf ("[1]mReturnedBuffers.size() = %d empty() = %d\n", mReturnedBuffers.size(), mReturnedBuffers.isEmpty());
+        if (!mReturnedBuffers.isEmpty()) {
+            buffer = mReturnedBuffers.itemAt(0);
+            mReturnedBuffers.removeAt(0);
+        }
+        return buffer;
+    }
+
+    bool hasBuffer() {
+        Mutex::Autolock lock(mReturnedBuffersMutex);
+        printf ("[2]mReturnedBuffers.size() = %d empty() = %d\n", mReturnedBuffers.size(), mReturnedBuffers.isEmpty());
+        return !mReturnedBuffers.isEmpty();
+    }
+
+    void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
 
 private:
-    SurfaceTextureBase *mSurfaceTexture;
+    SurfaceTextureBase *mSurfaceTextureBase;
+    sp<SurfaceTexture> mSurfaceTexture;
     unsigned int mCounter;
-    bool mInit;
     bool mDisplayable;
     int mTexId;
     sp<Camera> mCamera;
     sp<FrameWaiter> mFW;
+    Vector<buffer_info_t> mReturnedBuffers;
+    Mutex mReturnedBuffersMutex;
+    bool mDestroying;
+};
 
-    Mutex mMutex;
-    Condition mCondition;
+class BufferSourceInput : public RefBase {
+public:
+    BufferSourceInput(bool display, int tex_id, sp<Camera> camera) :
+                 mDisplayable(display), mTexId(tex_id), mCamera(camera) {
+        mSurfaceTexture = new SurfaceTextureBase();
+    }
+    virtual ~BufferSourceInput() {
+        delete mSurfaceTexture;
+    }
+
+    void init() {
+        sp<SurfaceTexture> surface_texture;
+        mSurfaceTexture->initialize(mTexId);
+        surface_texture = mSurfaceTexture->getST();
+        surface_texture->setSynchronousMode(true);
+    }
+
+    void setInput(buffer_info_t);
+
+private:
+    SurfaceTextureBase *mSurfaceTexture;
+    bool mDisplayable;
+    int mTexId;
+    sp<Camera> mCamera;
 };
 
 #endif
