@@ -1107,6 +1107,15 @@ int execute_functional_script(char *script) {
                 break;
             }
 
+            case 'S':
+            {
+                createBufferOutputSource();
+                if (bufferSourceOutputThread.get()) {
+                    bufferSourceOutputThread->toggleStreamCapture();
+                }
+                break;
+            }
+
             case 'P':
             {
                 int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
