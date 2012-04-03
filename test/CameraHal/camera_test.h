@@ -63,9 +63,6 @@
 #define COMPENSATION_OFFSET 20
 #define DELIMITER           "|"
 
-#define MAX_PREVIEW_SURFACE_WIDTH   800
-#define MAX_PREVIEW_SURFACE_HEIGHT  480
-
 #define MODEL "camera_test"
 #define MAKE "camera_test"
 
