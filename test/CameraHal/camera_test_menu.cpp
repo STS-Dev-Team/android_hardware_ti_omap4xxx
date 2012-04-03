@@ -439,6 +439,20 @@ bool stopScript = false;
 int restartCount = 0;
 bool firstTime = true;
 
+//TI extensions for enable/disable algos
+const char *algoFixedGamma[] = {"disable", "enable"};
+const char *algoNSF1[] = {"disable", "enable"};
+const char *algoNSF2[] = {"disable", "enable"};
+const char *algoSharpening[] = {"disable", "enable"};
+const char *algoThreeLinColorMap[] = {"disable", "enable"};
+const char *algoGIC[] = {"disable", "enable"};
+int algoFixedGammaIDX = 0;
+int algoNSF1IDX = 0;
+int algoNSF2IDX = 0;
+int algoSharpeningIDX = 0;
+int algoThreeLinColorMapIDX = 0;
+int algoGICIDX = 0;
+
 /** Calculate delay from a reference time */
 unsigned long long timeval_delay(const timeval *ref) {
     unsigned long long st, end, delay;
@@ -2021,6 +2035,108 @@ int menu_gps() {
     return 0;
 }
 
+int menu_algo() {
+    char ch;
+
+    if (print_menu) {
+        printf("\n\n== ALGO ENABLE/DISABLE MENU ============\n\n");
+        printf("   a.                      Fixed Gamma: %s\n", algoFixedGamma[algoFixedGammaIDX]);
+        printf("   s.                             NSF1: %s\n", algoNSF1[algoNSF1IDX]);
+        printf("   d.                             NSF2: %s\n", algoNSF2[algoNSF2IDX]);
+        printf("   f.                       Sharpening: %s\n", algoSharpening[algoSharpeningIDX]);
+        printf("   g.                 Color Conversion: %s\n", algoThreeLinColorMap[algoThreeLinColorMapIDX]);
+        printf("   h.      Green Inballance Correction: %s\n", algoGIC[algoGICIDX]);
+        printf("\n");
+        printf("   q. Return to main menu\n");
+        printf("\n");
+        printf("   Choice: ");
+    }
+
+    ch = getchar();
+    printf("%c", ch);
+
+    print_menu = 1;
+
+    switch (ch) {
+
+        case 'a':
+        case 'A':
+            algoFixedGammaIDX++;
+            algoFixedGammaIDX %= ARRAY_SIZE(algoFixedGamma);
+            params.set(KEY_ALGO_FIXED_GAMMA, (algoFixedGamma[algoFixedGammaIDX]));
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 's':
+        case 'S':
+            algoNSF1IDX++;
+            algoNSF1IDX %= ARRAY_SIZE(algoNSF1);
+            params.set(KEY_ALGO_NSF1, (algoNSF1[algoNSF1IDX]));
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 'd':
+        case 'D':
+            algoNSF2IDX++;
+            algoNSF2IDX %= ARRAY_SIZE(algoNSF2);
+            params.set(KEY_ALGO_NSF2, (algoNSF2[algoNSF2IDX]));
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 'f':
+        case 'F':
+            algoSharpeningIDX++;
+            algoSharpeningIDX %= ARRAY_SIZE(algoSharpening);
+            params.set(KEY_ALGO_SHARPENING, (algoSharpening[algoSharpeningIDX]));
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 'g':
+        case 'G':
+            algoThreeLinColorMapIDX++;
+            algoThreeLinColorMapIDX %= ARRAY_SIZE(algoThreeLinColorMap);
+            params.set(KEY_ALGO_THREELINCOLORMAP, (algoThreeLinColorMap[algoThreeLinColorMapIDX]));
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 'h':
+        case 'H':
+            algoGICIDX++;
+            algoGICIDX %= ARRAY_SIZE(algoGIC);
+            params.set(KEY_ALGO_GIC, (algoGIC[algoGICIDX]));
+
+            if ( hardwareActive )
+                camera->setParameters(params.flatten());
+
+            break;
+
+        case 'Q':
+        case 'q':
+            return -1;
+
+        default:
+            print_menu = 0;
+            break;
+    }
+
+    return 0;
+}
+
 int functional_menu() {
     char ch;
     char area1[MAX_LINES][MAX_SYMBOLS+1];
@@ -2129,6 +2245,7 @@ int functional_menu() {
         snprintf(area2[k++], MAX_SYMBOLS, "<. Exposure Lock:     %s", AutoExposureLocktoggle ? "On" : "Off");
         snprintf(area2[k++], MAX_SYMBOLS, ">. WhiteBalance Lock:  %s",AutoWhiteBalanceLocktoggle ? "On": "Off");
         snprintf(area2[k++], MAX_SYMBOLS, "). Mechanical Misalignment Correction:  %s",misalignmentCorrection[enableMisalignmentCorrectionIdx]);
+        snprintf(area2[k++], MAX_SYMBOLS, "d. Algo enable/disable functions menu");
 
         printf("\n");
         for (int i=0; (i<j || i < k) && i<MAX_LINES; i++) {
@@ -3005,6 +3122,13 @@ int functional_menu() {
         camera->setParameters(params.flatten());
       }
       break;
+
+    case 'd':
+        while (1) {
+            if ( menu_algo() < 0)
+                break;
+        }
+        break;
 
     default:
       print_menu = 0;
