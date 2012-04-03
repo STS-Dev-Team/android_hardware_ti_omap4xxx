@@ -1830,19 +1830,16 @@ void initDefaults() {
     videoCodecIDX = 0;
     gbceIDX = 0;
     glbceIDX = 0;
-
+    contrast = 100;
 #ifdef TARGET_OMAP4
     ///Temporary fix until OMAP3 and OMAP4 3A values are synced
-    contrast = 90;
     brightness = 50;
-    sharpness = 0;
-    saturation = 50;
+    sharpness = 100;
 #else
-    contrast = 100;
     brightness = 100;
     sharpness = 0;
-    saturation = 100;
 #endif
+    saturation = 100;
     iso_mode = getDefaultParameter("auto", numisoMode, isoMode);
     capture_mode = getDefaultParameter("high-quality", nummodevalues, modevalues);
     exposure_mode = getDefaultParameter("auto", numExposureMode, exposureMode);
@@ -2627,7 +2624,12 @@ int functional_menu() {
             break;
 
         case 'h':
-            if ( sharpness >= 100) {
+#ifdef TARGET_OMAP4
+            if ( sharpness >= 200)
+#else
+            if ( sharpness >= 100)
+#endif
+            {
                 sharpness = 0;
             } else {
                 sharpness += 10;
@@ -2695,7 +2697,12 @@ int functional_menu() {
             }
             break;
         case 'b':
-            if ( brightness >= 200) {
+#ifdef TARGET_OMAP4
+            if ( brightness >= 100)
+#else
+            if ( brightness >= 200)
+#endif
+            {
                 brightness = 0;
             } else {
                 brightness += 10;
@@ -2711,7 +2718,7 @@ int functional_menu() {
 
         case 's':
         case 'S':
-            if ( saturation >= 100) {
+            if ( saturation >= 200) {
                 saturation = 0;
             } else {
                 saturation += 10;
