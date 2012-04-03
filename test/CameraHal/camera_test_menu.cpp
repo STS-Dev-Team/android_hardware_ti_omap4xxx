@@ -12,6 +12,7 @@
 #include <surfaceflinger/ISurfaceComposer.h>
 #include <surfaceflinger/ISurfaceComposerClient.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#include <ui/DisplayInfo.h>
 
 #include <camera/Camera.h>
 #include <camera/ICamera.h>
@@ -740,6 +741,11 @@ void CameraHandler::postDataTimestamp(nsecs_t timestamp, int32_t msgType, const 
 
 int createPreviewSurface(unsigned int width, unsigned int height, int32_t pixFormat) {
     unsigned int previewWidth, previewHeight;
+    DisplayInfo dinfo;
+    SurfaceComposerClient::getDisplayInfo(0, &dinfo);
+
+    const unsigned MAX_PREVIEW_SURFACE_WIDTH = dinfo.w;
+    const unsigned MAX_PREVIEW_SURFACE_HEIGHT = dinfo.h;
 
     if ( MAX_PREVIEW_SURFACE_WIDTH < width ) {
         previewWidth = MAX_PREVIEW_SURFACE_WIDTH;
@@ -1094,7 +1100,29 @@ int closeCamera() {
 
 int startPreview() {
     int previewWidth, previewHeight;
+    struct CameraInfo cameraInfo;
+    DisplayInfo dinfo;
+    int orientation;
+    unsigned int correctedHeight;
+
+    SurfaceComposerClient::getDisplayInfo(0, &dinfo);
+
+    printf ("dinfo.orientation = %d\n", dinfo.orientation);
+    printf ("dinfo.w = %d\n", dinfo.w);
+    printf ("dinfo.h = %d\n", dinfo.h);
+
+    // calculate display orientation from sensor orientation
+    camera->getCameraInfo(camera_index, &cameraInfo);
+    if (cameraInfo.facing == CAMERA_FACING_FRONT) {
+        orientation = (cameraInfo.orientation + dinfo.orientation) % 360;
+        orientation = (360 - orientation) % 360;  // compensate the mirror
+    } else {  // back-facing
+        orientation = (cameraInfo.orientation - dinfo.orientation + 360) % 360;
+    }
+
+
     if (reSizePreview) {
+        int orientedWidth, orientedHeight;
 
         if(recordingMode)
         {
@@ -1106,8 +1134,18 @@ int startPreview() {
             previewHeight = preview_Array[previewSizeIDX]->height;
         }
 
-        if ( createPreviewSurface(previewWidth,
-                                  previewHeight,
+        // corrected height for aspect ratio
+        if ((orientation == 90) || (orientation == 270)) {
+            orientedHeight = previewWidth;
+            orientedWidth = previewHeight;
+        } else {
+            orientedHeight = previewHeight;
+            orientedWidth = previewWidth;
+        }
+        correctedHeight = (dinfo.w * orientedHeight) / orientedWidth;
+        printf("correctedHeight = %d", correctedHeight);
+
+        if ( createPreviewSurface(dinfo.w, correctedHeight,
                                   pixelformat[previewFormat].pixelFormatDesc) < 0 ) {
             printf("Error while creating preview surface\n");
             return -1;
@@ -1119,6 +1157,16 @@ int startPreview() {
 
         params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
         params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
+
+        // calculate display orientation from sensor orientation
+        camera->getCameraInfo(camera_index, &cameraInfo);
+        if (cameraInfo.facing == CAMERA_FACING_FRONT) {
+            orientation = (cameraInfo.orientation + dinfo.orientation) % 360;
+            orientation= (360 - orientation) % 360;  // compensate the mirror
+        } else {  // back-facing
+            orientation = (cameraInfo.orientation - dinfo.orientation + 360) % 360;
+        }
+        camera->sendCommand(CAMERA_CMD_SET_DISPLAY_ORIENTATION, orientation, 0);
 
         camera->setParameters(params.flatten());
         camera->setPreviewDisplay(previewSurface);
