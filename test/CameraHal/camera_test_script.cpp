@@ -306,6 +306,7 @@ int execute_functional_script(char *script) {
                 } else {
                     stopPreview();
                 }
+                printf("%dx%d", captureSize[i].width, captureSize[i].height);
 
                 break;
 
@@ -719,6 +720,12 @@ int execute_functional_script(char *script) {
 
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
+
+                break;
+
+            case '?':
+
+                setExpGainPairsPreset(cmd + 1, true);
 
                 break;
 
