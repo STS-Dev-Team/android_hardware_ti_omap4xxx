@@ -33,7 +33,9 @@ using namespace android;
 extern bool stopScript;
 extern bool hardwareActive;
 extern sp<Camera> camera;
+extern sp<BufferSourceThread> bufferSourceOutputThread;
 extern CameraParameters params;
+extern CameraParameters shotParams;
 extern bool recordingMode;
 extern int camera_index;
 extern int rotation;
@@ -1059,41 +1061,47 @@ int execute_functional_script(char *script) {
 
             case 'p':
             {
-                int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                 int msgType = 0;
+                 const char *format = params.getPictureFormat();
+
+                if((NULL != format) && isRawPixelFormat(format)) {
+                    createBufferOutputSource();
+                    if (bufferSourceOutputThread.get()) {
+                        bufferSourceOutputThread->setBuffer();
+                    }
+                } else if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
+                    msgType = CAMERA_MSG_COMPRESSED_IMAGE |
                               CAMERA_MSG_RAW_IMAGE |
                               CAMERA_MSG_RAW_BURST;
-                ShotParameters shotParams;
-
-                if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
-                    if(strcmp(videosnapshotstr, "true") == 0) {
-                        gettimeofday(&picture_start, 0);
-                        if ( hardwareActive ) {
-                            ret = camera->takePicture(msgType, shotParams.flatten());
-                            if ( ret != NO_ERROR ) {
-                                printf("Error returned while taking a picture");
-                            }
-                        }
-                    } else {
-                        printf("Video Snapshot is not supported\n");
-                        return -1;
-                    }
-                }
-
-                gettimeofday(&picture_start, 0);
-
-                if (hardwareActive) {
+                } else {
                     msgType = CAMERA_MSG_POSTVIEW_FRAME |
                               CAMERA_MSG_RAW_IMAGE_NOTIFY |
                               CAMERA_MSG_COMPRESSED_IMAGE |
                               CAMERA_MSG_SHUTTER |
                               CAMERA_MSG_RAW_BURST;
-                    ret = camera->takePicture(msgType, shotParams.flatten());
                 }
 
-                if ( ret != NO_ERROR )
-                    printf("Error returned while taking a picture");
+                if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
+                   (0 != strcmp(videosnapshotstr, "true"))) {
+                    printf("Video Snapshot is not supported\n");
+                } else {
+                    gettimeofday(&picture_start, 0);
+                    if ( hardwareActive ) {
+                        ret = camera->setParameters(params.flatten());
+                        if ( ret != NO_ERROR ) {
+                            printf("Error returned while setting parameters");
+                            break;
+                        }
+                        ret = camera->takePicture(msgType, shotParams.flatten());
+                        if ( ret != NO_ERROR ) {
+                            printf("Error returned while taking a picture");
+                            break;
+                        }
+                    }
+                }
                 break;
             }
+
             case 'd':
                 dly = atoi(cmd + 1);
                 sleep(dly);

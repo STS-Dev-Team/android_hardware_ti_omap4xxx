@@ -6,6 +6,9 @@
 #include <time.h>
 #include <semaphore.h>
 #include <pthread.h>
+#include <string.h>
+#include <assert.h>
+#include <climits>
 
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
@@ -13,6 +16,10 @@
 #include <surfaceflinger/ISurfaceComposerClient.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
 #include <ui/DisplayInfo.h>
+
+#include <gui/SurfaceTexture.h>
+#include <gui/SurfaceTextureClient.h>
+#include <ui/GraphicBuffer.h>
 
 #include <camera/Camera.h>
 #include <camera/ICamera.h>
@@ -38,11 +45,14 @@ using namespace android;
 
 int camera_index = 0;
 int print_menu;
+
 sp<Camera> camera;
 sp<MediaRecorder> recorder;
 sp<SurfaceComposerClient> client;
 sp<SurfaceControl> surfaceControl;
 sp<Surface> previewSurface;
+sp<BufferSourceThread> bufferSourceThread;
+
 CameraParameters params;
 CameraParameters shotParams;
 float compensation = 0.0;
@@ -1114,6 +1124,13 @@ int closeCamera() {
     hardwareActive = false;
     return 0;
 }
+void setBufferSource() {
+    if(!bufferSourceThread.get()) {
+        bufferSourceThread = new BufferSourceThread(false, 123, camera);
+        bufferSourceThread->run();
+        bufferSourceThread->waitForInit();
+    }
+}
 
 int startPreview() {
     int previewWidth, previewHeight;
@@ -1850,6 +1867,16 @@ int trySetAutoWhiteBalanceLock(bool toggle) {
         return 0;
     }
     return 0;
+}
+
+bool isRawPixelFormat (const char *format) {
+    bool ret = false;
+    if ((0 == strcmp (format, CameraParameters::PIXEL_FORMAT_YUV422I)) ||
+        (0 == strcmp (format, CameraParameters::PIXEL_FORMAT_YUV420SP)) ||
+        (0 == strcmp (format, CameraParameters::PIXEL_FORMAT_RGB565))) {
+        ret = true;
+    }
+    return ret;
 }
 
 void stopPreview() {
@@ -3033,30 +3060,24 @@ int functional_menu() {
 
         case 'p':
         {
-            int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+            int msgType = 0;
+
+            if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
+                setBufferSource();
+            } else {
+                msgType = CAMERA_MSG_COMPRESSED_IMAGE |
                           CAMERA_MSG_RAW_IMAGE |
                           CAMERA_MSG_RAW_BURST;
-
-            if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
-                if(strcmp(videosnapshotstr, "true") == 0) {
-                    gettimeofday(&picture_start, 0);
-                    if ( hardwareActive ) {
-                        camera->takePicture(msgType, shotParams.flatten());
-                    }
-                } else {
-                    printf("Video Snapshot is not supported\n");
-                    return -1;
-                }
             }
-            gettimeofday(&picture_start, 0);
 
-            if (hardwareActive) {
-                msgType = CAMERA_MSG_POSTVIEW_FRAME |
-                          CAMERA_MSG_RAW_IMAGE_NOTIFY |
-                          CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_SHUTTER |
-                          CAMERA_MSG_RAW_BURST;
-                camera->takePicture(msgType, shotParams.flatten());
+            if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
+               (0 != strcmp(videosnapshotstr, "true"))) {
+                printf("Video Snapshot is not supported\n");
+            } else {
+                gettimeofday(&picture_start, 0);
+                if ( hardwareActive ) {
+                    camera->takePicture(msgType, shotParams.flatten());
+                }
             }
             break;
         }
