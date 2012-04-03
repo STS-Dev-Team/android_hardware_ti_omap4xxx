@@ -1126,12 +1126,11 @@ int closeCamera() {
     return 0;
 }
 
-void setBufferOutputSource() {
+void createBufferOutputSource() {
     if(!bufferSourceOutputThread.get()) {
         bufferSourceOutputThread = new BufferSourceThread(false, 123, camera);
         bufferSourceOutputThread->run();
     }
-    bufferSourceOutputThread->setBuffer();
 }
 
 int startPreview() {
@@ -2947,7 +2946,6 @@ int functional_menu() {
             break;
 
         case 's':
-        case 'S':
             if ( saturation >= 200) {
                 saturation = 0;
             } else {
@@ -3068,7 +3066,10 @@ int functional_menu() {
             int msgType = 0;
 
             if(isRawPixelFormat(pictureFormatArray[pictureFormat])) {
-                setBufferOutputSource();
+                createBufferOutputSource();
+                if (bufferSourceOutputThread.get()) {
+                    bufferSourceOutputThread->setBuffer();
+                }
             } else {
                 msgType = CAMERA_MSG_COMPRESSED_IMAGE |
                           CAMERA_MSG_RAW_IMAGE |
@@ -3084,6 +3085,15 @@ int functional_menu() {
                     camera->setParameters(params.flatten());
                     camera->takePicture(msgType, shotParams.flatten());
                 }
+            }
+            break;
+        }
+
+        case 'S':
+        {
+            createBufferOutputSource();
+            if (bufferSourceOutputThread.get()) {
+                bufferSourceOutputThread->toggleStreamCapture();
             }
             break;
         }
@@ -3112,7 +3122,6 @@ int functional_menu() {
                     buffer_info_t info = bufferSourceOutputThread->popBuffer();
                     bufferSourceInput->setInput(info);
                     if (hardwareActive) camera->reprocess(msgType, String8());
-                    if (info.buf) free(info.buf);
                 }
             }
             break;
