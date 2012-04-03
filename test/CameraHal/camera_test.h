@@ -45,6 +45,14 @@
 
 #define KEY_MECHANICAL_MISALIGNMENT_CORRECTION "mechanical-misalignment-correction"
 
+//TI extensions for enable/disable algos
+#define KEY_ALGO_FIXED_GAMMA            "ti-algo-fixed-gamma"
+#define KEY_ALGO_NSF1                   "ti-algo-nsf1"
+#define KEY_ALGO_NSF2                   "ti-algo-nsf2"
+#define KEY_ALGO_SHARPENING             "ti-algo-sharpening"
+#define KEY_ALGO_THREELINCOLORMAP       "ti-algo-threelinecolormap"
+#define KEY_ALGO_GIC                    "ti-algo-gic"
+
 #define SDCARD_PATH "/sdcard/"
 
 #define MAX_BURST   15
