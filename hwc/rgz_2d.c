@@ -304,7 +304,7 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
      * With the HWC we don't bother having a buffer for the fill we'll get the
      * OMAPLFB to fixup the src1desc if this address is -1
      */
-    src1desc->virtaddr = (void*)-1;
+    src1desc->auxptr = (void*)-1;
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
     src1geom->format = OCDFMT_RGBA24;
@@ -904,7 +904,7 @@ static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff
      * The virtaddr isn't going to be used in the final 2D h/w integration
      * because we will be handling buffers differently
      */
-    src1desc->virtaddr = buff_idx == -1 ? HANDLE_TO_BUFFER(handle) : (void*)buff_idx; /* FIXME: revisit this later */
+    src1desc->auxptr = buff_idx == -1 ? HANDLE_TO_BUFFER(handle) : (void*)buff_idx; /* FIXME: revisit this later */
 
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
@@ -948,7 +948,7 @@ static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff
         struct bvbuffdesc *src2desc = &e->src2desc;
         *src2geom = *dstgeom;
         src2desc->structsize = sizeof(struct bvbuffdesc);
-        src2desc->virtaddr = (void*)HWC_BLT_DESC_FB_FN(0);
+        src2desc->auxptr = (void*)HWC_BLT_DESC_FB_FN(0);
         bpflags |= BVFLAG_BLEND;
         bp->op.blend = BVBLEND_SRC1OVER;
         bp->src2.desc = scrdesc;
@@ -1020,7 +1020,7 @@ static void rgz_src2blend_prep2(
         struct bvbuffdesc *src2desc = &e->src2desc;
         *src2geom = *dstgeom;
         src2desc->structsize = sizeof(struct bvbuffdesc);
-        src2desc->virtaddr = (void*)HWC_BLT_DESC_FB_FN(0);
+        src2desc->auxptr = (void*)HWC_BLT_DESC_FB_FN(0);
     }
 
     if (hwc_transform & HWC_TRANSFORM_FLIP_H)
@@ -1040,7 +1040,7 @@ static void rgz_src2blend_prep(
     struct bvbuffdesc *src2desc = &e->src2desc;
     src2desc->structsize = sizeof(struct bvbuffdesc);
     src2desc->length = handle->iHeight * HANDLE_TO_STRIDE(handle);
-    src2desc->virtaddr = IS_BVCMD(params)?
+    src2desc->auxptr = IS_BVCMD(params)?
         (void*)rgz_layer->buffidx : HANDLE_TO_BUFFER(handle);
 
     struct bvsurfgeom *src2geom = &e->src2geom;
@@ -1080,7 +1080,7 @@ static void rgz_src1_prep(
     struct bvbuffdesc *src1desc = &e->src1desc;
     src1desc->structsize = sizeof(struct bvbuffdesc);
     src1desc->length = handle->iHeight * HANDLE_TO_STRIDE(handle);
-    src1desc->virtaddr = IS_BVCMD(params) ?
+    src1desc->auxptr = IS_BVCMD(params) ?
         (void*)rgz_layer->buffidx : HANDLE_TO_BUFFER(handle);
 
     struct bvsurfgeom *src1geom = &e->src1geom;
@@ -1239,7 +1239,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
 
 struct bvbuffdesc gscrndesc = {
     .structsize = sizeof(struct bvbuffdesc), .length = 0,
-    .virtaddr = MAP_FAILED
+    .auxptr = MAP_FAILED
 };
 struct bvsurfgeom gscrngeom = {
     .structsize = sizeof(struct bvsurfgeom), .format = OCDFMT_UNKNOWN
