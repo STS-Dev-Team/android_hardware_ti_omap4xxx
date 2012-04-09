@@ -173,6 +173,15 @@ private:
     static status_t insertPreviewSizes(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
     static status_t insertImageSizes(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
     static status_t insertFrameRates(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t sortAscend(V4L_TI_CAPTYPE&, uint16_t ) ;
+
+    status_t v4lIoctl(int, int, void*);
+    status_t v4lInitMmap(int&);
+    status_t v4lInitUsrPtr(int&);
+    status_t v4lStartStreaming();
+    status_t v4lStopStreaming();
+    status_t v4lSetFormat(int, int, uint32_t);
+
 
     int mPreviewBufferCount;
     KeyedVector<CameraBuffer *, int> mPreviewBufs;
