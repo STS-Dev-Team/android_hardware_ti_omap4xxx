@@ -128,10 +128,12 @@ status_t V4LCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 status_t V4LCameraAdapter::insertFrameRates(CameraProperties::Properties* params, V4L_TI_CAPTYPE &caps) {
 
     char supported[MAX_PROP_VALUE_LENGTH];
+    char temp[10];
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
     for (int i = 0; i < caps.ulFrameRateCount; i++) {
-        snprintf (supported, 10, "%d", caps.ulFrameRates[i]*1000 );
+        snprintf (temp, 10, "%d", caps.ulFrameRates[i]*1000 );
+        strncat (supported, temp, MAX_PROP_VALUE_LENGTH-1 );
         strncat (supported, PARAM_SEP, 1 );
     }
     params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
@@ -169,6 +171,31 @@ status_t V4LCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     return ret;
 }
 
+status_t V4LCameraAdapter::sortAscend(V4L_TI_CAPTYPE &caps, uint16_t count) {
+    size_t tempRes;
+    size_t w, h, tmpW,tmpH;
+    for (int i=0; i<count; i++) {
+        w = caps.tPreviewRes[i].width;
+        h = caps.tPreviewRes[i].height;
+        tempRes = w*h;
+        for (int j=i+1; j<count; j++) {
+            tmpW = caps.tPreviewRes[j].width;
+            tmpH = caps.tPreviewRes[j].height;
+
+            if (tempRes > (tmpW * tmpH) ) {
+                caps.tPreviewRes[j].width = w;
+                caps.tPreviewRes[j].height = h;
+                w = tmpW;
+                h = tmpH;
+                }
+            }
+        caps.tPreviewRes[i].width = w;
+        caps.tPreviewRes[i].height = h;
+
+        }
+    return NO_ERROR;
+}
+
 /*****************************************
  * public exposed function declarations
  *****************************************/
@@ -178,6 +205,7 @@ status_t V4LCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
      status_t status = NO_ERROR;
      V4L_TI_CAPTYPE caps;
      int i = 0;
+     int j = 0;
      struct v4l2_fmtdesc fmtDesc;
      struct v4l2_frmsizeenum frmSizeEnum;
      struct v4l2_frmivalenum frmIvalEnum;
@@ -227,30 +255,50 @@ status_t V4LCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
         //TODO: populate the sizes when type = V4L2_FRMSIZE_TYPE_STEPWISE
     }
 
+    //sort the preview sizes in ascending order
+    sortAscend(caps, caps.ulPreviewResCount);
+
     //get supported frame rates
-    status = NO_ERROR;
-    for ( i = 0; status == NO_ERROR; i++) {
-        frmIvalEnum.index = i;
-        //Check for supported frame rates for the default pixel format and default image frame size.
-        //TODO: Check supported frame rates for all supported pixel format + resolution 
-        frmIvalEnum.pixel_format = V4L2_PIX_FMT_YUYV;
-        frmIvalEnum.width = DEFAULT_WIDTH;
-        frmIvalEnum.height = DEFAULT_HEIGHT;
-        status = ioctl (handle, VIDIOC_ENUM_FRAMEINTERVALS, &frmIvalEnum);
-        if(frmIvalEnum.type != V4L2_FRMIVAL_TYPE_DISCRETE) {
+    bool fps30 = false;
+    for ( j=caps.ulPreviewResCount-1; j >= 0; j--) {
+        CAMHAL_LOGDB(" W x H = %d x %d", caps.tPreviewRes[j].width, caps.tPreviewRes[j].height);
+        status = NO_ERROR;
+        for ( i = 0; status == NO_ERROR; i++) {
+            frmIvalEnum.index = i;
+            //Check for supported frame rates for the default pixel format.
+            frmIvalEnum.pixel_format = V4L2_PIX_FMT_YUYV;
+            frmIvalEnum.width = caps.tPreviewRes[j].width;
+            frmIvalEnum.height = caps.tPreviewRes[j].height;
+
+            status = ioctl (handle, VIDIOC_ENUM_FRAMEINTERVALS, &frmIvalEnum);
+            if(frmIvalEnum.type != V4L2_FRMIVAL_TYPE_DISCRETE) {
+                break;
+            }
+            if (status == NO_ERROR) {
+                CAMHAL_LOGDB("frmIvalEnum[%d].frame rate= %d)",i, (frmIvalEnum.discrete.denominator/frmIvalEnum.discrete.numerator));
+                caps.ulFrameRates[i] = (frmIvalEnum.discrete.denominator/frmIvalEnum.discrete.numerator);
+                if (caps.ulFrameRates[i] == 30) {
+                    fps30 = true;
+                }
+            }
+            else {
+                caps.ulFrameRateCount = i;
+            }
+        }
+        if(fps30) {
             break;
         }
-        if (status == NO_ERROR) {
-            LOGD("frmIvalEnum[%d].frame rate= %d)",i, (frmIvalEnum.discrete.denominator/frmIvalEnum.discrete.numerator));
-            caps.ulFrameRates[i] = (frmIvalEnum.discrete.denominator/frmIvalEnum.discrete.numerator);
-        }
-        else {
-            caps.ulFrameRateCount = i;
-        }
     }
+
     if(frmIvalEnum.type != V4L2_FRMIVAL_TYPE_DISCRETE) {
         //TODO: populate the frame rates when type = V4L2_FRMIVAL_TYPE_STEPWISE;
     }
+
+    //update the preview resolution with the highest resolution which supports 30fps.
+    caps.tPreviewRes[0].width = caps.tPreviewRes[j].width;
+    caps.tPreviewRes[0].height = caps.tPreviewRes[j].height;
+    snprintf(caps.tPreviewRes[0].param, MAX_RES_STRING_LENGTH,"%dx%d",caps.tPreviewRes[j].width,caps.tPreviewRes[j].height);
+    caps.ulPreviewResCount = 1;
 
     insertCapabilities (params, caps);
     return NO_ERROR;
