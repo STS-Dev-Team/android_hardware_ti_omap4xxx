@@ -20,4 +20,3 @@ PRODUCT_PACKAGES := \
 	hwcomposer.omap4
 
 $(call inherit-product, hardware/ti/omap4xxx/common.mk)
-
