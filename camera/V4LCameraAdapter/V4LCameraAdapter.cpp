@@ -47,7 +47,7 @@ static int mDebugFps = 0;
 
 #define Q16_OFFSET 16
 
-#define HERE(Msg) {CAMHAL_LOGEB("--===line %d, %s===--\n", __LINE__, Msg);}
+#define HERE(Msg) {CAMHAL_LOGEB("--=== %s===--\n", Msg);}
 
 namespace android {
 
@@ -63,11 +63,141 @@ char device[15];
 
 /*--------------------Camera Adapter Class STARTS here-----------------------------*/
 
+/*--------------------V4L wrapper functions -------------------------------*/
+status_t V4LCameraAdapter::v4lIoctl (int fd, int req, void* argp) {
+    status_t ret = NO_ERROR;
+    errno = 0;
+
+    do {
+        ret = ioctl (fd, req, argp);
+    }while (-1 == ret && EINTR == errno);
+
+    return ret;
+}
+
+status_t V4LCameraAdapter::v4lInitMmap(int& count) {
+    status_t ret = NO_ERROR;
+
+    //First allocate adapter internal buffers at V4L level for USB Cam
+    //These are the buffers from which we will copy the data into overlay buffers
+    /* Check if camera can handle NB_BUFFER buffers */
+    mVideoInfo->rb.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    mVideoInfo->rb.memory = V4L2_MEMORY_MMAP;
+    mVideoInfo->rb.count = count;
+
+    ret = v4lIoctl(mCameraHandle, VIDIOC_REQBUFS, &mVideoInfo->rb);
+    if (ret < 0) {
+        CAMHAL_LOGEB("VIDIOC_REQBUFS failed: %s", strerror(errno));
+        return ret;
+    }
+
+    count = mVideoInfo->rb.count;
+    for (int i = 0; i < mVideoInfo->rb.count; i++) {
+
+        memset (&mVideoInfo->buf, 0, sizeof (struct v4l2_buffer));
+
+        mVideoInfo->buf.index = i;
+        mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
+
+        ret = v4lIoctl (mCameraHandle, VIDIOC_QUERYBUF, &mVideoInfo->buf);
+        if (ret < 0) {
+            CAMHAL_LOGEB("Unable to query buffer (%s)", strerror(errno));
+            return ret;
+        }
+
+        mVideoInfo->mem[i] = mmap (NULL,
+               mVideoInfo->buf.length,
+               PROT_READ | PROT_WRITE,
+               MAP_SHARED,
+               mCameraHandle,
+               mVideoInfo->buf.m.offset);
+
+        if (mVideoInfo->mem[i] == MAP_FAILED) {
+            CAMHAL_LOGEB("Unable to map buffer [%d]. (%s)", i, strerror(errno));
+            return -1;
+        }
+    }
+    return ret;
+}
+
+status_t V4LCameraAdapter::v4lInitUsrPtr(int& count) {
+    status_t ret = NO_ERROR;
+
+    mVideoInfo->rb.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    mVideoInfo->rb.memory = V4L2_MEMORY_USERPTR;
+    mVideoInfo->rb.count = count;
+
+    ret = v4lIoctl(mCameraHandle, VIDIOC_REQBUFS, &mVideoInfo->rb);
+    if (ret < 0) {
+        CAMHAL_LOGEB("VIDIOC_REQBUFS failed for USERPTR: %s", strerror(errno));
+        return ret;
+    }
+
+    count = mVideoInfo->rb.count;
+    return ret;
+}
+
+status_t V4LCameraAdapter::v4lStartStreaming () {
+    status_t ret = NO_ERROR;
+    enum v4l2_buf_type bufType;
+
+    if (!mVideoInfo->isStreaming) {
+        bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+        ret = v4lIoctl (mCameraHandle, VIDIOC_STREAMON, &bufType);
+        if (ret < 0) {
+            CAMHAL_LOGEB("StartStreaming: Unable to start capture: %s", strerror(errno));
+            return ret;
+        }
+        mVideoInfo->isStreaming = true;
+    }
+    return ret;
+}
+
+status_t V4LCameraAdapter::v4lStopStreaming () {
+    status_t ret = NO_ERROR;
+    enum v4l2_buf_type bufType;
+
+    if (mVideoInfo->isStreaming) {
+        bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+        ret = v4lIoctl (mCameraHandle, VIDIOC_STREAMOFF, &bufType);
+        if (ret < 0) {
+            CAMHAL_LOGEB("StopStreaming: Unable to stop capture: %s", strerror(errno));
+            return ret;
+        }
+        mVideoInfo->isStreaming = false;
+    }
+    return ret;
+}
+
+status_t V4LCameraAdapter::v4lSetFormat (int width, int height, uint32_t pix_format) {
+    status_t ret = NO_ERROR;
+
+    mVideoInfo->width = width;
+    mVideoInfo->height = height;
+    mVideoInfo->framesizeIn = (width * height << 1);
+    mVideoInfo->formatIn = DEFAULT_PIXEL_FORMAT;
+
+    mVideoInfo->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    mVideoInfo->format.fmt.pix.width = width;
+    mVideoInfo->format.fmt.pix.height = height;
+    mVideoInfo->format.fmt.pix.pixelformat = pix_format;
+
+    ret = v4lIoctl(mCameraHandle, VIDIOC_S_FMT, &mVideoInfo->format);
+    if (ret < 0) {
+        CAMHAL_LOGEB("VIDIOC_S_FMT Failed: %s", strerror(errno));
+    }
+    return ret;
+}
+
+/*--------------------Camera Adapter Functions-----------------------------*/
 status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
 {
-    LOG_FUNCTION_NAME;
-
     char value[PROPERTY_VALUE_MAX];
+
+    LOG_FUNCTION_NAME;
     property_get("debug.camera.showfps", value, "0");
     mDebugFps = atoi(value);
 
@@ -75,35 +205,30 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
 
     // Allocate memory for video info structure
     mVideoInfo = (struct VideoInfo *) calloc (1, sizeof (struct VideoInfo));
-    if(!mVideoInfo)
-        {
+    if(!mVideoInfo) {
         return NO_MEMORY;
-        }
+    }
 
-    if ((mCameraHandle = open(device, O_RDWR)) == -1)
-        {
+    if ((mCameraHandle = open(device, O_RDWR) ) == -1) {
         CAMHAL_LOGEB("Error while opening handle to V4L2 Camera: %s", strerror(errno));
         return -EINVAL;
-        }
+    }
 
-    ret = ioctl (mCameraHandle, VIDIOC_QUERYCAP, &mVideoInfo->cap);
-    if (ret < 0)
-        {
+    ret = v4lIoctl (mCameraHandle, VIDIOC_QUERYCAP, &mVideoInfo->cap);
+    if (ret < 0) {
         CAMHAL_LOGEA("Error when querying the capabilities of the V4L Camera");
         return -EINVAL;
-        }
+    }
 
-    if ((mVideoInfo->cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) == 0)
-        {
+    if ((mVideoInfo->cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) == 0) {
         CAMHAL_LOGEA("Error while adapter initialization: video capture not supported.");
         return -EINVAL;
-        }
+    }
 
-    if (!(mVideoInfo->cap.capabilities & V4L2_CAP_STREAMING))
-        {
+    if (!(mVideoInfo->cap.capabilities & V4L2_CAP_STREAMING)) {
         CAMHAL_LOGEA("Error while adapter initialization: Capture device does not support streaming i/o");
         return -EINVAL;
-        }
+    }
 
     // Initialize flags
     mPreviewing = false;
@@ -117,8 +242,8 @@ status_t V4LCameraAdapter::initialize(CameraProperties::Properties* caps)
 
 status_t V4LCameraAdapter::fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::FrameType frameType)
 {
-
     status_t ret = NO_ERROR;
+    LOG_FUNCTION_NAME;
 
     if ( !mVideoInfo->isStreaming )
         {
@@ -143,41 +268,48 @@ status_t V4LCameraAdapter::fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::F
 
      nQueued++;
 
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 
 }
 
 status_t V4LCameraAdapter::setParameters(const CameraParameters &params)
 {
+    status_t ret = NO_ERROR;
+    int width, height;
+    struct v4l2_streamparm streamParams;
+
     LOG_FUNCTION_NAME;
 
-    status_t ret = NO_ERROR;
+    if(!mPreviewing) {
+        params.getPreviewSize(&width, &height);
+        CAMHAL_LOGDB("Width * Height %d x %d format 0x%x", width, height, DEFAULT_PIXEL_FORMAT);
 
-    int width, height;
-
-    params.getPreviewSize(&width, &height);
-
-    CAMHAL_LOGDB("Width * Height %d x %d format 0x%x", width, height, DEFAULT_PIXEL_FORMAT);
-
-    mVideoInfo->width = width;
-    mVideoInfo->height = height;
-    mVideoInfo->framesizeIn = (width * height << 1);
-    mVideoInfo->formatIn = DEFAULT_PIXEL_FORMAT;
-
-    mVideoInfo->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    mVideoInfo->format.fmt.pix.width = width;
-    mVideoInfo->format.fmt.pix.height = height;
-    mVideoInfo->format.fmt.pix.pixelformat = DEFAULT_PIXEL_FORMAT;
-
-    ret = ioctl(mCameraHandle, VIDIOC_S_FMT, &mVideoInfo->format);
-    if (ret < 0) {
-        CAMHAL_LOGEB("Open: VIDIOC_S_FMT Failed: %s", strerror(errno));
-        return ret;
+        ret = v4lSetFormat( width, height, DEFAULT_PIXEL_FORMAT);
+        if (ret < 0) {
+            CAMHAL_LOGEB(" VIDIOC_S_FMT Failed: %s", strerror(errno));
+            goto EXIT;
+        }
+        //set frame rate
+        // Now its fixed to 30 FPS
+        streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        streamParams.parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+        streamParams.parm.capture.capturemode = V4L2_MODE_HIGHQUALITY;
+        streamParams.parm.capture.timeperframe.denominator = FPS_PERIOD;
+        streamParams.parm.capture.timeperframe.numerator= 1;
+        ret = v4lIoctl(mCameraHandle, VIDIOC_S_PARM, &streamParams);
+        if (ret < 0) {
+            CAMHAL_LOGEB(" VIDIOC_S_PARM Failed: %s", strerror(errno));
+            goto EXIT;
+        }
+        int actualFps = streamParams.parm.capture.timeperframe.denominator / streamParams.parm.capture.timeperframe.numerator;
+        CAMHAL_LOGDB("Actual FPS set is : %d.", actualFps);
     }
 
     // Udpate the current parameter set
     mParams = params;
 
+EXIT:
     LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
@@ -209,7 +341,7 @@ status_t V4LCameraAdapter::useBuffers(CameraMode mode, CameraBuffer *bufArr, int
             ret = UseBuffersPreview(bufArr, num);
             break;
 
-        //@todo Insert Image capture case here
+            //@todo Insert Image capture case here
 
         case CAMERA_VIDEO:
             //@warn Video capture is not fully supported yet
@@ -226,107 +358,70 @@ status_t V4LCameraAdapter::useBuffers(CameraMode mode, CameraBuffer *bufArr, int
 status_t V4LCameraAdapter::UseBuffersPreview(CameraBuffer *bufArr, int num)
 {
     int ret = NO_ERROR;
+    LOG_FUNCTION_NAME;
 
     if(NULL == bufArr) {
         return BAD_VALUE;
     }
 
-    //First allocate adapter internal buffers at V4L level for USB Cam
-    //These are the buffers from which we will copy the data into overlay buffers
-    /* Check if camera can handle NB_BUFFER buffers */
-    mVideoInfo->rb.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    mVideoInfo->rb.memory = V4L2_MEMORY_MMAP;
-    mVideoInfo->rb.count = num;
-
-    ret = ioctl(mCameraHandle, VIDIOC_REQBUFS, &mVideoInfo->rb);
-    if (ret < 0) {
-        CAMHAL_LOGEB("VIDIOC_REQBUFS failed: %s", strerror(errno));
-        return ret;
-    }
-
-    for (int i = 0; i < num; i++) {
-
-        memset (&mVideoInfo->buf, 0, sizeof (struct v4l2_buffer));
-
-        mVideoInfo->buf.index = i;
-        mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
-
-        ret = ioctl (mCameraHandle, VIDIOC_QUERYBUF, &mVideoInfo->buf);
-        if (ret < 0) {
-            CAMHAL_LOGEB("Unable to query buffer (%s)", strerror(errno));
-            return ret;
+    ret = v4lInitMmap(num);
+    if (ret == NO_ERROR) {
+        for (int i = 0; i < num; i++) {
+            //Associate each Camera internal buffer with the one from Overlay
+            mPreviewBufs.add(&bufArr[i], i);
         }
 
-        mVideoInfo->mem[i] = mmap (0,
-               mVideoInfo->buf.length,
-               PROT_READ | PROT_WRITE,
-               MAP_SHARED,
-               mCameraHandle,
-               mVideoInfo->buf.m.offset);
-
-        if (mVideoInfo->mem[i] == MAP_FAILED) {
-            CAMHAL_LOGEB("Unable to map buffer (%s)", strerror(errno));
-            return -1;
-        }
-
-        //Associate each Camera internal buffer with the one from Overlay
-        mPreviewBufs.add(&bufArr[i], i);
+        // Update the preview buffer count
+        mPreviewBufferCount = num;
     }
-
-    // Update the preview buffer count
-    mPreviewBufferCount = num;
-
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
 status_t V4LCameraAdapter::startPreview()
 {
-  status_t ret = NO_ERROR;
+    status_t ret = NO_ERROR;
 
-  Mutex::Autolock lock(mPreviewBufsLock);
+    LOG_FUNCTION_NAME;
+    Mutex::Autolock lock(mPreviewBufsLock);
 
-  if(mPreviewing) {
-    return BAD_VALUE;
-  }
+    if(mPreviewing) {
+        ret = BAD_VALUE;
+        goto EXIT;
+    }
 
-   for (int i = 0; i < mPreviewBufferCount; i++) {
+    for (int i = 0; i < mPreviewBufferCount; i++) {
 
-       mVideoInfo->buf.index = i;
-       mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-       mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
+        mVideoInfo->buf.index = i;
+        mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
 
-       ret = ioctl(mCameraHandle, VIDIOC_QBUF, &mVideoInfo->buf);
-       if (ret < 0) {
-           CAMHAL_LOGEA("VIDIOC_QBUF Failed");
-           return -EINVAL;
-       }
+        ret = v4lIoctl(mCameraHandle, VIDIOC_QBUF, &mVideoInfo->buf);
+        if (ret < 0) {
+            CAMHAL_LOGEA("VIDIOC_QBUF Failed");
+            goto EXIT;
+        }
+        nQueued++;
+    }
 
-       nQueued++;
-   }
+    ret = v4lStartStreaming();
 
-   enum v4l2_buf_type bufType;
-   if (!mVideoInfo->isStreaming) {
-       bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    // Create and start preview thread for receiving buffers from V4L Camera
+    if(!mCapturing) {
+        mPreviewThread = new PreviewThread(this);
+        CAMHAL_LOGDA("Created preview thread");
+    }
+    else{
+    HERE("start preview after captureing *********:####");
+    }
 
-       ret = ioctl (mCameraHandle, VIDIOC_STREAMON, &bufType);
-       if (ret < 0) {
-           CAMHAL_LOGEB("StartStreaming: Unable to start capture: %s", strerror(errno));
-           return ret;
-       }
+    //Update the flag to indicate we are previewing
+    mPreviewing = true;
+    mCapturing = false;
 
-       mVideoInfo->isStreaming = true;
-   }
-
-   // Create and start preview thread for receiving buffers from V4L Camera
-   mPreviewThread = new PreviewThread(this);
-
-   CAMHAL_LOGDA("Created preview thread");
-
-   //Update the flag to indicate we are previewing
-   mPreviewing = true;
-
-   return ret;
+EXIT:
+    LOG_FUNCTION_NAME_EXIT;
+    return ret;
 }
 
 status_t V4LCameraAdapter::stopPreview()
@@ -334,6 +429,7 @@ status_t V4LCameraAdapter::stopPreview()
     enum v4l2_buf_type bufType;
     int ret = NO_ERROR;
 
+    LOG_FUNCTION_NAME;
     Mutex::Autolock lock(mPreviewBufsLock);
 
     if(!mPreviewing)
@@ -341,17 +437,7 @@ status_t V4LCameraAdapter::stopPreview()
         return NO_INIT;
         }
 
-    if (mVideoInfo->isStreaming) {
-        bufType = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-        ret = ioctl (mCameraHandle, VIDIOC_STREAMOFF, &bufType);
-        if (ret < 0) {
-            CAMHAL_LOGEB("StopStreaming: Unable to stop capture: %s", strerror(errno));
-            return ret;
-        }
-
-        mVideoInfo->isStreaming = false;
-    }
+    ret = v4lStopStreaming();
 
     mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
@@ -360,27 +446,31 @@ status_t V4LCameraAdapter::stopPreview()
     nDequeued = 0;
 
     /* Unmap buffers */
-    for (int i = 0; i < mPreviewBufferCount; i++)
-        if (munmap(mVideoInfo->mem[i], mVideoInfo->buf.length) < 0)
+    for (int i = 0; i < mPreviewBufferCount; i++) {
+        if (munmap(mVideoInfo->mem[i], mVideoInfo->buf.length) < 0) {
             CAMHAL_LOGEA("Unmap failed");
+        }
+    }
 
     mPreviewBufs.clear();
 
     mPreviewThread->requestExitAndWait();
     mPreviewThread.clear();
 
+    LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
 
 char * V4LCameraAdapter::GetFrame(int &index)
 {
-    int ret;
+    int ret = NO_ERROR;
+    LOG_FUNCTION_NAME;
 
     mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     mVideoInfo->buf.memory = V4L2_MEMORY_MMAP;
 
     /* DQ */
-    ret = ioctl(mCameraHandle, VIDIOC_DQBUF, &mVideoInfo->buf);
+    ret = v4lIoctl(mCameraHandle, VIDIOC_DQBUF, &mVideoInfo->buf);
     if (ret < 0) {
         CAMHAL_LOGEA("GetFrame: VIDIOC_DQBUF Failed");
         return NULL;
@@ -389,6 +479,7 @@ char * V4LCameraAdapter::GetFrame(int &index)
 
     index = mVideoInfo->buf.index;
 
+    LOG_FUNCTION_NAME_EXIT;
     return (char *)mVideoInfo->mem[mVideoInfo->buf.index];
 }
 
@@ -426,16 +517,17 @@ static void debugShowFPS()
     static int mLastFrameCount = 0;
     static nsecs_t mLastFpsTime = 0;
     static float mFps = 0;
-    mFrameCount++;
-    if (!(mFrameCount & 0x1F)) {
-        nsecs_t now = systemTime();
-        nsecs_t diff = now - mLastFpsTime;
-        mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
-        mLastFpsTime = now;
-        mLastFrameCount = mFrameCount;
-        LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
+    if(mDebugFps) {
+        mFrameCount++;
+        if (!(mFrameCount & 0x1F)) {
+            nsecs_t now = systemTime();
+            nsecs_t diff = now - mLastFpsTime;
+            mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
+            mLastFpsTime = now;
+            mLastFrameCount = mFrameCount;
+            LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
+        }
     }
-    // XXX: mFPS has the value we want
 }
 
 status_t V4LCameraAdapter::recalculateFPS()
@@ -508,6 +600,7 @@ void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int width, int
     unsigned char *bf = src;
     unsigned char *dst = dest;
 
+    LOG_FUNCTION_NAME;
     for(int i = 0; i < height; i++)
     {
         for(int j = 0; j < width; j++)
@@ -530,6 +623,7 @@ void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int width, int
         }
         bf = bf + width*2;
     }
+    LOG_FUNCTION_NAME_EXIT;
 }
 
 #ifdef SAVE_RAW_FRAMES
@@ -571,9 +665,6 @@ int V4LCameraAdapter::previewThread()
     unsigned char *nv12_buff = NULL;
     void *y_uv[2];
 
-    mParams.getPreviewSize(&width, &height);
-    nv12_buff = (unsigned char*) malloc(width*height*3/2);
-
     if (mPreviewing) {
         int index = 0;
         char *fp = this->GetFrame(index);
@@ -581,8 +672,12 @@ int V4LCameraAdapter::previewThread()
             return BAD_VALUE;
         }
 
+        debugShowFPS();
         CameraBuffer *buffer = mPreviewBufs.keyAt(index);
         int stride = 4096;
+
+        mParams.getPreviewSize(&width, &height);
+        nv12_buff = (unsigned char*) malloc(width*height*3/2);
 
         //Convert yuv422i ti yuv420sp(NV12) & dump the frame to a file
         convertYUV422ToNV12 ( (unsigned char*)fp, nv12_buff, width, height);
@@ -620,7 +715,7 @@ int V4LCameraAdapter::previewThread()
         frame.mLength = width*height*3/2;
         frame.mAlignment = stride;
         frame.mOffset = 0;
-        frame.mTimestamp = systemTime(SYSTEM_TIME_MONOTONIC);;
+        frame.mTimestamp = systemTime(SYSTEM_TIME_MONOTONIC);
         frame.mFrameMask = (unsigned int)CameraFrame::PREVIEW_FRAME_SYNC;
 
         ret = setInitFrameRefCount(frame.mBuffer, frame.mFrameMask);
@@ -629,9 +724,9 @@ int V4LCameraAdapter::previewThread()
         } else {
             ret = sendFrameToSubscribers(&frame);
         }
+        free (nv12_buff);
     }
 
-    free (nv12_buff);
     return ret;
 }
 
