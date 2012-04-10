@@ -1002,6 +1002,19 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
 
     memset(supported, '\0', sizeof(supported));
 
+    for ( int i = 0 ; i < caps.ulImageFormatCount ; i++ ) {
+        ret = encodePixelformatCap(caps.eImageFormats[i],
+                                   mPixelformats,
+                                   ARRAY_SIZE(mPixelformats),
+                                   supported,
+                                   MAX_PROP_VALUE_LENGTH);
+
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGEB("Error inserting supported picture formats 0x%x", ret);
+            break;
+        }
+    }
+
     for (int i = 0; i < caps.ulImageCodingFormatCount ; i++) {
         ret = encodeImageCodingFormatCap(caps.eImageCodingFormat[i],
                                         mImageCodingFormat,
