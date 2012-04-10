@@ -633,8 +633,13 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
         OMX_INIT_STRUCT_PTR (&camMode, OMX_CONFIG_CAMOPERATINGMODETYPE);
         if ( mSensorIndex == OMX_TI_StereoSensor )
             {
-            CAMHAL_LOGDA("Camera mode: STEREO");
-            camMode.eCamOperatingMode = OMX_CaptureStereoImageCapture;
+            if ( OMXCameraAdapter::VIDEO_MODE == mode ) {
+                CAMHAL_LOGDA("Camera mode: STEREO VIDEO");
+                camMode.eCamOperatingMode = OMX_TI_StereoVideo;
+            } else {
+                CAMHAL_LOGDA("Camera mode: STEREO");
+                camMode.eCamOperatingMode = OMX_CaptureStereoImageCapture;
+            }
             }
         else if ( OMXCameraAdapter::HIGH_SPEED == mode )
             {
