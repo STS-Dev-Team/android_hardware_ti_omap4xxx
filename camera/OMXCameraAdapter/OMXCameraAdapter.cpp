@@ -2674,9 +2674,6 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
     LOG_FUNCTION_NAME;
 
     static const unsigned int DEGREES_TILT_IGNORE = 45;
-    int device_orientation = 0;
-    int mount_orientation = 0;
-    const char *facing_direction = NULL;
 
     // if tilt angle is greater than DEGREES_TILT_IGNORE
     // we are going to ignore the orientation returned from
@@ -2686,25 +2683,33 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
         return;
     }
 
+    int mountOrientation = 0;
+    bool isFront = false;
     if (mCapabilities) {
-        if (mCapabilities->get(CameraProperties::ORIENTATION_INDEX)) {
-            mount_orientation = atoi(mCapabilities->get(CameraProperties::ORIENTATION_INDEX));
+        const char * const mountOrientationString =
+                mCapabilities->get(CameraProperties::ORIENTATION_INDEX);
+        if (mountOrientationString) {
+            mountOrientation = atoi(mountOrientationString);
         }
-        facing_direction = mCapabilities->get(CameraProperties::FACING_INDEX);
+
+        const char * const facingString = mCapabilities->get(CameraProperties::FACING_INDEX);
+        if (facingString) {
+            isFront = strcmp(facingString, TICameraParameters::FACING_FRONT) == 0;
+        }
     }
 
-    // calculate device orientation relative to the sensor orientation
-    // front camera display is mirrored...needs to be accounted for when orientation
-    // is 90 or 270...since this will result in a flip on orientation otherwise
-    if (facing_direction && !strcmp(facing_direction, TICameraParameters::FACING_FRONT) &&
-        (orientation == 90 || orientation == 270)) {
-        device_orientation = (orientation - mount_orientation + 360) % 360;
-    } else {  // back-facing camera
-        device_orientation = (orientation + mount_orientation) % 360;
-    }
+    // direction is a constant sign for facing, meaning the rotation direction relative to device
+    // +1 (clockwise) for back sensor and -1 (counter-clockwise) for front sensor
+    const int direction = isFront ? -1 : 1;
 
-    if (device_orientation != mDeviceOrientation) {
-        mDeviceOrientation = device_orientation;
+    int rotation = mountOrientation + direction*orientation;
+
+    // crop the calculated value to [0..360) range
+    while ( rotation < 0 ) rotation += 360;
+    rotation %= 360;
+
+    if (rotation != mDeviceOrientation) {
+        mDeviceOrientation = rotation;
 
         mFaceDetectionLock.lock();
         if (mFaceDetectionRunning) {
