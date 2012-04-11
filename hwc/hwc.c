@@ -1159,7 +1159,8 @@ static int can_dss_render_all(omap4_hwc_device_t *hwc_dev, struct counts *num)
             /* fits into TILER slot */
             num->mem <= MAX_TILER_SLOT &&
             /* we cannot clone non-NV12 transformed layers */
-            (!tform || num->NV12 == num->possible_overlay_layers) &&
+            (!tform || (num->NV12 == num->possible_overlay_layers) ||
+            (num->NV12 && ext->current.docking)) &&
             /* HDMI cannot display BGR */
             (num->BGR == 0 || (num->RGB == 0 && !on_tv) || !hwc_dev->flags_rgb_order);
 }
