@@ -3190,11 +3190,6 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                 }
             }
 
-        if ( (nextState & CAPTURE_ACTIVE) )
-            {
-            mPending3Asettings |= SetFocus;
-            }
-
         ///Prepare the frames to be sent - initialize CameraFrame object and reference count
         // TODO(XXX): ancillary data for snapshot frame is not being sent for video snapshot
         //            if we are waiting for a snapshot and in video mode...go ahead and send
@@ -3268,10 +3263,12 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         // On the fly update to 3A settings not working
         // Do not update 3A here if we are in the middle of a capture
         // or in the middle of transitioning to it
-        if( mPending3Asettings && ((nextState & CAPTURE_ACTIVE) == 0))
-            {
+        if( mPending3Asettings &&
+                ( (nextState & CAPTURE_ACTIVE) == 0 ) &&
+                ( (state & CAPTURE_ACTIVE) == 0 ) ) {
             apply3Asettings(mParameters3A);
-            }
+        }
+
         }
     else if( pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT )
         {
