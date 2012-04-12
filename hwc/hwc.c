@@ -2591,7 +2591,7 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
     } else {
         property_get("persist.hwc.bltmode", value, "0");
         hwc_dev->blt_mode = atoi(value);
-        property_get("persist.hwc.bltpolicy", value, "0");
+        property_get("persist.hwc.bltpolicy", value, "1");
         hwc_dev->blt_policy = atoi(value);
         LOGI("blitter present, blits mode %d, blits policy %d", hwc_dev->blt_mode, hwc_dev->blt_policy);
         close(gc2d_fd);
