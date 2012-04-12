@@ -313,6 +313,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mFaceDetectionPaused = false;
     mFDSkip = 1;
 
+    mFDSwitchAlgoPriority = false;
 
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex], 0, sizeof(OMXCameraPortParameters));
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex], 0, sizeof(OMXCameraPortParameters));
@@ -3338,6 +3339,18 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                     fdResult.clear();
                 }
                 recalculateFDSkip(mFDSkip, mFPS, FD_PERIOD);
+
+                if ( mFDSwitchAlgoPriority ) {
+
+                    //Disable region priority and enable face priority for AF
+                    setAlgoPriority(REGION_PRIORITY, FOCUS_ALGO, false);
+                    setAlgoPriority(FACE_PRIORITY, FOCUS_ALGO , true);
+
+                    //Disable Region priority and enable Face priority
+                    setAlgoPriority(REGION_PRIORITY, EXPOSURE_ALGO, false);
+                    setAlgoPriority(FACE_PRIORITY, EXPOSURE_ALGO, true);
+                    mFDSwitchAlgoPriority = false;
+                }
             }
         }
 

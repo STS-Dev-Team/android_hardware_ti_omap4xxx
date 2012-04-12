@@ -1025,6 +1025,7 @@ private:
     bool mFaceDetectionRunning;
     bool mFaceDetectionPaused;
     uint32_t mFDSkip;
+    bool mFDSwitchAlgoPriority;
 
     camera_face_t  faceDetectionLastOutput [MAX_NUM_FACES_SUPPORTED];
     int faceDetectionNumFacesLastOutput;
