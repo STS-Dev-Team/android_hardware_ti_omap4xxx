@@ -315,8 +315,10 @@ status_t OMXCameraAdapter::cancelAutoFocus()
             CAMHAL_LOGE("Cancel AF timeout!");
         }
     } else if (focusMode.eFocusControl == OMX_IMAGE_FocusControlAuto) {
+       // This re-enabling of CAF doesn't seem to
+       // be needed any more.
        // re-apply CAF after unlocking and canceling
-       mPending3Asettings |= SetFocus;
+       // mPending3Asettings |= SetFocus;
     }
 
     {
