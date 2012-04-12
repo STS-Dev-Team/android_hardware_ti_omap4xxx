@@ -325,8 +325,6 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
     size_t subscriberCount = 0;
     int refCount = -1;
 
-    Mutex::Autolock lock(mReturnFrameLock);
-
     if ( NULL == frameBuf )
         {
         CAMHAL_LOGEA("Invalid frameBuf");
@@ -335,6 +333,7 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
 
     if ( NO_ERROR == res)
         {
+        Mutex::Autolock lock(mReturnFrameLock);
 
         refCount = getFrameRefCount(frameBuf,  frameType);
 
