@@ -644,7 +644,8 @@ int camera_get_camera_info(int camera_id, struct camera_info *info)
     if(gCameraProperties.initialize() != android::NO_ERROR)
     {
         CAMHAL_LOGEA("Unable to create or initialize CameraProperties");
-        return NULL;
+        rv = -EINVAL;
+        goto end;
     }
 
     //Get camera properties for camera index
