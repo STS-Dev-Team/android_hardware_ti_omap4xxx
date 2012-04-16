@@ -386,13 +386,20 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     char fn[256];
 
     if (!graphic_buffer.get()) {
+        printf("Invalid graphic_buffer!\n");
         return;
     }
 
     size = calcBufSize((int)graphic_buffer->getPixelFormat(),
                               graphic_buffer->getWidth(),
                               graphic_buffer->getHeight());
-    if ((size <= 0) || !buffer) {
+    if (size <= 0) {
+        printf("Can't get size!\n");
+        return;
+    }
+
+    if (!buffer) {
+        printf("Invalid mapped buffer!\n");
         return;
     }
 
@@ -400,35 +407,30 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     info.width = graphic_buffer->getWidth();
     info.height = graphic_buffer->getHeight();
     info.format = graphic_buffer->getPixelFormat();
+    info.buf = graphic_buffer;
 
     {
-        // Just saving last 5 buffers
         Mutex::Autolock lock(mReturnedBuffersMutex);
-        info.buf = NULL;
-        if (mReturnedBuffers.size() > 4) {
-            info.buf = mReturnedBuffers.itemAt(0).buf;
-            mReturnedBuffers.removeAt(0);
-        }
+        if (mReturnedBuffers.size() >= kReturnedBuffersMaxCapacity) mReturnedBuffers.removeAt(0);
     }
-
-    if (!info.buf) {
-        info.buf = (uint8_t*) malloc(size);
-    }
-    if(info.buf) memcpy(info.buf, buffer, size);
     mReturnedBuffers.add(info);
 
-    fn[0] = 0;
-    sprintf(fn, "/sdcard/img%03d.raw", count);
-    fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
-    if (fd >= 0) {
-        if (size != write(fd, buffer, size)) {
-            printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
+    // Do not write buffer to file if we are streaming capture
+    // It adds too much latency
+    if (!mRestartCapture) {
+        fn[0] = 0;
+        sprintf(fn, "/sdcard/img%03d.raw", count);
+        fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+        if (fd >= 0) {
+            if (size != write(fd, buffer, size)) {
+                printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
+            }
+            printf("%s: buffer=%08X, size=%d stored at %s\n",
+                        __FUNCTION__, (int)buffer, info.size, fn);
+            close(fd);
+        } else {
+            printf("error opening or creating %s\n", fn);
         }
-        printf("%s: buffer=%08X, size=%d stored at %s\n",
-                    __FUNCTION__, (int)info.buf, info.size, fn);
-        close(fd);
-    } else {
-        printf("error opening or creating %s\n", fn);
     }
 }
 
@@ -438,6 +440,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     void *data = NULL;
+    void *input = NULL;
     static int count = 0;
 
     int aligned_width, aligned_height;
@@ -462,13 +465,16 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
     window_tapin->dequeueBuffer(window_tapin.get(), &anb);
     mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
     // copy buffer to input buffer if available
-    if (bufinfo.buf) {
+    if (bufinfo.buf.get()) {
+        bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
+    }
+    if (input) {
         if (bufinfo.width == aligned_width) {
-            memcpy(data, bufinfo.buf, bufinfo.size);
+            memcpy(data, input, bufinfo.size);
         } else {
             // need to copy line by line to adjust for stride
             uint8_t *dst = (uint8_t*) data;
-            uint8_t *src = bufinfo.buf;
+            uint8_t *src = (uint8_t*) input;
             // hrmm this copy only works for NV12 and YV12
             // copy Y first
             for (int i = 0; i < aligned_height; i++) {
@@ -483,6 +489,9 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
                 src += bufinfo.width ;
             }
         }
+    }
+    if (bufinfo.buf.get()) {
+        bufinfo.buf->unlock();
     }
 
     int fd = -1;
