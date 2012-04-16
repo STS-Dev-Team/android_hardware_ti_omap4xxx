@@ -170,7 +170,7 @@ typedef struct buffer_info {
     int width;
     int height;
     int format;
-    uint8_t *buf;
+    sp<GraphicBuffer> buf;
 } buffer_info_t;
 
 
@@ -326,34 +326,71 @@ private:
 class BufferSourceThread : public Thread {
 public:
     class Defer : public Thread {
+        private:
+            struct DeferContainer {
+                sp<GraphicBuffer> graphicBuffer;
+                uint8_t *mappedBuffer;
+                unsigned int count;
+            };
         public:
-            Defer(sp<GraphicBuffer> &gbuf, BufferSourceThread* bst, unsigned int count) :
-                    Thread(false), mGraphicBuffer(gbuf), mBST(bst), mCount(count)
-            {
-                mGraphicBuffer->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &mBuffer);
+            Defer(BufferSourceThread* bst) :
+                    Thread(false), mBST(bst), mExiting(false) { }
+            virtual ~Defer() {
+                Mutex::Autolock lock(mFrameQueueMutex);
+                mExiting = true;
+                while (!mDeferQueue.isEmpty()) {
+                    DeferContainer defer = mDeferQueue.itemAt(0);
+                    defer.graphicBuffer->unlock();
+                    mDeferQueue.removeAt(0);
+                }
+                mFrameQueueCondition.signal();
             }
-            virtual ~Defer() {mGraphicBuffer->unlock();}
+
             virtual bool threadLoop() {
-                printf ("=== handling buffer %d\n", mCount);
-                mBST->handleBuffer(mGraphicBuffer, mBuffer, mCount);
+                Mutex::Autolock lock(mFrameQueueMutex);
+                while (mDeferQueue.isEmpty() && !mExiting) {
+                    mFrameQueueCondition.wait(mFrameQueueMutex);
+                }
+
+                if (!mExiting) {
+                    DeferContainer defer = mDeferQueue.itemAt(0);
+                    printf ("=== handling buffer %d\n", defer.count);
+                    mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer, defer.count);
+                    defer.graphicBuffer->unlock();
+                    mDeferQueue.removeAt(0);
+                    return true;
+                }
                 return false;
             }
+            void add(sp<GraphicBuffer> &gbuf, unsigned int count) {
+                Mutex::Autolock lock(mFrameQueueMutex);
+                DeferContainer defer;
+                defer.graphicBuffer = gbuf;
+                defer.count = count;
+                gbuf->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &defer.mappedBuffer);
+                mDeferQueue.add(defer);
+                mFrameQueueCondition.signal();
+            }
         private:
-            sp<GraphicBuffer> mGraphicBuffer;
-            uint8_t *mBuffer;
+            Vector<DeferContainer> mDeferQueue;
+            Mutex mFrameQueueMutex;
+            Condition mFrameQueueCondition;
             BufferSourceThread* mBST;
-            unsigned int mCount;
+            bool mExiting;
     };
 public:
     BufferSourceThread(bool display, int tex_id, sp<Camera> camera) :
                  Thread(false), mCounter(0), mDisplayable(display),
-                 mTexId(tex_id), mCamera(camera), mDestroying(false) {
+                 mTexId(tex_id), mCamera(camera), kReturnedBuffersMaxCapacity(6),
+                 mDestroying(false), mRestartCapture(false) {
         mSurfaceTextureBase = new SurfaceTextureBase();
         mSurfaceTextureBase->initialize(mTexId);
         mSurfaceTexture = mSurfaceTextureBase->getST();
         mSurfaceTexture->setSynchronousMode(true);
         mFW = new FrameWaiter();
         mSurfaceTexture->setFrameAvailableListener(mFW);
+        mDeferThread = new Defer(this);
+        mDeferThread->run();
     }
     virtual ~BufferSourceThread() {
         mDestroying = true;
@@ -361,9 +398,10 @@ public:
         delete mSurfaceTextureBase;
         for (unsigned int i = 0; i < mReturnedBuffers.size(); i++) {
             buffer_info_t info = mReturnedBuffers.itemAt(i);
-            if (info.buf) free(info.buf);
             mReturnedBuffers.removeAt(i);
         }
+        mDeferThread->requestExit();
+        mDeferThread.clear();
     }
 
     virtual bool threadLoop() {
@@ -376,8 +414,13 @@ public:
             showMetadata(mSurfaceTexture->getMetadata());
             printf("\n");
             graphic_buffer = mSurfaceTexture->getCurrentBuffer();
-            sp<Defer> defer = new Defer(graphic_buffer, this, mCounter++);
-            defer->run();
+            if (mRestartCapture) {
+                ShotParameters shotParams;
+                shotParams.set(ShotParameters::KEY_EXP_GAIN_PAIRS, "(33000,200)");
+                shotParams.set(ShotParameters::KEY_BURST, 1);
+                mCamera->takePicture(0, shotParams.flatten());
+            }
+            mDeferThread->add(graphic_buffer, mCounter++);
             return true;
         }
         return false;
@@ -385,6 +428,10 @@ public:
 
     void setBuffer() {
         mCamera->setBufferSource(NULL, mSurfaceTexture);
+    }
+
+    void toggleStreamCapture() {
+        mRestartCapture = !mRestartCapture;
     }
 
     buffer_info_t popBuffer() {
@@ -417,7 +464,10 @@ private:
     sp<FrameWaiter> mFW;
     Vector<buffer_info_t> mReturnedBuffers;
     Mutex mReturnedBuffersMutex;
+    const unsigned int kReturnedBuffersMaxCapacity;
     bool mDestroying;
+    bool mRestartCapture;
+    sp<Defer> mDeferThread;
 };
 
 class BufferSourceInput : public RefBase {
