@@ -170,6 +170,7 @@ int execute_functional_script(char *script);
 status_t dump_mem_status();
 int openCamera();
 int closeCamera();
+void createBufferOutputSource();
 void initDefaults();
 void initDefaultExpGainPairsPreset();
 void setExpGainPairsPreset(const char *input, bool force);
@@ -204,6 +205,7 @@ int trySetVideoStabilization(bool toggle);
 int trySetVideoNoiseFilter(bool toggle);
 int trySetAutoExposureLock(bool toggle);
 int trySetAutoWhiteBalanceLock(bool toggle);
+bool isRawPixelFormat (const char *format);
 int deleteAllocatedMemory();
 void initDefaultsSec();
 
@@ -218,5 +220,155 @@ const char KEY_AUTOCONVERGENCE_MODE_VALUES[] = "auto-convergence-mode-values";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "supported-manual-convergence-min";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "supported-manual-convergence-max";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "supported-manual-convergence-step";
+
+class FrameWaiter : public SurfaceTexture::FrameAvailableListener {
+public:
+    FrameWaiter():
+            mPendingFrames(0) {
+    }
+
+    void waitForFrame() {
+        Mutex::Autolock lock(mMutex);
+        while (mPendingFrames == 0) {
+            mCondition.wait(mMutex);
+        }
+        mPendingFrames--;
+    }
+
+    virtual void onFrameAvailable() {
+        Mutex::Autolock lock(mMutex);
+        mPendingFrames++;
+        mCondition.signal();
+    }
+
+    int mPendingFrames;
+    Mutex mMutex;
+    Condition mCondition;
+};
+
+class GLSurface {
+public:
+
+    GLSurface():
+            mEglDisplay(EGL_NO_DISPLAY),
+            mEglSurface(EGL_NO_SURFACE),
+            mEglContext(EGL_NO_CONTEXT) {
+    }
+
+    virtual ~GLSurface() {}
+
+    void initialize(int display);
+    void deinit();
+    void loadShader(GLenum shaderType, const char* pSource, GLuint* outShader);
+    void createProgram(const char* pVertexSource, const char* pFragmentSource,
+            GLuint* outPgm);
+
+private:
+    EGLint const* getConfigAttribs();
+    EGLint const* getContextAttribs();
+
+protected:
+    sp<SurfaceComposerClient> mComposerClient;
+    sp<SurfaceControl> mSurfaceControl;
+
+    EGLDisplay mEglDisplay;
+    EGLSurface mEglSurface;
+    EGLContext mEglContext;
+    EGLConfig  mGlConfig;
+};
+
+class SurfaceTextureBase  {
+public:
+    virtual ~SurfaceTextureBase() {}
+
+    void initialize(int tex_id, EGLenum tex_target = EGL_NONE);
+    void deinit();
+
+    virtual sp<SurfaceTexture> getST();
+
+protected:
+    sp<SurfaceTexture> mST;
+    sp<SurfaceTextureClient> mSTC;
+    sp<ANativeWindow> mANW;
+    int mTexId;
+};
+
+class SurfaceTextureGL : public GLSurface, public SurfaceTextureBase {
+public:
+    virtual ~SurfaceTextureGL() {}
+
+    void initialize(int display, int tex_id);
+    void deinit();
+
+    // drawTexture draws the SurfaceTexture over the entire GL viewport.
+    void drawTexture();
+
+private:
+    GLuint mPgm;
+    GLint mPositionHandle;
+    GLint mTexSamplerHandle;
+    GLint mTexMatrixHandle;
+};
+
+class BufferSourceThread : public Thread {
+public:
+    BufferSourceThread(bool display, int tex_id, sp<Camera> camera) :
+                 Thread(false), mCounter(0), mInit(true),
+                 mDisplayable(display), mTexId(tex_id), mCamera(camera) {
+        mSurfaceTexture = new SurfaceTextureBase();
+    }
+    virtual ~BufferSourceThread() {
+        delete mSurfaceTexture;
+    }
+
+    virtual bool threadLoop() {
+        sp<SurfaceTexture> surface_texture;
+        sp<GraphicBuffer> graphic_buffer;
+
+        Mutex::Autolock lock(mMutex);
+
+        if(mInit) {
+            mSurfaceTexture->initialize(mTexId);
+            surface_texture = mSurfaceTexture->getST();
+            surface_texture->setSynchronousMode(true);
+            mFW = new FrameWaiter();
+            surface_texture->setFrameAvailableListener(mFW);
+            mCamera->setBufferSource(surface_texture);
+            mInit = false;
+            mCondition.signal();
+            mMutex.unlock();
+        }
+        surface_texture = mSurfaceTexture->getST();
+        mFW->waitForFrame();
+        surface_texture->updateTexImage();
+        graphic_buffer = surface_texture->getCurrentBuffer();
+        handleBuffer(graphic_buffer);
+
+        mCounter++;
+        return true;
+    }
+
+    void waitForInit() {
+        Mutex::Autolock lock(mMutex);
+        while (mInit) {
+            mCondition.wait(mMutex);
+        }
+    }
+
+private:
+    void handleBuffer(sp<GraphicBuffer> &);
+
+private:
+    SurfaceTextureBase *mSurfaceTexture;
+    unsigned int mCounter;
+    bool mInit;
+    bool mDisplayable;
+    int mTexId;
+    sp<Camera> mCamera;
+    sp<FrameWaiter> mFW;
+
+    Mutex mMutex;
+    Condition mCondition;
+};
 
 #endif
