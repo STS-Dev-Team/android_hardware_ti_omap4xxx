@@ -28,6 +28,7 @@
 #define KEY_AUTOCONVERGENCE "auto-convergence-mode"
 #define KEY_MANUAL_CONVERGENCE "manual-convergence"
 #define KEY_EXP_BRACKETING_RANGE "exp-bracketing-range"
+#define KEY_EXP_GAIN_BRACKETING_RANGE "exp-gain-bracketing-range"
 #define KEY_TEMP_BRACKETING "temporal-bracketing"
 #define KEY_TEMP_BRACKETING_POS "temporal-bracketing-range-positive"
 #define KEY_TEMP_BRACKETING_NEG "temporal-bracketing-range-negative"
@@ -170,6 +171,8 @@ status_t dump_mem_status();
 int openCamera();
 int closeCamera();
 void initDefaults();
+void initDefaultExpGainPairsPreset();
+void setExpGainPairsPreset(const char *input, bool force);
 int startPreview();
 void stopPreview();
 int startRecording();

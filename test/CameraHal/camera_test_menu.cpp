@@ -80,7 +80,7 @@ int audioCodecIDX = 0;
 int outputFormatIDX = 0;
 int contrast = 0;
 int brightness = 0;
-unsigned int burst = 0;
+unsigned int burst = 9;
 int sharpness = 0;
 int iso_mode = 0;
 int capture_mode = 0;
@@ -197,8 +197,8 @@ char images_dir_path[256 + 8];
 
 const char *cameras[] = {"Primary Camera", "Secondary Camera 1", "Stereo Camera"};
 const char *measurement[] = {"disable", "enable"};
-const char *expBracketing[] = {"disable", "enable"};
-const char *expBracketingRange[] = {"", "-30,0,30,0,-30"};
+const char *expBracketing[] = {"disable", "relative", "absolute-exposure-gain"};
+const char *expBracketingRange[] = {"", "-30,0,30,0,-30", "(33000,10),(0,70),(33000,100),(0,130),(33000,160),(0,180),(33000,200),(0,130),(33000,200)"};
 const char *tempBracketing[] = {"disable", "enable"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *afTimeout[] = {"enable", "disable" };
@@ -416,7 +416,7 @@ pixel_format pixelformat[] = {
   { HAL_PIXEL_FORMAT_YCrCb_420_SP, CameraParameters::PIXEL_FORMAT_YUV420SP },
   { HAL_PIXEL_FORMAT_RGB_565, CameraParameters::PIXEL_FORMAT_RGB565 },
   { -1, CameraParameters::PIXEL_FORMAT_JPEG },
-  { -1, "raw" },
+  { -1, CameraParameters::PIXEL_FORMAT_BAYER_RGGB },
   };
 
 const char *gbce[] = {"disable", "enable"};
@@ -713,7 +713,7 @@ void CameraHandler::postData(int32_t msgType,
     if ( msgType & CAMERA_MSG_PREVIEW_FRAME )
         my_preview_callback(dataPtr);
 
-    if ( msgType & CAMERA_MSG_RAW_IMAGE ) {
+    if ( msgType & (CAMERA_MSG_RAW_IMAGE | CAMERA_MSG_RAW_BURST)) {
         printf("RAW done in %llu us\n", timeval_delay(&picture_start));
         my_raw_callback(dataPtr);
     }
@@ -737,8 +737,6 @@ void CameraHandler::postData(int32_t msgType,
 void CameraHandler::postDataTimestamp(nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr)
 
 {
-    printf("Recording cb: %d %lld %p\n", msgType, timestamp, dataPtr.get());
-
     static uint32_t count = 0;
 
     //if(count==100)
@@ -748,9 +746,14 @@ void CameraHandler::postDataTimestamp(nsecs_t timestamp, int32_t msgType, const 
 
     uint8_t *ptr = (uint8_t*) dataPtr->pointer();
 
-    printf("VID_CB: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7], ptr[8], ptr[9]);
-
-    camera->releaseRecordingFrame(dataPtr);
+    if ( msgType & CAMERA_MSG_RAW_BURST) {
+        printf("RAW done timestamp: %llu\n", timestamp);
+        my_raw_callback(dataPtr);
+    } else {
+        printf("Recording cb: %d %lld %p\n", msgType, timestamp, dataPtr.get());
+        printf("VID_CB: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7], ptr[8], ptr[9]);
+        camera->releaseRecordingFrame(dataPtr);
+    }
 }
 
 int createPreviewSurface(unsigned int width, unsigned int height, int32_t pixFormat) {
@@ -1184,15 +1187,13 @@ int startPreview() {
 
         camera->setParameters(params.flatten());
         camera->setPreviewDisplay(previewSurface);
-
-        if(hardwareActive) prevcnt = 0;
-
-        camera->startPreview();
-
-        previewRunning = true;
-        reSizePreview = false;
-
     }
+
+    if(hardwareActive) prevcnt = 0;
+    camera->startPreview();
+    previewRunning = true;
+    reSizePreview = false;
+
     return 0;
 }
 
@@ -1953,8 +1954,36 @@ void initDefaults() {
     params.set(KEY_STEREO_CAMERA, "false");
     params.set(KEY_EXIF_MODEL, MODEL);
     params.set(KEY_EXIF_MAKE, MAKE);
+
+    initDefaultExpGainPairsPreset();
 }
 
+void initDefaultExpGainPairsPreset() {
+    setExpGainPairsPreset(expBracketingRange[expBracketIdx], false);
+}
+
+void setExpGainPairsPreset(const char *input, bool force) {
+    const char *startPtr = NULL;
+    size_t i = 0;
+
+    if (force || strcmp(expBracketing[expBracketIdx], "absolute-exposure-gain") == 0) {
+        printf("\nabsolute-exposure-gain input: %s\n", input);
+        shotParams.set(ShotParameters::KEY_EXP_GAIN_PAIRS, input);
+
+        // parse for the number of inputs (count the number of '(')
+        startPtr = strchr(input, '(');
+        while (startPtr != NULL) {
+            i++;
+            startPtr = strchr(startPtr + 1, '(');
+        }
+        printf("number of brackets: %d\n", i);
+        burst = i;
+        shotParams.set(ShotParameters::KEY_BURST, burst);
+    } else {
+        shotParams.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
+        shotParams.remove(ShotParameters::KEY_BURST);
+    }
+}
 
 int menu_gps() {
     char ch;
@@ -2746,14 +2775,18 @@ int functional_menu() {
         case 'H':
             expBracketIdx++;
             expBracketIdx %= ARRAY_SIZE(expBracketing);
-
-            params.set(KEY_EXP_BRACKETING_RANGE, expBracketingRange[expBracketIdx]);
-
-            if ( hardwareActive )
-                camera->setParameters(params.flatten());
+            initDefaultExpGainPairsPreset();
 
             break;
 
+        case '(':
+        {
+            char input[256];
+            input[0] = ch;
+            scanf("%254s", input+1);
+            setExpGainPairsPreset(input, true);
+            break;
+        }
         case 'W':
             tempBracketRange++;
             tempBracketRange %= TEMP_BRACKETING_MAX_RANGE;
