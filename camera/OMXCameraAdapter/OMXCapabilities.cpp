@@ -1498,9 +1498,13 @@ status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX
 
     if ( caps.bAELockSupported ) {
         params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::TRUE);
+    } else {
+        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::FALSE);
     }
 
     if ( caps.bAWBLockSupported ) {
+        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::TRUE);
+    } else {
         params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::FALSE);
     }
 
