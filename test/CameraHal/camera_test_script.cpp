@@ -309,7 +309,6 @@ int execute_functional_script(char *script) {
                 } else {
                     stopPreview();
                 }
-                printf("%dx%d", captureSize[i].width, captureSize[i].height);
                 if (bufferSourceOutputThread.get()) {
                     bufferSourceOutputThread->requestExit();
                     bufferSourceOutputThread.clear();
