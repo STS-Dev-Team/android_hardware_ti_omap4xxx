@@ -30,6 +30,7 @@
 #include <cutils/properties.h>
 #include <camera/CameraParameters.h>
 #include <camera/ShotParameters.h>
+#include <camera/CameraMetadata.h>
 #include <system/audio.h>
 #include <system/camera.h>
 
@@ -504,4 +505,22 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
     mapper.unlock(anb->handle);
     window_tapin->queueBuffer(window_tapin.get(), anb);
     mCamera->setBufferSource(surface_texture, NULL);
+}
+
+void BufferSourceThread::showMetadata(const String8& metadata) {
+    static nsecs_t prevTime = 0;
+    nsecs_t currTime = 0;
+
+    CameraMetadata meta(metadata);
+
+    printf("analog gain: %s\n", meta.get(CameraMetadata::KEY_ANALOG_GAIN));
+    printf("exposure time: %s\n", meta.get(CameraMetadata::KEY_EXPOSURE_TIME));
+    printf("awb gain: %s\n", meta.get(CameraMetadata::KEY_AWB_GAINS));
+    printf("awb offsets: %s\n", meta.get(CameraMetadata::KEY_AWB_OFFSETS));
+    printf("awb temperature: %d\n", meta.getInt(CameraMetadata::KEY_AWB_TEMP));
+
+    currTime = meta.getTime(CameraMetadata::KEY_TIMESTAMP);
+    printf("timestamp (ns): %llu\n", currTime);
+    if (prevTime) printf("inter-shot time (ms): %llu\n", (currTime - prevTime) / 1000000l);
+    prevTime = currTime;
 }

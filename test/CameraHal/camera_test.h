@@ -372,6 +372,9 @@ public:
         mFW->waitForFrame();
         if (!mDestroying) {
             mSurfaceTexture->updateTexImage();
+            printf("=== Metadata for buffer %d ===\n", mCounter);
+            showMetadata(mSurfaceTexture->getMetadata());
+            printf("\n");
             graphic_buffer = mSurfaceTexture->getCurrentBuffer();
             sp<Defer> defer = new Defer(graphic_buffer, this, mCounter++);
             defer->run();
@@ -402,6 +405,7 @@ public:
     }
 
     void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
+    void showMetadata(const String8&);
 
 private:
     SurfaceTextureBase *mSurfaceTextureBase;
