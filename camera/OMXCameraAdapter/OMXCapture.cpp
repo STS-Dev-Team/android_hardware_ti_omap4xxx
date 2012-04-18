@@ -1075,7 +1075,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
             }
         }
 
-        if (capParams->mPendingCaptureSettings & SetExpBracket) {
+        if (capParams->mPendingCaptureSettings & (SetBurst|SetExpBracket)) {
             mPendingCaptureSettings &= ~(SetExpBracket|SetBurst);
             if ( mBracketingSet ) {
                 ret = doExposureBracketing(capParams->mExposureBracketingValues,
