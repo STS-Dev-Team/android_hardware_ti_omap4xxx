@@ -29,9 +29,6 @@
 #ifndef GENERAL_3A_SETTINGS_H
 #define GENERAL_3A_SETTINGS_H
 
-#define WB_FACE_PRIORITY OMX_WhiteBalControlMax -1
-#define EXPOSURE_FACE_PRIORITY OMX_ExposureControlMax - 1
-
 namespace android {
 
 struct userToOMX_LUT{
@@ -114,7 +111,6 @@ const userToOMX_LUT whiteBal_UserToOMX [] = {
 #ifdef OMAP_ENHANCEMENT
     { TICameraParameters::WHITE_BALANCE_TUNGSTEN, OMX_WhiteBalControlTungsten },
     { TICameraParameters::WHITE_BALANCE_HORIZON, OMX_WhiteBalControlHorizon },
-    { TICameraParameters::WHITE_BALANCE_FACE, WB_FACE_PRIORITY },
     { TICameraParameters::WHITE_BALANCE_SUNSET, OMX_TI_WhiteBalControlSunset }
 #endif
 };
@@ -152,7 +148,6 @@ const userToOMX_LUT exposure_UserToOMX [] = {
     { TICameraParameters::EXPOSURE_MODE_BEACH, OMX_ExposureControlBeach },
     { TICameraParameters::EXPOSURE_MODE_APERTURE, OMX_ExposureControlLargeAperture },
     { TICameraParameters::EXPOSURE_MODE_SMALL_APERTURE, OMX_ExposureControlSmallApperture },
-    { TICameraParameters::EXPOSURE_MODE_FACE, EXPOSURE_FACE_PRIORITY },
 };
 
 const userToOMX_LUT flash_UserToOMX [] = {
