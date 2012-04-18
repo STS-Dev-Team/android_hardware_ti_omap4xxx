@@ -964,21 +964,9 @@ status_t OMXCameraAdapter::setWBMode(Gen3A_settings& Gen3A)
     wb.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
     wb.eWhiteBalControl = ( OMX_WHITEBALCONTROLTYPE ) Gen3A.WhiteBallance;
 
-    if ( WB_FACE_PRIORITY == Gen3A.WhiteBallance )
-        {
-        //Disable Region priority and enable Face priority
-        setAlgoPriority(REGION_PRIORITY, WHITE_BALANCE_ALGO, false);
-        setAlgoPriority(FACE_PRIORITY, WHITE_BALANCE_ALGO, true);
-
-        //Then set the mode to auto
-        wb.eWhiteBalControl = OMX_WhiteBalControlAuto;
-        }
-    else
-        {
-        //Disable Face and Region priority
-        setAlgoPriority(FACE_PRIORITY, WHITE_BALANCE_ALGO, false);
-        setAlgoPriority(REGION_PRIORITY, WHITE_BALANCE_ALGO, false);
-        }
+    // disable face and region priorities
+    setAlgoPriority(FACE_PRIORITY, WHITE_BALANCE_ALGO, false);
+    setAlgoPriority(REGION_PRIORITY, WHITE_BALANCE_ALGO, false);
 
     eError = OMX_SetConfig( mCameraAdapterParameters.mHandleComp,
                          OMX_IndexConfigCommonWhiteBalance,
