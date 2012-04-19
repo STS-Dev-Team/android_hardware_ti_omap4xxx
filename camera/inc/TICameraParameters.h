@@ -59,8 +59,6 @@ static const  char KEY_SUPPORTED_ISO_VALUES[];
 static const  char KEY_SUPPORTED_IPP[];
 static const  char KEY_IPP[];
 static const  char KEY_METERING_MODE[];
-static const  char KEY_PADDED_WIDTH[];
-static const  char KEY_PADDED_HEIGHT[];
 static const char  KEY_EXP_BRACKETING_RANGE[];
 static const char  KEY_ZOOM_BRACKETING_RANGE[];
 static const char  KEY_TEMP_BRACKETING[];
