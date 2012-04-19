@@ -311,10 +311,9 @@ int ANativeWindowDisplayAdapter::setErrorHandler(ErrorNotifier *errorNotifier)
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == errorNotifier )
-        {
+    if ( NULL == errorNotifier ) {
         CAMHAL_LOGEA("Invalid Error Notifier reference");
-        ret = -EINVAL;
+        ret = BAD_VALUE;
     }
 
     if ( NO_ERROR == ret )
@@ -528,10 +527,10 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
 
     // Set gralloc usage bits for window.
     err = mANativeWindow->set_usage(mANativeWindow, CAMHAL_GRALLOC_USAGE);
-    if (err != 0) {
-        LOGE("native_window_set_usage failed: %s (%d)", strerror(-err), -err);
+    if ( NO_ERROR != err ) {
+        CAMHAL_LOGE("Surface::setUsage failed: %s (%d)", strerror(-err), -err);
 
-        if ( ENODEV == err ) {
+        if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
@@ -542,10 +541,10 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
     CAMHAL_LOGDB("Number of buffers set to ANativeWindow %d", numBufs);
     ///Set the number of buffers needed for camera preview
     err = mANativeWindow->set_buffer_count(mANativeWindow, numBufs);
-    if (err != 0) {
-        LOGE("native_window_set_buffer_count failed: %s (%d)", strerror(-err), -err);
+    if ( NO_ERROR != err ) {
+        CAMHAL_LOGE("Surface::setBufferCount failed: %s (%d)", strerror(-err), -err);
 
-        if ( ENODEV == err ) {
+        if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
@@ -563,10 +562,10 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
             height,
             /*toOMXPixFormat(format)*/HAL_PIXEL_FORMAT_TI_NV12);  // Gralloc only supports NV12 alloc!
 
-    if (err != 0) {
+    if ( NO_ERROR != err ) {
         LOGE("native_window_set_buffers_geometry failed: %s (%d)", strerror(-err), -err);
 
-        if ( ENODEV == err ) {
+        if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
@@ -595,10 +594,10 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
 
         err = mANativeWindow->dequeue_buffer(mANativeWindow, (buffer_handle_t**) &hndl2hndl, &stride);
 
-        if (err != 0) {
-            CAMHAL_LOGEB("dequeueBuffer failed: %s (%d)", strerror(-err), -err);
+        if ( NO_ERROR != err ) {
+            CAMHAL_LOGE("Surface::dequeueBuffer failed: %s (%d)", strerror(-err), -err);
 
-            if ( ENODEV == err ) {
+            if ( NO_INIT == err ) {
                 CAMHAL_LOGEA("Preview surface abandoned!");
                 mANativeWindow = NULL;
             }
@@ -636,10 +635,10 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
     for(i = (mBufferCount-undequeued); i >= 0 && i < mBufferCount; i++)
     {
         err = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[i]);
-        if (err != 0) {
-            CAMHAL_LOGEB("cancel_buffer failed: %s (%d)", strerror(-err), -err);
+        if ( NO_ERROR != err ) {
+            CAMHAL_LOGE("Surface::cancelBuffer failed: %s (%d)", strerror(-err), -err);
 
-            if ( ENODEV == err ) {
+            if ( NO_INIT == err ) {
                 CAMHAL_LOGEA("Preview surface abandoned!");
                 mANativeWindow = NULL;
             }
@@ -664,9 +663,9 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
  fail:
     // need to cancel buffers if any were dequeued
     for (int start = 0; start < i && i > 0; start++) {
-        int err = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[start]);
-        if (err != 0) {
-          CAMHAL_LOGEB("cancelBuffer failed w/ error 0x%08x", err);
+        status_t err = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[start]);
+        if ( NO_ERROR != err ) {
+          CAMHAL_LOGE("Surface::cancelBuffer failed w/ error 0x%08x", err);
           break;
         }
         mFramesWithCameraAdapterMap.removeItem((int) mGrallocHandleMap[start]);
@@ -676,9 +675,8 @@ void* ANativeWindowDisplayAdapter::allocateBuffer(int width, int height, const c
 
     CAMHAL_LOGEA("Error occurred, performing cleanup");
 
-    if ( NULL != mErrorNotifier.get() )
-        {
-        mErrorNotifier->errorNotify(-ENOMEM);
+    if ( NULL != mErrorNotifier.get() ) {
+        mErrorNotifier->errorNotify(NO_MEMORY);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -728,9 +726,8 @@ uint32_t * ANativeWindowDisplayAdapter::getOffsets()
         mOffsetsMap = NULL;
     }
 
-    if ( NULL != mErrorNotifier.get() )
-    {
-        mErrorNotifier->errorNotify(-ENOSYS);
+    if ( NULL != mErrorNotifier.get() ) {
+        mErrorNotifier->errorNotify(INVALID_OPERATION);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -738,21 +735,19 @@ uint32_t * ANativeWindowDisplayAdapter::getOffsets()
     return NULL;
 }
 
-int ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueable)
+status_t ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueable)
 {
     LOG_FUNCTION_NAME;
-    int ret = NO_ERROR;
+    status_t ret = NO_ERROR;
     int undequeued = 0;
 
-    if(mBufferCount == 0)
-    {
-        ret = -ENOSYS;
+    if(mBufferCount == 0) {
+        ret = INVALID_OPERATION;
         goto end;
     }
 
-    if(!mANativeWindow)
-    {
-        ret = -ENOSYS;
+    if(!mANativeWindow) {
+        ret = INVALID_OPERATION;
         goto end;
     }
 
@@ -760,12 +755,12 @@ int ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueable)
     if ( NO_ERROR != ret ) {
         CAMHAL_LOGEB("get_min_undequeued_buffer_count failed: %s (%d)", strerror(-ret), -ret);
 
-        if ( ENODEV == ret ) {
+        if ( NO_INIT == ret ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
 
-        return -ret;
+        return ret;
     }
 
     queueable = mBufferCount - undequeued;
@@ -813,15 +808,15 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
              mapper.unlock((buffer_handle_t) mGrallocHandleMap[value]);
 
              ret = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[value]);
-             if ( ENODEV == ret ) {
+             if ( NO_INIT == ret ) {
                  CAMHAL_LOGEA("Preview surface abandoned!");
                  mANativeWindow = NULL;
-                 return -ret;
+                 return ret;
              } else if ( NO_ERROR != ret ) {
-                 CAMHAL_LOGEB("cancel_buffer() failed: %s (%d)",
+                 CAMHAL_LOGE("Surface::cancelBuffer() failed: %s (%d)",
                               strerror(-ret),
                               -ret);
-                return -ret;
+                return ret;
              }
          }
      else
@@ -1040,9 +1035,13 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     ///display or rendering rate whichever is lower
     ///Queue the buffer to overlay
 
+    if ( NULL == mANativeWindow ) {
+        return NO_INIT;
+    }
+
     if (!mGrallocHandleMap || !dispFrame.mBuffer) {
         CAMHAL_LOGEA("NULL sent to PostFrame");
-        return -EINVAL;
+        return BAD_VALUE;
     }
 
     for ( i = 0; i < mBufferCount; i++ )
@@ -1099,8 +1098,8 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
         // unlock buffer before sending to display
         mapper.unlock((buffer_handle_t) mGrallocHandleMap[i]);
         ret = mANativeWindow->enqueue_buffer(mANativeWindow, mBufferHandleMap[i]);
-        if (ret != 0) {
-            LOGE("Surface::queueBuffer returned error %d", ret);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGE("Surface::queueBuffer returned error %d", ret);
         }
 
         mFramesWithCameraAdapterMap.removeItem((int) dispFrame.mBuffer);
@@ -1141,8 +1140,8 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
 
         // cancel buffer and dequeue another one
         ret = mANativeWindow->cancel_buffer(mANativeWindow, mBufferHandleMap[i]);
-        if (ret != 0) {
-            LOGE("Surface::queueBuffer returned error %d", ret);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGE("Surface::cancelBuffer returned error %d", ret);
         }
 
         mFramesWithCameraAdapterMap.removeItem((int) dispFrame.mBuffer);
@@ -1174,9 +1173,9 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
 
     err = mANativeWindow->dequeue_buffer(mANativeWindow, &buf, &stride);
     if (err != 0) {
-        CAMHAL_LOGEB("dequeueBuffer failed: %s (%d)", strerror(-err), -err);
+        CAMHAL_LOGE("Surface::dequeueBuffer failed: %s (%d)", strerror(-err), -err);
 
-        if ( ENODEV == err ) {
+        if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
@@ -1185,10 +1184,10 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     }
 
     err = mANativeWindow->lock_buffer(mANativeWindow, buf);
-    if (err != 0) {
-        CAMHAL_LOGEB("lockbuffer failed: %s (%d)", strerror(-err), -err);
+    if ( NO_ERROR != err ) {
+        CAMHAL_LOGE("Surface::lockBuffer failed: %s (%d)", strerror(-err), -err);
 
-        if ( ENODEV == err ) {
+        if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
