@@ -346,6 +346,13 @@ public:
                 mFrameQueueCondition.signal();
             }
 
+            virtual void requestExit() {
+                Thread::requestExit();
+
+                mExiting = true;
+                mFrameQueueCondition.signal();
+            }
+
             virtual bool threadLoop() {
                 Mutex::Autolock lock(mFrameQueueMutex);
                 while (mDeferQueue.isEmpty() && !mExiting) {
@@ -395,6 +402,7 @@ public:
     virtual ~BufferSourceThread() {
         mDestroying = true;
 
+        mSurfaceTextureBase->deinit();
         delete mSurfaceTextureBase;
         for (unsigned int i = 0; i < mReturnedBuffers.size(); i++) {
             buffer_info_t info = mReturnedBuffers.itemAt(i);
@@ -424,6 +432,13 @@ public:
             return true;
         }
         return false;
+    }
+
+    virtual void requestExit() {
+        Thread::requestExit();
+
+        mDestroying = true;
+        mFW->onFrameAvailable();
     }
 
     void setBuffer() {
