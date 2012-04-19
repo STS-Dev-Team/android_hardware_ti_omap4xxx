@@ -1554,10 +1554,6 @@ status_t CameraHal::startPreview()
       ///Update the current preview width and height
       mPreviewWidth = frame.mWidth;
       mPreviewHeight = frame.mHeight;
-      //Update the padded width and height - required for VNF and VSTAB
-      mParameters.set(TICameraParameters::KEY_PADDED_WIDTH, mPreviewWidth);
-      mParameters.set(TICameraParameters::KEY_PADDED_HEIGHT, mPreviewHeight);
-
     }
 
     ///If we don't have the preview callback enabled and display adapter,
