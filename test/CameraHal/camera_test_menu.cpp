@@ -1835,6 +1835,11 @@ int deleteAllocatedMemory() {
     delete [] layoutstr;
     delete [] capturelayoutstr;
 
+    if (bufferSourceOutputThread.get()) {
+        bufferSourceOutputThread->requestExit();
+        bufferSourceOutputThread.clear();
+    }
+
     return 0;
 }
 

@@ -283,6 +283,8 @@ void SurfaceTextureBase::initialize(int tex_id, EGLenum tex_target) {
 void SurfaceTextureBase::deinit() {
     mANW.clear();
     mSTC.clear();
+
+    mST->abandon();
     mST.clear();
 }
 
