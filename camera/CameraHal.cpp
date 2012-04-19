@@ -272,8 +272,7 @@ int CameraHal::setParameters(const CameraParameters& params)
 
 #ifdef V4L_CAMERA_ADAPTER
     if (strcmp (V4L_CAMERA_NAME_USB, mCameraProperties->get(CameraProperties::CAMERA_NAME)) == 0 ) {
-        ret = mCameraAdapter->setParameters(params);
-        return ret;
+        updateRequired = true;
     }
 #endif
 
