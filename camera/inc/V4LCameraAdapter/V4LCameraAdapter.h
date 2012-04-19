@@ -57,6 +57,7 @@ struct VideoInfo {
     struct v4l2_buffer buf;
     struct v4l2_requestbuffers rb;
     void *mem[NB_BUFFER];
+    void *CaptureBuffers[NB_BUFFER];
     bool isStreaming;
     int width;
     int height;
@@ -108,6 +109,7 @@ public:
 
     // API
     virtual status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
+    virtual status_t UseBuffersCapture(CameraBuffer *bufArr, int num);
 
     static status_t getCaps(const int sensorId, CameraProperties::Properties* params, V4L_HANDLETYPE handle);
 
@@ -116,6 +118,9 @@ protected:
 //----------Parent class method implementation------------------------------------
     virtual status_t startPreview();
     virtual status_t stopPreview();
+    virtual status_t takePicture();
+    virtual status_t stopImageCapture();
+    virtual status_t autoFocus();
     virtual status_t useBuffers(CameraMode mode, CameraBuffer *bufArr, int num, size_t length, unsigned int queueable);
     virtual status_t fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::FrameType frameType);
     virtual status_t getFrameSize(size_t &width, size_t &height);
@@ -166,6 +171,7 @@ private:
 
     static const char DEFAULT_PICTURE_FORMAT[];
     static const char DEFAULT_PICTURE_SIZE[];
+    static const char DEFAULT_FOCUS_MODE[];
 
     static status_t insertDefaults(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
     static status_t insertCapabilities(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
@@ -181,11 +187,15 @@ private:
     status_t v4lStartStreaming();
     status_t v4lStopStreaming();
     status_t v4lSetFormat(int, int, uint32_t);
+    status_t restartPreview();
 
 
     int mPreviewBufferCount;
+    int mCaptureBufferCount;
     KeyedVector<CameraBuffer *, int> mPreviewBufs;
+    KeyedVector<CameraBuffer *, int> mCaptureBufs;
     mutable Mutex mPreviewBufsLock;
+    mutable Mutex mCaptureBufsLock;
 
     CameraParameters mParams;
 
