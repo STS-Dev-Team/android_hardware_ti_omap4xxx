@@ -42,10 +42,11 @@ static const char PARAM_SEP[] = ",";
 //Camera defaults
 const char V4LCameraAdapter::DEFAULT_PICTURE_FORMAT[] = "jpeg";
 const char V4LCameraAdapter::DEFAULT_PICTURE_SIZE[] = "640x480";
-const char V4LCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv422i";
+const char V4LCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv422i-yuyv";
 const char V4LCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
 const char V4LCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char V4LCameraAdapter::DEFAULT_FRAMERATE[] = "30";
+const char V4LCameraAdapter::DEFAULT_FOCUS_MODE[] = "infinity";
 
 
 const CapPixelformat V4LCameraAdapter::mPixelformats [] = {
@@ -71,9 +72,12 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_SIZE);
     params->set(CameraProperties::PREVIEW_FRAME_RATE, DEFAULT_FRAMERATE);
     params->set(CameraProperties::REQUIRED_PREVIEW_BUFS, DEFAULT_NUM_PREV_BUFS);
+    params->set(CameraProperties::FOCUS_MODE, DEFAULT_FOCUS_MODE);
 
     params->set(CameraProperties::CAMERA_NAME, "USBCAMERA");
     params->set(CameraProperties::JPEG_THUMBNAIL_SIZE, "320x240");
+    params->set(CameraProperties::JPEG_QUALITY, "90");
+    params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, "50");
     params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "30000,30000");
     params->set(CameraProperties::FRAMERATE_RANGE, "30000,30000");
     LOG_FUNCTION_NAME_EXIT;
@@ -161,6 +165,11 @@ status_t V4LCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     if ( NO_ERROR == ret ) {
         ret = insertFrameRates(params, caps);
     }
+
+    //Insert Supported Focus modes.
+    params->set(CameraProperties::SUPPORTED_FOCUS_MODES, "infinity");
+
+    params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, "jpeg");
 
     if ( NO_ERROR == ret ) {
         ret = insertDefaults(params, caps);
