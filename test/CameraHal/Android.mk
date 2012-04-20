@@ -38,3 +38,39 @@ endif
 include $(BUILD_HEAPTRACKED_EXECUTABLE)
 
 
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES:= \
+	surfacetexture_test.cpp
+
+LOCAL_SHARED_LIBRARIES:= \
+	libdl \
+	libui \
+	libutils \
+	libcutils \
+	libbinder \
+	libmedia \
+	libui \
+	libgui \
+	libcamera_client \
+	libEGL \
+	libGLESv2 \
+
+LOCAL_C_INCLUDES += \
+	frameworks/base/include/ui \
+	frameworks/base/include/surfaceflinger \
+	frameworks/base/include/camera \
+	frameworks/base/include/media
+
+LOCAL_MODULE:= surfacetexture_test
+LOCAL_MODULE_TAGS:= tests
+
+LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___
+
+ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+    LOCAL_CFLAGS += -DTARGET_OMAP4
+endif
+
+include $(BUILD_HEAPTRACKED_EXECUTABLE)
+
+
