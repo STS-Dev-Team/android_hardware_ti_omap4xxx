@@ -627,16 +627,16 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
         }
     }
 
-    if (NO_ERROR == ret) {
+    for ( unsigned int confID = 0; confID < evCount; ) {
         unsigned int i;
-        for ( i = 0 ; i < evCount ; i++ ) {
-                CAMHAL_LOGD("%d: (%d,%d) mode: %d", i, evValues[i], evValues2[i], evModes2[i]);
-                enqueueShotConfigs.nShotConfig[i].nConfigId = i;
+        for ( i = 0 ; (i < ARRAY_SIZE(enqueueShotConfigs.nShotConfig)) && (confID < evCount); i++, confID++ ) {
+                CAMHAL_LOGD("%2u: (%7d,%4d) mode: %d", confID, evValues[confID], evValues2[confID], evModes2[confID]);
+                enqueueShotConfigs.nShotConfig[i].nConfigId = confID;
                 enqueueShotConfigs.nShotConfig[i].nFrames = 1;
-                enqueueShotConfigs.nShotConfig[i].nExp = evValues[i];
-                enqueueShotConfigs.nShotConfig[i].nGain = evValues2[i];
+                enqueueShotConfigs.nShotConfig[i].nExp = evValues[confID];
+                enqueueShotConfigs.nShotConfig[i].nGain = evValues2[confID];
                 enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
-                switch (evModes2[i]) {
+                switch (evModes2[confID]) {
                     case BracketingValueAbsolute: // (exp,gain) pairs directly program sensor values
                     default :
                     enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
@@ -653,13 +653,13 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
         }
 
         // Repeat last exposure and again
-        if ((evCount > 0) && (frameCount > evCount)) {
+        if ((confID == evCount) && (evCount > 0) && (frameCount > evCount) && (0 != i)) {
             enqueueShotConfigs.nShotConfig[i-1].nFrames = frameCount - evCount;
         }
 
         enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
         enqueueShotConfigs.bFlushQueue = OMX_FALSE;
-        enqueueShotConfigs.nNumConfigs = evCount;
+        enqueueShotConfigs.nNumConfigs = i;
         eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                         ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
                             &enqueueShotConfigs);
