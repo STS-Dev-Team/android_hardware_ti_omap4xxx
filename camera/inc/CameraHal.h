@@ -959,7 +959,7 @@ public:
     // Get max queueable buffers display supports
     // This function should only be called after
     // allocateBuffer
-    virtual int maxQueueableBuffers(unsigned int& queueable) = 0;
+    virtual status_t maxQueueableBuffers(unsigned int& queueable) = 0;
 };
 
 static void releaseImageBuffers(void *userData);

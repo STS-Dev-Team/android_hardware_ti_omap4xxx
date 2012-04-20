@@ -86,7 +86,7 @@ public:
     virtual int getFd() ;
     virtual int freeBuffer(void* buf);
 
-    virtual int maxQueueableBuffers(unsigned int& queueable);
+    virtual status_t maxQueueableBuffers(unsigned int& queueable);
 
     ///Class specific functions
     static void frameCallbackRelay(CameraFrame* caFrame);
