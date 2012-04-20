@@ -1525,7 +1525,8 @@ status_t CameraHal::allocRawBufs(int width, int height, const char* previewForma
     ///Always allocate the buffers for image capture using MemoryManager
     if (NO_ERROR == ret) {
         if(( NULL != mVideoBuffers )) {
-            ret = freeRawBufs();
+            // Re-use the buffer for raw capture.
+            return ret;
         }
     }
 
