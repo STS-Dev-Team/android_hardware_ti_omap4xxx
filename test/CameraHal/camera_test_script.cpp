@@ -37,6 +37,7 @@ extern sp<BufferSourceThread> bufferSourceOutputThread;
 extern sp<BufferSourceInput> bufferSourceInput;
 extern CameraParameters params;
 extern CameraParameters shotParams;
+extern bool shotConfigFlush;
 extern bool recordingMode;
 extern int camera_index;
 extern int rotation;
@@ -728,6 +729,24 @@ int execute_functional_script(char *script) {
                     camera->setParameters(params.flatten());
 
                 break;
+
+            case 'n':
+
+            switch (*(cmd + 1)) {
+                case 0:
+                shotConfigFlush = false;
+                    break;
+                case 1:
+                shotConfigFlush = true;
+                    break;
+                default:
+                printf ("Mangling flush shot config command: \"%s\"\n", (cmd + 1));
+                    break;
+            }
+
+            updateShotConfigFlushParam();
+
+            break;
 
             case '?':
 
