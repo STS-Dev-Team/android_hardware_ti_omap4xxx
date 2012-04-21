@@ -2498,6 +2498,11 @@ status_t CameraHal::stopImageBracketing()
  */
 status_t CameraHal::takePicture( )
 {
+    // cancel AF state if needed (before any operation and mutex lock)
+    if (mCameraAdapter->getState() == CameraAdapter::AF_STATE) {
+        cancelAutoFocus();
+    }
+
     status_t ret = NO_ERROR;
     CameraFrame frame;
     CameraAdapter::BuffersDescriptor desc;
