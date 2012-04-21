@@ -164,16 +164,18 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     if ( (str = params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE)) != NULL ) {
         parseExpRange(str, mExposureBracketingValues, NULL,
-                      NULL,
+                      mExposureGainBracketingModes,
                       EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
-        mExposureBracketMode = OMX_BracketExposureRelativeInEV;
+        if (mCapMode == OMXCameraAdapter::CP_CAM) {
+            mExposureBracketMode = OMX_BracketVectorShot;
+        } else {
+            mExposureBracketMode = OMX_BracketExposureRelativeInEV;
+        }
         mPendingCaptureSettings |= SetExpBracket;
     } else if ( (str = params.get(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE)) != NULL) {
         parseExpRange(str, mExposureBracketingValues, mExposureGainBracketingValues,
                       mExposureGainBracketingModes,
                       EXP_BRACKET_RANGE, mExposureBracketingValidEntries);
-        // TODO(XXX): Use bracket shot for cpcam. Should we let user use exposure
-        // bracketing too?
         if (mCapMode == OMXCameraAdapter::CP_CAM) {
             mExposureBracketMode = OMX_BracketVectorShot;
         } else {
@@ -441,6 +443,8 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
             // Relative Exposure example: "-30,-10, 0, 10, 30"
             // Absolute Gain ex. (exposure,gain) pairs: "(100,300),(200,300),(400,300),(800,300),(1600,300)"
             // Relative Gain ex. (exposure,gain) pairs: "(-30,+0),(-10, +0),(+0,+0),(+10,+0),(+30,+0)"
+            // Forced relative Exposure example: "-30F,-10F, 0F, 10F, 30F"
+            // Forced absolute Gain ex. (exposure,gain) pairs: "(100,300)F,(200,300)F,(400,300)F,(800,300)F,(1600,300)F"
             // Forced relative Gain ex. (exposure,gain) pairs: "(-30,+0)F,(-10, +0)F,(+0,+0)F,(+10,+0)F,(+30,+0)F"
 
             // skip '(' and ','
@@ -448,17 +452,20 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
 
             expRange[i] = (int)strtol(startPtr, &end, 10);
 
-            int bvm_exp = getBracketingValueMode(startPtr, end);
+            if (expGainModes) {
+                // if gainRange is given rangeStr should be (exposure, gain) pair
+                if (gainRange) {
+                    int bvm_exp = getBracketingValueMode(startPtr, end);
+                    startPtr = end + 1; // for the ','
+                    gainRange[i] = (int)strtol(startPtr, &end, 10);
 
-            // if gainRange is given rangeStr should be (exposure, gain) pair
-            if (gainRange && expGainModes) {
-                startPtr = end + 1; // for the ','
-                gainRange[i] = (int)strtol(startPtr, &end, 10);
-
-                if (BracketingValueAbsolute == bvm_exp) {
-                    expGainModes[i] = getBracketingValueMode(startPtr, end);
+                    if (BracketingValueAbsolute == bvm_exp) {
+                        expGainModes[i] = getBracketingValueMode(startPtr, end);
+                    } else {
+                        expGainModes[i] = bvm_exp;
+                    }
                 } else {
-                    expGainModes[i] = bvm_exp;
+                    expGainModes[i] = BracketingValueCompensation;
                 }
             }
             startPtr = end;
@@ -469,7 +476,15 @@ status_t OMXCameraAdapter::parseExpRange(const char *rangeStr,
             // Check for "forced" key
             if (expGainModes) {
                 while ((*startPtr == 'F') || (*startPtr == 'f')) {
-                    expGainModes[i] = BracketingValueForcedRelative;
+                    if ( BracketingValueAbsolute == expGainModes[i] ) {
+                        expGainModes[i] = BracketingValueAbsoluteForced;
+                    } else if ( BracketingValueRelative == expGainModes[i] ) {
+                        expGainModes[i] = BracketingValueRelativeForced;
+                    } else if ( BracketingValueCompensation == expGainModes[i] ) {
+                        expGainModes[i] = BracketingValueCompensationForced;
+                    } else {
+                        CAMHAL_LOGE("Unexpected old mode 0x%x", expGainModes[i]);
+                    }
                     startPtr++;
                 }
             }
@@ -650,20 +665,36 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
                 CAMHAL_LOGD("%2u: (%7d,%4d) mode: %d", confID, evValues[confID], evValues2[confID], evModes2[confID]);
                 enqueueShotConfigs.nShotConfig[i].nConfigId = confID;
                 enqueueShotConfigs.nShotConfig[i].nFrames = 1;
-                enqueueShotConfigs.nShotConfig[i].nExp = evValues[confID];
-                enqueueShotConfigs.nShotConfig[i].nGain = evValues2[confID];
+                if ( (BracketingValueCompensation == evModes2[confID]) ||
+                     (BracketingValueCompensationForced == evModes2[confID]) ) {
+                    // EV compensation
+                    enqueueShotConfigs.nShotConfig[i].nEC = evValues[confID];
+                    enqueueShotConfigs.nShotConfig[i].nExp = 0;
+                    enqueueShotConfigs.nShotConfig[i].nGain = 0;
+                } else {
+                    // exposure,gain pair
+                    enqueueShotConfigs.nShotConfig[i].nEC = 0;
+                    enqueueShotConfigs.nShotConfig[i].nExp = evValues[confID];
+                    enqueueShotConfigs.nShotConfig[i].nGain = evValues2[confID];
+                }
                 enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
                 switch (evModes2[confID]) {
                     case BracketingValueAbsolute: // (exp,gain) pairs directly program sensor values
                     default :
-                    enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
+                        enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_ABSOLUTE;
                         break;
                     case BracketingValueRelative: // (exp,gain) pairs relative to AE settings and constraints
-                    enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_RELATIVE;
+                    case BracketingValueCompensation: // EV compensation relative to AE settings and constraints
+                        enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_RELATIVE;
                         break;
-                    case BracketingValueForcedRelative: // (exp, gain) pairs relative to AE settings AND settings
-                                                        // are forced over constraints due to flicker, etc.
-                    enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_FORCE_RELATIVE;
+                    case BracketingValueAbsoluteForced: // (exp,gain) pairs directly program sensor values
+                        // are forced over constraints due to flicker, etc.
+                        enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_FORCE_ABSOLUTE;
+                        break;
+                    case BracketingValueRelativeForced: // (exp, gain) pairs relative to AE settings AND settings
+                    case BracketingValueCompensationForced: // EV compensation relative to AE settings and constraints
+                        // are forced over constraints due to flicker, etc.
+                        enqueueShotConfigs.nShotConfig[i].eExpGainApplyMethod = OMX_TI_EXPGAINAPPLYMETHOD_FORCE_RELATIVE;
                         break;
                 }
                 enqueueShotConfigs.nShotConfig[i].bNoSnapshot = OMX_FALSE; // TODO: Make this configurable

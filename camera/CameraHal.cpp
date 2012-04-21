@@ -2877,7 +2877,8 @@ status_t CameraHal::__takePicture(const char *params)
     // in camera adapter
     if (strlen(params) > 0) {
         ShotParameters shotParams;
-        const char* valStr;
+        const char *valStr;
+        const char *valExpComp, *valExpGain;
         int valNum;
 
         String8 shotParams8(params);
@@ -2886,9 +2887,12 @@ status_t CameraHal::__takePicture(const char *params)
         mParameters.remove(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE);
         mParameters.remove(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
 
-        valStr = shotParams.get(ShotParameters::KEY_EXP_GAIN_PAIRS);
-        if (valStr!= NULL) {
-            mParameters.set(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE, valStr);
+        valExpGain = shotParams.get(ShotParameters::KEY_EXP_GAIN_PAIRS);
+        valExpComp = shotParams.get(ShotParameters::KEY_EXP_COMPENSATION);
+        if (NULL != valExpComp) {
+            mParameters.set(TICameraParameters::KEY_EXP_BRACKETING_RANGE, valExpComp);
+        } else if (NULL != valExpGain) {
+            mParameters.set(TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE, valExpGain);
         }
 
         valNum = shotParams.getInt(ShotParameters::KEY_BURST);
