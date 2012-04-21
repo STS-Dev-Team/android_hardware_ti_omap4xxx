@@ -55,7 +55,7 @@ sp<BufferSourceThread> bufferSourceOutputThread;
 sp<BufferSourceInput> bufferSourceInput;
 
 CameraParameters params;
-CameraParameters shotParams;
+ShotParameters shotParams;
 float compensation = 0.0;
 double latitude = 0.0;
 double longitude = 0.0;
@@ -68,7 +68,7 @@ int caf_mode = 0;
 int tempBracketRange = 1;
 int tempBracketIdx = 0;
 int measurementIdx = 0;
-int expBracketIdx = 0;
+int expBracketIdx = BRACKETING_IDX_DEFAULT;
 int AutoConvergenceModeIDX = 0;
 int ManualConvergenceValues = 0;
 int ManualConvergenceDefaultValue = 0;
@@ -209,8 +209,59 @@ char images_dir_path[256 + 8];
 
 const char *cameras[] = {"Primary Camera", "Secondary Camera 1", "Stereo Camera"};
 const char *measurement[] = {"disable", "enable"};
-const char *expBracketing[] = {"disable", "relative", "absolute-exposure-gain"};
-const char *expBracketingRange[] = {"", "-30,0,30,0,-30", "(33000,10),(0,70),(33000,100),(0,130),(33000,160),(0,180),(33000,200),(0,130),(33000,200)"};
+
+param_NamedExpBracketList_t expBracketing[] = {
+  {
+    "Disabled",
+    PARAM_EXP_BRACKET_PARAM_NONE,
+    PARAM_EXP_BRACKET_VALUE_NONE,
+    PARAM_EXP_BRACKET_APPLY_NONE,
+    "0"
+  },
+  {
+    "Relative exposure compensation",
+    PARAM_EXP_BRACKET_PARAM_COMP,
+    PARAM_EXP_BRACKET_VALUE_REL,
+    PARAM_EXP_BRACKET_APPLY_ADJUST,
+    "-300,-150,0,150,300,150,0,-150,-300"
+  },
+  {
+    "Relative exposure compensation (forced)",
+    PARAM_EXP_BRACKET_PARAM_COMP,
+    PARAM_EXP_BRACKET_VALUE_REL,
+    PARAM_EXP_BRACKET_APPLY_FORCED,
+    "-300F,-150F,0F,150F,300F,150F,0F,-150F,-300F"
+  },
+  {
+    "Absolute exposure and gain",
+    PARAM_EXP_BRACKET_PARAM_PAIR,
+    PARAM_EXP_BRACKET_VALUE_ABS,
+    PARAM_EXP_BRACKET_APPLY_ADJUST,
+    "(33000,10),(0,70),(33000,100),(0,130),(33000,160),(0,180),(33000,200),(0,130),(33000,200)"
+  },
+  {
+    "Absolute exposure and gain (forced)",
+    PARAM_EXP_BRACKET_PARAM_PAIR,
+    PARAM_EXP_BRACKET_VALUE_ABS,
+    PARAM_EXP_BRACKET_APPLY_FORCED,
+    "(33000,10)F,(0,70)F,(33000,100)F,(0,130)F,(33000,160)F,(0,180)F,(33000,200)F,(0,130)F,(33000,200)F"
+  },
+  {
+    "Relative exposure and gain",
+    PARAM_EXP_BRACKET_PARAM_PAIR,
+    PARAM_EXP_BRACKET_VALUE_REL,
+    PARAM_EXP_BRACKET_APPLY_ADJUST,
+    "(-300,-100),(-300,+0),(-100, +0),(-100,+100),(+0,+0),(+100,-100),(+100,+0),(+300,+0),(+300,+100)"
+  },
+  {
+    "Relative exposure and gain (forced)",
+    PARAM_EXP_BRACKET_PARAM_PAIR,
+    PARAM_EXP_BRACKET_VALUE_REL,
+    PARAM_EXP_BRACKET_APPLY_FORCED,
+    "(-300,-100)F,(-300,+0)F,(-100, +0)F,(-100,+100)F,(+0,+0)F,(+100,-100)F,(+100,+0)F,(+300,+0)F,(+300,+100)F"
+  },
+};
+
 const char *tempBracketing[] = {"disable", "enable"};
 const char *faceDetection[] = {"disable", "enable"};
 const char *afTimeout[] = {"enable", "disable" };
@@ -1921,7 +1972,7 @@ void initDefaults() {
     vnftoggle = false;
     AutoExposureLocktoggle = false;
     AutoWhiteBalanceLocktoggle = false;
-    expBracketIdx = 0;
+    expBracketIdx = BRACKETING_IDX_DEFAULT;
     flashIdx = getDefaultParameter("off", numflash, flash);
     rotation = 0;
     previewRotation = 0;
@@ -1991,42 +2042,121 @@ void initDefaults() {
     params.set(KEY_EXIF_MODEL, MODEL);
     params.set(KEY_EXIF_MAKE, MAKE);
 
-    initDefaultExpGainPairsPreset();
+    setDefaultExpGainPreset(shotParams, expBracketIdx);
 }
 
-void initDefaultExpGainPairsPreset() {
-    setExpGainPairsPreset(expBracketingRange[expBracketIdx], false);
+void setDefaultExpGainPreset(ShotParameters &params, int idx) {
+    setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
 }
 
-void setExpGainPairsPreset(const char *input, bool force) {
+void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) {
+    String8 val;
+
+    if (PARAM_EXP_BRACKET_PARAM_PAIR == expBracketing[idx].param_type) {
+        val.append("(");
+    }
+
+    if (PARAM_EXP_BRACKET_VALUE_REL == expBracketing[idx].value_type) {
+        val.appendFormat("%+d", exp);
+    } else {
+        val.appendFormat("%u", (unsigned int) abs);
+    }
+
+    if (PARAM_EXP_BRACKET_PARAM_PAIR == expBracketing[idx].param_type) {
+        if (PARAM_EXP_BRACKET_VALUE_REL == expBracketing[idx].value_type) {
+            val.appendFormat(",%+d)", gain);
+        } else {
+            val.appendFormat(",%u)", (unsigned int) gain);
+        }
+    }
+
+    if (PARAM_EXP_BRACKET_APPLY_FORCED == expBracketing[idx].apply_type) {
+        val.append("F");
+    }
+
+    setExpGainPreset(params, val, false, expBracketing[idx].param_type, false);
+}
+
+void setExpGainPreset(ShotParameters &params, const char *input, bool force, param_ExpBracketParamType_t type, bool flush) {
     const char *startPtr = NULL;
     size_t i = 0;
 
-    if (force || strcmp(expBracketing[expBracketIdx], "absolute-exposure-gain") == 0) {
-        printf("\nabsolute-exposure-gain input: %s\n", input);
-        shotParams.set(ShotParameters::KEY_EXP_GAIN_PAIRS, input);
-
+    if (NULL == input) {
+        printf("setExpGainPreset: missing input string\n");
+    } else if ( (force && (NULL == strpbrk(input, "()"))) ||
+         (PARAM_EXP_BRACKET_PARAM_COMP == type) ) {
+        // parse for the number of inputs (count the number of ',' + 1)
+        startPtr = strchr(input, ',');
+        while (startPtr != NULL) {
+            i++;
+            startPtr = strchr(startPtr + 1, ',');
+        }
+        i++;
+        printf("relative EV input: \"%s\"\nnumber of relative EV values: %d (%s)\n",
+               input, i, flush ? "reset" : "append");
+        burst = i;
+        params.set(ShotParameters::KEY_BURST, burst);
+        params.set(ShotParameters::KEY_EXP_COMPENSATION, input);
+        params.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
+        params.set(ShotParameters::KEY_FLUSH_CONFIG,
+                       flush ? ShotParameters::TRUE : ShotParameters::FALSE);
+    } else if ( force || (PARAM_EXP_BRACKET_PARAM_PAIR == type) ) {
         // parse for the number of inputs (count the number of '(')
         startPtr = strchr(input, '(');
         while (startPtr != NULL) {
             i++;
             startPtr = strchr(startPtr + 1, '(');
         }
-        printf("number of brackets: %d (%s)\n", i, shotConfigFlush ? "reset" : "append");
+        printf("absolute exposure,gain input: \"%s\"\nNumber of brackets: %d (%s)\n",
+               input, i, flush ? "reset" : "append");
         burst = i;
-        shotParams.set(ShotParameters::KEY_BURST, burst);
-        shotParams.set(ShotParameters::KEY_FLUSH_CONFIG,
-                       shotConfigFlush ? ShotParameters::TRUE : ShotParameters::FALSE);
+        params.set(ShotParameters::KEY_BURST, burst);
+        params.set(ShotParameters::KEY_EXP_GAIN_PAIRS, input);
+        params.remove(ShotParameters::KEY_EXP_COMPENSATION);
+        params.set(ShotParameters::KEY_FLUSH_CONFIG,
+                       flush ? ShotParameters::TRUE : ShotParameters::FALSE);
     } else {
-        shotParams.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
-        shotParams.remove(ShotParameters::KEY_BURST);
-        shotParams.remove(ShotParameters::KEY_FLUSH_CONFIG);
+        printf("no bracketing input: \"%s\"\n", input);
+        params.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
+        params.remove(ShotParameters::KEY_EXP_COMPENSATION);
+        params.remove(ShotParameters::KEY_BURST);
+        params.remove(ShotParameters::KEY_FLUSH_CONFIG);
+    }
+}
+
+void calcNextSingleExpGainPreset(int idx, int &exp, int &gain) {
+    if (PARAM_EXP_BRACKET_VALUE_ABS == expBracketing[idx].value_type) {
+        // absolute
+        if ( (0 == exp) && (0 == gain) ) {
+            exp=100;
+            gain = 150;
+            printf("Streaming: Init default absolute exp./gain: %d,%d\n", exp, gain);
+        }
+
+        exp *= 2;
+        if (1000000 < exp) {
+            exp = 100;
+            gain += 50;
+            if(400 < gain) {
+                gain = 50;
+            }
+        }
+    } else {
+        // relative
+        exp += 50;
+        if (200 < exp) {
+            exp = -200;
+            gain += 50;
+            if(200 < gain) {
+                gain = -200;
+            }
+        }
     }
 }
 
 void updateShotConfigFlushParam() {
     // Will update flush shot config parameter if already present
-    // Otherwise, keep empty (will be set later in setExpGainPairsPreset())
+    // Otherwise, keep empty (will be set later in setExpGainPreset())
     if (NULL != shotParams.get(ShotParameters::KEY_FLUSH_CONFIG)) {
         shotParams.set(ShotParameters::KEY_FLUSH_CONFIG,
                        shotConfigFlush ? ShotParameters::TRUE : ShotParameters::FALSE);
@@ -2263,7 +2393,7 @@ int functional_menu() {
         snprintf(area1[j++], MAX_SYMBOLS, "   -----------------------------");
         snprintf(area1[j++], MAX_SYMBOLS, "p. Take picture/Full Press");
         snprintf(area1[j++], MAX_SYMBOLS, "n. Flush shot config queue: %s", shotConfigFlush ? "On" : "Off");
-        snprintf(area1[j++], MAX_SYMBOLS, "H. Exposure Bracketing: %s", expBracketing[expBracketIdx]);
+        snprintf(area1[j++], MAX_SYMBOLS, "H. Exposure Bracketing: %s", expBracketing[expBracketIdx].desc);
         snprintf(area1[j++], MAX_SYMBOLS, "U. Temporal Bracketing:   %s", tempBracketing[tempBracketIdx]);
         snprintf(area1[j++], MAX_SYMBOLS, "W. Temporal Bracketing Range: [-%d;+%d]", tempBracketRange, tempBracketRange);
         snprintf(area1[j++], MAX_SYMBOLS, "$. Picture Format: %s", pictureFormatArray[pictureFormat]);
@@ -2830,7 +2960,7 @@ int functional_menu() {
         case 'H':
             expBracketIdx++;
             expBracketIdx %= ARRAY_SIZE(expBracketing);
-            initDefaultExpGainPairsPreset();
+            setDefaultExpGainPreset(shotParams, expBracketIdx);
 
             break;
 
@@ -2849,7 +2979,7 @@ int functional_menu() {
             char input[256];
             input[0] = ch;
             scanf("%254s", input+1);
-            setExpGainPairsPreset(input, true);
+            setExpGainPreset(shotParams, input, true, PARAM_EXP_BRACKET_PARAM_NONE, shotConfigFlush);
             break;
         }
         case 'W':
@@ -3127,7 +3257,11 @@ int functional_menu() {
         {
             createBufferOutputSource();
             if (bufferSourceOutputThread.get()) {
-                bufferSourceOutputThread->toggleStreamCapture();
+                if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
+                    setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                } else {
+                    setDefaultExpGainPreset(shotParams, expBracketIdx);
+                }
             }
             break;
         }
