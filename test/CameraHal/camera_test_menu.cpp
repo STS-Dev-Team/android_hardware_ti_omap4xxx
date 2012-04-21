@@ -84,6 +84,7 @@ bool vstabtoggle = false;
 bool AutoExposureLocktoggle = false;
 bool AutoWhiteBalanceLocktoggle = false;
 bool vnftoggle = false;
+bool shotConfigFlush = false;
 int saturation = 0;
 int zoomIDX = 0;
 int videoCodecIDX = 0;
@@ -1915,6 +1916,7 @@ void initDefaults() {
     scene_mode = getDefaultParameter("auto", numscene, scene);
     caf_mode = 0;
 
+    shotConfigFlush = false;
     vstabtoggle = false;
     vnftoggle = false;
     AutoExposureLocktoggle = false;
@@ -2010,12 +2012,24 @@ void setExpGainPairsPreset(const char *input, bool force) {
             i++;
             startPtr = strchr(startPtr + 1, '(');
         }
-        printf("number of brackets: %d\n", i);
+        printf("number of brackets: %d (%s)\n", i, shotConfigFlush ? "reset" : "append");
         burst = i;
         shotParams.set(ShotParameters::KEY_BURST, burst);
+        shotParams.set(ShotParameters::KEY_FLUSH_CONFIG,
+                       shotConfigFlush ? ShotParameters::TRUE : ShotParameters::FALSE);
     } else {
         shotParams.remove(ShotParameters::KEY_EXP_GAIN_PAIRS);
         shotParams.remove(ShotParameters::KEY_BURST);
+        shotParams.remove(ShotParameters::KEY_FLUSH_CONFIG);
+    }
+}
+
+void updateShotConfigFlushParam() {
+    // Will update flush shot config parameter if already present
+    // Otherwise, keep empty (will be set later in setExpGainPairsPreset())
+    if (NULL != shotParams.get(ShotParameters::KEY_FLUSH_CONFIG)) {
+        shotParams.set(ShotParameters::KEY_FLUSH_CONFIG,
+                       shotConfigFlush ? ShotParameters::TRUE : ShotParameters::FALSE);
     }
 }
 
@@ -2248,6 +2262,7 @@ int functional_menu() {
         snprintf(area1[j++], MAX_SYMBOLS, "     IMAGE CAPTURE SUB MENU");
         snprintf(area1[j++], MAX_SYMBOLS, "   -----------------------------");
         snprintf(area1[j++], MAX_SYMBOLS, "p. Take picture/Full Press");
+        snprintf(area1[j++], MAX_SYMBOLS, "n. Flush shot config queue: %s", shotConfigFlush ? "On" : "Off");
         snprintf(area1[j++], MAX_SYMBOLS, "H. Exposure Bracketing: %s", expBracketing[expBracketIdx]);
         snprintf(area1[j++], MAX_SYMBOLS, "U. Temporal Bracketing:   %s", tempBracketing[tempBracketIdx]);
         snprintf(area1[j++], MAX_SYMBOLS, "W. Temporal Bracketing Range: [-%d;+%d]", tempBracketRange, tempBracketRange);
@@ -2816,6 +2831,16 @@ int functional_menu() {
             expBracketIdx++;
             expBracketIdx %= ARRAY_SIZE(expBracketing);
             initDefaultExpGainPairsPreset();
+
+            break;
+
+        case 'n':
+            if (shotConfigFlush)
+                shotConfigFlush = false;
+            else
+                shotConfigFlush = true;
+
+            updateShotConfigFlushParam();
 
             break;
 

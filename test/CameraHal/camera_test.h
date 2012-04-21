@@ -183,6 +183,7 @@ void createBufferOutputSource();
 void initDefaults();
 void initDefaultExpGainPairsPreset();
 void setExpGainPairsPreset(const char *input, bool force);
+void updateShotConfigFlushParam();
 int startPreview();
 void stopPreview();
 int startRecording();
