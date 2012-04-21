@@ -280,7 +280,10 @@ public:
     enum BracketingValueMode {
         BracketingValueAbsolute,
         BracketingValueRelative,
-        BracketingValueForcedRelative
+        BracketingValueAbsoluteForced,
+        BracketingValueRelativeForced,
+        BracketingValueCompensation,
+        BracketingValueCompensationForced
     };
 
     class GPSData
