@@ -36,7 +36,7 @@ extern sp<Camera> camera;
 extern sp<BufferSourceThread> bufferSourceOutputThread;
 extern sp<BufferSourceInput> bufferSourceInput;
 extern CameraParameters params;
-extern CameraParameters shotParams;
+extern ShotParameters shotParams;
 extern bool shotConfigFlush;
 extern bool recordingMode;
 extern int camera_index;
@@ -98,6 +98,7 @@ extern int frameRateIDX;
 extern int fpsRangeIdx;
 extern int stereoLayoutIDX;
 extern int stereoCapLayoutIDX;
+extern int expBracketIdx;
 int resol_index = 0;
 int a = 0;
 extern char * vstabstr;
@@ -750,7 +751,7 @@ int execute_functional_script(char *script) {
 
             case '?':
 
-                setExpGainPairsPreset(cmd + 1, true);
+                setExpGainPreset(shotParams, cmd + 1, true, PARAM_EXP_BRACKET_PARAM_NONE, shotConfigFlush);
 
                 break;
 
@@ -1129,7 +1130,13 @@ int execute_functional_script(char *script) {
             {
                 createBufferOutputSource();
                 if (bufferSourceOutputThread.get()) {
-                    bufferSourceOutputThread->toggleStreamCapture();
+                    if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
+                        expBracketIdx = BRACKETING_IDX_STREAM;
+                        setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                    } else {
+                        expBracketIdx = BRACKETING_IDX_DEFAULT;
+                        setDefaultExpGainPreset(shotParams, expBracketIdx);
+                    }
                 }
                 break;
             }

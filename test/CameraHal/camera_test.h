@@ -54,6 +54,9 @@
 #define KEY_ALGO_THREELINCOLORMAP       "ti-algo-threelinecolormap"
 #define KEY_ALGO_GIC                    "ti-algo-gic"
 
+#define BRACKETING_IDX_DEFAULT          0
+#define BRACKETING_IDX_STREAM           1
+
 #define SDCARD_PATH "/sdcard/"
 
 #define MAX_BURST   15
@@ -90,6 +93,24 @@ typedef enum test_type {
     TEST_TYPE_API,
     TEST_TYPE_ERROR,
 } test_type_t;
+
+typedef enum param_ExpBracketParamType_t {
+    PARAM_EXP_BRACKET_PARAM_NONE,
+    PARAM_EXP_BRACKET_PARAM_COMP,
+    PARAM_EXP_BRACKET_PARAM_PAIR,
+} param_ExpBracketParamType;
+
+typedef enum param_ExpBracketValueType_t {
+    PARAM_EXP_BRACKET_VALUE_NONE,
+    PARAM_EXP_BRACKET_VALUE_ABS,
+    PARAM_EXP_BRACKET_VALUE_REL,
+} param_ExpBracketValueType;
+
+typedef enum param_ExpBracketApplyType_t {
+    PARAM_EXP_BRACKET_APPLY_NONE,
+    PARAM_EXP_BRACKET_APPLY_ADJUST,
+    PARAM_EXP_BRACKET_APPLY_FORCED,
+} param_ExpBracketApplyType;
 
 enum logging {
     LOGGING_LOGCAT = 0x01,
@@ -173,6 +194,14 @@ typedef struct buffer_info {
     sp<GraphicBuffer> buf;
 } buffer_info_t;
 
+typedef struct param_NamedExpBracketList_t {
+    const char *desc;
+    param_ExpBracketParamType_t param_type;
+    param_ExpBracketValueType_t value_type;
+    param_ExpBracketApplyType_t apply_type;
+    const char *value;
+} param_NamedExpBracketList;
+
 
 char * get_cycle_cmd(const char *aSrc);
 int execute_functional_script(char *script);
@@ -181,8 +210,10 @@ int openCamera();
 int closeCamera();
 void createBufferOutputSource();
 void initDefaults();
-void initDefaultExpGainPairsPreset();
-void setExpGainPairsPreset(const char *input, bool force);
+void setDefaultExpGainPreset(ShotParameters &params, int idx);
+void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain);
+void setExpGainPreset(ShotParameters &params, const char *input, bool force, param_ExpBracketParamType_t type, bool flush);
+void calcNextSingleExpGainPreset(int idx, int &exp, int &gain);
 void updateShotConfigFlushParam();
 int startPreview();
 void stopPreview();
@@ -390,7 +421,8 @@ public:
     BufferSourceThread(bool display, int tex_id, sp<Camera> camera) :
                  Thread(false), mCounter(0), mDisplayable(display),
                  mTexId(tex_id), mCamera(camera), kReturnedBuffersMaxCapacity(6),
-                 mDestroying(false), mRestartCapture(false) {
+                 mDestroying(false), mRestartCapture(false),
+                 mExpBracketIdx(BRACKETING_IDX_DEFAULT), mExp(0), mGain(0) {
         mSurfaceTextureBase = new SurfaceTextureBase();
         mSurfaceTextureBase->initialize(mTexId);
         mSurfaceTexture = mSurfaceTextureBase->getST();
@@ -423,13 +455,14 @@ public:
             showMetadata(mSurfaceTexture->getMetadata());
             printf("\n");
             graphic_buffer = mSurfaceTexture->getCurrentBuffer();
+            mDeferThread->add(graphic_buffer, mCounter++);
+            Mutex::Autolock lock(mToggleStateMutex);
             if (mRestartCapture) {
                 ShotParameters shotParams;
-                shotParams.set(ShotParameters::KEY_EXP_GAIN_PAIRS, "(33000,200)");
-                shotParams.set(ShotParameters::KEY_BURST, 1);
+                calcNextSingleExpGainPreset(mExpBracketIdx, mExp, mGain),
+                setSingleExpGainPreset(shotParams, mExpBracketIdx, mExp, mGain);
                 mCamera->takePicture(0, shotParams.flatten());
             }
-            mDeferThread->add(graphic_buffer, mCounter++);
             return true;
         }
         return false;
@@ -446,8 +479,11 @@ public:
         mCamera->setBufferSource(NULL, mSurfaceTexture);
     }
 
-    void toggleStreamCapture() {
+    bool toggleStreamCapture(int expBracketIdx) {
+        Mutex::Autolock lock(mToggleStateMutex);
+        mExpBracketIdx = expBracketIdx;
         mRestartCapture = !mRestartCapture;
+        return mRestartCapture;
     }
 
     buffer_info_t popBuffer() {
@@ -480,9 +516,13 @@ private:
     sp<FrameWaiter> mFW;
     Vector<buffer_info_t> mReturnedBuffers;
     Mutex mReturnedBuffersMutex;
+    Mutex mToggleStateMutex;
     const unsigned int kReturnedBuffersMaxCapacity;
     bool mDestroying;
     bool mRestartCapture;
+    int mExpBracketIdx;
+    int mExp;
+    int mGain;
     sp<Defer> mDeferThread;
 };
 
