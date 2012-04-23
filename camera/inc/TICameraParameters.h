@@ -142,6 +142,7 @@ static const char TEMP_BRACKETING[];
 static const char PIXEL_FORMAT_UNUSED[];
 static const char PIXEL_FORMAT_JPS[];
 static const char PIXEL_FORMAT_MPO[];
+static const char PIXEL_FORMAT_YUV422I_UYVY[];
 
 // TI extensions to standard android scene mode settings
 static const  char SCENE_MODE_CLOSEUP[];

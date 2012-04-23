@@ -133,6 +133,7 @@ const char TICameraParameters::IPP_NONE[] = "off";
 const char TICameraParameters::PIXEL_FORMAT_UNUSED[] = "unused";
 const char TICameraParameters::PIXEL_FORMAT_JPS[] = "jps";
 const char TICameraParameters::PIXEL_FORMAT_MPO[] = "mpo";
+const char TICameraParameters::PIXEL_FORMAT_YUV422I_UYVY[] = "yuv422i-uyvy";
 
 // TI extensions to standard android scene mode settings
 const char TICameraParameters::SCENE_MODE_CLOSEUP[] = "closeup";
