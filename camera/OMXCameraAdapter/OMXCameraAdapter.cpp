@@ -3532,6 +3532,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             typeOfFrame = CameraFrame::IMAGE_FRAME;
             mask = (unsigned int) CameraFrame::IMAGE_FRAME;
             cameraFrame.mQuirks |= CameraFrame::ENCODE_RAW_YUV422I_TO_JPEG;
+            cameraFrame.mQuirks |= CameraFrame::FORMAT_YUV422I_UYVY;
 
             // populate exif data and pass to subscribers via quirk
             // subscriber is in charge of freeing exif data

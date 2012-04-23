@@ -384,6 +384,8 @@ class CameraFrame
     {
         ENCODE_RAW_YUV422I_TO_JPEG = 0x1 << 0,
         HAS_EXIF_DATA = 0x1 << 1,
+        FORMAT_YUV422I_YUYV = 0x1 << 2,
+        FORMAT_YUV422I_UYVY = 0x1 << 3,
     };
 
     //default contrustor
