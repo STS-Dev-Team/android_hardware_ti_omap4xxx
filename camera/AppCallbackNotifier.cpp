@@ -21,6 +21,7 @@
 #include <ui/GraphicBuffer.h>
 #include <ui/GraphicBufferMapper.h>
 #include "NV12_resize.h"
+#include "TICameraParameters.h"
 
 namespace android {
 
@@ -942,7 +943,12 @@ void AppCallbackNotifier::notifyFrame()
                         main_jpeg->out_height = frame->mHeight;
                         main_jpeg->right_crop = rightCrop;
                         main_jpeg->start_offset = frame->mOffset;
-                        main_jpeg->format = CameraParameters::PIXEL_FORMAT_YUV422I;
+                        if ( CameraFrame::FORMAT_YUV422I_UYVY & frame->mQuirks) {
+                            main_jpeg->format = TICameraParameters::PIXEL_FORMAT_YUV422I_UYVY;
+                        }
+                        else { //if ( CameraFrame::FORMAT_YUV422I_YUYV & frame->mQuirks)
+                            main_jpeg->format = CameraParameters::PIXEL_FORMAT_YUV422I;
+                        }
                     }
 
                     tn_width = parameters.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
