@@ -191,7 +191,6 @@ typedef CapU32 CapFramerate;
 typedef CapU32 CapISO;
 typedef CapU32 CapSensorName;
 typedef CapS32 CapZoom;
-typedef CapS32 CapEVComp;
 
 /**
   * Class which completely abstracts the camera hardware interaction from camera hal
@@ -899,7 +898,6 @@ private:
     static const CapFramerate mFramerates [];
     static const CapU32 mSensorNames[] ;
     static const CapZoom mZoomStages [];
-    static const CapEVComp mEVCompRanges [];
     static const CapISO mISOStages [];
     static const int SENSORID_IMX060;
     static const int SENSORID_OV5650;
@@ -930,8 +928,6 @@ private:
     static const char DEFAULT_FLASH_MODE[];
     static const char DEFAULT_FOCUS_MODE_PREFERRED[];
     static const char DEFAULT_FOCUS_MODE[];
-    static const char DEFAULT_FRAMERATE_RANGE_IMAGE[];
-    static const char DEFAULT_FRAMERATE_RANGE_VIDEO[];
     static const char DEFAULT_IPP[];
     static const char DEFAULT_ISO_MODE[];
     static const char DEFAULT_JPEG_QUALITY[];
@@ -950,7 +946,6 @@ private:
     static const char DEFAULT_PREVIEW_TB_SIZE[];
     static const char DEFAULT_NUM_PREV_BUFS[];
     static const char DEFAULT_NUM_PIC_BUFS[];
-    static const char DEFAULT_MAX_FOCUS_AREAS[];
     static const char DEFAULT_SATURATION[];
     static const char DEFAULT_SCENE_MODE[];
     static const char DEFAULT_SHARPNESS[];
@@ -962,12 +957,10 @@ private:
     static const char DEFAULT_MAX_FD_SW_FACES[];
     static const char * DEFAULT_AE_LOCK;
     static const char * DEFAULT_AWB_LOCK;
-    static const char DEFAULT_MAX_NUM_METERING_AREAS[];
     static const char DEFAULT_HOR_ANGLE[];
     static const char DEFAULT_VER_ANGLE[];
     static const char DEFAULT_VIDEO_SIZE[];
     static const char DEFAULT_SENSOR_ORIENTATION[];
-    static const char DEFAULT_FACING_SUPPORTED[];
     static const char DEFAULT_AUTOCONVERGENCE_MODE[];
     static const char DEFAULT_MANUAL_CONVERGENCE[];
     static const char DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE[];
