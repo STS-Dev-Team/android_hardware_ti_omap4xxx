@@ -562,14 +562,33 @@ void BufferSourceThread::showMetadata(const String8& metadata) {
 
     CameraMetadata meta(metadata);
 
-    printf("analog gain: %s\n", meta.get(CameraMetadata::KEY_ANALOG_GAIN));
-    printf("exposure time: %s\n", meta.get(CameraMetadata::KEY_EXPOSURE_TIME));
-    printf("awb gain: %s\n", meta.get(CameraMetadata::KEY_AWB_GAINS));
-    printf("awb offsets: %s\n", meta.get(CameraMetadata::KEY_AWB_OFFSETS));
-    printf("awb temperature: %d\n", meta.getInt(CameraMetadata::KEY_AWB_TEMP));
+    printf("         frame nmber: %d\n", meta.getInt(CameraMetadata::KEY_FRAME_NUMBER));
+    printf("         shot number: %d\n", meta.getInt(CameraMetadata::KEY_SHOT_NUMBER));
+    printf("         analog gain: %d req: %d range: %d~%d dev: %d err: %d\n",
+           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN),
+           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_REQ),
+           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MIN),
+           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MAX),
+           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_DEV),
+           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_ERROR));
+    printf("       exposure time: %d req: %d range: %d~%d dev: %d err: %d\n",
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME));
+    printf("     EV compensation: req: %d dev: %d\n",
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ),
+           meta.getInt(CameraMetadata::KEY_EXPOSURE_DEV));
+    printf("            awb gain: %s\n", meta.get(CameraMetadata::KEY_AWB_GAINS));
+    printf("         awb offsets: %s\n", meta.get(CameraMetadata::KEY_AWB_OFFSETS));
+    printf("     awb temperature: %d\n", meta.getInt(CameraMetadata::KEY_AWB_TEMP));
+    printf("   LSC table applied: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE_APPLIED));
+    printf("      LSC table data: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE));
 
     currTime = meta.getTime(CameraMetadata::KEY_TIMESTAMP);
-    printf("timestamp (ns): %llu\n", currTime);
+    printf("      timestamp (ns): %llu\n", currTime);
     if (prevTime) printf("inter-shot time (ms): %llu\n", (currTime - prevTime) / 1000000l);
     prevTime = currTime;
 }
