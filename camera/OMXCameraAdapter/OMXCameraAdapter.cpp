@@ -3701,8 +3701,8 @@ OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE 
             if ( type == extraData->eType ) {
                 return extraData;
             }
-            extraData = (OMX_OTHER_EXTRADATATYPE*) ((char*)extraData + extraData->nSize);
             remainingSize -= extraData->nSize;
+            extraData = (OMX_OTHER_EXTRADATATYPE*) ((char*)extraData + extraData->nSize);
         }
     }
 
