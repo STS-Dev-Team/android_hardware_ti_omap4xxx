@@ -46,6 +46,7 @@ static const unsigned int MANUAL_GAIN_ISO_STEP = 100;
 const int OMXCameraAdapter::SENSORID_IMX060 = 300;
 const int OMXCameraAdapter::SENSORID_OV5650 = 301;
 const int OMXCameraAdapter::SENSORID_OV5640 = 302;
+const int OMXCameraAdapter::SENSORID_OV14825 = 304;
 const int OMXCameraAdapter::SENSORID_S5K4E1GA = 305;
 const int OMXCameraAdapter::SENSORID_S5K6A1GX03 = 306;
 
@@ -206,6 +207,7 @@ const CapCodingFormat OMXCameraAdapter::mImageCodingFormat [] = {
 };
 
 const CapFramerate OMXCameraAdapter::mFramerates [] = {
+    { 60, "60" },
     { 30, "30" },
     { 24, "24" },
     { 20, "20" },
@@ -293,6 +295,7 @@ const CapU32 OMXCameraAdapter::mSensorNames [] = {
     { SENSORID_IMX060, "IMX060" },
     { SENSORID_OV5650, "OV5650" },
     { SENSORID_OV5640, "OV5640" },
+    { SENSORID_OV14825, "OV14825"},
     { SENSORID_S5K4E1GA, "S5K4E1GA"},
     { SENSORID_S5K6A1GX03, "S5K6A1GX03" }
     // TODO(XXX): need to account for S3D camera later

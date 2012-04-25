@@ -66,6 +66,8 @@
 #define SHARPNESS_OFFSET 100
 #define CONTRAST_OFFSET 100
 
+#define FRAME_RATE_HIGH_HD 60
+
 #define CAMHAL_GRALLOC_USAGE GRALLOC_USAGE_HW_TEXTURE | \
                              GRALLOC_USAGE_HW_RENDER | \
                              GRALLOC_USAGE_SW_READ_RARELY | \
