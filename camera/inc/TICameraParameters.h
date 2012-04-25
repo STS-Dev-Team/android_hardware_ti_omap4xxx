@@ -81,7 +81,6 @@ static const char  KEY_AUTO_FOCUS_LOCK[];
 static const char  KEY_CURRENT_ISO[];
 
 static const char KEY_SENSOR_ORIENTATION[];
-static const char KEY_SENSOR_ORIENTATION_VALUES[];
 
 //TI extensions for camera capabilies
 static const char INITIAL_VALUES_TRUE[];

@@ -374,10 +374,15 @@ int CameraHal::setParameters(const CameraParameters& params)
             doesSetParameterNeedUpdate(valstr,
                                        mParameters.get(TICameraParameters::KEY_SENSOR_ORIENTATION),
                                        updateRequired);
-            CAMHAL_LOGDB("Sensor Orientation is set to %s", params.get(TICameraParameters::KEY_SENSOR_ORIENTATION));
 
-            mParameters.set(TICameraParameters::KEY_SENSOR_ORIENTATION, valstr);
             orientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
+            if ( orientation < 0 || orientation >= 360 || (orientation%90) != 0 ) {
+                CAMHAL_LOGE("Invalid sensor orientation: %s. Value must be one of: [0, 90, 180, 270]", valstr);
+                return BAD_VALUE;
+            }
+
+            CAMHAL_LOGD("Sensor Orientation is set to %d", orientation);
+            mParameters.set(TICameraParameters::KEY_SENSOR_ORIENTATION, valstr);
             }
 
         if ( (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
@@ -3763,8 +3768,6 @@ void CameraHal::insertSupportedParams()
     p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_STEP));
     p.set(CameraParameters::KEY_VIDEO_STABILIZATION_SUPPORTED, mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED));
     p.set(TICameraParameters::KEY_VNF_SUPPORTED, mCameraProperties->get(CameraProperties::VNF_SUPPORTED));
-    p.set(TICameraParameters::KEY_SENSOR_ORIENTATION, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION));
-    p.set(TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION_VALUES));
     p.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED));
     p.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED));
     p.set(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED, mCameraProperties->get(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED));
@@ -3864,7 +3867,6 @@ void CameraHal::initDefaultParameters()
     p.set(CameraParameters::KEY_HORIZONTAL_VIEW_ANGLE, mCameraProperties->get(CameraProperties::HOR_ANGLE));
     p.set(CameraParameters::KEY_VERTICAL_VIEW_ANGLE, mCameraProperties->get(CameraProperties::VER_ANGLE));
     p.set(TICameraParameters::KEY_SENSOR_ORIENTATION, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION));
-    p.set(TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES, mCameraProperties->get(CameraProperties::SENSOR_ORIENTATION_VALUES));
     p.set(TICameraParameters::KEY_EXIF_MAKE, mCameraProperties->get(CameraProperties::EXIF_MAKE));
     p.set(TICameraParameters::KEY_EXIF_MODEL, mCameraProperties->get(CameraProperties::EXIF_MODEL));
     p.set(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY, mCameraProperties->get(CameraProperties::JPEG_THUMBNAIL_QUALITY));
