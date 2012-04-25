@@ -1017,6 +1017,8 @@ status_t OMXCameraAdapter::setSensorQuirks(int orientation,
           ( portParams.mWidth >= overclockWidth ) &&
           ( portParams.mHeight >= overclockHeight ) &&
           ( portParams.mFrameRate >= FRAME_RATE_FULL_HD ) ) ||
+          (( sensorID == SENSORID_OV14825) &&
+          ( portParams.mFrameRate >= FRAME_RATE_HIGH_HD ))||
         ( ( sensorID == SENSORID_OV5640 ) &&
           ( portParams.mWidth >= overclockWidth ) &&
           ( portParams.mHeight >= overclockHeight ) ) ) {
@@ -1031,7 +1033,9 @@ status_t OMXCameraAdapter::setSensorQuirks(int orientation,
               ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
               ( portCheck.format.video.nFrameHeight >= overclockHeight ) &&
               ( ( portCheck.format.video.xFramerate >> 16 ) >= FRAME_RATE_FULL_HD ) ) ||
-            ( ( sensorID == SENSORID_OV5640 ) &&
+              (( sensorID == SENSORID_OV14825) &&
+              (( portCheck.format.video.xFramerate >> 16) >= FRAME_RATE_HIGH_HD ))||
+             ( ( sensorID == SENSORID_OV5640 ) &&
               ( portCheck.format.video.nFrameWidth >= overclockWidth ) &&
               ( portCheck.format.video.nFrameHeight >= overclockHeight ) ) ) {
             status_t ret = setFormat(mCameraAdapterParameters.mPrevPortIndex,
