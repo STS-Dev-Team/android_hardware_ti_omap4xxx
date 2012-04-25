@@ -1434,8 +1434,8 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
 
     bzero(geom, sizeof(*geom));
     geom->structsize = sizeof(*geom);
-    geom->width = fb_varinfo.xres_virtual;
-    geom->height = fb_varinfo.yres_virtual;
+    geom->width = fb_varinfo.xres;
+    geom->height = fb_varinfo.yres;
     geom->virtstride = fb_fixinfo.line_length;
     geom->format = hal_to_ocd(fmt);
     geom->orientation = 0;
