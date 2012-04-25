@@ -238,9 +238,9 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         }
 
         //Set Mechanical Misalignment Correction
-        valstr = params.get((const char *) TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
+        valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
         if ( valstr != NULL ) {
-            setMechanicalMisalignmentCorrection(valstr);
+            setMechanicalMisalignmentCorrection(strcmp(valstr, CameraParameters::TRUE) == 0);
             CAMHAL_LOGDB("Mechanical Misalignment Correction %s", valstr);
         }
     }
@@ -1192,7 +1192,7 @@ status_t OMXCameraAdapter::setVFramerate(OMX_U32 minFrameRate, OMX_U32 maxFrameR
     return ret;
  }
 
-status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const char *mode)
+status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const bool enable)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -1202,7 +1202,7 @@ status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const char *mode)
 
     mm.nVersion = mLocalVersionParam;
     mm.nSize = sizeof(OMX_TI_CONFIG_MM);
-    mm.bMM = (OMX_BOOL)getLUTvalue_HALtoOMX(mode, mMechanicalMisalignmentCorrectionLUT);
+    mm.bMM = enable ? OMX_TRUE : OMX_FALSE;
 
     eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                            (OMX_INDEXTYPE)OMX_TI_IndexConfigMechanicalMisalignment,

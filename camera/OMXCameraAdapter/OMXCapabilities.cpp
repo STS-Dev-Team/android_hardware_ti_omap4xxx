@@ -318,16 +318,6 @@ const LUTtype OMXCameraAdapter::mAutoConvergenceLUT = {
     mAutoConvergence
 };
 
-const userToOMX_LUT OMXCameraAdapter::mMechanicalMisalignmentCorrection [] = {
-    { TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE, OMX_FALSE },
-    { TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE,  OMX_TRUE }
-};
-
-const LUTtype OMXCameraAdapter::mMechanicalMisalignmentCorrectionLUT = {
-    ARRAY_SIZE(mMechanicalMisalignmentCorrection),
-    mMechanicalMisalignmentCorrection
-};
-
 const userToOMX_LUT OMXCameraAdapter::mBracketingModes [] = {
     { TICameraParameters::TEMP_BRACKETING       , OMX_BracketTemporal               },
     { TICameraParameters::EXPOSURE_BRACKETING   , OMX_BracketExposureRelativeInEV   }
@@ -1733,25 +1723,13 @@ status_t OMXCameraAdapter::insertManualConvergenceRange(CameraProperties::Proper
 
 status_t OMXCameraAdapter::insertMechanicalMisalignmentCorrection(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
-    status_t ret = NO_ERROR;
-    char supported[MAX_PROP_VALUE_LENGTH];
-
     LOG_FUNCTION_NAME;
 
-    memset(supported, '\0', sizeof(supported));
+    params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED,
+            caps.bMechanicalMisalignmentSupported == OMX_TRUE ?
+            CameraParameters::TRUE : CameraParameters::FALSE);
 
-    if (caps.bMechanicalMisalignmentSupported)
-    {
-        strncat(supported, TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_DISABLE, REMAINING_BYTES(supported));
-        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
-        strncat(supported, TICameraParameters::MECHANICAL_MISALIGNMENT_CORRECTION_ENABLE, REMAINING_BYTES(supported));
-    }
-
-    params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES, supported);
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return ret;
+    return OK;
 }
 
 status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)

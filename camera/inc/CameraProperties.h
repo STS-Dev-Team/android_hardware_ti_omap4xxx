@@ -167,8 +167,8 @@ public:
     static const char VIDEO_SIZE[];
     static const char SUPPORTED_VIDEO_SIZES[];
 
+    static const char MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[];
     static const char MECHANICAL_MISALIGNMENT_CORRECTION[];
-    static const char MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[];
 
     static const char RAW_WIDTH[];
     static const char RAW_HEIGHT[];
