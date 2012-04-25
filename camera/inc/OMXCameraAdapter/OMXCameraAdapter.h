@@ -685,7 +685,7 @@ private:
     OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type);
 
     // Mechanical Misalignment Correction
-    status_t setMechanicalMisalignmentCorrection(const char *mode);
+    status_t setMechanicalMisalignmentCorrection(bool enable);
 
     // DCC file data save
     status_t initDccFileDataSave(OMX_HANDLETYPE* omxHandle, int portIndex);
@@ -811,8 +811,6 @@ private:
     static const CapU32 mFacing [];
     static const userToOMX_LUT mAutoConvergence [];
     static const LUTtype mAutoConvergenceLUT;
-    static const userToOMX_LUT mMechanicalMisalignmentCorrection[];
-    static const LUTtype mMechanicalMisalignmentCorrectionLUT;
     static const userToOMX_LUT mBracketingModes[];
     static const LUTtype mBracketingModesLUT;
 
@@ -868,7 +866,7 @@ private:
     static const char DEFAULT_FACING_SUPPORTED[];
     static const char DEFAULT_AUTOCONVERGENCE_MODE[];
     static const char DEFAULT_MANUAL_CONVERGENCE[];
-    static const char DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE[];
+    static const char * DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE;
 
     static const size_t MAX_FOCUS_AREAS;
 
