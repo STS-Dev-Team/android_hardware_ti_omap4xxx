@@ -71,6 +71,8 @@ namespace android {
 #define DEFAULT_THUMB_WIDTH         160
 #define DEFAULT_THUMB_HEIGHT        120
 #define FRAME_RATE_FULL_HD          27
+#define FRAME_RATE_HIGH_HD          60
+
 #define ZOOM_STAGES                 61
 
 #define FACE_DETECTION_BUFFER_SIZE  0x1000
@@ -817,6 +819,7 @@ private:
     static const int SENSORID_IMX060;
     static const int SENSORID_OV5650;
     static const int SENSORID_OV5640;
+    static const int SENSORID_OV14825;
     static const int SENSORID_S5K4E1GA;
     static const int SENSORID_S5K6A1GX03;
     static const CapU32 mFacing [];
