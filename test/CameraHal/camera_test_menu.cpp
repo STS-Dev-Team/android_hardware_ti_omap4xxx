@@ -1879,7 +1879,8 @@ bool isRawPixelFormat (const char *format) {
     bool ret = false;
     if ((0 == strcmp (format, CameraParameters::PIXEL_FORMAT_YUV422I)) ||
         (0 == strcmp (format, CameraParameters::PIXEL_FORMAT_YUV420SP)) ||
-        (0 == strcmp (format, CameraParameters::PIXEL_FORMAT_RGB565))) {
+        (0 == strcmp (format, CameraParameters::PIXEL_FORMAT_RGB565)) ||
+        (0 == strcmp (format, CameraParameters::PIXEL_FORMAT_BAYER_RGGB))) {
         ret = true;
     }
     return ret;
@@ -2410,6 +2411,9 @@ int functional_menu() {
             if (bufferSourceOutputThread.get()) {
                 bufferSourceOutputThread->requestExit();
                 bufferSourceOutputThread.clear();
+            }
+            if ( bufferSourceInput.get() ) {
+                bufferSourceInput.clear();
             }
             break;
 
@@ -3125,7 +3129,7 @@ int functional_menu() {
 
                 if (bufferSourceInput.get()) {
                     buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                    bufferSourceInput->setInput(info);
+                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat]);
                     if (hardwareActive) camera->reprocess(msgType, String8());
                 }
             }
