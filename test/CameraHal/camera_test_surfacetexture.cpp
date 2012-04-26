@@ -57,6 +57,8 @@
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
 #define HAL_PIXEL_FORMAT_TI_NV12_1D 0x102
+#define HAL_PIXEL_FORMAT_TI_Y8 0x103
+#define HAL_PIXEL_FORMAT_TI_Y16 0x104
 
 using namespace android;
 
@@ -74,13 +76,34 @@ static size_t calcBufSize(int format, int width, int height)
 
     switch (format) {
         case HAL_PIXEL_FORMAT_TI_NV12_1D:
+            buf_size = width * height * 3 /2;
+            break;
+        case HAL_PIXEL_FORMAT_TI_Y16:
+            buf_size = width * height * 2;
+            break;
         // add more formats later
         default:
             buf_size = width * height * 3 /2;
-        break;
+            break;
     }
 
     return buf_size;
+}
+
+static int getHalPixFormat(const char *format)
+{
+    int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+    if ( NULL != format ) {
+        if ( strcmp(format, CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0 ) {
+            pixformat = HAL_PIXEL_FORMAT_TI_Y16;
+        } else if ( strcmp(format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
+            pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+        } else {
+            pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
+        }
+    }
+
+    return pixformat;
 }
 
 void GLSurface::initialize(int display) {
@@ -436,7 +459,7 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     }
 }
 
-void BufferSourceInput::setInput(buffer_info_t bufinfo) {
+void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     sp<SurfaceTexture> surface_texture;
     sp<ANativeWindow> window_tapin;
     ANativeWindowBuffer* anb;
@@ -444,6 +467,7 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
     void *data = NULL;
     void *input = NULL;
     static int count = 0;
+    int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
 
     int aligned_width, aligned_height;
     aligned_width = ALIGN_UP(bufinfo.width, ALIGN_WIDTH);
@@ -453,14 +477,17 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
 
     Rect bounds(bufinfo.width, bufinfo.height);
 
+    if ( NULL != format ) {
+        pixformat = getHalPixFormat(format);
+    }
+
     surface_texture = mSurfaceTexture->getST();
 
     surface_texture->setDefaultBufferSize(bufinfo.width, bufinfo.height);
     window_tapin = new SurfaceTextureClient(surface_texture);
-    native_window_set_usage(window_tapin.get(), GRALLOC_USAGE_HW_TEXTURE |
-                     GRALLOC_USAGE_HW_RENDER |
-                     GRALLOC_USAGE_SW_READ_RARELY |
-                     GRALLOC_USAGE_SW_WRITE_NEVER);
+    native_window_set_usage(window_tapin.get(),
+                            GRALLOC_USAGE_SW_READ_RARELY |
+                            GRALLOC_USAGE_SW_WRITE_NEVER);
     native_window_set_buffer_count(window_tapin.get(), 1);
     native_window_set_buffers_geometry(window_tapin.get(),
                   aligned_width, aligned_height, bufinfo.format);
@@ -471,24 +498,29 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
         bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
     }
     if (input) {
-        if (bufinfo.width == aligned_width) {
-            memcpy(data, input, bufinfo.size);
+        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
+            int size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
+            memcpy(data, input, size);
         } else {
-            // need to copy line by line to adjust for stride
-            uint8_t *dst = (uint8_t*) data;
-            uint8_t *src = (uint8_t*) input;
-            // hrmm this copy only works for NV12 and YV12
-            // copy Y first
-            for (int i = 0; i < aligned_height; i++) {
-                memcpy(dst, src, bufinfo.width);
-                dst += aligned_width;
-                src += bufinfo.width;
-            }
-            // copy UV plane
-            for (int i = 0; i < (aligned_height / 2); i++) {
-                memcpy(dst, src, bufinfo.width);
-                dst += aligned_width ;
-                src += bufinfo.width ;
+            if (bufinfo.width == aligned_width) {
+                memcpy(data, input, bufinfo.size);
+            } else {
+                // need to copy line by line to adjust for stride
+                uint8_t *dst = (uint8_t*) data;
+                uint8_t *src = (uint8_t*) input;
+                // hrmm this copy only works for NV12 and YV12
+                // copy Y first
+                for (int i = 0; i < aligned_height; i++) {
+                    memcpy(dst, src, bufinfo.width);
+                    dst += aligned_width;
+                    src += bufinfo.width;
+                }
+                // copy UV plane
+                for (int i = 0; i < (aligned_height / 2); i++) {
+                    memcpy(dst, src, bufinfo.width);
+                    dst += aligned_width ;
+                    src += bufinfo.width ;
+                }
             }
         }
     }
@@ -502,7 +534,13 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo) {
     sprintf(fn, "/sdcard/img%03d_in.raw", count++);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
     if (fd >= 0) {
-        int size = calcBufSize(bufinfo.format, aligned_width, aligned_height);
+        int size = 0;
+        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
+            size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
+        } else {
+            size = calcBufSize(pixformat, aligned_width, aligned_height);
+        }
+
         if (size != write(fd, data, size)) {
             printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
         }
