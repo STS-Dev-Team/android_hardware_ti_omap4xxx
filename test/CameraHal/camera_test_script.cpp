@@ -1137,7 +1137,7 @@ int execute_functional_script(char *script) {
 
                     if (bufferSourceInput.get()) {
                         buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                        bufferSourceInput->setInput(info);
+                        bufferSourceInput->setInput(info, params.getPictureFormat());
                         if (hardwareActive) camera->reprocess(msgType, String8());
                     }
                 }

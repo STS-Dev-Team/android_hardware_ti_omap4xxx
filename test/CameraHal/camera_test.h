@@ -502,7 +502,7 @@ public:
         surface_texture->setSynchronousMode(true);
     }
 
-    void setInput(buffer_info_t);
+    void setInput(buffer_info_t, const char *format);
 
 private:
     SurfaceTextureBase *mSurfaceTexture;
