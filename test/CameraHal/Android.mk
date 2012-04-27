@@ -55,12 +55,14 @@ LOCAL_SHARED_LIBRARIES:= \
 	libcamera_client \
 	libEGL \
 	libGLESv2 \
+	libion
 
 LOCAL_C_INCLUDES += \
 	frameworks/base/include/ui \
 	frameworks/base/include/surfaceflinger \
 	frameworks/base/include/camera \
-	frameworks/base/include/media
+	frameworks/base/include/media \
+	hardware/ti/omap4xxx/ion
 
 LOCAL_MODULE:= surfacetexture_test
 LOCAL_MODULE_TAGS:= tests
