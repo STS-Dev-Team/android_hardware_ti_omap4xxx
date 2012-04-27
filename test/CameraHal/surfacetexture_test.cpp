@@ -71,6 +71,9 @@
 
 #include <sys/wait.h>
 
+#include "ion.h"
+#include <sys/mman.h>
+
 #include "camera_test.h"
 
 #define ASSERT(X) \
@@ -94,9 +97,10 @@
 
 using namespace android;
 
+#define N_BUFFERS 15
 
 static void
-test_format (int format)
+test_format (int format, int page_mode, int width, int height)
 {
     SurfaceTexture *st;
     SurfaceTextureClient *stc;
@@ -104,31 +108,51 @@ test_format (int format)
     sp<ANativeWindow> anw;
     ANativeWindowBuffer* anb[30] = { 0 };
     int i;
+    unsigned int usage;
+    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
 
-    printf("testing format %x\n", format);
+    printf("testing format %x, page_mode %d\n", format, page_mode);
 
     st = new SurfaceTexture (tex_id, true, GL_TEXTURE_EXTERNAL_OES);
 
-    st->setDefaultBufferSize (2608, 1960);
+    st->setDefaultBufferSize (width, height);
 
     stc = new SurfaceTextureClient(st);
     anw = stc;
-    native_window_set_usage(anw.get(),
-            GRALLOC_USAGE_SW_READ_RARELY |
-            GRALLOC_USAGE_SW_WRITE_NEVER);
-    native_window_set_buffer_count(anw.get(), 18);
-    native_window_set_buffers_geometry(anw.get(),
-            2608, 1960, format);
 
-    for(i=0;i<18;i++) {
+    usage = GRALLOC_USAGE_SW_READ_RARELY |
+            GRALLOC_USAGE_SW_WRITE_NEVER;
+    if (page_mode) {
+        usage |= GRALLOC_USAGE_PRIVATE_0;
+    }
+
+    native_window_set_usage(anw.get(), usage);
+    native_window_set_buffer_count(anw.get(), N_BUFFERS);
+    native_window_set_buffers_geometry(anw.get(),
+            width, height, format);
+
+    for(i=0;i<N_BUFFERS;i++) {
+        void *data = NULL;
+        Rect bounds(width, height);
+
         anb[i] = NULL;
         anw->dequeueBuffer(anw.get(), &anb[i]);
         printf("%d: %p\n", i, anb[i]);
         if (anb[i] == NULL) {
             printf ("FAILED: buffer should be non-NULL\n");
+            break;
         }
+
+        mapper.lock(anb[i]->handle, GRALLOC_USAGE_SW_READ_RARELY,
+                bounds, &data);
+        if (data == NULL) {
+            printf ("FAILED: mapping should be non-NULL\n");
+            break;
+        }
+
+        mapper.unlock(anb[i]->handle);
     }
-    for(i=0;i<18;i++) {
+    for(i=0;i<N_BUFFERS;i++) {
         if (anb[i]) {
             anw->cancelBuffer (anw.get(), anb[i]);
         }
@@ -138,13 +162,82 @@ test_format (int format)
     delete st;
 }
 
+void
+ion_test (void)
+{
+    struct ion_handle *handle;
+    int fd;
+    int map_fd;
+    unsigned char *ptr;
+    int i;
+    int ret;
+    int share_fd;
+
+    fd = ion_open ();
+
+#define SIZE (10*1024*1024)
+    for(i=0;i<10;i++){
+        handle = NULL;
+        ret = ion_alloc (fd, SIZE, 4096, (1<<0), &handle);
+        if (ret < 0) {
+            printf("ion_alloc returned error %d, %s\n", ret, strerror(errno));
+            break;
+        }
+        printf("ion_alloc returned %d\n", ret);
+
+        ret = ion_share (fd, handle, &share_fd);
+        if (ret < 0) {
+            printf("ion_share returned error %d, %s\n", ret, strerror(errno));
+            break;
+        }
+        printf("ion_share returned %d\n", ret);
+
+        ptr = (unsigned char *)mmap (NULL, SIZE, PROT_READ|PROT_WRITE,
+                MAP_SHARED, share_fd, 0);
+        printf("mmap returned %p\n", ptr);
+
+        ptr = (unsigned char *)mmap (NULL, SIZE, PROT_READ|PROT_WRITE,
+                MAP_SHARED, share_fd, 0);
+        printf("mmap returned %p\n", ptr);
+
+#if 0
+        ret = ion_map (fd, handle, SIZE, PROT_READ, 0, 0, &ptr, &map_fd);
+        if (ret < 0) {
+            printf("ion_map returned error %d, %s\n", ret, strerror(errno));
+            break;
+        }
+        printf("ion_map returned %d\n", ret);
+#endif
+
+        printf("%d: %p\n", i, ptr);
+
+        ion_free (fd, handle);
+    }
+
+}
+
 
 int
 main (int argc, char *argv[])
 {
-    test_format (HAL_PIXEL_FORMAT_TI_NV12_1D);
-    test_format (HAL_PIXEL_FORMAT_TI_Y8);
-    test_format (HAL_PIXEL_FORMAT_TI_Y16);
+    int width, height;
+
+    width = 640;
+    height = 480;
+    test_format (HAL_PIXEL_FORMAT_TI_NV12, 0, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_NV12, 1, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_NV12_1D, 0, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_Y8, 1, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_Y16, 1, width, height);
+
+    width = 2608;
+    height = 1960;
+    test_format (HAL_PIXEL_FORMAT_TI_NV12, 1, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_NV12_1D, 0, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_Y8, 1, width, height);
+    test_format (HAL_PIXEL_FORMAT_TI_Y16, 1, width, height);
+
+    ion_test();
 
     return 0;
 }
