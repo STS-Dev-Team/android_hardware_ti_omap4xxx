@@ -793,7 +793,7 @@ static int hal_to_ocd(int color)
     case HAL_PIXEL_FORMAT_BGRX_8888:
         return OCDFMT_BGR124;
     case HAL_PIXEL_FORMAT_RGB_565:
-        return OCDFMT_BGR16;
+        return OCDFMT_RGB16;
     case HAL_PIXEL_FORMAT_RGBA_8888:
         return OCDFMT_RGBA24;
     case HAL_PIXEL_FORMAT_RGBX_8888:
