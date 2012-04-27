@@ -2037,7 +2037,6 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::HOR_ANGLE, DEFAULT_HOR_ANGLE);
     params->set(CameraProperties::VER_ANGLE, DEFAULT_VER_ANGLE);
     params->set(CameraProperties::VIDEO_SIZE, DEFAULT_VIDEO_SIZE);
-    params->set(CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO, DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO);
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
     params->set(CameraProperties::AUTOCONVERGENCE_MODE, DEFAULT_AUTOCONVERGENCE_MODE);
     params->set(CameraProperties::MANUAL_CONVERGENCE, DEFAULT_MANUAL_CONVERGENCE);

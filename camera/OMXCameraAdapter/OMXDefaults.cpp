@@ -75,7 +75,6 @@ const char * OMXCameraAdapter::DEFAULT_AE_LOCK = CameraParameters::FALSE;
 const char * OMXCameraAdapter::DEFAULT_AWB_LOCK = CameraParameters::FALSE;
 const char OMXCameraAdapter::DEFAULT_MAX_NUM_METERING_AREAS[] = "0";
 const char OMXCameraAdapter::DEFAULT_VIDEO_SIZE[] = "1920x1080";
-const char OMXCameraAdapter::DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "1920x1080";
 const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 const char OMXCameraAdapter::DEFAULT_AUTOCONVERGENCE_MODE[] = "frame";
 const char OMXCameraAdapter::DEFAULT_MANUAL_CONVERGENCE[] = "0";
