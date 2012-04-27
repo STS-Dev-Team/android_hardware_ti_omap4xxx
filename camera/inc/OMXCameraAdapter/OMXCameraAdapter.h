@@ -966,7 +966,6 @@ private:
     static const char DEFAULT_HOR_ANGLE[];
     static const char DEFAULT_VER_ANGLE[];
     static const char DEFAULT_VIDEO_SIZE[];
-    static const char DEFAULT_PREFERRED_PREVIEW_SIZE_FOR_VIDEO[];
     static const char DEFAULT_SENSOR_ORIENTATION[];
     static const char DEFAULT_FACING_SUPPORTED[];
     static const char DEFAULT_AUTOCONVERGENCE_MODE[];

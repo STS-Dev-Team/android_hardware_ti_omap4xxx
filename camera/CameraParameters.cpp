@@ -133,7 +133,6 @@ const char CameraProperties::METERING_AREAS[] = "prop-metering-areas";
 const char CameraProperties::VIDEO_SNAPSHOT_SUPPORTED[] = "prop-video-snapshot-supported";
 const char CameraProperties::VIDEO_SIZE[] = "video-size";
 const char CameraProperties::SUPPORTED_VIDEO_SIZES[] = "video-size-values";
-const char CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "preferred-preview-size-for-video";
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION[] = "prop-mechanical-misalignment-correction";
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_VALUES[] = "prop-mechanical-misalignment-correction-values";
 const char CameraProperties::CAP_MODE_VALUES[] = "prop-mode-values";
