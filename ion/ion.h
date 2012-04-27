@@ -18,8 +18,15 @@
  *  limitations under the License.
  */
 
+#ifndef _ION_H_
+#define _ION_H_
+
 #include <linux/ion.h>
 #include <linux/omap_ion.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int ion_open();
 int ion_close(int fd);
@@ -38,4 +45,10 @@ int ion_flush_cached(int fd, struct ion_handle *handle, size_t length,
             unsigned char *ptr);
 int ion_inval_cached(int fd, struct ion_handle *handle, size_t length,
             unsigned char *ptr);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 
