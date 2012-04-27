@@ -1396,11 +1396,12 @@ const char* AppCallbackNotifier::getContstantForPixelFormat(const char *pixelFor
 
     if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
         return CameraParameters::PIXEL_FORMAT_YUV422I;
-    } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-              strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+    } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
         return CameraParameters::PIXEL_FORMAT_YUV420SP;
     } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
         return CameraParameters::PIXEL_FORMAT_RGB565;
+    } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+        return CameraParameters::PIXEL_FORMAT_YUV420P;
     } else {
         // returning NV12 as default
         return CameraParameters::PIXEL_FORMAT_YUV420SP;
