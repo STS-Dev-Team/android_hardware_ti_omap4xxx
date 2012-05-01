@@ -539,11 +539,18 @@ int CameraHal::setParameters(const CameraParameters& params)
         // If Port FPS needs to be used for configuring, then FPS RANGE should not be set by the APP.
         valstr = params.get(CameraParameters::KEY_PREVIEW_FPS_RANGE);
         if (valstr != NULL && strlen(valstr)) {
+            int curMaxFPS = 0;
+            int curMinFPS = 0;
+
             // APP wants to set FPS range
             // Set framerate = MAXFPS
             CAMHAL_LOGDA("APP IS CHANGING FRAME RATE RANGE");
 
+            mParameters.getPreviewFpsRange(&curMinFPS, &curMaxFPS);
+            CAMHAL_LOGDB("## current minFPS = %d; maxFPS=%d",curMinFPS, curMaxFPS);
+
             params.getPreviewFpsRange(&minFPS, &maxFPS);
+            CAMHAL_LOGDB("## requested minFPS = %d; maxFPS=%d",minFPS, maxFPS);
             // Validate VFR
             if (!isFpsRangeValid(minFPS, maxFPS, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE))) {
                 CAMHAL_LOGEA("Invalid FPS Range");
@@ -554,6 +561,10 @@ int CameraHal::setParameters(const CameraParameters& params)
                 CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
                 mParameters.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
                 CAMHAL_LOGDB("FPS Range = %s", valstr);
+                if ( curMaxFPS == (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) &&
+                     maxFPS < (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) ) {
+                    restartPreviewRequired = true;
+                }
             }
         } else {
             framerate = params.getPreviewFrameRate();
