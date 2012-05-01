@@ -29,7 +29,7 @@ LOCAL_MODULE_TAGS:= tests
 
 LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___
 
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifneq ($(TARGET_BOARD_PLATFORM),omap3)
     LOCAL_CFLAGS += -DTARGET_OMAP4
 endif
 
