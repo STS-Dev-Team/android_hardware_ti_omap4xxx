@@ -36,7 +36,7 @@ LOCAL_C_INCLUDES += \
     bionic/libc/bionic
 
 
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifneq ($(TARGET_BOARD_PLATFORM),omap3)
     LOCAL_CFLAGS += -DTARGET_OMAP4
 endif
 
