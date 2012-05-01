@@ -1,4 +1,4 @@
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifneq ($(TARGET_BOARD_PLATFORM),omap3)
 
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
