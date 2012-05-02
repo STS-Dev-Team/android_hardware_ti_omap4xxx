@@ -15,7 +15,7 @@
 # This file lists the modules that are specific to OMAP4 but are used by
 # all OMAP4 devices.
 
-PRODUCT_PACKAGES := \
+PRODUCT_PACKAGES += \
 	camera.omap4 \
 	hwcomposer.omap4
 
