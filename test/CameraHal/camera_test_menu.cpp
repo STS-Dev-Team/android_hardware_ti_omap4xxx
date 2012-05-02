@@ -84,6 +84,8 @@ bool vstabtoggle = false;
 bool AutoExposureLocktoggle = false;
 bool AutoWhiteBalanceLocktoggle = false;
 bool vnftoggle = false;
+bool faceDetectToggle = false;
+bool metaDataToggle = false;
 bool shotConfigFlush = false;
 int saturation = 0;
 int zoomIDX = 0;
@@ -792,8 +794,15 @@ void CameraHandler::postData(int32_t msgType,
 
     if ( ( msgType & CAMERA_MSG_PREVIEW_METADATA ) &&
          ( NULL != metadata ) ) {
-        printf("Face detected %d \n", metadata->number_of_faces);
-        my_face_callback(metadata);
+        if (metaDataToggle) {
+            printf("Preview exposure: %6d    Preview gain: %4d\n",
+                   metadata->exposure_time, metadata->analog_gain);
+        }
+
+        if (faceDetectToggle) {
+            printf("Face detected %d \n", metadata->number_of_faces);
+            my_face_callback(metadata);
+        }
     }
 }
 
@@ -1972,6 +1981,8 @@ void initDefaults() {
     vnftoggle = false;
     AutoExposureLocktoggle = false;
     AutoWhiteBalanceLocktoggle = false;
+    faceDetectToggle = false;
+    metaDataToggle = false;
     expBracketIdx = BRACKETING_IDX_DEFAULT;
     flashIdx = getDefaultParameter("off", numflash, flash);
     rotation = 0;
@@ -2434,8 +2445,8 @@ int functional_menu() {
         snprintf(area2[k++], MAX_SYMBOLS, "       3A SETTING SUB MENU");
         snprintf(area2[k++], MAX_SYMBOLS, "   -----------------------------");
         snprintf(area2[k++], MAX_SYMBOLS, "M. Measurement Data: %s", measurement[measurementIdx]);
-        snprintf(area2[k++], MAX_SYMBOLS, "F. Start face detection");
-        snprintf(area2[k++], MAX_SYMBOLS, "T. Stop face detection");
+        snprintf(area2[k++], MAX_SYMBOLS, "F. Toggle face detection: %s", faceDetectToggle ? "On" : "Off");
+        snprintf(area2[k++], MAX_SYMBOLS, "T. Toggle metadata: %s", metaDataToggle ? "On" : "Off");
         snprintf(area2[k++], MAX_SYMBOLS, "G. Touch/Focus area AF");
         snprintf(area2[k++], MAX_SYMBOLS, "y. Metering area");
         snprintf(area2[k++], MAX_SYMBOLS, "Y. Metering area center");
@@ -2872,9 +2883,13 @@ int functional_menu() {
             break;
 
         case 'F':
-            if ( hardwareActive )
-                camera->sendCommand(CAMERA_CMD_START_FACE_DETECTION, 0, 0);
-
+            faceDetectToggle = !faceDetectToggle;
+            if ( hardwareActive ) {
+                if (faceDetectToggle)
+                    camera->sendCommand(CAMERA_CMD_START_FACE_DETECTION, 0, 0);
+                else
+                    camera->sendCommand(CAMERA_CMD_STOP_FACE_DETECTION, 0, 0);
+            }
             break;
 
         case 'I':
@@ -2887,10 +2902,7 @@ int functional_menu() {
             break;
 
         case 'T':
-
-            if ( hardwareActive )
-                camera->sendCommand(CAMERA_CMD_STOP_FACE_DETECTION, 0, 0);
-
+            metaDataToggle = !metaDataToggle;
             break;
 
         case '@':
