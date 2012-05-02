@@ -1,4 +1,4 @@
-ifeq ($(findstring omap, $(TARGET_BOARD_PLATFORM)),omap)
+ifneq ($(TARGET_BOARD_PLATFORM),omap3)
 LOCAL_PATH:= $(call my-dir)
 HARDWARE_TI_OMAP4_BASE:= $(LOCAL_PATH)
 OMAP4_DEBUG_MEMLEAK:= false
