@@ -939,9 +939,6 @@ public:
         CAMERA_USE_BUFFERS_VIDEO_CAPTURE            = 25,
         CAMERA_USE_BUFFERS_REPROCESS                = 26,
         CAMERA_START_REPROCESS                      = 27,
-        CAMERA_SETUP_TUNNEL                         = 28,
-        CAMERA_DESTROY_TUNNEL                       = 29,
-        CAMERA_PREVIEW_INITIALIZATION               = 30,
         };
 
     enum CameraMode
@@ -1003,7 +1000,7 @@ public:
     virtual int registerEndCaptureCallback(end_image_capture_callback callback, void *user_data) = 0;
 
     //API to send a command to the camera
-    virtual status_t sendCommand(CameraCommands operation, int value1=0, int value2=0, int value3=0, int value4=0) = 0;
+    virtual status_t sendCommand(CameraCommands operation, int value1=0, int value2=0, int value3=0) = 0;
 
     virtual ~CameraAdapter() {};
 
@@ -1132,12 +1129,6 @@ public:
      * Start preview mode.
      */
     int    startPreview();
-
-    /**
-     * Set preview mode related initialization.
-     * Only used when slice based processing is enabled.
-     */
-    int    cameraPreviewInitialization();
 
     /**
      * Only used if overlays are used for camera preview.
@@ -1428,8 +1419,6 @@ private:
     bool mDynamicPreviewSwitch;
     //keeps paused state of display
     bool mDisplayPaused;
-    bool mTunnelSetup;
-    bool mVTCUseCase;
     //Index of current camera adapter
     int mCameraIndex;
 
@@ -1473,7 +1462,6 @@ private:
     CameraProperties::Properties* mCameraProperties;
 
     bool mPreviewStartInProgress;
-    bool mPreviewInitializationDone;
 
     bool mSetPreviewWindowCalled;
 
