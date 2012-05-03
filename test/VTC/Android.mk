@@ -113,8 +113,13 @@ LOCAL_MODULE_TAGS:= tests
 
 LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___ $(ANDROID_API_CFLAGS)
 
+# Add TARGET FLAG for OMAP4 and OMAP5 boards only
+# First eliminate OMAP3 and then ensure that this is not used
+# for customer boards.
 ifneq ($(TARGET_BOARD_PLATFORM),omap3)
-    LOCAL_CFLAGS += -DTARGET_OMAP4
+    ifeq ($(findstring omap, $(TARGET_BOARD_PLATFORM)),omap)
+        LOCAL_CFLAGS += -DTARGET_OMAP4
+    endif
 endif
 
 include $(BUILD_HEAPTRACKED_EXECUTABLE)
