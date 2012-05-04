@@ -79,6 +79,8 @@ const char TICameraParameters::KEY_SENSOR_ORIENTATION[] = "sensor-orientation";
 const char TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES[] = "sensor-orientation-values";
 const char TICameraParameters::KEY_RECORDING_HINT[] = "internal-recording-hint";
 const char TICameraParameters::KEY_AUTO_FOCUS_LOCK[] = "auto-focus-lock";
+const char TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED[] = "preview-fps-range-ext-values";
+const char TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED[] = "preview-fps-ext-values";
 
 const char TICameraParameters::RAW_WIDTH[] = "raw-width";
 const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
