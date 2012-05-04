@@ -115,11 +115,6 @@ const char TICameraParameters::KEY_GPS_MAPDATUM[] = "gps-mapdatum";
 const char TICameraParameters::KEY_GPS_VERSION[] = "gps-version";
 const char TICameraParameters::KEY_GPS_DATESTAMP[] = "gps-datestamp";
 
-// TI extensions for slice mode implementation for VTC
-const char TICameraParameters::KEY_VTC_HINT[] = "internal-vtc-hint";
-const char TICameraParameters::KEY_VIDEO_ENCODER_HANDLE[] = "encoder_handle";
-const char TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT[] = "encoder_slice_height";
-
 //TI extensions to Image post-processing
 const char TICameraParameters::IPP_LDCNSF[] = "ldc-nsf";
 const char TICameraParameters::IPP_LDC[] = "ldc";
