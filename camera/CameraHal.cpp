@@ -532,7 +532,8 @@ int CameraHal::setParameters(const CameraParameters& params)
             params.getPreviewFpsRange(&minFPS, &maxFPS);
             CAMHAL_LOGDB("## requested minFPS = %d; maxFPS=%d",minFPS, maxFPS);
             // Validate VFR
-            if (!isFpsRangeValid(minFPS, maxFPS, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE))) {
+            if (!isFpsRangeValid(minFPS, maxFPS, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE)) &&
+                !isFpsRangeValid(minFPS, maxFPS, params.get(TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED))) {
                 CAMHAL_LOGEA("Invalid FPS Range");
                 return BAD_VALUE;
             } else {
@@ -548,7 +549,8 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
         } else {
             framerate = params.getPreviewFrameRate();
-            if (!isParameterValid(framerate, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES))) {
+            if (!isParameterValid(framerate, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES)) &&
+                !isParameterValid(framerate, params.get(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED))) {
                 CAMHAL_LOGEA("Invalid frame rate");
                 return BAD_VALUE;
             }
@@ -3383,7 +3385,9 @@ void CameraHal::insertSupportedParams()
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
+    p.set(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
+    p.set(TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_EXT_SUPPORTED));
     p.set(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_THUMBNAIL_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE, mCameraProperties->get(CameraProperties::SUPPORTED_WHITE_BALANCE));
     p.set(CameraParameters::KEY_SUPPORTED_EFFECTS, mCameraProperties->get(CameraProperties::SUPPORTED_EFFECTS));

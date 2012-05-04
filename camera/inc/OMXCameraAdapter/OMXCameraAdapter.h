@@ -596,7 +596,16 @@ private:
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
     static status_t encodeFramerateCap(OMX_U32, OMX_U32, const CapFramerate*, size_t, char*, size_t);
-    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, const CapFramerate*, size_t, int&, int&, char*, char*, size_t);
+    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&,
+                                        const CapFramerate*,
+                                        size_t,
+                                        int&,
+                                        int&,
+                                        char*,
+                                        char*,
+                                        size_t,
+                                        uint32_t,
+                                        uint32_t);
     static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
                                                 const CapCodingFormat *,
                                                 size_t,
@@ -825,6 +834,10 @@ private:
     static const LUTtype mMechanicalMisalignmentCorrectionLUT;
     static const userToOMX_LUT mBracketingModes[];
     static const LUTtype mBracketingModesLUT;
+
+    static const int FPS_MIN;
+    static const int FPS_MAX;
+    static const int FPS_MAX_EXTENDED;
 
     // OMX Camera defaults
     static const char DEFAULT_ANTIBANDING[];
