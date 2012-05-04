@@ -33,7 +33,6 @@ namespace android {
  *************************************/
 
 #define ARRAY_SIZE(array) (sizeof((array)) / sizeof((array)[0]))
-#define FPS_MIN 5
 
 static const char PARAM_SEP[] = ",";
 static const uint32_t VFR_OFFSET = 8;
@@ -49,6 +48,10 @@ const int OMXCameraAdapter::SENSORID_OV5640 = 302;
 const int OMXCameraAdapter::SENSORID_OV14825 = 304;
 const int OMXCameraAdapter::SENSORID_S5K4E1GA = 305;
 const int OMXCameraAdapter::SENSORID_S5K6A1GX03 = 306;
+
+const int OMXCameraAdapter::FPS_MIN = 5;
+const int OMXCameraAdapter::FPS_MAX = 30;
+const int OMXCameraAdapter::FPS_MAX_EXTENDED = 60;
 
 /**** look up tables to translate OMX Caps to Parameter ****/
 
@@ -441,11 +444,7 @@ status_t OMXCameraAdapter::encodeFramerateCap(OMX_U32 framerateMax,
     }
 
     memset(tmpBuffer, '\0', FPS_STR_MAX_LEN);
-    if ( FPS_MIN < framerateMin ) {
-        snprintf(tmpBuffer, FPS_STR_MAX_LEN - 1, "%lu", framerateMin);
-    } else {
-        snprintf(tmpBuffer, FPS_STR_MAX_LEN - 1, "%d", FPS_MIN);
-    }
+    snprintf(tmpBuffer, FPS_STR_MAX_LEN - 1, "%lu", framerateMin);
     strncat(buffer, PARAM_SEP, bufferSize - 1);
     bufferSize -= param_sep_length;
     strncat(buffer, tmpBuffer, bufferSize - 1);
@@ -462,7 +461,9 @@ status_t OMXCameraAdapter::encodeVFramerateCap(OMX_TI_CAPTYPE &caps,
                                                int & maxFixedFps,
                                                char *buffer,
                                                char *defaultRange,
-                                               size_t bufferSize)
+                                               size_t bufferSize,
+                                               uint32_t minThr,
+                                               uint32_t maxThr)
 {
     status_t ret = NO_ERROR;
     unsigned int param_sep_length = strlen(PARAM_SEP);
@@ -485,10 +486,13 @@ status_t OMXCameraAdapter::encodeVFramerateCap(OMX_TI_CAPTYPE &caps,
 
     for ( int i = 0; i < static_cast<int>(caps.ulPrvVarFPSModesCount); ++i ) {
         uint32_t minVFR = caps.tPrvVarFPSModes[i].nVarFPSMin >> VFR_OFFSET;
-        if (minVFR < FPS_MIN) {
-            minVFR = FPS_MIN;
+        if (minVFR < minThr) {
+            minVFR = minThr;
         }
         uint32_t maxVFR = caps.tPrvVarFPSModes[i].nVarFPSMax >> VFR_OFFSET;
+        if ( maxThr < maxVFR ) {
+            maxVFR = maxThr;
+        }
 
         const FpsRange fpsRange = FpsRange::create(minVFR, maxVFR);
 
@@ -1080,7 +1084,9 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
             maxFixedFps,
             supported,
             defaultRange,
-            MAX_PROP_VALUE_LENGTH);
+            MAX_PROP_VALUE_LENGTH,
+            FPS_MIN,
+            FPS_MAX);
     if ( NO_ERROR != ret ) {
         CAMHAL_LOGEB("Error inserting supported preview framerate ranges 0x%x", ret);
     }
@@ -1104,6 +1110,42 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
 
     params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
     CAMHAL_LOGDB("Supported preview framerates: %s", supported);
+
+    // Extended framerates and ranges
+
+    memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+
+    ret = encodeVFramerateCap(caps,
+            mFramerates,
+            ARRAY_SIZE(mFramerates),
+            minFixedFps,
+            maxFixedFps,
+            supported,
+            defaultRange,
+            MAX_PROP_VALUE_LENGTH,
+            maxFixedFps,
+            FPS_MAX_EXTENDED);
+    if ( NO_ERROR != ret ) {
+        CAMHAL_LOGEB("Error inserting extended supported preview framerate ranges 0x%x", ret);
+    }
+
+    params->set(CameraProperties::FRAMERATE_RANGE_EXT_SUPPORTED, supported);
+    CAMHAL_LOGD("Supported framerate ranges extended: %s", supported);
+
+    memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
+
+    ret = encodeFramerateCap(maxFixedFps,
+            minFixedFps,
+            mFramerates,
+            ARRAY_SIZE(mFramerates),
+            supported,
+            MAX_PROP_VALUE_LENGTH);
+    if ( NO_ERROR != ret ) {
+        CAMHAL_LOGEB("Error inserting extended supported preview framerates 0x%x", ret);
+    }
+
+    params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT, supported);
+    CAMHAL_LOGD("Supported extended preview framerates: %s", supported);
 
     LOG_FUNCTION_NAME_EXIT;
 
