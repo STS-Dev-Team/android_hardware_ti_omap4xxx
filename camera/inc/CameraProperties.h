@@ -59,6 +59,7 @@ public:
     static const char SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
     static const char SUPPORTED_PREVIEW_FORMATS[];
     static const char SUPPORTED_PREVIEW_FRAME_RATES[];
+    static const char SUPPORTED_PREVIEW_FRAME_RATES_EXT[];
     static const char SUPPORTED_PICTURE_SIZES[];
     static const char SUPPORTED_PICTURE_SUBSAMPLED_SIZES[];
     static const char SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
@@ -149,6 +150,7 @@ public:
     static const char VNF_SUPPORTED[];
     static const char FRAMERATE_RANGE[];
     static const char FRAMERATE_RANGE_SUPPORTED[];
+    static const char FRAMERATE_RANGE_EXT_SUPPORTED[];
 
     static const char DEFAULT_VALUE[];
 
