@@ -1633,7 +1633,11 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         }
     }
 
-    initInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
+    // assuming if buffers are from ANW that they will be pagelist buffers
+    // and need a tiler reservation
+    if (bufArr[0].type == CAMERA_BUFFER_ANW) {
+        initInternalBuffers(mCameraAdapterParameters.mImagePortIndex);
+    }
 
     ///Register for Image port ENABLE event
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
