@@ -224,8 +224,6 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
     // Configure
     ret = setParametersReprocess(mParams, bufArr, mAdapterState);
 
-    initInternalBuffers(mCameraAdapterParameters.mVideoInPortIndex);
-
     // Configure DOMX to use either gralloc handles or vptrs
     OMX_TI_PARAMUSENATIVEBUFFER domxUseGrallocHandles;
     OMX_INIT_STRUCT_PTR (&domxUseGrallocHandles, OMX_TI_PARAMUSENATIVEBUFFER);
@@ -234,6 +232,10 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
     if (bufArr[0].type == CAMERA_BUFFER_ANW) {
         CAMHAL_LOGD("Using ANW");
         domxUseGrallocHandles.bEnable = OMX_TRUE;
+
+        // Need to allocate tiler reservation and state we are going to be using
+        // pagelist buffers. Assuming this happens when buffers if from anw
+        initInternalBuffers(mCameraAdapterParameters.mVideoInPortIndex);
     } else {
         CAMHAL_LOGD("Using ION");
         domxUseGrallocHandles.bEnable = OMX_FALSE;
