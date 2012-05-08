@@ -563,6 +563,8 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     hwc_layer_t *layers = p->data.hwc.layers;
     int layerno = p->data.hwc.layerno;
 
+    rgz->state &= ~RGZ_STATE_INIT;
+
     if (!layers)
         return -1;
 
@@ -607,7 +609,7 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
-    rgz->state = RGZ_STATE_INIT;
+    rgz->state |= RGZ_STATE_INIT;
     rgz->rgz_layerno = possible_blit;
 
     return RGZ_ALL;
@@ -620,10 +622,16 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
     int screen_width = p->data.hwc.dstgeom->width;
     int screen_height = p->data.hwc.dstgeom->height;
 
-    if (rgz->state != RGZ_STATE_INIT) {
+    if (!(rgz->state & RGZ_STATE_INIT)) {
         OUTE("rgz_process started with bad state");
         return -1;
     }
+
+    /* If there is already region data avoid parsing it again */
+    if (rgz->state & RGZ_REGION_DATA) {
+        return 0;
+    }
+
     int layerno = rgz->rgz_layerno;
 
     /* Find the horizontal regions */
@@ -636,8 +644,10 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
     rgz->nhregions = ylen - 1;
 
     blit_hregion_t *hregions = calloc(rgz->nhregions, sizeof(blit_hregion_t));
-    if (!hregions)
+    if (!hregions) {
+        OUTE("Unable to allocate memory for hregions");
         return -1;
+    }
     rgz->hregions = hregions;
 
     LOGD_IF(debug, "Allocated %d regions (sz = %d), layerno = %d", rgz->nhregions, rgz->nhregions * sizeof(blit_hregion_t), layerno);
@@ -1442,30 +1452,14 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     return 0;
 }
 
-/* Reset the values needed for every frame, except the dirty region handles */
-static void rgz_reset(rgz_t *rgz){
-    if (!rgz)
-        return;
-    if (rgz->hregions)
-        free(rgz->hregions);
-    rgz->hregions = NULL;
-    rgz->nhregions = 0;
-    rgz->state = 0;
-}
-
 int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
 {
     int rv = -1;
     switch (p->op) {
     case RGZ_IN_HWC:
-        rgz_reset(rgz);
-        int chk = rgz_in_hwccheck(p, rgz);
-        if (chk == RGZ_ALL)  {
-            int rv = rgz_in_hwc(p, rgz);
-            if (rv != 0)
-                return rv;
-        }
-        rv = chk;
+        rv = rgz_in_hwccheck(p, rgz);
+        if (rv == RGZ_ALL)
+            rv = rgz_in_hwc(p, rgz);
         break;
     case RGZ_IN_HWCCHK:
         bzero(rgz, sizeof(rgz_t));
@@ -1481,9 +1475,9 @@ void rgz_release(rgz_t *rgz)
 {
     if (!rgz)
         return;
-    rgz_reset(rgz);
-    rgz->rgz_layerno = 0;
-    bzero(rgz->rgz_layers, sizeof(rgz->rgz_layers));
+    if (rgz->hregions)
+        free(rgz->hregions);
+    bzero(rgz, sizeof(*rgz));
 }
 
 int rgz_out(rgz_t *rgz, rgz_out_params_t *params)

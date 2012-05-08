@@ -1458,12 +1458,16 @@ static int setup_mirroring(omap4_hwc_device_t *hwc_dev)
     return 0;
 }
 
-static void blit_reset(omap4_hwc_device_t *hwc_dev)
+static void blit_reset(omap4_hwc_device_t *hwc_dev, int flags)
 {
     hwc_dev->blit_flags = 0;
     hwc_dev->blit_num = 0;
     hwc_dev->post2_blit_buffers = 0;
     hwc_dev->comp_data.blit_data.rgz_items = 0;
+
+    /* We want to maintain the rgz dirty region data if there are no geometry changes */
+    if (flags & HWC_GEOMETRY_CHANGED)
+        rgz_release(&grgz);
 }
 
 static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int bufoff)
@@ -1471,10 +1475,6 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     /* Do not blit if this frame will be composed entirely by the GPU */
     if (!list || hwc_dev->force_sgx)
         goto err_out;
-
-    /* We want to maintain the rgz dirty region data if there are no geometry changes */
-    if (list->flags & HWC_GEOMETRY_CHANGED)
-        rgz_release(&grgz);
 
     int rgz_in_op;
     int rgz_out_op;
@@ -1622,7 +1622,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     int ix_s3d = -1;
 
     int blit_all = 0;
-    blit_reset(hwc_dev);
+    blit_reset(hwc_dev, list->flags);
 
     /* If the SGX is used or we are going to blit something we need a framebuffer
      * and a DSS pipe
