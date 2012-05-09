@@ -63,7 +63,6 @@ status_t OMXCameraAdapter::initDccFileDataSave(OMX_HANDLETYPE* omxHandle, int po
 
 status_t OMXCameraAdapter::sniffDccFileDataSave(OMX_BUFFERHEADERTYPE* pBuffHeader)
 {
-    OMX_TI_PLATFORMPRIVATE *platformPrivate;
     OMX_OTHER_EXTRADATATYPE *extraData;
     OMX_TI_DCCDATATYPE* dccData;
     status_t ret = NO_ERROR;
@@ -78,51 +77,8 @@ status_t OMXCameraAdapter::sniffDccFileDataSave(OMX_BUFFERHEADERTYPE* pBuffHeade
         return -EINVAL;
     }
 
-    platformPrivate = (OMX_TI_PLATFORMPRIVATE *) (pBuffHeader->pPlatformPrivate);
-    if ( NULL != platformPrivate ) {
-        if ( sizeof(OMX_TI_PLATFORMPRIVATE) == platformPrivate->nSize ) {
-            CAMHAL_LOGVB("Size = %d, sizeof = %d, pAuxBuf = 0x%x, pAuxBufSize= %d, pMetaDataBufer = 0x%x, nMetaDataSize = %d",
-                         platformPrivate->nSize,
-                         sizeof(OMX_TI_PLATFORMPRIVATE),
-                         platformPrivate->pAuxBuf1,
-                         platformPrivate->pAuxBufSize1,
-                         platformPrivate->pMetaDataBuffer,
-                         platformPrivate->nMetaDataSize);
-        } else {
-            CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE size mismatch: expected = %d, received = %d",
-                         ( unsigned int ) sizeof(OMX_TI_PLATFORMPRIVATE),
-                         ( unsigned int ) platformPrivate->nSize);
-            LOG_FUNCTION_NAME_EXIT;
-            return -EINVAL;
-        }
-    }  else {
-        CAMHAL_LOGEA("Invalid OMX_TI_PLATFORMPRIVATE");
-        return -EINVAL;
-    }
-
-    if ( 0 >= platformPrivate->nMetaDataSize ) {
-        CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE nMetaDataSize is size is %d",
-                     ( unsigned int ) platformPrivate->nMetaDataSize);
-        LOG_FUNCTION_NAME_EXIT;
-        return -EINVAL;
-    }
-
-    extraData = (OMX_OTHER_EXTRADATATYPE *) (platformPrivate->pMetaDataBuffer);
-    if ( NULL != extraData ) {
-        CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
-                     extraData->nSize,
-                     sizeof(OMX_OTHER_EXTRADATATYPE),
-                     extraData->eType,
-                     extraData->nDataSize,
-                     extraData->nPortIndex,
-                     extraData->nVersion);
-    } else {
-        CAMHAL_LOGEA("Invalid OMX_OTHER_EXTRADATATYPE");
-        LOG_FUNCTION_NAME_EXIT;
-        return -EINVAL;
-    }
-
-    extraData = getExtradata(extraData, platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE)OMX_TI_DccData);
+    extraData = getExtradata(pBuffHeader->pPlatformPrivate,
+                             (OMX_EXTRADATATYPE)OMX_TI_DccData);
 
     if ( NULL != extraData ) {
         CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",

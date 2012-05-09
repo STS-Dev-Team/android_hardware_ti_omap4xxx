@@ -29,14 +29,12 @@
 
 namespace android {
 
-status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_TI_PLATFORMPRIVATE * plat_pvt) const
+status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const
 {
     status_t ret = NO_ERROR;
     OMX_OTHER_EXTRADATATYPE *extraData;
 
-    extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) plat_pvt->pMetaDataBuffer,
-                             plat_pvt->nMetaDataSize,
-                             (OMX_EXTRADATATYPE) OMX_WhiteBalance);
+    extraData = getExtradata(plat_pvt, (OMX_EXTRADATATYPE) OMX_WhiteBalance);
 
     if ( NULL != extraData ) {
         OMX_TI_WHITEBALANCERESULTTYPE * WBdata;
@@ -57,9 +55,7 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_TI_P
 
     // TODO(XXX): temporarily getting exposure and gain data from vector shot extra data
     // change to ancil or cpcam metadata once Ducati side is ready
-    extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) plat_pvt->pMetaDataBuffer,
-                             plat_pvt->nMetaDataSize,
-                             (OMX_EXTRADATATYPE) OMX_TI_VectShotInfo);
+    extraData = getExtradata(plat_pvt, (OMX_EXTRADATATYPE) OMX_TI_VectShotInfo);
 
     if ( NULL != extraData ) {
         OMX_TI_VECTSHOTINFOTYPE *shotInfo;
@@ -85,9 +81,7 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_TI_P
 
     // TODO(XXX): Use format abstraction for LSC values
     // LSC table
-    extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) plat_pvt->pMetaDataBuffer,
-                             plat_pvt->nMetaDataSize,
-                             (OMX_EXTRADATATYPE) OMX_TI_LSCTable);
+    extraData = getExtradata(plat_pvt, (OMX_EXTRADATATYPE) OMX_TI_LSCTable);
 
     if ( NULL != extraData ) {
         OMX_TI_LSCTABLETYPE *lscTbl;
@@ -100,16 +94,16 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_TI_P
         } else if ( OMX_TI_LSC_GAIN_TABLE_SIZE < (lscTbl->nWidth * lscTbl->nHeight * 4) ) {
             CAMHAL_LOGE("Oversized LSC table");
         } else {
-            for (int j = 0; j < lscTbl->nHeight; j++) {
+            for (unsigned int j = 0; j < lscTbl->nHeight; j++) {
                 if (0 != j) {
                     val.append(",");
                 }
                 val.append("(");
-                for (int i = 0; i < lscTbl->nWidth; i++) {
+                for (unsigned int i = 0; i < lscTbl->nWidth; i++) {
                     if (0 != i) {
                         val.append(",");
                     }
-                    for (int h = 0; h < 4; h++) {
+                    for (unsigned int h = 0; h < 4; h++) {
                         if (0 != h) {
                             val.append(":");
                         }
