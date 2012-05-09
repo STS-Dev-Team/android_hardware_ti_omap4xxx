@@ -759,10 +759,10 @@ private:
     status_t setAutoConvergence(const char *valstr, const char *pValManualstr, const CameraParameters &params);
 
     status_t setExtraData(bool enable, OMX_U32, OMX_EXT_EXTRADATATYPE);
-    OMX_OTHER_EXTRADATATYPE *getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type) const;
+    OMX_OTHER_EXTRADATATYPE *getExtradata(const OMX_PTR ptrPrivate, OMX_EXTRADATATYPE type) const;
 
     // Meta data
-    status_t setMetaData(CameraMetadata &meta_data, const OMX_TI_PLATFORMPRIVATE * plat_pvt) const;
+    status_t setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const;
 
     // Mechanical Misalignment Correction
     status_t setMechanicalMisalignmentCorrection(bool enable);
