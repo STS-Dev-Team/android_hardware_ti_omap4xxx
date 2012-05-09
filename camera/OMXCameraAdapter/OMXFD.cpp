@@ -195,7 +195,6 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
     OMX_TI_FACERESULT *faceResult;
     OMX_OTHER_EXTRADATATYPE *extraData;
     OMX_FACEDETECTIONTYPE *faceData;
-    OMX_TI_PLATFORMPRIVATE *platformPrivate;
     camera_frame_metadata_t *faces;
 
     LOG_FUNCTION_NAME;
@@ -210,36 +209,8 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
         return-EINVAL;
     }
 
-    platformPrivate = (OMX_TI_PLATFORMPRIVATE *) (pBuffHeader->pPlatformPrivate);
-    if ( NULL != platformPrivate ) {
-        if ( sizeof(OMX_TI_PLATFORMPRIVATE) == platformPrivate->nSize ) {
-            CAMHAL_LOGVB("Size = %d, sizeof = %d, pAuxBuf = 0x%x, pAuxBufSize= %d, pMetaDataBufer = 0x%x, nMetaDataSize = %d",
-                         platformPrivate->nSize,
-                         sizeof(OMX_TI_PLATFORMPRIVATE),
-                         platformPrivate->pAuxBuf1,
-                         platformPrivate->pAuxBufSize1,
-                         platformPrivate->pMetaDataBuffer,
-                         platformPrivate->nMetaDataSize);
-        } else {
-            CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE size mismatch: expected = %d, received = %d",
-                         ( unsigned int ) sizeof(OMX_TI_PLATFORMPRIVATE),
-                         ( unsigned int ) platformPrivate->nSize);
-            return -EINVAL;
-        }
-    }  else {
-        CAMHAL_LOGEA("Invalid OMX_TI_PLATFORMPRIVATE");
-        return-EINVAL;
-    }
-
-
-    if ( 0 >= platformPrivate->nMetaDataSize ) {
-        CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE nMetaDataSize is size is %d",
-                     ( unsigned int ) platformPrivate->nMetaDataSize);
-        return -EINVAL;
-    }
-
-    extraData = getExtradata((OMX_OTHER_EXTRADATATYPE *) (platformPrivate->pMetaDataBuffer),
-            platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE)OMX_FaceDetection);
+    extraData = getExtradata(pBuffHeader->pPlatformPrivate,
+                             (OMX_EXTRADATATYPE)OMX_FaceDetection);
 
     if ( NULL != extraData ) {
         CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",

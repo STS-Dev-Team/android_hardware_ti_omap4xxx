@@ -3356,7 +3356,6 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     sp<CameraFDResult> fdResult = NULL;
     unsigned int mask = 0xFFFF;
     CameraFrame cameraFrame;
-    OMX_TI_PLATFORMPRIVATE *platformPrivate;
     OMX_OTHER_EXTRADATATYPE *extraData;
     OMX_TI_ANCILLARYDATATYPE *ancillaryData = NULL;
     bool snapshotFrame = false;
@@ -3379,7 +3378,6 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     }
 
     pPortParam = &(mCameraAdapterParameters.mCameraPortParams[pBuffHeader->nOutputPortIndex]);
-    platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
 
     // Find buffer and mark it as filled
     for (int i = 0; i < pPortParam->mNumBufs; i++) {
@@ -3397,9 +3395,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             }
 
         if ( mWaitingForSnapshot ) {
-            platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
-            extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) platformPrivate->pMetaDataBuffer,
-                    platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE) OMX_AncillaryData);
+            extraData = getExtradata(pBuffHeader->pPlatformPrivate,
+                                     (OMX_EXTRADATATYPE) OMX_AncillaryData);
 
             if ( NULL != extraData ) {
                 ancillaryData = (OMX_TI_ANCILLARYDATATYPE*) extraData->data;
@@ -3427,8 +3424,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             // video snapshot gets ancillary data and wb info from last snapshot frame
             mCaptureAncillaryData = ancillaryData;
             mWhiteBalanceData = NULL;
-            extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) platformPrivate->pMetaDataBuffer,
-                                      platformPrivate->nMetaDataSize,
+            extraData = getExtradata(pBuffHeader->pPlatformPrivate,
                                      (OMX_EXTRADATATYPE) OMX_WhiteBalance);
             if ( NULL != extraData )
                 {
@@ -3593,7 +3589,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             goto EXIT;
             }
 
-        setMetaData(cameraFrame.mMetaData, platformPrivate);
+        setMetaData(cameraFrame.mMetaData, pBuffHeader->pPlatformPrivate);
 
         CAMHAL_LOGDB("Captured Frames: %d", mCapturedFrames);
 
@@ -3989,19 +3985,45 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
-OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_U32 extraDataSize, OMX_EXTRADATATYPE type) const
+OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(const OMX_PTR ptrPrivate, OMX_EXTRADATATYPE type) const
 {
-    OMX_U32 remainingSize = extraDataSize;
+    if ( NULL != ptrPrivate ) {
+        const OMX_TI_PLATFORMPRIVATE *platformPrivate = (const OMX_TI_PLATFORMPRIVATE *) ptrPrivate;
 
-    if ( NULL != extraData ) {
-        while ( extraData->eType && extraData->nDataSize && extraData->data &&
-            (remainingSize >= extraData->nSize)) {
-            if ( type == extraData->eType ) {
-                return extraData;
+        CAMHAL_LOGVB("Size = %d, sizeof = %d, pAuxBuf = 0x%x, pAuxBufSize= %d, pMetaDataBufer = 0x%x, nMetaDataSize = %d",
+                      platformPrivate->nSize,
+                      sizeof(OMX_TI_PLATFORMPRIVATE),
+                      platformPrivate->pAuxBuf1,
+                      platformPrivate->pAuxBufSize1,
+                      platformPrivate->pMetaDataBuffer,
+                      platformPrivate->nMetaDataSize);
+        if ( sizeof(OMX_TI_PLATFORMPRIVATE) == platformPrivate->nSize ) {
+            if ( 0 < platformPrivate->nMetaDataSize ) {
+                OMX_U32 remainingSize = platformPrivate->nMetaDataSize;
+                OMX_OTHER_EXTRADATATYPE *extraData = (OMX_OTHER_EXTRADATATYPE *) platformPrivate->pMetaDataBuffer;
+                if ( NULL != extraData ) {
+                    while ( extraData->eType && extraData->nDataSize && extraData->data &&
+                        (remainingSize >= extraData->nSize)) {
+                        if ( type == extraData->eType ) {
+                            return extraData;
+                        }
+                        remainingSize -= extraData->nSize;
+                        extraData = (OMX_OTHER_EXTRADATATYPE*) ((char*)extraData + extraData->nSize);
+                    }
+                } else {
+                    CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE pMetaDataBuffer is NULL");
+                }
+            } else {
+                CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE nMetaDataSize is size is %d",
+                             ( unsigned int ) platformPrivate->nMetaDataSize);
             }
-            remainingSize -= extraData->nSize;
-            extraData = (OMX_OTHER_EXTRADATATYPE*) ((char*)extraData + extraData->nSize);
+        } else {
+            CAMHAL_LOGEB("OMX_TI_PLATFORMPRIVATE size mismatch: expected = %d, received = %d",
+                         ( unsigned int ) sizeof(OMX_TI_PLATFORMPRIVATE),
+                         ( unsigned int ) platformPrivate->nSize);
         }
+    }  else {
+        CAMHAL_LOGEA("Invalid OMX_TI_PLATFORMPRIVATE");
     }
 
     // Required extradata type wasn't found
