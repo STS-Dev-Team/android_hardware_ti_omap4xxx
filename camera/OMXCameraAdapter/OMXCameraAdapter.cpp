@@ -312,8 +312,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mMeasurementEnabled = false;
     mFaceDetectionRunning = false;
     mFaceDetectionPaused = false;
-    mFDSkip = 1;
-
     mFDSwitchAlgoPriority = false;
 
     memset(&mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex], 0, sizeof(OMXCameraPortParameters));
@@ -3475,7 +3473,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         recalculateFPS();
 
-        if ( 0 == ( mFrameCount % mFDSkip ) ) {
+        {
             Mutex::Autolock lock(mFaceDetectionLock);
             if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
                 detectFaces(pBuffHeader, fdResult, pPortParam->mWidth, pPortParam->mHeight);
@@ -3483,7 +3481,6 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                     notifyFaceSubscribers(fdResult);
                     fdResult.clear();
                 }
-                recalculateFDSkip(mFDSkip, mFPS, FD_PERIOD);
 
                 if ( mFDSwitchAlgoPriority ) {
 
@@ -3739,28 +3736,6 @@ status_t OMXCameraAdapter::recalculateFPS()
         mLastFPS = mFPS;
         mIter++;
         }
-
-    return NO_ERROR;
-}
-
-status_t OMXCameraAdapter::recalculateFDSkip(uint32_t &skip, uint32_t currentFPS, uint32_t period)
-{
-    size_t framePeriod;
-
-    LOG_FUNCTION_NAME;
-
-    if ( 0 < currentFPS ) {
-        framePeriod = 1000 / currentFPS;
-        if ( (framePeriod < period ) && ( 0 < framePeriod ) ) {
-            skip = period / framePeriod;
-        } else {
-            skip = 1;
-        }
-    } else {
-        skip = 1;
-    }
-
-    LOG_FUNCTION_NAME_EXIT;
 
     return NO_ERROR;
 }
