@@ -62,8 +62,6 @@ namespace android {
 #define EXP_BRACKET_RANGE           10
 #define ZOOM_BRACKET_RANGE          10
 
-#define FD_PERIOD                   400 //[ms.]
-
 #define FOCUS_DIST_SIZE             100
 #define FOCUS_DIST_BUFFER_SIZE      500
 
@@ -637,7 +635,6 @@ private:
                                    size_t previewWidth,
                                    size_t previewHeight);
     void pauseFaceDetection(bool pause);
-    status_t recalculateFDSkip(uint32_t &skip, uint32_t currentFPS, uint32_t period);
 
     //3A Algorithms priority configuration
     status_t setAlgoPriority(AlgoPriority priority, Algorithm3A algo, bool enable);
@@ -1025,7 +1022,6 @@ private:
     //Face detection status
     bool mFaceDetectionRunning;
     bool mFaceDetectionPaused;
-    uint32_t mFDSkip;
     bool mFDSwitchAlgoPriority;
 
     camera_face_t  faceDetectionLastOutput [MAX_NUM_FACES_SUPPORTED];
