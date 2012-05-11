@@ -85,10 +85,10 @@ const userToOMX_LUT scene_UserToOMX [] = {
     { CameraParameters::SCENE_MODE_STEADYPHOTO, OMX_TI_Steadyphoto },
     { CameraParameters::SCENE_MODE_SUNSET, OMX_TI_Sunset },
     { CameraParameters::SCENE_MODE_THEATRE, OMX_TI_Theatre },
+    { CameraParameters::SCENE_MODE_SPORTS, OMX_Sport },
 #ifdef OMAP_ENHANCEMENT
     { TICameraParameters::SCENE_MODE_CLOSEUP, OMX_Closeup },
     { TICameraParameters::SCENE_MODE_AQUA, OMX_Underwater },
-    { TICameraParameters::SCENE_MODE_SPORT, OMX_Sport },
     { TICameraParameters::SCENE_MODE_MOOD, OMX_Mood },
     { TICameraParameters::SCENE_MODE_NIGHT_INDOOR, OMX_NightIndoor },
     { TICameraParameters::SCENE_MODE_DOCUMENT, OMX_Document },
