@@ -81,6 +81,8 @@ extern "C" {
 #define SHARPNESS_OFFSET 100
 #define CONTRAST_OFFSET 100
 
+#define FRAME_RATE_HIGH_HD 60
+
 #define CAMHAL_GRALLOC_USAGE GRALLOC_USAGE_HW_TEXTURE | \
                              GRALLOC_USAGE_HW_RENDER | \
                              GRALLOC_USAGE_SW_READ_RARELY | \
@@ -935,11 +937,8 @@ public:
         CAMERA_STOP_FD                              = 23,
         CAMERA_SWITCH_TO_EXECUTING                  = 24,
         CAMERA_USE_BUFFERS_VIDEO_CAPTURE            = 25,
-        CAMERA_SETUP_TUNNEL                         = 26,
-        CAMERA_DESTROY_TUNNEL                       = 27,
-        CAMERA_PREVIEW_INITIALIZATION               = 28,
-        CAMERA_USE_BUFFERS_REPROCESS                = 29,
-        CAMERA_START_REPROCESS                      = 30,
+        CAMERA_USE_BUFFERS_REPROCESS                = 26,
+        CAMERA_START_REPROCESS                      = 27,
         };
 
     enum CameraMode
@@ -1001,7 +1000,7 @@ public:
     virtual int registerEndCaptureCallback(end_image_capture_callback callback, void *user_data) = 0;
 
     //API to send a command to the camera
-    virtual status_t sendCommand(CameraCommands operation, int value1=0, int value2=0, int value3=0, int value4=0) = 0;
+    virtual status_t sendCommand(CameraCommands operation, int value1=0, int value2=0, int value3=0) = 0;
 
     virtual ~CameraAdapter() {};
 
@@ -1130,12 +1129,6 @@ public:
      * Start preview mode.
      */
     int    startPreview();
-
-    /**
-     * Set preview mode related initialization.
-     * Only used when slice based processing is enabled.
-     */
-    int    cameraPreviewInitialization();
 
     /**
      * Only used if overlays are used for camera preview.
@@ -1426,8 +1419,6 @@ private:
     bool mDynamicPreviewSwitch;
     //keeps paused state of display
     bool mDisplayPaused;
-    bool mTunnelSetup;
-    bool mVTCUseCase;
     //Index of current camera adapter
     int mCameraIndex;
 
@@ -1471,7 +1462,6 @@ private:
     CameraProperties::Properties* mCameraProperties;
 
     bool mPreviewStartInProgress;
-    bool mPreviewInitializationDone;
 
     bool mSetPreviewWindowCalled;
 

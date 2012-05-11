@@ -235,8 +235,7 @@ int getMediaserverInfo(int *PID, int *VSIZE){
     return 0;
 }
 
-int my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int waitTimeInMilliSecs)
-{
+int my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int waitTimeInMilliSecs) {
     if (waitTimeInMilliSecs == 0)
     {
         return pthread_cond_wait(cond, mutex);
@@ -245,9 +244,11 @@ int my_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    if (waitTimeInMilliSecs >= 1000) // > 1 sec
+    if (waitTimeInMilliSecs >= 1000) { // > 1 sec
         ts.tv_sec += (waitTimeInMilliSecs/1000);
-    else ts.tv_nsec += waitTimeInMilliSecs * 1000000;
+    } else {
+        ts.tv_nsec += waitTimeInMilliSecs * 1000000;
+    }
 
     return pthread_cond_timedwait(cond, mutex, &ts);
 }
@@ -335,9 +336,9 @@ int createPreviewSurface() {
     }
 
     surfaceControl = client->createSurface(0,
-                                           cameraSurfaceWidth,
-                                           cameraSurfaceHeight,
-                                           HAL_PIXEL_FORMAT_RGB_565);
+            cameraSurfaceWidth,
+            cameraSurfaceHeight,
+            HAL_PIXEL_FORMAT_RGB_565);
 
     previewSurface = surfaceControl->getSurface();
 
@@ -552,8 +553,7 @@ void stopPreview() {
     destroyPreviewSurface();
 }
 
-int test_DEFAULT()
-{
+int test_DEFAULT() {
     startPreview();
     startRecording();
     sleep(mDuration);
@@ -562,9 +562,7 @@ int test_DEFAULT()
     return 0;
 }
 
-
-int test_InsertIDRFrames()
-{
+int test_InsertIDRFrames() {
     status_t err = 0;
     mIFramesIntervalSec = 0;
     startPreview();
@@ -589,16 +587,14 @@ int test_InsertIDRFrames()
 }
 
 
-int test_MaxNALSize()
-{
+int test_MaxNALSize() {
     status_t err = 0;
 
-    if (mIsSizeInBytes){
+    if (mIsSizeInBytes) {
         //Testing size base on bytes
         CHECK(mPreviewWidth > 320);
         CHECK(mSliceSizeBytes >= 256);
-    }
-    else{
+    } else {
         //Testing size base on MB
         CHECK(mSliceSizeMB > 6);
         CHECK(mSliceSizeMB < (((mPreviewWidth+15)>> 4) * ((mPreviewHeight+15)>> 4)));
@@ -620,14 +616,13 @@ int test_MaxNALSize()
     startPreview();
     startRecording();
 
-    if (mIsSizeInBytes){
+    if (mIsSizeInBytes) {
         sprintf(mParamValue,"video-param-nalsize-bytes=%u", mSliceSizeBytes);
         String8 param(mParamValue);
         err = recorder->setParameters(param);
         if (err != OK) return -1;
         LOGI("\n Set the Slice Size in bytes.\n");
-    }
-    else{
+    } else {
         sprintf(mParamValue,"video-param-nalsize-macroblocks=%u", mSliceSizeMB);
         String8 param(mParamValue);
         err = recorder->setParameters(param);
@@ -651,8 +646,7 @@ int test_MaxNALSize()
 }
 
 
-int test_ChangeBitRate()
-{
+int test_ChangeBitRate() {
     startPreview();
     startRecording();
     sleep(mDuration/2);
@@ -670,8 +664,7 @@ int test_ChangeBitRate()
 }
 
 
-int test_ChangeFrameRate()
-{
+int test_ChangeFrameRate() {
     startPreview();
     startRecording();
     sleep(mDuration/2);
@@ -697,16 +690,14 @@ int test_ChangeFrameRate()
     return 0;
 }
 
-int test_PlaybackAndRecord_sidebyside()
-{
+int test_PlaybackAndRecord_sidebyside() {
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
     int panelwidth = playbackComposerClient->getDisplayWidth(0);
     int panelheight = playbackComposerClient->getDisplayHeight(0);
     LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
-    if (panelwidth < panelheight) //Portrait Phone
-    {
+    if (panelwidth < panelheight) {//Portrait Phone
         LOGD("\nPortrait Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight/2;
@@ -717,9 +708,7 @@ int test_PlaybackAndRecord_sidebyside()
         cameraWinY = playbackSurfaceHeight;
         cameraSurfaceWidth = panelwidth;
         cameraSurfaceHeight = panelheight/2;
-    }
-    else // Landscape
-    {
+    } else {// Landscape
         LOGD("\n Landscape Device\n");
         playbackSurfaceWidth = panelwidth/2;
         playbackSurfaceHeight = panelheight;
@@ -755,16 +744,14 @@ int test_PlaybackAndRecord_sidebyside()
 }
 
 
-int test_PlaybackAndRecord_PIP()
-{
+int test_PlaybackAndRecord_PIP() {
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
     uint32_t panelwidth = playbackComposerClient->getDisplayWidth(0);
     uint32_t panelheight = playbackComposerClient->getDisplayHeight(0);
     LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
-    if (panelwidth < panelheight) //Portrait Phone
-    {
+    if (panelwidth < panelheight) {//Portrait Phone
         LOGD("\nPortrait Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight;
@@ -775,9 +762,7 @@ int test_PlaybackAndRecord_PIP()
         cameraSurfaceHeight = panelheight/4;
         cameraWinX = (panelwidth - cameraSurfaceWidth) / 2;
         cameraWinY = 0;
-    }
-    else // Landscape
-    {
+    } else { // Landscape
         LOGD("\n Landscape Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight;
@@ -816,8 +801,7 @@ int test_PlaybackAndRecord_PIP()
             client->openGlobalTransaction();
             surfaceControl->hide();
             client->closeGlobalTransaction();
-        }
-        else{
+        } else {
             client->openGlobalTransaction();
             surfaceControl->show();
             client->closeGlobalTransaction();
@@ -843,8 +827,7 @@ int test_PlaybackOnly()
     int panelwidth = playbackComposerClient->getDisplayWidth(0);
     int panelheight = playbackComposerClient->getDisplayHeight(0);
     LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
-    if (panelwidth < panelheight) //Portrait Phone
-    {
+    if (panelwidth < panelheight) {//Portrait Phone
         LOGD("\nPortrait Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight/2;
@@ -855,9 +838,7 @@ int test_PlaybackOnly()
         cameraWinY = playbackSurfaceHeight;
         cameraSurfaceWidth = panelwidth;
         cameraSurfaceHeight = panelheight/2;
-    }
-    else // Landscape
-    {
+    } else {// Landscape
         LOGD("\n Landscape Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight;
@@ -924,8 +905,7 @@ void updatePassRate(int test_status, bool verifyRecordedClip) {
     mStartMemory = endMemory; //I shouldn't be doing this right??
 }
 
-int test_Robust()
-{
+int test_Robust() {
     int status = 0;
     uint32_t cyclesCompleted = 0;
     getMediaserverInfo(&mMediaServerPID, &mStartMemory);
@@ -1375,8 +1355,7 @@ int test_ALL()
 }
 
 
-void printUsage()
-{
+void printUsage() {
     printf("\n\nApplication for testing VTC requirements");
     printf("\nUsage: /system/bin/VTCTestApp test_case_id");
     printf("\n\n\nTest Case ID can be any of the following");
@@ -1412,8 +1391,7 @@ void printUsage()
 
 }
 
-int main (int argc, char* argv[])
-{
+int main (int argc, char* argv[]) {
     sp<ProcessState> proc(ProcessState::self());
     ProcessState::self()->startThreadPool();
     pthread_mutex_init(&mMutex, NULL);
