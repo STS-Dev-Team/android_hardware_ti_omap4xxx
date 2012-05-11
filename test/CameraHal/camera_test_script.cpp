@@ -157,6 +157,30 @@ extern char **stereoCapLayout;
 extern void getSizeParametersFromCapabilities();
 
 
+void trim_script_cmd(char *cmd) {
+    char *nl, *cr;
+
+    // first remove all carriage return symbols
+    while ( NULL != (cr = strchr(cmd, '\r'))) {
+        for (char *c = cr; '\0' != *c; c++) {
+            *c = *(c+1);
+        }
+    }
+
+    // then remove all single line feed symbols
+    while ( NULL != (nl = strchr(cmd, '\n'))) {
+        if (*nl == *(nl+1)) {
+            // two or more concatenated newlines:
+            // end of script found
+            break;
+        }
+        // clip the newline
+        for (char *c = nl; '\0' != *c; c++) {
+            *c = *(c+1);
+        }
+    }
+}
+
 int execute_functional_script(char *script) {
     char *cmd, *ctx, *cycle_cmd, *temp_cmd;
     char id;
@@ -179,6 +203,7 @@ int execute_functional_script(char *script) {
     cmd = strtok_r((char *) script, DELIMITER, &ctx);
 
     while ( NULL != cmd && (stopScript == false)) {
+        trim_script_cmd(cmd);
         id = cmd[0];
         printf("Full Command: %s \n", cmd);
         printf("Command: %c \n", cmd[0]);
@@ -1407,13 +1432,15 @@ char *load_script(const char *config) {
     fileSize = ftell(infile);
     fseek(infile, 0, SEEK_SET);
 
-    script = (char *) malloc(fileSize);
+    script = (char *) malloc(fileSize + 1);
 
     if ( NULL == script ) {
         printf("Unable to allocate buffer for the script\n");
 
         return NULL;
     }
+
+    memset(script, 0, fileSize + 1);
 
     if ((nRead = fread(script, 1, fileSize, infile)) != fileSize) {
         printf("Error while reading script file!\n");
