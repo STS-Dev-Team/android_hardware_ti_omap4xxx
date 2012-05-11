@@ -60,6 +60,7 @@ const int CameraHal::NO_BUFFERS_IMAGE_CAPTURE_SYSTEM_HEAP = 15;
 //       The directory name is choosed in so weird way to enable RAW images saving only when
 //       directory has been created explicitly by user.
 extern const char * const kRawImagesOutputDirPath = "/data/misc/camera/RaW_PiCtUrEs";
+extern const char * const kYuvImagesOutputDirPath = "/data/misc/camera/YuV_PiCtUrEs";
 #endif
 
 /******************************************************************************/
@@ -949,6 +950,13 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.remove(TICameraParameters::KEY_EXP_BRACKETING_RANGE);
             }
 
+        if( (valstr = params.get(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE)) != NULL ) {
+            CAMHAL_LOGDB("Zoom Bracketing range %s", valstr);
+            mParameters.set(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE, valstr);
+        } else {
+            mParameters.remove(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE);
+        }
+
         if ((valstr = params.get(CameraParameters::KEY_ZOOM)) != NULL ) {
             if ((params.getInt(CameraParameters::KEY_ZOOM) >= 0 ) &&
                 (params.getInt(CameraParameters::KEY_ZOOM) <= mMaxZoomSupported )) {
@@ -1086,7 +1094,7 @@ int CameraHal::setParameters(const CameraParameters& params)
         // enabled or doesSetParameterNeedUpdate says so. Initial setParameters to camera adapter,
         // will be called in startPreview()
         // TODO(XXX): Need to identify other parameters that need update from camera adapter
-        if ( (NULL != mCameraAdapter) && (mPreviewEnabled || updateRequired) ) {
+        if ( (NULL != mCameraAdapter) && (mPreviewEnabled || updateRequired) && !restartPreviewRequired ) {
             ret |= mCameraAdapter->setParameters(adapterParams);
         }
 
@@ -1163,7 +1171,6 @@ status_t CameraHal::allocPreviewBufs(int width, int height, const char* previewF
                                                                     previewFormat,
                                                                     mPreviewLength,
                                                                     buffercount);
-
         if (NULL == mPreviewBuffers ) {
             CAMHAL_LOGEA("Couldn't allocate preview buffers");
             return NO_MEMORY;
@@ -1173,21 +1180,19 @@ status_t CameraHal::allocPreviewBufs(int width, int height, const char* previewF
         if ( NULL == mPreviewOffsets ) {
             CAMHAL_LOGEA("Buffer mapping failed");
             return BAD_VALUE;
-         }
+        }
 
         mBufProvider = (BufferProvider*) mDisplayAdapter.get();
 
         ret = mDisplayAdapter->maxQueueableBuffers(max_queueable);
         if (ret != NO_ERROR) {
             return ret;
-         }
-
+        }
     }
 
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
-
 }
 
 status_t CameraHal::freePreviewBufs()

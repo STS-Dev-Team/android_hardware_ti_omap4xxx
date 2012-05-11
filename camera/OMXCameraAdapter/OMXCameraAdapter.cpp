@@ -37,6 +37,12 @@ static int mDebugFcs = 0;
 
 namespace android {
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+const char OMXCameraAdapter::DEFAULT_PROFILE_PATH[] = "/data/dbg/profile_data.bin";
+
+#endif
+
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
 
@@ -52,6 +58,13 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mDebugFps = atoi(value);
     property_get("debug.camera.framecounts", value, "0");
     mDebugFcs = atoi(value);
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    property_get("debug.camera.profile", value, "0");
+    mDebugProfile = atoi(value);
+
+#endif
 
     TIMM_OSAL_ERRORTYPE osalError = OMX_ErrorNone;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -171,13 +184,17 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
 #endif
 
     mBracketingEnabled = false;
+    mZoomBracketingEnabled = false;
     mBracketingBuffersQueuedCount = 0;
     mBracketingRange = 1;
     mLastBracetingBufferIdx = 0;
     mBracketingBuffersQueued = NULL;
     mOMXStateSwitch = false;
     mBracketingSet = false;
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
     mRawCapture = false;
+    mYuvCapture = false;
+#endif
 
     mCaptureSignalled = false;
     mCaptureConfigured = false;
@@ -202,6 +219,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mZoomInc = 1;
     mZoomParameterIdx = 0;
     mExposureBracketingValidEntries = 0;
+    mZoomBracketingValidEntries = 0;
     mSensorOverclock = false;
     mAutoConv = OMX_TI_AutoConvergenceModeMax;
     mManualConv = 0;
@@ -247,8 +265,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("command handler thread already runnning!!");
             ret = NO_ERROR;
-        } else
-        {
+        } else {
             CAMHAL_LOGEA("Couldn't run command handlerthread");
             return ret;
         }
@@ -270,8 +287,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
         if( ret == INVALID_OPERATION){
             CAMHAL_LOGDA("omx callback handler thread already runnning!!");
             ret = NO_ERROR;
-        }else
-        {
+        } else {
             CAMHAL_LOGEA("Couldn't run omx callback handler thread");
             return ret;
         }
@@ -287,6 +303,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mFirstTimeInit = true;
 
     memset(mExposureBracketingValues, 0, EXP_BRACKET_RANGE*sizeof(int));
+    memset(mZoomBracketingValues, 0, ZOOM_BRACKET_RANGE*sizeof(int));
     mMeasurementEnabled = false;
     mFaceDetectionRunning = false;
     mFaceDetectionPaused = false;
@@ -697,28 +714,34 @@ void saveFile(unsigned char   *buff, int width, int height, int format) {
     LOG_FUNCTION_NAME_EXIT;
 }
 
+
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
-static status_t saveRaw(const void *buf, unsigned int size, const char *filename)
+static status_t saveBufferToFile(const void *buf, int size, const char *filename)
 {
-   status_t ret = NO_ERROR;
+    if (size < 0) {
+        CAMHAL_LOGE("Wrong buffer size: %d", size);
+        return BAD_VALUE;
+    }
 
-   const int fd = open(filename, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0644);
-   if (fd < 0) {
-       CAMHAL_LOGE("ERROR: %s, Unable to save raw file", strerror(fd));
-       return BAD_VALUE;
-   }
+    const int fd = open(filename, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0644);
+    if (fd < 0) {
+        CAMHAL_LOGE("ERROR: %s, Unable to save raw file", strerror(fd));
+        return BAD_VALUE;
+    }
 
-   if (write(fd, buf, size) != (signed)size) {
-       CAMHAL_LOGE("ERROR: Unable to write to raw file");
-       ret = NO_MEMORY;
-   } else {
-       CAMHAL_LOGD("buffer=%p, size=%d stored at %s", buf, size, filename);
-   }
+    if (write(fd, buf, size) != (signed)size) {
+        CAMHAL_LOGE("ERROR: Unable to write to raw file");
+        close(fd);
+        return NO_MEMORY;
+    }
 
-   close(fd);
-   return ret;
+    CAMHAL_LOGD("buffer=%p, size=%d stored at %s", buf, size, filename);
+
+    close(fd);
+    return OK;
 }
 #endif
+
 
 void OMXCameraAdapter::getParameters(CameraParameters& params)
 {
@@ -982,6 +1005,13 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
             portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
         }
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+        // RAW + YUV Capture
+        if (mYuvCapture) {
+            portCheck.format.image.eColorFormat       = OMX_COLOR_FormatCbYCrY;
+            portCheck.format.image.eCompressionFormat = OMX_IMAGE_CodingUnused;
+        }
+#endif
         //Stride for 1D tiler buffer is zero
         portCheck.format.image.nStride          =  0;
         portCheck.nBufferSize                   =  portParams.mStride * portParams.mWidth * portParams.mHeight;
@@ -2675,9 +2705,6 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
     LOG_FUNCTION_NAME;
 
     static const unsigned int DEGREES_TILT_IGNORE = 45;
-    int device_orientation = 0;
-    int mount_orientation = 0;
-    const char *facing_direction = NULL;
 
     // if tilt angle is greater than DEGREES_TILT_IGNORE
     // we are going to ignore the orientation returned from
@@ -2687,25 +2714,33 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
         return;
     }
 
+    int mountOrientation = 0;
+    bool isFront = false;
     if (mCapabilities) {
-        if (mCapabilities->get(CameraProperties::ORIENTATION_INDEX)) {
-            mount_orientation = atoi(mCapabilities->get(CameraProperties::ORIENTATION_INDEX));
+        const char * const mountOrientationString =
+                mCapabilities->get(CameraProperties::ORIENTATION_INDEX);
+        if (mountOrientationString) {
+            mountOrientation = atoi(mountOrientationString);
         }
-        facing_direction = mCapabilities->get(CameraProperties::FACING_INDEX);
+
+        const char * const facingString = mCapabilities->get(CameraProperties::FACING_INDEX);
+        if (facingString) {
+            isFront = strcmp(facingString, TICameraParameters::FACING_FRONT) == 0;
+        }
     }
 
-    // calculate device orientation relative to the sensor orientation
-    // front camera display is mirrored...needs to be accounted for when orientation
-    // is 90 or 270...since this will result in a flip on orientation otherwise
-    if (facing_direction && !strcmp(facing_direction, TICameraParameters::FACING_FRONT) &&
-        (orientation == 90 || orientation == 270)) {
-        device_orientation = (orientation - mount_orientation + 360) % 360;
-    } else {  // back-facing camera
-        device_orientation = (orientation + mount_orientation) % 360;
-    }
+    // direction is a constant sign for facing, meaning the rotation direction relative to device
+    // +1 (clockwise) for back sensor and -1 (counter-clockwise) for front sensor
+    const int direction = isFront ? -1 : 1;
 
-    if (device_orientation != mDeviceOrientation) {
-        mDeviceOrientation = device_orientation;
+    int rotation = mountOrientation + direction*orientation;
+
+    // crop the calculated value to [0..360) range
+    while ( rotation < 0 ) rotation += 360;
+    rotation %= 360;
+
+    if (rotation != mDeviceOrientation) {
+        mDeviceOrientation = rotation;
 
         mFaceDetectionLock.lock();
         if (mFaceDetectionRunning) {
@@ -3097,6 +3132,48 @@ OMX_ERRORTYPE OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLETYPE hComponent,
     return eError;
 }
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+status_t OMXCameraAdapter::storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader) {
+    OMX_TI_PLATFORMPRIVATE *platformPrivate = NULL;
+    OMX_OTHER_EXTRADATATYPE *extraData = NULL;
+    FILE *fd = NULL;
+
+    LOG_FUNCTION_NAME
+
+    if ( UNLIKELY( mDebugProfile ) ) {
+
+        platformPrivate =  static_cast<OMX_TI_PLATFORMPRIVATE *> (pBuffHeader->pPlatformPrivate);
+        extraData = getExtradata(static_cast<OMX_OTHER_EXTRADATATYPE *> (platformPrivate->pMetaDataBuffer),
+                platformPrivate->nMetaDataSize,
+                static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData));
+
+        if ( NULL != extraData ) {
+            if( extraData->eType == static_cast<OMX_EXTRADATATYPE> (OMX_TI_ProfilerData) ) {
+
+                fd = fopen(DEFAULT_PROFILE_PATH, "ab");
+                if ( NULL != fd ) {
+                    fwrite(extraData->data, 1, extraData->nDataSize, fd);
+                    fclose(fd);
+                } else {
+                    return -errno;
+                }
+
+            } else {
+                return NOT_ENOUGH_DATA;
+            }
+        } else {
+            return NOT_ENOUGH_DATA;
+        }
+    }
+
+    LOG_FUNCTION_NAME_EXIT
+
+    return NO_ERROR;
+}
+
+#endif
+
 /*========================================================*/
 /* @ fn SampleTest_FillBufferDone ::  Application callback*/
 /*========================================================*/
@@ -3120,6 +3197,16 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     OMX_OTHER_EXTRADATATYPE *extraData;
     OMX_TI_ANCILLARYDATATYPE *ancillaryData = NULL;
     bool snapshotFrame = false;
+
+    if ( NULL == pBuffHeader ) {
+        return OMX_ErrorBadParameter;
+    }
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    storeProfilingData(pBuffHeader);
+
+#endif
 
     res1 = res2 = NO_ERROR;
 
@@ -3318,6 +3405,15 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                 }
             }
 
+            if (mZoomBracketingEnabled) {
+                doZoom(mZoomBracketingValues[mCurrentZoomBracketing]);
+                CAMHAL_LOGDB("Current Zoom Bracketing: %d", mZoomBracketingValues[mCurrentZoomBracketing]);
+                mCurrentZoomBracketing++;
+                if (mCurrentZoomBracketing == ARRAY_SIZE(mZoomBracketingValues)) {
+                    mZoomBracketingEnabled = false;
+                }
+            }
+
         if ( 1 > mCapturedFrames )
             {
             goto EXIT;
@@ -3329,8 +3425,39 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         mCapturedFrames--;
 
-        stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
+        if (mYuvCapture) {
+            struct timeval timeStampUsec;
+            gettimeofday(&timeStampUsec, NULL);
 
+            time_t saveTime;
+            time(&saveTime);
+            const struct tm * const timeStamp = gmtime(&saveTime);
+
+            char filename[256];
+            snprintf(filename,256, "%s/yuv_%d_%d_%d_%lu.yuv",
+                    kYuvImagesOutputDirPath,
+                    timeStamp->tm_hour,
+                    timeStamp->tm_min,
+                    timeStamp->tm_sec,
+                    timeStampUsec.tv_usec);
+
+            const status_t saveBufferStatus = saveBufferToFile(pBuffHeader->pBuffer, pBuffHeader->nFilledLen, filename);
+
+            if (saveBufferStatus != OK) {
+                CAMHAL_LOGE("ERROR: %d, while saving yuv!", saveBufferStatus);
+            } else {
+                CAMHAL_LOGD("yuv_%d_%d_%d_%lu.yuv successfully saved in %s",
+                        timeStamp->tm_hour,
+                        timeStamp->tm_min,
+                        timeStamp->tm_sec,
+                        timeStampUsec.tv_usec,
+                        kYuvImagesOutputDirPath);
+            }
+        }
+#endif
+
+        stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
         }
         else if (pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_VIDEO) {
             typeOfFrame = CameraFrame::RAW_FRAME;
@@ -3347,44 +3474,41 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             mask = (unsigned int) CameraFrame::RAW_FRAME;
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
-            time_t rawSaveTime;
-            struct tm * rawTimeStamp;
-            struct timeval  rawTimeStampUsec;
+            if ( mRawCapture ) {
+                struct timeval timeStampUsec;
+                gettimeofday(&timeStampUsec, NULL);
 
-            char rawFilename[256];
+                time_t saveTime;
+                time(&saveTime);
+                const struct tm * const timeStamp = gmtime(&saveTime);
 
-            time ( &rawSaveTime );
-            gettimeofday(&rawTimeStampUsec, NULL);
-            rawTimeStamp = gmtime ( &rawSaveTime );
+                char filename[256];
+                snprintf(filename,256, "%s/raw_%d_%d_%d_%lu.raw",
+                         kRawImagesOutputDirPath,
+                         timeStamp->tm_hour,
+                         timeStamp->tm_min,
+                         timeStamp->tm_sec,
+                         timeStampUsec.tv_usec);
 
-            snprintf(rawFilename,256, "%s/raw_%d_%d_%d_%lu.raw",
-                    kRawImagesOutputDirPath,
-                    rawTimeStamp->tm_hour,
-                    rawTimeStamp->tm_min,
-                    rawTimeStamp->tm_sec,
-                    rawTimeStampUsec.tv_usec);
+                const status_t saveBufferStatus = saveBufferToFile(pBuffHeader->pBuffer, pBuffHeader->nFilledLen, filename);
 
-            status_t statRaw = saveRaw(pBuffHeader->pBuffer, pBuffHeader->nFilledLen, rawFilename);
-
-            if(NO_ERROR == statRaw) {
-
-                CAMHAL_LOGD("raw_%d_%d_%d_%lu.raw successfully saved in %s",
-                        rawTimeStamp->tm_hour,
-                        rawTimeStamp->tm_min,
-                        rawTimeStamp->tm_sec,
-                        rawTimeStampUsec.tv_usec,
-                        kRawImagesOutputDirPath);
-                stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
-            } else {
-                CAMHAL_LOGE("ERROR: %d , while saving raw!", statRaw);
+                if (saveBufferStatus != OK) {
+                    CAMHAL_LOGE("ERROR: %d , while saving raw!", saveBufferStatus);
+                } else {
+                    CAMHAL_LOGD("raw_%d_%d_%d_%lu.raw successfully saved in %s",
+                                timeStamp->tm_hour,
+                                timeStamp->tm_min,
+                                timeStamp->tm_sec,
+                                timeStampUsec.tv_usec,
+                                kRawImagesOutputDirPath);
+                    stat = sendCallBacks(cameraFrame, pBuffHeader, mask, pPortParam);
+                }
             }
 #endif
         } else {
             CAMHAL_LOGEA("Frame received for non-(preview/capture/measure) port. This is yet to be supported");
             goto EXIT;
         }
-
-
     if ( NO_ERROR != stat )
         {
         CameraBuffer *camera_buffer;
@@ -3768,6 +3892,12 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
     mFramesWithDucati = 0;
     mFramesWithDisplay = 0;
     mFramesWithEncoder = 0;
+
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    mDebugProfile = 0;
+
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 }
