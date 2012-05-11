@@ -83,8 +83,8 @@ public:
     virtual int getFd() ;
     virtual int freeBufferList(CameraBuffer * buflist);
 
-    virtual int maxQueueableBuffers(unsigned int& queueable);
-    virtual int minUndequeueableBuffers(int& unqueueable);
+    virtual status_t maxQueueableBuffers(unsigned int& queueable);
+    virtual status_t minUndequeueableBuffers(int& unqueueable);
 
     ///Class specific functions
     static void frameCallbackRelay(CameraFrame* caFrame);
