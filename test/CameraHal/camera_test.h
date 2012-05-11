@@ -205,6 +205,7 @@ typedef struct param_NamedExpBracketList_t {
 
 
 char * get_cycle_cmd(const char *aSrc);
+void trim_script_cmd(char *cmd);
 int execute_functional_script(char *script);
 status_t dump_mem_status();
 int openCamera();
