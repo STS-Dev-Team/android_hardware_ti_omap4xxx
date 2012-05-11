@@ -746,9 +746,9 @@ uint32_t * ANativeWindowDisplayAdapter::getOffsets()
     return NULL;
 }
 
-int ANativeWindowDisplayAdapter::minUndequeueableBuffers(int& undequeueable) {
+status_t ANativeWindowDisplayAdapter::minUndequeueableBuffers(int& undequeueable) {
     LOG_FUNCTION_NAME;
-    int ret = NO_ERROR;
+    status_t ret = NO_ERROR;
 
     if(!mANativeWindow) {
         ret = INVALID_OPERATION;
@@ -758,11 +758,13 @@ int ANativeWindowDisplayAdapter::minUndequeueableBuffers(int& undequeueable) {
     ret = mANativeWindow->get_min_undequeued_buffer_count(mANativeWindow, &undequeueable);
     if ( NO_ERROR != ret ) {
         CAMHAL_LOGEB("get_min_undequeued_buffer_count failed: %s (%d)", strerror(-ret), -ret);
-        if ( ENODEV == ret ) {
+
+        if ( NO_INIT == ret ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
             mANativeWindow = NULL;
         }
-        return -ret;
+
+        return ret;
     }
 
  end:
@@ -779,7 +781,7 @@ status_t ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueabl
 
     if(mBufferCount == 0)
     {
-        ret = -ENOSYS;
+        ret = INVALID_OPERATION;
         goto end;
     }
 

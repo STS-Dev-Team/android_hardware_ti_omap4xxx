@@ -937,8 +937,11 @@ public:
         CAMERA_STOP_FD                              = 23,
         CAMERA_SWITCH_TO_EXECUTING                  = 24,
         CAMERA_USE_BUFFERS_VIDEO_CAPTURE            = 25,
-        CAMERA_USE_BUFFERS_REPROCESS                = 26,
-        CAMERA_START_REPROCESS                      = 27,
+        CAMERA_SETUP_TUNNEL                         = 26,
+        CAMERA_DESTROY_TUNNEL                       = 27,
+        CAMERA_PREVIEW_INITIALIZATION               = 28,
+        CAMERA_USE_BUFFERS_REPROCESS                = 29,
+        CAMERA_START_REPROCESS                      = 30,
         };
 
     enum CameraMode
@@ -1058,7 +1061,7 @@ public:
     virtual status_t maxQueueableBuffers(unsigned int& queueable) = 0;
 
     // Get min buffers display needs at any given time
-    virtual int minUndequeueableBuffers(int& unqueueable) = 0;
+    virtual status_t minUndequeueableBuffers(int& unqueueable) = 0;
 protected:
     virtual const char* getPixFormatConstant(const char* parameters_format) const;
     virtual size_t getBufSize(const char* parameters_format, int width, int height) const;
