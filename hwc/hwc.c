@@ -35,10 +35,8 @@
 #include <hardware_legacy/uevent.h>
 #include <png.h>
 
-#ifdef OMAP_ENHANCEMENT_S3D
 #include <ui/S3DFormat.h>
 #include <edid_parser.h>
-#endif
 
 #include <linux/bltsville.h>
 
@@ -104,12 +102,10 @@ struct omap4_hwc_ext {
     float m[2][3];                      /* external transformation matrix */
     hwc_rect_t mirror_region;           /* region of screen to mirror */
 
-#ifdef OMAP_ENHANCEMENT_S3D
     bool s3d_enabled;
     bool s3d_capable;
     enum S3DLayoutType s3d_type;
     enum S3DLayoutOrder s3d_order;
-#endif
 };
 typedef struct omap4_hwc_ext omap4_hwc_ext_t;
 
@@ -159,9 +155,7 @@ struct counts {
     unsigned int max_hw_overlays;
     unsigned int max_scaling_overlays;
     unsigned int mem;
-#ifdef OMAP_ENHANCEMENT_S3D
     unsigned int s3d;
-#endif
 };
 
 struct omap4_hwc_device {
@@ -201,13 +195,13 @@ struct omap4_hwc_device {
     int last_ext_ovls;          /* # of overlays on external/internal display for last composition */
     int last_int_ovls;
 
-#ifdef OMAP_ENHANCEMENT_S3D
     enum S3DLayoutType s3d_input_type;
     enum S3DLayoutOrder s3d_input_order;
-#endif
+
     enum bltmode blt_mode;
     enum bltpolicy blt_policy;
 
+    int blit_flags;
     int blit_num;
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
     struct rgz_blt_entry blit_ops[RGZ_MAX_BLITS];
@@ -232,7 +226,6 @@ typedef struct omap4_hwc_device omap4_hwc_device_t;
 static int debug = 0;
 static int debugpost2 = 0;
 static int debugblt = 0;
-static int gshowfps;
 static rgz_t grgz;
 static struct bvsurfgeom gscrngeom;
 
@@ -242,6 +235,13 @@ static void showfps(void)
     static int lastframecount = 0;
     static nsecs_t lastfpstime = 0;
     static float fps = 0;
+    char value[PROPERTY_VALUE_MAX];
+
+    property_get("debug.hwc.showfps", value, "0");
+    if (!atoi(value)) {
+        return;
+    }
+
     framecount++;
     if (!(framecount & 0x7)) {
         nsecs_t now = systemTime(SYSTEM_TIME_MONOTONIC);
@@ -410,17 +410,15 @@ static int scaled(hwc_layer_t *layer)
 {
     int w = WIDTH(layer->sourceCrop);
     int h = HEIGHT(layer->sourceCrop);
+    uint32_t s3d_layout_type = (layer->flags & S3DLayoutTypeMask)
+                                            >> S3DLayoutTypeShift;
 
     if (layer->transform & HWC_TRANSFORM_ROT_90)
         swap(w, h);
 
-#ifdef OMAP_ENHANCEMENT_S3D
     //An S3D layer also needs scaling due to subsampling
     return WIDTH(layer->displayFrame) != w || HEIGHT(layer->displayFrame) != h
-            || layer->type != eMono;
-#else
-    return WIDTH(layer->displayFrame) != w || HEIGHT(layer->displayFrame) != h;
-#endif
+            || s3d_layout_type != eMono;
 }
 
 static int is_protected(hwc_layer_t *layer)
@@ -1071,21 +1069,22 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
 static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *num, hwc_layer_list_t *list)
 {
     unsigned int i;
-#ifdef OMAP_ENHANCEMENT_S3D
     num->s3d = 0;
-#endif
 
     /* Figure out how many layers we can support via DSS */
     for (i = 0; list && i < list->numHwLayers; i++) {
         hwc_layer_t *layer = &list->hwLayers[i];
         IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+        uint32_t s3d_layout_type = (layer->flags & S3DLayoutTypeMask)
+                                            >> S3DLayoutTypeShift;
+        uint32_t s3d_layout_order = (layer->flags & S3DLayoutOrderMask)
+                                            >> S3DLayoutOrderShift;
 
         layer->compositionType = HWC_FRAMEBUFFER;
 
         if (omap4_hwc_is_valid_layer(hwc_dev, layer, handle)) {
 
-#ifdef OMAP_ENHANCEMENT_S3D
-            if (layer->type != eMono) {
+            if (s3d_layout_type != eMono) {
                 //For now we can only handle 1 S3D layer, skip any additional ones
                 if (num->s3d > 1 || !hwc_dev->ext.dock.enabled || !hwc_dev->ext.s3d_capable) {
                     layer->flags |= HWC_SKIP_LAYER;
@@ -1096,11 +1095,10 @@ static void gather_layer_statistics(omap4_hwc_device_t *hwc_dev, struct counts *
                         num->dockable++;
                     }
                     num->s3d++;
-                    hwc_dev->s3d_input_type = layer->type;
-                    hwc_dev->s3d_input_order = layer->viewOrder;
+                    hwc_dev->s3d_input_type = s3d_layout_type;
+                    hwc_dev->s3d_input_order = s3d_layout_order;
                 }
             }
-#endif
 
             num->possible_overlay_layers++;
 
@@ -1144,12 +1142,10 @@ static void decide_supported_cloning(omap4_hwc_device_t *hwc_dev, struct counts 
         /* reserve just a video pipeline for HDMI if docking */
         hwc_dev->ext_ovls = (num->dockable || ext->force_dock) ? 1 : 0;
 
-#ifdef OMAP_ENHANCEMENT_S3D
         if (num->s3d && (hwc_dev->ext.s3d_type != hwc_dev->s3d_input_type)) {
             //S3D layers are dockable, and they need two overlays
             hwc_dev->ext_ovls += 1;
         }
-#endif
         num->max_hw_overlays -= max(hwc_dev->ext_ovls, hwc_dev->last_ext_ovls);
 
         /* use mirroring transform if we are auto-switching to docking mode while mirroring*/
@@ -1206,7 +1202,8 @@ static int can_dss_render_all(omap4_hwc_device_t *hwc_dev, struct counts *num)
             /* fits into TILER slot */
             num->mem <= MAX_TILER_SLOT &&
             /* we cannot clone non-NV12 transformed layers */
-            (!tform || num->NV12 == num->possible_overlay_layers) &&
+            (!tform || (num->NV12 == num->possible_overlay_layers) ||
+            (num->NV12 && ext->current.docking)) &&
             /* HDMI cannot display BGR */
             (num->BGR == 0 || (num->RGB == 0 && !on_tv) || !hwc_dev->flags_rgb_order);
 }
@@ -1306,7 +1303,6 @@ static int clone_external_layer(omap4_hwc_device_t *hwc_dev, int ix) {
     return clone_layer(hwc_dev, ix);
 }
 
-#ifdef OMAP_ENHANCEMENT_S3D
 
 const char hdmiS3DTypePath[] = "/sys/devices/platform/omapdss/display1/s3d_type";
 const char hdmiS3DEnablePath[] = "/sys/devices/platform/omapdss/display1/s3d_enable";
@@ -1452,7 +1448,6 @@ clone_s3d_external_layer(omap4_hwc_device_t *hwc_dev, int ix_s3d)
 
     return 0;
 }
-#endif //OMAP_ENHANCEMENT_S3D
 
 static int setup_mirroring(omap4_hwc_device_t *hwc_dev)
 {
@@ -1470,16 +1465,21 @@ static int setup_mirroring(omap4_hwc_device_t *hwc_dev)
 
 static void blit_reset(omap4_hwc_device_t *hwc_dev)
 {
+    hwc_dev->blit_flags = 0;
     hwc_dev->blit_num = 0;
     hwc_dev->post2_blit_buffers = 0;
     hwc_dev->comp_data.blit_data.rgz_items = 0;
-    rgz_release(&grgz);
 }
 
 static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int bufoff)
 {
-    if (!list)
+    /* Do not blit if this frame will be composed entirely by the GPU */
+    if (!list || hwc_dev->force_sgx)
         goto err_out;
+
+    /* We want to maintain the rgz dirty region data if there are no geometry changes */
+    if (list->flags & HWC_GEOMETRY_CHANGED)
+        rgz_release(&grgz);
 
     int rgz_in_op;
     int rgz_out_op;
@@ -1538,6 +1538,16 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
         goto err_out;
     }
 
+    /* This is a special situation where the regionizer decided no blits are
+     * needed for this frame but there are blit buffers to synchronize with. Can
+     * happen only if the regionizer is enabled otherwise it's likely a bug
+     */
+    if (rgz_out_op != RGZ_OUT_BVCMD_REGION && out.data.bvc.out_blits == 0 && out.data.bvc.out_nhndls > 0) {
+        LOGE("Regionizer invalid output blit_num %d, post2_blit_buffers %d", out.data.bvc.out_blits, out.data.bvc.out_nhndls);
+        goto err_out;
+    }
+
+    hwc_dev->blit_flags |= HWC_BLT_FLAG_USE_FB;
     hwc_dev->blit_num = out.data.bvc.out_blits;
     hwc_dev->post2_blit_buffers = out.data.bvc.out_nhndls;
     for (i = 0; i < hwc_dev->post2_blit_buffers; i++) {
@@ -1561,7 +1571,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     return 1;
 
 err_out:
-    blit_reset(hwc_dev);
+    rgz_release(&grgz);
     return 0;
 }
 
@@ -1614,9 +1624,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     int fb_z = -1;
     int scaled_gfx = 0;
     int ix_docking = -1;
-#ifdef OMAP_ENHANCEMENT_S3D
     int ix_s3d = -1;
-#endif
 
     int blit_all = 0;
     blit_reset(hwc_dev);
@@ -1646,6 +1654,8 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     for (i = 0; list && i < list->numHwLayers && !blit_all; i++) {
         hwc_layer_t *layer = &list->hwLayers[i];
         IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+        uint32_t s3d_layout_type = (layer->flags & S3DLayoutTypeMask)
+                                            >> S3DLayoutTypeShift;
 
         if (dsscomp->num_ovls < num.max_hw_overlays &&
             can_dss_render_layer(hwc_dev, layer) &&
@@ -1700,12 +1710,10 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
                  display_area(&dsscomp->ovls[dsscomp->num_ovls]) > display_area(&dsscomp->ovls[ix_docking])))
                 ix_docking = dsscomp->num_ovls;
 
-#ifdef OMAP_ENHANCEMENT_S3D
             //remember the ix for s3d layer
-            if (layer->type != eMono) {
+            if (s3d_layout_type != eMono) {
                 ix_s3d = dsscomp->num_ovls;
             }
-#endif
             dsscomp->num_ovls++;
             z++;
         } else if (hwc_dev->use_sgx) {
@@ -1766,7 +1774,6 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     omap4_hwc_ext_t *ext = &hwc_dev->ext;
     if (ext->current.enabled && ((!num.protected && hwc_dev->ext_ovls) ||
               (hwc_dev->ext_ovls_wanted && hwc_dev->ext_ovls >= hwc_dev->ext_ovls_wanted))) {
-#ifdef OMAP_ENHANCEMENT_S3D
         if (ext->current.docking && ix_s3d >= 0) {
             if (clone_s3d_external_layer(hwc_dev, ix_s3d) == 0) {
                 dsscomp->ovls[dsscomp->num_ovls - 2].cfg.zorder = z++;
@@ -1785,40 +1792,39 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
                         break;
                 }
             }
-        } else
-#endif
-        if (ext->current.docking && ix_docking >= 0) {
-            if (clone_external_layer(hwc_dev, ix_docking) == 0)
-                dsscomp->ovls[dsscomp->num_ovls - 1].cfg.zorder = z++;
-        } else if (ext->current.docking && ix_docking < 0 && ext->force_dock) {
-            ix_docking = dsscomp->num_ovls;
-            struct dss2_ovl_info *oi = &dsscomp->ovls[ix_docking];
-            omap4_hwc_setup_layer_base(&oi->cfg, 0, HAL_PIXEL_FORMAT_BGRA_8888, 1,
-                                       dock_image.width, dock_image.height);
-            oi->cfg.stride = dock_image.rowbytes;
-            if (clone_external_layer(hwc_dev, ix_docking) == 0) {
-                oi->addressing = OMAP_DSS_BUFADDR_FB;
-                oi->ba = 0;
-                z++;
-            }
-        } else if (!ext->current.docking) {
-            int res = 0;
+        } else {
+            if (ext->current.docking && ix_docking >= 0) {
+                if (clone_external_layer(hwc_dev, ix_docking) == 0)
+                        dsscomp->ovls[dsscomp->num_ovls - 1].cfg.zorder = z++;
+            } else if (ext->current.docking && ix_docking < 0 && ext->force_dock) {
+                ix_docking = dsscomp->num_ovls;
+                struct dss2_ovl_info *oi = &dsscomp->ovls[ix_docking];
+                omap4_hwc_setup_layer_base(&oi->cfg, 0, HAL_PIXEL_FORMAT_BGRA_8888, 1,
+                                dock_image.width, dock_image.height);
+                oi->cfg.stride = dock_image.rowbytes;
+                if (clone_external_layer(hwc_dev, ix_docking) == 0) {
+                    oi->addressing = OMAP_DSS_BUFADDR_FB;
+                    oi->ba = 0;
+                    z++;
+                }
+            } else if (!ext->current.docking) {
+                int res = 0;
 
-            /* reset mode if we are coming from docking */
-            if (ext->last.docking)
-                res = setup_mirroring(hwc_dev);
+                /* reset mode if we are coming from docking */
+                if (ext->last.docking)
+                    res = setup_mirroring(hwc_dev);
 
-            /* mirror all layers */
-            for (ix = 0; res == 0 && ix < hwc_dev->post2_layers; ix++) {
-                if (clone_layer(hwc_dev, ix))
-                    break;
-                z++;
+                /* mirror all layers */
+                for (ix = 0; res == 0 && ix < hwc_dev->post2_layers; ix++) {
+                    if (clone_layer(hwc_dev, ix))
+                        break;
+                    z++;
+                }
             }
         }
     }
-#ifdef OMAP_ENHANCEMENT_S3D
+
     omap4_hwc_s3d_hdmi_enable(hwc_dev, ix_s3d >= 0);
-#endif
     ext->last = ext->current;
 
     if (z != dsscomp->num_ovls || dsscomp->num_ovls > MAX_HW_OVERLAYS)
@@ -1932,6 +1938,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
         if (hwc_dev->force_sgx > 0)
             hwc_dev->force_sgx--;
 
+        hwc_dev->comp_data.blit_data.rgz_flags = hwc_dev->blit_flags;
         hwc_dev->comp_data.blit_data.rgz_items = hwc_dev->blit_num;
         int omaplfb_comp_data_sz = sizeof(hwc_dev->comp_data) +
             (hwc_dev->comp_data.blit_data.rgz_items * sizeof(struct rgz_blt_entry));
@@ -1985,8 +1992,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
         }
         have_last = 1;
         clock_gettime(CLOCK_MONOTONIC, &last_set_time);
-        if (gshowfps)
-            showfps();
+        showfps();
     }
     hwc_dev->last_ext_ovls = hwc_dev->ext_ovls;
     hwc_dev->last_int_ovls = hwc_dev->post2_layers;
@@ -2197,7 +2203,7 @@ err_out:
     LOGE("Composer HAL failed to load compatible Graphics HAL");
     return err;
 }
-#ifdef OMAP_ENHANCEMENT_S3D
+
 static void handle_s3d_hotplug(omap4_hwc_ext_t *ext, int state)
 {
     struct edid_t *edid = NULL;
@@ -2227,7 +2233,6 @@ static void handle_s3d_hotplug(omap4_hwc_ext_t *ext, int state)
         edid_parser_deinit(edid);
     }
 }
-#endif
 
 static void handle_hotplug(omap4_hwc_device_t *hwc_dev)
 {
@@ -2256,9 +2261,9 @@ static void handle_hotplug(omap4_hwc_device_t *hwc_dev)
     }
 
     pthread_mutex_lock(&hwc_dev->lock);
-#ifdef OMAP_ENHANCEMENT_S3D
+
     handle_s3d_hotplug(ext, state);
-#endif
+
     ext->dock.enabled = ext->mirror.enabled = 0;
     if (state) {
         /* check whether we can clone and/or dock */
@@ -2609,9 +2614,6 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         LOGW("Invalid upscaled_nv12_limit (%s), setting to 2.", value);
         hwc_dev->upscaled_nv12_limit = 2.;
     }
-
-    property_get("debug.hwc.showfps", value, "0");
-    gshowfps = atoi(value);
 
 done:
     if (err && hwc_dev) {

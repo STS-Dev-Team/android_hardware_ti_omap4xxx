@@ -60,6 +60,7 @@ namespace android {
 #define MIN_JPEG_QUALITY            1
 #define MAX_JPEG_QUALITY            100
 #define EXP_BRACKET_RANGE           10
+#define ZOOM_BRACKET_RANGE          10
 
 #define FD_PERIOD                   400 //[ms.]
 
@@ -118,27 +119,27 @@ namespace android {
 #define OMX_CAMERA_PORT_IMAGE_OUT_IMAGE (OMX_CAMERA_PORT_IMAGE_START + 0)
 
 
-#define OMX_INIT_STRUCT(_s_, _name_)	\
-    memset(&(_s_), 0x0, sizeof(_name_));	\
-    (_s_).nSize = sizeof(_name_);		\
-    (_s_).nVersion.s.nVersionMajor = 0x1;	\
-    (_s_).nVersion.s.nVersionMinor = 0x1;	\
-    (_s_).nVersion.s.nRevision = 0x0;		\
+#define OMX_INIT_STRUCT(_s_, _name_)       \
+    memset(&(_s_), 0x0, sizeof(_name_));   \
+    (_s_).nSize = sizeof(_name_);          \
+    (_s_).nVersion.s.nVersionMajor = 0x1;  \
+    (_s_).nVersion.s.nVersionMinor = 0x1;  \
+    (_s_).nVersion.s.nRevision = 0x0;      \
     (_s_).nVersion.s.nStep = 0x0
 
 #define OMX_INIT_STRUCT_PTR(_s_, _name_)   \
-    memset((_s_), 0x0, sizeof(_name_));         \
-    (_s_)->nSize = sizeof(_name_);              \
-    (_s_)->nVersion.s.nVersionMajor = 0x1;      \
-    (_s_)->nVersion.s.nVersionMinor = 0x1;      \
-    (_s_)->nVersion.s.nRevision = 0x0;          \
+    memset((_s_), 0x0, sizeof(_name_));    \
+    (_s_)->nSize = sizeof(_name_);         \
+    (_s_)->nVersion.s.nVersionMajor = 0x1; \
+    (_s_)->nVersion.s.nVersionMinor = 0x1; \
+    (_s_)->nVersion.s.nRevision = 0x0;     \
     (_s_)->nVersion.s.nStep = 0x0
 
-#define GOTO_EXIT_IF(_CONDITION,_ERROR) {                                       \
-    if ((_CONDITION)) {                                                         \
-        eError = (_ERROR);                                                      \
-        goto EXIT;                                                              \
-    }                                                                           \
+#define GOTO_EXIT_IF(_CONDITION,_ERROR) {  \
+    if ((_CONDITION)) {                    \
+        eError = (_ERROR);                 \
+        goto EXIT;                         \
+    }                                      \
 }
 
 const int64_t kCameraBufferLatencyNs = 250000000LL; // 250 ms
@@ -775,6 +776,12 @@ private:
     status_t stopReprocess();
     status_t UseBuffersReprocess(CameraBuffer *bufArr, int num);
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    status_t storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader);
+
+#endif
+
     class CommandHandler : public Thread {
         public:
             CommandHandler(OMXCameraAdapter* ca)
@@ -952,6 +959,13 @@ private:
 
     static const size_t MAX_FOCUS_AREAS;
 
+#ifdef CAMERAHAL_OMX_PROFILING
+
+    static const char DEFAULT_PROFILE_PATH[];
+    int mDebugProfile;
+
+#endif
+
     OMX_VERSIONTYPE mCompRevision;
 
     //OMX Component UUID
@@ -993,6 +1007,10 @@ private:
     int mExposureGainBracketingModes[EXP_BRACKET_RANGE];
     size_t mExposureBracketingValidEntries;
     OMX_BRACKETMODETYPE mExposureBracketMode;
+
+    //Zoom Bracketing
+    int mZoomBracketingValues[ZOOM_BRACKET_RANGE];
+    size_t mZoomBracketingValidEntries;
 
     mutable Mutex mFaceDetectionLock;
     //Face detection status
@@ -1071,8 +1089,9 @@ private:
     int mBracketingBuffersQueuedCount;
     int mLastBracetingBufferIdx;
     bool mBracketingEnabled;
+    bool mZoomBracketingEnabled;
     size_t mBracketingRange;
-
+    int mCurrentZoomBracketing;
     CameraParameters mParameters;
     bool mOmxInitialized;
     OMXCameraAdapterComponentContext mCameraAdapterParameters;
@@ -1141,7 +1160,10 @@ private:
     OMX_BOOL mUserSetExpLock;
     OMX_BOOL mUserSetWbLock;
 
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
     bool mRawCapture;
+    bool mYuvCapture;
+#endif
 
     OMX_TI_DCCDATATYPE mDccData;
     Mutex mDccDataLock;

@@ -304,7 +304,7 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
      * With the HWC we don't bother having a buffer for the fill we'll get the
      * OMAPLFB to fixup the src1desc if this address is -1
      */
-    src1desc->virtaddr = (void*)-1;
+    src1desc->auxptr = (void*)-1;
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
     src1geom->format = OCDFMT_RGBA24;
@@ -580,13 +580,24 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     }
 
     int possible_blit = 0, candidates = 0;
+    rgz->screen_isdirty = 1;
     for (l = 0; l < layerno; l++) {
         if (layers[l].compositionType == HWC_FRAMEBUFFER) {
             candidates++;
             if (rgz_in_valid_hwc_layer(&layers[l]) &&
                     possible_blit < RGZ_MAXLAYERS) {
-                rgz->rgz_layers[possible_blit].hwc_layer = &layers[l];
-                rgz->rgz_layers[possible_blit].buffidx = memidx++;
+                rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit];
+                rgz_layer->hwc_layer = &layers[l];
+                rgz_layer->buffidx = memidx++;
+                if (rgz_layer->hwc_layer->handle != rgz_layer->dirty_hndl) {
+                    rgz_layer->dirty_count = RGZ_NUM_FB;
+                    rgz_layer->dirty_hndl = (void*)rgz_layer->hwc_layer->handle;
+                } else {
+                     rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
+                     /* If a layer is not dirty don't clean the whole screen */
+                     if (rgz_layer->dirty_count == 0)
+                         rgz->screen_isdirty = 0;
+                }
                 possible_blit++;
             }
         }
@@ -614,21 +625,6 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
     int layerno = rgz->rgz_layerno;
-    int l;
-    for (l = 0; l < layerno; l++) {
-        hwc_layer_t *layer = rgz->rgz_layers[l].hwc_layer;
-        if ((rgz->dirtyhndl[l] != layer->handle) ||
-            (p->data.hwc.flags & HWC_GEOMETRY_CHANGED)) {
-            rgz->dirtyhndl[l] = (void*)layer->handle;
-            rgz->dirtyno[l] = RGZ_NUM_FB;
-        }
-    }
-    if (p->data.hwc.flags & HWC_GEOMETRY_CHANGED) {
-        for (; l < RGZ_MAXLAYERS; l++) {
-            rgz->dirtyhndl[l] = NULL;
-            rgz->dirtyno[l] = 0;
-        }
-    }
 
     /* Find the horizontal regions */
     rgz_layer_t *rgz_layers = rgz->rgz_layers;
@@ -908,7 +904,7 @@ static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff
      * The virtaddr isn't going to be used in the final 2D h/w integration
      * because we will be handling buffers differently
      */
-    src1desc->virtaddr = buff_idx == -1 ? HANDLE_TO_BUFFER(handle) : (void*)buff_idx; /* FIXME: revisit this later */
+    src1desc->auxptr = buff_idx == -1 ? HANDLE_TO_BUFFER(handle) : (void*)buff_idx; /* FIXME: revisit this later */
 
     struct bvsurfgeom *src1geom = &e->src1geom;
     src1geom->structsize = sizeof(struct bvsurfgeom);
@@ -952,7 +948,7 @@ static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff
         struct bvbuffdesc *src2desc = &e->src2desc;
         *src2geom = *dstgeom;
         src2desc->structsize = sizeof(struct bvbuffdesc);
-        src2desc->virtaddr = (void*)HWC_BLT_DESC_FB_FN(0);
+        src2desc->auxptr = (void*)HWC_BLT_DESC_FB_FN(0);
         bpflags |= BVFLAG_BLEND;
         bp->op.blend = BVBLEND_SRC1OVER;
         bp->src2.desc = scrdesc;
@@ -1024,7 +1020,7 @@ static void rgz_src2blend_prep2(
         struct bvbuffdesc *src2desc = &e->src2desc;
         *src2geom = *dstgeom;
         src2desc->structsize = sizeof(struct bvbuffdesc);
-        src2desc->virtaddr = (void*)HWC_BLT_DESC_FB_FN(0);
+        src2desc->auxptr = (void*)HWC_BLT_DESC_FB_FN(0);
     }
 
     if (hwc_transform & HWC_TRANSFORM_FLIP_H)
@@ -1044,7 +1040,7 @@ static void rgz_src2blend_prep(
     struct bvbuffdesc *src2desc = &e->src2desc;
     src2desc->structsize = sizeof(struct bvbuffdesc);
     src2desc->length = handle->iHeight * HANDLE_TO_STRIDE(handle);
-    src2desc->virtaddr = IS_BVCMD(params)?
+    src2desc->auxptr = IS_BVCMD(params)?
         (void*)rgz_layer->buffidx : HANDLE_TO_BUFFER(handle);
 
     struct bvsurfgeom *src2geom = &e->src2geom;
@@ -1084,7 +1080,7 @@ static void rgz_src1_prep(
     struct bvbuffdesc *src1desc = &e->src1desc;
     src1desc->structsize = sizeof(struct bvbuffdesc);
     src1desc->length = handle->iHeight * HANDLE_TO_STRIDE(handle);
-    src1desc->virtaddr = IS_BVCMD(params) ?
+    src1desc->auxptr = IS_BVCMD(params) ?
         (void*)rgz_layer->buffidx : HANDLE_TO_BUFFER(handle);
 
     struct bvsurfgeom *src1geom = &e->src1geom;
@@ -1154,6 +1150,21 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
     int lix;
     int ldepth = get_layer_ops(hregion, sidx, &lix);
     if (ldepth == 0) /* No layers in subregion */
+        return 0;
+
+    /* Determine if this region is dirty */
+    int dirty = 0, dirtylix = lix;
+    while (dirtylix != -1) {
+        rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
+        if (rgz_layer->dirty_count){
+            /* One of the layers is dirty, we need to generate blits for this subregion */
+            dirty = 1;
+            break;
+        }
+        dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
+    }
+
+    if (!dirty)
         return 0;
 
     if (!noblend && ldepth > 1) { /* BLEND */
@@ -1228,7 +1239,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
 
 struct bvbuffdesc gscrndesc = {
     .structsize = sizeof(struct bvbuffdesc), .length = 0,
-    .virtaddr = MAP_FAILED
+    .auxptr = MAP_FAILED
 };
 struct bvsurfgeom gscrngeom = {
     .structsize = sizeof(struct bvsurfgeom), .format = OCDFMT_UNKNOWN
@@ -1294,7 +1305,11 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
 
     if (IS_BVCMD(params)) {
         params->data.bvc.out_blits = 0;
-        rgz_out_clrdst(rgz, params);
+        /* There is no need to clean the screen if it is not completely dirty,
+         * only dirty subregions need to update themselves (generate blits)
+         */
+        if (rgz->screen_isdirty)
+            rgz_out_clrdst(rgz, params);
     }
 
     int i;
@@ -1427,12 +1442,23 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     return 0;
 }
 
+/* Reset the values needed for every frame, except the dirty region handles */
+static void rgz_reset(rgz_t *rgz){
+    if (!rgz)
+        return;
+    if (rgz->hregions)
+        free(rgz->hregions);
+    rgz->hregions = NULL;
+    rgz->nhregions = 0;
+    rgz->state = 0;
+}
+
 int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
 {
     int rv = -1;
     switch (p->op) {
     case RGZ_IN_HWC:
-        rgz_release(rgz);
+        rgz_reset(rgz);
         int chk = rgz_in_hwccheck(p, rgz);
         if (chk == RGZ_ALL)  {
             int rv = rgz_in_hwc(p, rgz);
@@ -1455,9 +1481,9 @@ void rgz_release(rgz_t *rgz)
 {
     if (!rgz)
         return;
-    if (rgz->hregions)
-        free(rgz->hregions);
-    bzero(rgz, sizeof(*rgz));
+    rgz_reset(rgz);
+    rgz->rgz_layerno = 0;
+    bzero(rgz->rgz_layers, sizeof(rgz->rgz_layers));
 }
 
 int rgz_out(rgz_t *rgz, rgz_out_params_t *params)

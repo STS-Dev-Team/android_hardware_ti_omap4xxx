@@ -65,7 +65,7 @@ const CapResolution OMXCameraAdapter::mImageCapRes [] = {
     { 2240, 1344, "2240x1344" },
     { 2160, 1440, "2160x1440" },
     { 2112, 1728, "2112x1728" },
-    { 2048, 1536, "2016x1512" },
+    { 2048, 1536, "2048x1536" },
     { 2016, 1512, "2016x1512" },
     { 2000, 1600, "2000x1600" },
     { 1600, 1200, "1600x1200" },
@@ -324,7 +324,7 @@ const LUTtype OMXCameraAdapter::mMechanicalMisalignmentCorrectionLUT = {
 
 const userToOMX_LUT OMXCameraAdapter::mBracketingModes [] = {
     { TICameraParameters::TEMP_BRACKETING       , OMX_BracketTemporal               },
-    { TICameraParameters::EXPOSURE_BRACKETING   , OMX_BracketExposureRelativeInEV   },
+    { TICameraParameters::EXPOSURE_BRACKETING   , OMX_BracketExposureRelativeInEV   }
 };
 
 const LUTtype OMXCameraAdapter::mBracketingModesLUT = {
@@ -1514,9 +1514,13 @@ status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX
 
     if ( caps.bAELockSupported ) {
         params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::TRUE);
+    } else {
+        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::FALSE);
     }
 
     if ( caps.bAWBLockSupported ) {
+        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::TRUE);
+    } else {
         params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::FALSE);
     }
 
@@ -1733,6 +1737,7 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
         strncat(supported, TICameraParameters::HIGH_QUALITY_ZSL_MODE, REMAINING_BYTES(supported));
         strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
         strncat(supported, TICameraParameters::CP_CAM_MODE, REMAINING_BYTES(supported));
+        strncat(supported, TICameraParameters::ZOOM_BRACKETING, REMAINING_BYTES(supported));
     }
 
     for ( unsigned int i = 0 ; i < caps.ulBracketingModesCount; i++ ) {
