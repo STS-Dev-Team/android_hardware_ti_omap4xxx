@@ -129,7 +129,6 @@ const char TICameraParameters::PIXEL_FORMAT_JPS[] = "jps";
 const char TICameraParameters::PIXEL_FORMAT_MPO[] = "mpo";
 
 // TI extensions to standard android scene mode settings
-const char TICameraParameters::SCENE_MODE_SPORT[] = "sport";
 const char TICameraParameters::SCENE_MODE_CLOSEUP[] = "closeup";
 const char TICameraParameters::SCENE_MODE_AQUA[] = "aqua";
 const char TICameraParameters::SCENE_MODE_SNOWBEACH[] = "snow-beach";

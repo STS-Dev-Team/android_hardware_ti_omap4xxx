@@ -138,7 +138,6 @@ static const char PIXEL_FORMAT_JPS[];
 static const char PIXEL_FORMAT_MPO[];
 
 // TI extensions to standard android scene mode settings
-static const  char SCENE_MODE_SPORT[];
 static const  char SCENE_MODE_CLOSEUP[];
 static const  char SCENE_MODE_AQUA[];
 static const  char SCENE_MODE_SNOWBEACH[];
