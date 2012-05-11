@@ -59,8 +59,6 @@ static const  char KEY_SUPPORTED_ISO_VALUES[];
 static const  char KEY_SUPPORTED_IPP[];
 static const  char KEY_IPP[];
 static const  char KEY_METERING_MODE[];
-static const  char KEY_PADDED_WIDTH[];
-static const  char KEY_PADDED_HEIGHT[];
 static const char  KEY_EXP_BRACKETING_RANGE[];
 static const char  KEY_EXP_GAIN_BRACKETING_RANGE[];
 static const char  KEY_ZOOM_BRACKETING_RANGE[];
@@ -74,6 +72,8 @@ static const char  KEY_GBCE[];
 static const char  KEY_GBCE_SUPPORTED[];
 static const char  KEY_GLBCE[];
 static const char  KEY_GLBCE_SUPPORTED[];
+static const char  KEY_FRAMERATE_RANGES_EXT_SUPPORTED[];
+static const char  KEY_FRAMERATES_EXT_SUPPORTED[];
 
 // TI recording hint to notify camera adapters of possible recording
 static const char  KEY_RECORDING_HINT[];
@@ -113,11 +113,6 @@ static const char KEY_EXIF_MAKE[];
 static const char  KEY_GPS_MAPDATUM[];
 static const char  KEY_GPS_VERSION[];
 static const char  KEY_GPS_DATESTAMP[];
-
-// TI extensions for VTC
-static const char KEY_VTC_HINT[];
-static const char KEY_VIDEO_ENCODER_HANDLE[];
-static const char KEY_VIDEO_ENCODER_SLICE_HEIGHT[];
 
 static const char  RAW_WIDTH[];
 static const char  RAW_HEIGHT[];

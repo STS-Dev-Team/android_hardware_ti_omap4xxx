@@ -1,5 +1,8 @@
-# only include if running on an omap4 platform
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+# Only applicable for OMAP4 and OMAP5 boards.
+# First eliminate OMAP3 and then ensure that this is not used
+# for customer boards
+ifneq ($(TARGET_BOARD_PLATFORM),omap3)
+ifeq ($(findstring omap, $(TARGET_BOARD_PLATFORM)),omap)
 
 LOCAL_PATH:= $(call my-dir)
 
@@ -24,4 +27,5 @@ LOCAL_MODULE_TAGS := optional tests
 LOCAL_SHARED_LIBRARIES := liblog
 include $(BUILD_HEAPTRACKED_EXECUTABLE)
 
+endif
 endif

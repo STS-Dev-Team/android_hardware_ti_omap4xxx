@@ -347,26 +347,6 @@ int CameraHal::setParameters(const CameraParameters& params)
                 }
             }
 
-            if ((valstr = params.get(TICameraParameters::KEY_VTC_HINT)) != NULL ) {
-                mParameters.set(TICameraParameters::KEY_VTC_HINT, valstr);
-                if (strcmp(valstr, CameraParameters::TRUE) == 0) {
-                    mVTCUseCase = true;
-                } else {
-                    mVTCUseCase = false;
-                }
-                CAMHAL_LOGDB("VTC Hint = %d", mVTCUseCase);
-            }
-
-            if (mVTCUseCase) {
-                if ((valstr = params.get(TICameraParameters::KEY_VIDEO_ENCODER_HANDLE)) != NULL ) {
-                    mParameters.set(TICameraParameters::KEY_VIDEO_ENCODER_HANDLE, valstr);
-                }
-
-                if ((valstr = params.get(TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT)) != NULL ) {
-                    mParameters.set(TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT, valstr);
-                }
-            }
-
             }
 
         if ( (valstr = params.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT)) != NULL )
@@ -433,11 +413,11 @@ int CameraHal::setParameters(const CameraParameters& params)
                 mVideoWidth = w;
                 mVideoHeight = h;
                 CAMHAL_LOGVB("%s Video Width=%d Height=%d\n", __FUNCTION__, mVideoWidth, mVideoHeight);
-                if (!mVTCUseCase) {
-                    restartPreviewRequired = setPreferredPreviewRes(params, w, h);
-                    mParameters.getPreviewSize(&w, &h);
-                    CAMHAL_LOGVB("%s Preview Width=%d Height=%d\n", __FUNCTION__, w, h);
-                }
+
+                restartPreviewRequired = setPreferredPreviewRes(params, w, h);
+                mParameters.getPreviewSize(&w, &h);
+                CAMHAL_LOGVB("%s Preview Width=%d Height=%d\n", __FUNCTION__, w, h);
+
                 restartPreviewRequired |= setVideoModeParameters(params);
                 }
             else if(strcmp(valstr, CameraParameters::FALSE) == 0)
@@ -558,13 +538,21 @@ int CameraHal::setParameters(const CameraParameters& params)
         // If Port FPS needs to be used for configuring, then FPS RANGE should not be set by the APP.
         valstr = params.get(CameraParameters::KEY_PREVIEW_FPS_RANGE);
         if (valstr != NULL && strlen(valstr)) {
+            int curMaxFPS = 0;
+            int curMinFPS = 0;
+
             // APP wants to set FPS range
             // Set framerate = MAXFPS
             CAMHAL_LOGDA("APP IS CHANGING FRAME RATE RANGE");
 
+            mParameters.getPreviewFpsRange(&curMinFPS, &curMaxFPS);
+            CAMHAL_LOGDB("## current minFPS = %d; maxFPS=%d",curMinFPS, curMaxFPS);
+
             params.getPreviewFpsRange(&minFPS, &maxFPS);
+            CAMHAL_LOGDB("## requested minFPS = %d; maxFPS=%d",minFPS, maxFPS);
             // Validate VFR
-            if (!isFpsRangeValid(minFPS, maxFPS, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE))) {
+            if (!isFpsRangeValid(minFPS, maxFPS, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE)) &&
+                !isFpsRangeValid(minFPS, maxFPS, params.get(TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED))) {
                 CAMHAL_LOGEA("Invalid FPS Range");
                 return BAD_VALUE;
             } else {
@@ -573,10 +561,15 @@ int CameraHal::setParameters(const CameraParameters& params)
                 CAMHAL_LOGDB("SET FRAMERATE %d", framerate);
                 mParameters.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
                 CAMHAL_LOGDB("FPS Range = %s", valstr);
+                if ( curMaxFPS == (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) &&
+                     maxFPS < (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) ) {
+                    restartPreviewRequired = true;
+                }
             }
         } else {
             framerate = params.getPreviewFrameRate();
-            if (!isParameterValid(framerate, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES))) {
+            if (!isParameterValid(framerate, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES)) &&
+                !isParameterValid(framerate, params.get(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED))) {
                 CAMHAL_LOGEA("Invalid frame rate");
                 return BAD_VALUE;
             }
@@ -1110,19 +1103,6 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.remove(TICameraParameters::KEY_TEMP_BRACKETING);
         }
 
-        if (mVTCUseCase && !mTunnelSetup && (mCameraAdapter != NULL) &&
-                ((mParameters.get(TICameraParameters::KEY_VIDEO_ENCODER_HANDLE)) != NULL )&&
-                ((mParameters.get(TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT)) != NULL )) {
-
-            uint32_t sliceHeight = mParameters.getInt(TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT);
-            uint32_t encoderHandle = mParameters.getInt(TICameraParameters::KEY_VIDEO_ENCODER_HANDLE);
-            int w, h;
-            mParameters.getPreviewSize(&w, &h);
-            status_t done = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_SETUP_TUNNEL, sliceHeight, encoderHandle, w, h);
-            if (done == NO_ERROR) mTunnelSetup = true;
-            ret |= done;
-        }
-
         // Only send parameters to adapter if preview is already
         // enabled or doesSetParameterNeedUpdate says so. Initial setParameters to camera adapter,
         // will be called in startPreview()
@@ -1599,115 +1579,13 @@ status_t CameraHal::freeRawBufs()
    @todo Update function header with the different errors that are possible
 
  */
-status_t CameraHal::startPreview() {
-    // When tunneling is enabled during VTC, startPreview happens in 2 steps:
-    // When the application sends the command CAMERA_CMD_PREVIEW_INITIALIZATION,
-    // cameraPreviewInitialization() is called, which in turn causes the CameraAdapter
-    // to move from loaded to idle state. And when the application calls startPreview,
-    // the CameraAdapter moves from idle to executing state.
-    //
-    // If the application calls startPreview() without sending the command
-    // CAMERA_CMD_PREVIEW_INITIALIZATION, then the function cameraPreviewInitialization()
-    // AND startPreview() are executed. In other words, if the application calls
-    // startPreview() without sending the command CAMERA_CMD_PREVIEW_INITIALIZATION,
-    // then the CameraAdapter moves from loaded to idle to executing state in one shot.
-    status_t ret = cameraPreviewInitialization();
-
-    // The flag mPreviewInitializationDone is set to true at the end of the function
-    // cameraPreviewInitialization(). Therefore, if everything goes alright, then the
-    // flag will be set. Sometimes, the function cameraPreviewInitialization() may
-    // return prematurely if all the resources are not available for starting preview.
-    // For example, if the preview window is not set, then it would return NO_ERROR.
-    // Under such circumstances, one should return from startPreview as well and should
-    // not continue execution. That is why, we check the flag and not the return value.
-    if (!mPreviewInitializationDone) return ret;
-
-    // Once startPreview is called, there is no need to continue to remember whether
-    // the function cameraPreviewInitialization() was called earlier or not. And so
-    // the flag mPreviewInitializationDone is reset here. Plus, this preserves the
-    // current behavior of startPreview under the circumstances where the application
-    // calls startPreview twice or more.
-    mPreviewInitializationDone = false;
-
-    ///Enable the display adapter if present, actual overlay enable happens when we post the buffer
-    if(mDisplayAdapter.get() != NULL) {
-        CAMHAL_LOGDA("Enabling display");
-        int width, height;
-        mParameters.getPreviewSize(&width, &height);
-
-#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
-        ret = mDisplayAdapter->enableDisplay(width, height, &mStartPreview);
-#else
-        ret = mDisplayAdapter->enableDisplay(width, height, NULL);
-#endif
-
-        if ( ret != NO_ERROR ) {
-            CAMHAL_LOGEA("Couldn't enable display");
-
-            // FIXME: At this stage mStateSwitchLock is locked and unlock is supposed to be called
-            //        only from mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_PREVIEW)
-            //        below. But this will never happen because of goto error. Thus at next
-            //        startPreview() call CameraHAL will be deadlocked.
-            //        Need to revisit mStateSwitch lock, for now just abort the process.
-            CAMHAL_ASSERT_X(false,
-                "At this stage mCameraAdapter->mStateSwitchLock is still locked, "
-                "deadlock is guaranteed");
-
-            goto error;
-        }
-
-    }
-
-    ///Send START_PREVIEW command to adapter
-    CAMHAL_LOGDA("Starting CameraAdapter preview mode");
-
-    ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_PREVIEW);
-
-    if(ret!=NO_ERROR) {
-        CAMHAL_LOGEA("Couldn't start preview w/ CameraAdapter");
-        goto error;
-    }
-    CAMHAL_LOGDA("Started preview");
-
-    mPreviewEnabled = true;
-    mPreviewStartInProgress = false;
-    return ret;
-
-    error:
-
-        CAMHAL_LOGEA("Performing cleanup after error");
-
-        //Do all the cleanup
-        freePreviewBufs();
-        mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_PREVIEW);
-        if(mDisplayAdapter.get() != NULL) {
-            mDisplayAdapter->disableDisplay(false);
-        }
-        mAppCallbackNotifier->stop();
-        mPreviewStartInProgress = false;
-        mPreviewEnabled = false;
-        LOG_FUNCTION_NAME_EXIT;
-
-        return ret;
-}
-
-////////////
-/**
-   @brief Set preview mode related initialization
-          -> Camera Adapter set params
-          -> Allocate buffers
-          -> Set use buffers for preview
-   @param none
-   @return NO_ERROR
-   @todo Update function header with the different errors that are possible
-
- */
-status_t CameraHal::cameraPreviewInitialization()
+status_t CameraHal::startPreview()
 {
 
     status_t ret = NO_ERROR;
     CameraAdapter::BuffersDescriptor desc;
     CameraFrame frame;
+    const char *valstr = NULL;
     unsigned int required_buffer_count;
     unsigned int max_queueble_buffers;
 
@@ -1716,10 +1594,6 @@ status_t CameraHal::cameraPreviewInitialization()
 #endif
 
     LOG_FUNCTION_NAME;
-
-    if (mPreviewInitializationDone) {
-        return NO_ERROR;
-    }
 
     if ( mPreviewEnabled ){
       CAMHAL_LOGDA("Preview already running");
@@ -1741,10 +1615,6 @@ status_t CameraHal::cameraPreviewInitialization()
       ///Update the current preview width and height
       mPreviewWidth = frame.mWidth;
       mPreviewHeight = frame.mHeight;
-      //Update the padded width and height - required for VNF and VSTAB
-      mParameters.set(TICameraParameters::KEY_PADDED_WIDTH, mPreviewWidth);
-      mParameters.set(TICameraParameters::KEY_PADDED_HEIGHT, mPreviewHeight);
-
     }
 
     ///If we don't have the preview callback enabled and display adapter,
@@ -1867,7 +1737,55 @@ status_t CameraHal::cameraPreviewInitialization()
         goto error;
         }
 
-    if (ret == NO_ERROR) mPreviewInitializationDone = true;
+    ///Enable the display adapter if present, actual overlay enable happens when we post the buffer
+    if(mDisplayAdapter.get() != NULL)
+        {
+        CAMHAL_LOGDA("Enabling display");
+        int width, height;
+        mParameters.getPreviewSize(&width, &height);
+
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+        ret = mDisplayAdapter->enableDisplay(width, height, &mStartPreview);
+
+#else
+
+        ret = mDisplayAdapter->enableDisplay(width, height, NULL);
+
+#endif
+
+        if ( ret != NO_ERROR )
+            {
+            CAMHAL_LOGEA("Couldn't enable display");
+
+            // FIXME: At this stage mStateSwitchLock is locked and unlock is supposed to be called
+            //        only from mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_PREVIEW)
+            //        below. But this will never happen because of goto error. Thus at next
+            //        startPreview() call CameraHAL will be deadlocked.
+            //        Need to revisit mStateSwitch lock, for now just abort the process.
+            CAMHAL_ASSERT_X(false,
+                    "At this stage mCameraAdapter->mStateSwitchLock is still locked, "
+                    "deadlock is guaranteed");
+
+            goto error;
+            }
+
+        }
+
+    ///Send START_PREVIEW command to adapter
+    CAMHAL_LOGDA("Starting CameraAdapter preview mode");
+
+    ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_PREVIEW);
+
+    if(ret!=NO_ERROR)
+        {
+        CAMHAL_LOGEA("Couldn't start preview w/ CameraAdapter");
+        goto error;
+        }
+    CAMHAL_LOGDA("Started preview");
+
+    mPreviewEnabled = true;
+    mPreviewStartInProgress = false;
     return ret;
 
     error:
@@ -3239,11 +3157,11 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
         return -EINVAL;
         }
 
-    if ( ( NO_ERROR == ret ) && ( !previewEnabled() ) &&
-            (cmd != CAMERA_CMD_PREVIEW_INITIALIZATION)) {
+    if ( ( NO_ERROR == ret ) && ( !previewEnabled() ))
+        {
         CAMHAL_LOGEA("Preview is not running");
         ret = -EINVAL;
-    }
+        }
 
     if ( NO_ERROR == ret )
         {
@@ -3268,29 +3186,6 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
             case CAMERA_CMD_STOP_FACE_DETECTION:
 
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_FD);
-
-                break;
-
-            case CAMERA_CMD_PREVIEW_DEINITIALIZATION:
-                if(mDisplayAdapter.get() != NULL) {
-                    ///Stop the buffer display first
-                    mDisplayAdapter->disableDisplay();
-                }
-
-                if(mAppCallbackNotifier.get() != NULL) {
-                    //Stop the callback sending
-                    mAppCallbackNotifier->stop();
-                    mAppCallbackNotifier->flushAndReturnFrames();
-                    mAppCallbackNotifier->stopPreviewCallbacks();
-                }
-
-                ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_DESTROY_TUNNEL);
-                mTunnelSetup = false;
-
-                break;
-
-            case CAMERA_CMD_PREVIEW_INITIALIZATION:
-                ret = cameraPreviewInitialization();
 
                 break;
 
@@ -3405,9 +3300,6 @@ CameraHal::CameraHal(int cameraId)
     mSensorListener = NULL;
     mVideoWidth = 0;
     mVideoHeight = 0;
-    mVTCUseCase = false;
-    mTunnelSetup = false;
-    mPreviewInitializationDone = false;
 
     //These values depends on the sensor characteristics
 
@@ -3837,7 +3729,9 @@ void CameraHal::insertSupportedParams()
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
+    p.set(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT));
     p.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
+    p.set(TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_EXT_SUPPORTED));
     p.set(CameraParameters::KEY_SUPPORTED_JPEG_THUMBNAIL_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_THUMBNAIL_SIZES));
     p.set(CameraParameters::KEY_SUPPORTED_WHITE_BALANCE, mCameraProperties->get(CameraProperties::SUPPORTED_WHITE_BALANCE));
     p.set(CameraParameters::KEY_SUPPORTED_EFFECTS, mCameraProperties->get(CameraProperties::SUPPORTED_EFFECTS));

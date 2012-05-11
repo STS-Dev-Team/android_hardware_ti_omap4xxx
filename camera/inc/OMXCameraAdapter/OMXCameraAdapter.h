@@ -71,6 +71,8 @@ namespace android {
 #define DEFAULT_THUMB_WIDTH         160
 #define DEFAULT_THUMB_HEIGHT        120
 #define FRAME_RATE_FULL_HD          27
+#define FRAME_RATE_HIGH_HD          60
+
 #define ZOOM_STAGES                 61
 
 #define FACE_DETECTION_BUFFER_SIZE  0x1000
@@ -460,8 +462,6 @@ private:
 
     void performCleanupAfterError();
 
-    status_t switchToIdle();
-
     status_t switchToLoaded();
 
     OMXCameraPortParameters *getPortParams(CameraFrame::FrameType frameType);
@@ -491,8 +491,6 @@ private:
                              OMXCameraPortParameters &portParams,
                              bool &portConfigured);
 
-    status_t setupTunnel(uint32_t SliceHeight, uint32_t EncoderHandle, uint32_t width, uint32_t height);
-    status_t destroyTunnel();
 
     //EXIF
     status_t setParametersEXIF(const CameraParameters &params,
@@ -648,7 +646,16 @@ private:
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
     static status_t encodeFramerateCap(OMX_U32, OMX_U32, const CapFramerate*, size_t, char*, size_t);
-    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&, const CapFramerate*, size_t, int&, int&, char*, char*, size_t);
+    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&,
+                                        const CapFramerate*,
+                                        size_t,
+                                        int&,
+                                        int&,
+                                        char*,
+                                        char*,
+                                        size_t,
+                                        uint32_t,
+                                        uint32_t);
     static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
                                                 const CapCodingFormat *,
                                                 size_t,
@@ -897,6 +904,7 @@ private:
     static const int SENSORID_IMX060;
     static const int SENSORID_OV5650;
     static const int SENSORID_OV5640;
+    static const int SENSORID_OV14825;
     static const int SENSORID_S5K4E1GA;
     static const int SENSORID_S5K6A1GX03;
     static const CapU32 mFacing [];
@@ -906,6 +914,10 @@ private:
     static const LUTtype mMechanicalMisalignmentCorrectionLUT;
     static const userToOMX_LUT mBracketingModes[];
     static const LUTtype mBracketingModesLUT;
+
+    static const int FPS_MIN;
+    static const int FPS_MAX;
+    static const int FPS_MAX_EXTENDED;
 
     // OMX Camera defaults
     static const char DEFAULT_ANTIBANDING[];
@@ -1174,9 +1186,6 @@ private:
 
     int mMaxZoomSupported;
     Mutex mImageCaptureLock;
-
-    bool mTunnelDestroyed;
-
 };
 }; //// namespace
 #endif //OMX_CAMERA_ADAPTER_H

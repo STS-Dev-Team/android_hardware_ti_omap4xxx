@@ -65,8 +65,6 @@ const char TICameraParameters::KEY_SUPPORTED_ISO_VALUES[] = "iso-mode-values";
 const char TICameraParameters::KEY_SUPPORTED_IPP[] = "ipp-values";
 const char TICameraParameters::KEY_IPP[] = "ipp";
 const char TICameraParameters::KEY_METERING_MODE[] = "meter-mode";
-const char TICameraParameters::KEY_PADDED_WIDTH[] = "padded-width";
-const char TICameraParameters::KEY_PADDED_HEIGHT[] = "padded-height";
 const char TICameraParameters::KEY_EXP_BRACKETING_RANGE[] = "exp-bracketing-range";
 const char TICameraParameters::KEY_EXP_GAIN_BRACKETING_RANGE[] = "exp-gain-bracketing-range";
 const char TICameraParameters::KEY_ZOOM_BRACKETING_RANGE[] = "zoom-bracketing-range";
@@ -83,6 +81,8 @@ const char TICameraParameters::KEY_SENSOR_ORIENTATION[] = "sensor-orientation";
 const char TICameraParameters::KEY_SENSOR_ORIENTATION_VALUES[] = "sensor-orientation-values";
 const char TICameraParameters::KEY_RECORDING_HINT[] = "internal-recording-hint";
 const char TICameraParameters::KEY_AUTO_FOCUS_LOCK[] = "auto-focus-lock";
+const char TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED[] = "preview-fps-range-ext-values";
+const char TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED[] = "preview-fps-ext-values";
 
 const char TICameraParameters::RAW_WIDTH[] = "raw-width";
 const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
@@ -117,11 +117,6 @@ const char TICameraParameters::KEY_EXIF_MAKE[] = "exif-make";
 const char TICameraParameters::KEY_GPS_MAPDATUM[] = "gps-mapdatum";
 const char TICameraParameters::KEY_GPS_VERSION[] = "gps-version";
 const char TICameraParameters::KEY_GPS_DATESTAMP[] = "gps-datestamp";
-
-// TI extensions for slice mode implementation for VTC
-const char TICameraParameters::KEY_VTC_HINT[] = "internal-vtc-hint";
-const char TICameraParameters::KEY_VIDEO_ENCODER_HANDLE[] = "encoder_handle";
-const char TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT[] = "encoder_slice_height";
 
 //TI extensions to Image post-processing
 const char TICameraParameters::IPP_LDCNSF[] = "ldc-nsf";
