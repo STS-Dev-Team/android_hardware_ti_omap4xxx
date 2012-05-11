@@ -1185,7 +1185,6 @@ status_t CameraHal::allocPreviewBufs(int width, int height, const char* previewF
                                                                     previewFormat,
                                                                     mPreviewLength,
                                                                     buffercount);
-
         if (NULL == mPreviewBuffers ) {
             CAMHAL_LOGEA("Couldn't allocate preview buffers");
             return NO_MEMORY;

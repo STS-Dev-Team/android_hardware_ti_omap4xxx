@@ -1949,9 +1949,6 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                             printState);
                     mNextState = PREVIEW_STATE;
                     break;
-                case CAMERA_STOP_BRACKET_CAPTURE:
-                    ret = INVALID_OPERATION;
-                    break;
 
                 case CAMERA_STOP_IMAGE_CAPTURE:
                 case CAMERA_STOP_BRACKET_CAPTURE:

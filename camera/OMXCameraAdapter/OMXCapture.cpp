@@ -190,7 +190,8 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     str = params.get(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE);
     if ( NULL != str ) {
-        parseExpRange(str, mZoomBracketingValues, ZOOM_BRACKET_RANGE, mZoomBracketingValidEntries);
+        parseExpRange(str, mZoomBracketingValues, NULL, NULL,
+                      ZOOM_BRACKET_RANGE, mZoomBracketingValidEntries);
         mCurrentZoomBracketing = 0;
         mZoomBracketingEnabled = true;
     } else {
