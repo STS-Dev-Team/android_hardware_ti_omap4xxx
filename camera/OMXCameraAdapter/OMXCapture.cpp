@@ -1320,8 +1320,8 @@ status_t OMXCameraAdapter::stopImageCapture()
     }
 
     // Disable WB and vector shot extra data for metadata
-    ret = setExtraData(false, OMX_ALL, OMX_WhiteBalance);
-    ret = setExtraData(false, OMX_ALL, OMX_TI_VectShotInfo);
+    setExtraData(false, OMX_ALL, OMX_WhiteBalance);
+    setExtraData(false, OMX_ALL, OMX_TI_VectShotInfo);
 
     CAMHAL_LOGDB("Capture set - 0x%x", eError);
 
@@ -1740,8 +1740,8 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
         }
 
     // Enable WB and vector shot extra data for metadata
-    ret = setExtraData(true, OMX_ALL, OMX_WhiteBalance);
-    ret = setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
+    setExtraData(true, OMX_ALL, OMX_WhiteBalance);
+    setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
 
     // CPCam mode only supports vector shot
     // Regular capture is not supported
