@@ -539,7 +539,7 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
                 strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
             {
             CAMHAL_LOGDA("YUV420SP format selected");
-            pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+            pixFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
             }
         else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
             {
@@ -873,6 +873,108 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
     }
 
     LOG_FUNCTION_NAME_EXIT;
+}
+
+status_t OMXCameraAdapter::setupTunnel(uint32_t SliceHeight, uint32_t EncoderHandle, uint32_t width, uint32_t height) {
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_HANDLETYPE *encoderHandle = (OMX_HANDLETYPE *)EncoderHandle;
+
+    CAMHAL_LOGDB("\n %s: SliceHeight:%d, EncoderHandle:%d width:%d height:%d \n", __FUNCTION__, SliceHeight, EncoderHandle, width, height);
+
+    if (SliceHeight == 0){
+        CAMHAL_LOGEA("\n\n #### Encoder Slice Height Not received, Dont Setup Tunnel $$$$\n\n");
+        return BAD_VALUE;
+    }
+
+    if (encoderHandle == NULL) {
+        CAMHAL_LOGEA("Encoder Handle not set \n\n");
+        return BAD_VALUE;
+    }
+
+    if ( 0 != mInitSem.Count() ) {
+        CAMHAL_LOGEB("Error mInitSem semaphore count %d", mInitSem.Count());
+        LOG_FUNCTION_NAME_EXIT;
+        return NO_INIT;
+    }
+
+    // Register for port enable event
+    ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
+            OMX_EventCmdComplete,
+            OMX_CommandPortEnable,
+            mCameraAdapterParameters.mVideoPortIndex,
+            mInitSem);
+    if(ret != NO_ERROR) {
+        CAMHAL_LOGEB("Error in registering for event %d", ret);
+        return UNKNOWN_ERROR;
+    }
+
+    // Enable VIDEO Port
+    eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
+            OMX_CommandPortEnable,
+            mCameraAdapterParameters.mVideoPortIndex,
+            NULL);
+    if(eError != OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SendCommand(OMX_CommandPortEnable) -0x%x", eError);
+        return BAD_VALUE;
+    }
+
+    // Wait for the port enable event to occur
+    ret = mInitSem.WaitTimeout(OMX_CMD_TIMEOUT);
+    if ( NO_ERROR == ret ) {
+        CAMHAL_LOGDA("-Port enable event arrived");
+    } else {
+        ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
+                OMX_EventCmdComplete,
+                OMX_CommandPortEnable,
+                mCameraAdapterParameters.mVideoPortIndex,
+                NULL);
+        CAMHAL_LOGEA("Timeout for enabling preview port expired!");
+        return UNKNOWN_ERROR;
+     }
+
+    //Set the Video Port Params
+    OMX_PARAM_PORTDEFINITIONTYPE portCheck;
+    OMX_INIT_STRUCT_PTR (&portCheck, OMX_PARAM_PORTDEFINITIONTYPE);
+    portCheck.nPortIndex = OMX_CAMERA_PORT_VIDEO_OUT_VIDEO;
+    eError = OMX_GetParameter(mCameraAdapterParameters.mHandleComp,
+                                OMX_IndexParamPortDefinition, &portCheck);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_GetParameter OMX_IndexParamPortDefinition Error - %x", eError);
+    }
+
+    portCheck.format.video.nFrameWidth = width;
+    portCheck.format.video.nFrameHeight = height;
+    portCheck.format.video.eColorFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            OMX_IndexParamPortDefinition, &portCheck);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SetParameter OMX_IndexParamPortDefinition Error- %x", eError);
+    }
+
+    //Slice  Configuration
+    OMX_TI_PARAM_VTCSLICE VTCSlice;
+    OMX_INIT_STRUCT_PTR(&VTCSlice, OMX_TI_PARAM_VTCSLICE);
+    eError = OMX_GetParameter(mCameraAdapterParameters.mHandleComp, (OMX_INDEXTYPE)OMX_TI_IndexParamVtcSlice, &VTCSlice);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_GetParameter OMX_TI_IndexParamVtcSlice Error - %x", eError);
+    }
+
+    VTCSlice.nSliceHeight = SliceHeight;
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp, (OMX_INDEXTYPE)OMX_TI_IndexParamVtcSlice, &VTCSlice);
+    if (OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("OMX_SetParameter on OMX_TI_IndexParamVtcSlice returned error: 0x%x", eError);
+        return BAD_VALUE;
+    }
+
+    eError = OMX_SetupTunnel(mCameraAdapterParameters.mHandleComp,
+            mCameraAdapterParameters.mVideoPortIndex, encoderHandle, 0);
+    if (OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("OMX_SetupTunnel returned error: 0x%x", eError);
+        return BAD_VALUE;
+    }
+
+    return NO_ERROR;
 }
 
 status_t OMXCameraAdapter::setSensorQuirks(int orientation,
@@ -1463,8 +1565,7 @@ status_t OMXCameraAdapter::doSwitchToExecuting()
   return (ret | ErrorUtils::omxToAndroidError(eError));
 }
 
-status_t OMXCameraAdapter::switchToLoaded()
-{
+status_t OMXCameraAdapter::switchToIdle() {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
 
@@ -1472,11 +1573,10 @@ status_t OMXCameraAdapter::switchToLoaded()
 
     Mutex::Autolock lock(mStateSwitchLock);
 
-    if ( mComponentState == OMX_StateLoaded  || mComponentState == OMX_StateInvalid)
-        {
-        CAMHAL_LOGDA("Already in OMX_Loaded state or OMX_StateInvalid state");
+    if ( mComponentState == OMX_StateIdle || mComponentState == OMX_StateLoaded  || mComponentState == OMX_StateInvalid) {
+        CAMHAL_LOGDA("Already in OMX_StateIdle, OMX_Loaded state or OMX_StateInvalid state");
         return NO_ERROR;
-        }
+    }
 
     if ( 0 != mSwitchToLoadedSem.Count() )
         {
@@ -1538,6 +1638,40 @@ status_t OMXCameraAdapter::switchToLoaded()
         goto EXIT;
         }
 
+    mComponentState = OMX_StateIdle;
+
+    return NO_ERROR;
+
+EXIT:
+    CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    performCleanupAfterError();
+    LOG_FUNCTION_NAME_EXIT;
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+}
+
+
+status_t OMXCameraAdapter::switchToLoaded() {
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+
+    LOG_FUNCTION_NAME;
+
+    Mutex::Autolock lock(mStateSwitchLock);
+    if ( mComponentState == OMX_StateLoaded  || mComponentState == OMX_StateInvalid) {
+        CAMHAL_LOGDA("Already in OMX_Loaded state or OMX_StateInvalid state");
+        return NO_ERROR;
+    }
+
+    if ( mComponentState != OMX_StateIdle) {
+        ret = switchToIdle();
+        if (ret != NO_ERROR) return ret;
+    }
+
+    if ( 0 != mSwitchToLoadedSem.Count() ) {
+        CAMHAL_LOGEB("Error mSwitchToLoadedSem semaphore count %d", mSwitchToLoadedSem.Count());
+        goto EXIT;
+    }
+
     ///Register for LOADED state transition.
     ///This method just inserts a message in Event Q, which is checked in the callback
     ///The sempahore passed is signalled by the callback
@@ -1590,57 +1724,6 @@ status_t OMXCameraAdapter::switchToLoaded()
         }
 
     mComponentState = OMX_StateLoaded;
-
-    ///Register for Preview port ENABLE event
-    ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
-                           OMX_EventCmdComplete,
-                           OMX_CommandPortEnable,
-                           mCameraAdapterParameters.mPrevPortIndex,
-                           mSwitchToLoadedSem);
-
-    if ( NO_ERROR != ret )
-        {
-        CAMHAL_LOGEB("Error in registering for event %d", ret);
-        goto EXIT;
-        }
-
-    ///Enable Preview Port
-    eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
-                             OMX_CommandPortEnable,
-                             mCameraAdapterParameters.mPrevPortIndex,
-                             NULL);
-
-
-    CAMHAL_LOGDB("OMX_SendCommand(OMX_CommandStateSet) 0x%x", eError);
-    GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-
-    CAMHAL_LOGDA("Enabling Preview port");
-    ///Wait for state to switch to idle
-    ret = mSwitchToLoadedSem.WaitTimeout(OMX_CMD_TIMEOUT);
-
-    //If somethiing bad happened while we wait
-    if (mComponentState == OMX_StateInvalid)
-      {
-        CAMHAL_LOGEA("Invalid State after Enabling Preview port Exitting!!!");
-        goto EXIT;
-      }
-
-    if ( NO_ERROR == ret )
-        {
-        CAMHAL_LOGDA("Preview port enabled!");
-        }
-    else
-        {
-        ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
-                           OMX_EventCmdComplete,
-                           OMX_CommandPortEnable,
-                           mCameraAdapterParameters.mPrevPortIndex,
-                           NULL);
-        CAMHAL_LOGEA("Preview enable timedout");
-
-        goto EXIT;
-        }
-
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
@@ -2059,6 +2142,7 @@ status_t OMXCameraAdapter::startPreview()
     mLastFrameCount = 0;
     mIter = 1;
     mLastFPSTime = systemTime();
+    mTunnelDestroyed = false;
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -2075,7 +2159,7 @@ status_t OMXCameraAdapter::startPreview()
 
 }
 
-status_t OMXCameraAdapter::stopPreview()
+status_t OMXCameraAdapter::destroyTunnel()
 {
     LOG_FUNCTION_NAME;
 
@@ -2161,85 +2245,83 @@ status_t OMXCameraAdapter::stopPreview()
         goto EXIT;
         }
 
-    ///Register for Preview port Disable event
-    ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
-                           OMX_EventCmdComplete,
-                           OMX_CommandPortDisable,
-                           mCameraAdapterParameters.mPrevPortIndex,
-                           mStopPreviewSem);
+    switchToIdle();
 
-    ///Disable Preview Port
-    eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
-                             OMX_CommandPortDisable,
-                             mCameraAdapterParameters.mPrevPortIndex,
-                             NULL);
+    mTunnelDestroyed = true;
+    LOG_FUNCTION_NAME_EXIT;
+    return (ret | ErrorUtils::omxToAndroidError(eError));
 
-    ///Free the OMX Buffers
-    for ( int i = 0 ; i < mPreviewData->mNumBufs ; i++ )
-        {
-        eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
-                                mCameraAdapterParameters.mPrevPortIndex,
-                                mPreviewData->mBufferHeader[i]);
-
-        if(eError!=OMX_ErrorNone)
-            {
-            CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
-            }
-        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-        }
-
-    if ( mMeasurementEnabled )
-        {
-
-            for ( int i = 0 ; i < measurementData->mNumBufs ; i++ )
-                {
-                eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
-                                        mCameraAdapterParameters.mMeasurementPortIndex,
-                                        measurementData->mBufferHeader[i]);
-                if(eError!=OMX_ErrorNone)
-                    {
-                    CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
-                    }
-                GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
-                }
-
-            {
-            Mutex::Autolock lock(mPreviewDataBufferLock);
-            mPreviewDataBuffersAvailable.clear();
-            }
-
-        }
-
-    CAMHAL_LOGDA("Disabling preview port");
-    ret = mStopPreviewSem.WaitTimeout(OMX_CMD_TIMEOUT);
-
-    //If somethiing bad happened while we wait
-    if (mComponentState == OMX_StateInvalid)
-      {
-        CAMHAL_LOGEA("Invalid State after Disabling preview port Exitting!!!");
-        goto EXIT;
-      }
-
-    if ( NO_ERROR == ret )
-        {
-        CAMHAL_LOGDA("Preview port disabled");
-        }
-    else
-        {
-        ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
-                           OMX_EventCmdComplete,
-                           OMX_CommandPortDisable,
-                           mCameraAdapterParameters.mPrevPortIndex,
-                           NULL);
-        CAMHAL_LOGEA("Timeout expired on preview port disable");
-        goto EXIT;
-        }
-
-        {
+EXIT:
+    CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    {
         Mutex::Autolock lock(mPreviewBufferLock);
         ///Clear all the available preview buffers
         mPreviewBuffersAvailable.clear();
+    }
+    performCleanupAfterError();
+    LOG_FUNCTION_NAME_EXIT;
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+
+}
+
+status_t OMXCameraAdapter::stopPreview() {
+    LOG_FUNCTION_NAME;
+
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    status_t ret = NO_ERROR;
+
+    if (mTunnelDestroyed == false){
+        ret = destroyTunnel();
+        if (ret != NO_ERROR) {
+            CAMHAL_LOGEB(" destroyTunnel returned error ");
+            return ret;
         }
+    }
+
+    mTunnelDestroyed = false;
+    OMXCameraPortParameters *mCaptureData , *mPreviewData, *measurementData;
+    mCaptureData = mPreviewData = measurementData = NULL;
+
+    mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
+    mCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+    measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
+
+    ///Free the OMX Buffers
+    for ( int i = 0 ; i < mPreviewData->mNumBufs ; i++ ) {
+        eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                mCameraAdapterParameters.mPrevPortIndex,
+                mPreviewData->mBufferHeader[i]);
+
+        if(eError!=OMX_ErrorNone) {
+            CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
+        }
+        GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+    }
+
+    if ( mMeasurementEnabled ) {
+
+        for ( int i = 0 ; i < measurementData->mNumBufs ; i++ ) {
+            eError = OMX_FreeBuffer(mCameraAdapterParameters.mHandleComp,
+                    mCameraAdapterParameters.mMeasurementPortIndex,
+                    measurementData->mBufferHeader[i]);
+            if(eError!=OMX_ErrorNone) {
+                CAMHAL_LOGEB("OMX_FreeBuffer - %x", eError);
+            }
+            GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+        }
+
+        {
+            Mutex::Autolock lock(mPreviewDataBufferLock);
+            mPreviewDataBuffersAvailable.clear();
+        }
+
+    }
+
+    {
+        Mutex::Autolock lock(mPreviewBufferLock);
+        ///Clear all the available preview buffers
+        mPreviewBuffersAvailable.clear();
+    }
 
     switchToLoaded();
 
@@ -2257,9 +2339,9 @@ status_t OMXCameraAdapter::stopPreview()
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     {
-    Mutex::Autolock lock(mPreviewBufferLock);
-    ///Clear all the available preview buffers
-    mPreviewBuffersAvailable.clear();
+        Mutex::Autolock lock(mPreviewBufferLock);
+        ///Clear all the available preview buffers
+        mPreviewBuffersAvailable.clear();
     }
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
@@ -3338,10 +3420,12 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         // On the fly update to 3A settings not working
         // Do not update 3A here if we are in the middle of a capture
         // or in the middle of transitioning to it
-        if( mPending3Asettings && ((nextState & CAPTURE_ACTIVE) == 0))
-            {
+        if( mPending3Asettings &&
+                ( (nextState & CAPTURE_ACTIVE) == 0 ) &&
+                ( (state & CAPTURE_ACTIVE) == 0 ) ) {
             apply3Asettings(mParameters3A);
-            }
+        }
+
         }
     else if( pBuffHeader->nOutputPortIndex == OMX_CAMERA_PORT_VIDEO_OUT_MEASUREMENT )
         {

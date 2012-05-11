@@ -460,6 +460,8 @@ private:
 
     void performCleanupAfterError();
 
+    status_t switchToIdle();
+
     status_t switchToLoaded();
 
     OMXCameraPortParameters *getPortParams(CameraFrame::FrameType frameType);
@@ -489,6 +491,8 @@ private:
                              OMXCameraPortParameters &portParams,
                              bool &portConfigured);
 
+    status_t setupTunnel(uint32_t SliceHeight, uint32_t EncoderHandle, uint32_t width, uint32_t height);
+    status_t destroyTunnel();
 
     //EXIF
     status_t setParametersEXIF(const CameraParameters &params,
@@ -1170,6 +1174,9 @@ private:
 
     int mMaxZoomSupported;
     Mutex mImageCaptureLock;
+
+    bool mTunnelDestroyed;
+
 };
 }; //// namespace
 #endif //OMX_CAMERA_ADAPTER_H
