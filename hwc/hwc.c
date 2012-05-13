@@ -58,8 +58,13 @@
 #include "hal_public.h"
 #include "rgz_2d.h"
 
+#include <linux/ion.h>
+#include <linux/omap_ion.h>
+#include <ion/ion.h>
+
 #define MAX_HW_OVERLAYS 4
 #define NUM_NONSCALING_OVERLAYS 1
+#define NUM_EXT_DISPLAY_BACK_BUFFERS 2
 
 struct ext_transform_t {
     __u8 rotation : 3;          /* 90-degree clockwise rotations */
@@ -196,6 +201,9 @@ struct omap4_hwc_device {
     struct omap_hwc_data comp_data; /* This is a kernel data structure */
     struct rgz_blt_entry blit_ops[RGZ_MAX_BLITS];
     struct counts stats;
+    int    ion_fd;
+    struct ion_handle *ion_handles[2];
+
 };
 typedef struct omap4_hwc_device omap4_hwc_device_t;
 
@@ -1220,8 +1228,21 @@ static int clone_layer(omap4_hwc_device_t *hwc_dev, int ix) {
     /* reserve overlays at end for other display */
     o->cfg.ix = MAX_HW_OVERLAYS - 1 - ext_ovl_ix;
     o->cfg.mgr_ix = 1;
-    o->addressing = OMAP_DSS_BUFADDR_OVL_IX;
-    o->ba = ix;
+    /*
+    * Here the assumption is that overlay0 is the one attached to FB.
+    * Hence this clone_layer call is for FB cloning (provided use_sgx is true).
+    */
+    /* For the external displays whose transform is the same as
+    * that of primary display, ion_handles would be NULL hence
+    * the below logic doesn't execute.
+    */
+    if (ix == 0 && hwc_dev->ion_handles[sync_id%2] && hwc_dev->use_sgx) {
+        o->addressing = OMAP_DSS_BUFADDR_ION;
+        o->ba = (int)hwc_dev->ion_handles[sync_id%2];
+    } else {
+        o->addressing = OMAP_DSS_BUFADDR_OVL_IX;
+        o->ba = ix;
+    }
 
     /* use distinct z values (to simplify z-order checking) */
     o->cfg.zorder += hwc_dev->post2_layers;
@@ -1409,6 +1430,47 @@ void debug_post2(omap4_hwc_device_t *hwc_dev, int nbufs)
     for (i=0; i < dsscomp->num_ovls; i++) {
         ALOGI("ovl[%d] ba %d", i, dsscomp->ovls[i].ba);
     }
+}
+
+static int free_tiler2d_buffers(omap4_hwc_device_t *hwc_dev)
+{
+    int i;
+
+    for (i = 0 ; i < NUM_EXT_DISPLAY_BACK_BUFFERS; i++) {
+        ion_free(hwc_dev->ion_fd, hwc_dev->ion_handles[i]);
+        hwc_dev->ion_handles[i] = NULL;
+    }
+    return 0;
+}
+
+static int allocate_tiler2d_buffers(omap4_hwc_device_t *hwc_dev)
+{
+    int ret, i;
+    size_t stride;
+
+    if (hwc_dev->ion_fd < 0) {
+        ALOGE("No ion fd, hence can't allocate tiler2d buffers");
+        return -1;
+    }
+
+    for (i = 0; i < NUM_EXT_DISPLAY_BACK_BUFFERS; i++) {
+        if (hwc_dev->ion_handles[i])
+            return 0;
+    }
+
+    for (i = 0 ; i < NUM_EXT_DISPLAY_BACK_BUFFERS; i++) {
+        ret = ion_alloc_tiler(hwc_dev->ion_fd, hwc_dev->fb_dev->base.width, hwc_dev->fb_dev->base.height,
+                                            TILER_PIXEL_FMT_32BIT, 0, &hwc_dev->ion_handles[i], &stride);
+        if (ret)
+            goto handle_error;
+
+        ALOGI("ion handle[%d][%p]", i, hwc_dev->ion_handles[i]);
+    }
+    return 0;
+
+handle_error:
+    free_tiler2d_buffers(hwc_dev);
+    return -1;
 }
 
 static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* list)
@@ -1954,6 +2016,9 @@ static int omap4_hwc_device_close(hw_device_t* device)
             close(hwc_dev->hdmi_fb_fd);
         if (hwc_dev->fb_fd >= 0)
             close(hwc_dev->fb_fd);
+        if (hwc_dev->ion_fd >= 0)
+            ion_close(hwc_dev->ion_fd);
+
         /* pthread will get killed when parent process exits */
         pthread_mutex_destroy(&hwc_dev->lock);
         free(hwc_dev);
@@ -2093,8 +2158,19 @@ static void handle_hotplug(omap4_hwc_device_t *hwc_dev)
             } else
                 ext->mirror.enabled = 0;
         }
+        /* Allocate backup buffers for FB rotation
+        * This is required only if the FB tranform is different from that
+        * of the external display and the FB is not in TILER2D space
+        */
+        if (ext->mirror.rotation && (limits.fbmem_type != DSSCOMP_FBMEM_TILER2D))
+            allocate_tiler2d_buffers(hwc_dev);
+
     } else {
         ext->last_mode = 0;
+        if (ext->mirror.rotation && (limits.fbmem_type != DSSCOMP_FBMEM_TILER2D)) {
+            /* free tiler 2D buffer on detach */
+            free_tiler2d_buffers(hwc_dev);
+        }
     }
     ALOGI("external display changed (state=%d, mirror={%s tform=%ddeg%s}, dock={%s tform=%ddeg%s%s}, tv=%d", state,
          ext->mirror.enabled ? "enabled" : "disabled",
@@ -2382,6 +2458,16 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         ALOGE("failed to get display info (%d): %m", errno);
         err = -errno;
         goto done;
+    }
+
+    hwc_dev->ion_fd = ion_open();
+    if (hwc_dev->ion_fd < 0) {
+        ALOGE("failed to open ion driver (%d)", errno);
+    }
+
+    int i;
+    for (i = 0; i < NUM_EXT_DISPLAY_BACK_BUFFERS; i++) {
+        hwc_dev->ion_handles[i] = NULL;
     }
 
     /* use default value in case some of requested display parameters missing */
