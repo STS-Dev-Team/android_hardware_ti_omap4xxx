@@ -78,8 +78,18 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::JPEG_THUMBNAIL_SIZE, "320x240");
     params->set(CameraProperties::JPEG_QUALITY, "90");
     params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, "50");
-    params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "30000,30000");
+    params->set(CameraProperties::FRAMERATE_RANGE_SUPPORTED, "(30000,30000)");
     params->set(CameraProperties::FRAMERATE_RANGE, "30000,30000");
+    params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, "none");
+    params->set(CameraProperties::SUPPORTED_EXPOSURE_MODES, "auto");
+    params->set(CameraProperties::SUPPORTED_ISO_VALUES, "auto");
+    params->set(CameraProperties::SUPPORTED_ANTIBANDING, "auto");
+    params->set(CameraProperties::SUPPORTED_EFFECTS, "none");
+    params->set(CameraProperties::SUPPORTED_IPP_MODES, "ldc-nsf");
+    params->set(CameraProperties::FACING_INDEX, TICameraParameters::FACING_FRONT);
+
+
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
@@ -109,10 +119,14 @@ status_t V4LCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
     for (int i = 0; i < caps.ulPreviewResCount; i++) {
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat (supported, caps.tPreviewRes[i].param, MAX_PROP_VALUE_LENGTH-1 );
-        strncat (supported, PARAM_SEP, 1 );
     }
+
     params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+    params->set(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, supported);
     return NO_ERROR;
 }
 
@@ -122,8 +136,10 @@ status_t V4LCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
     for (int i = 0; i < caps.ulCaptureResCount; i++) {
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat (supported, caps.tCaptureRes[i].param, MAX_PROP_VALUE_LENGTH-1 );
-        strncat (supported, PARAM_SEP, 1 );
     }
     params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
     return NO_ERROR;
@@ -136,10 +152,13 @@ status_t V4LCameraAdapter::insertFrameRates(CameraProperties::Properties* params
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
     for (int i = 0; i < caps.ulFrameRateCount; i++) {
-        snprintf (temp, 10, "%d", caps.ulFrameRates[i]*1000 );
+        snprintf (temp, 10, "%d", caps.ulFrameRates[i] );
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat (supported, temp, MAX_PROP_VALUE_LENGTH-1 );
-        strncat (supported, PARAM_SEP, 1 );
     }
+
     params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
     return NO_ERROR;
 }
