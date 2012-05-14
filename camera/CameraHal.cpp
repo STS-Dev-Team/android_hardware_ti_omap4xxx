@@ -4023,12 +4023,12 @@ void CameraHal::initDefaultParameters()
 
     // TI extensions for enable/disable algos
     // Hadcoded for now
-    p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_NSF1, CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_NSF2, CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_SHARPENING, CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_GIC, CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, CameraParameters::TRUE);
+    p.set(TICameraParameters::KEY_ALGO_NSF1, CameraParameters::TRUE);
+    p.set(TICameraParameters::KEY_ALGO_NSF2, CameraParameters::TRUE);
+    p.set(TICameraParameters::KEY_ALGO_SHARPENING, CameraParameters::TRUE);
+    p.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, CameraParameters::TRUE);
+    p.set(TICameraParameters::KEY_ALGO_GIC, CameraParameters::TRUE);
 
     LOG_FUNCTION_NAME_EXIT;
 }
