@@ -344,6 +344,13 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mParameters3A.ManualGain = 0;
     mParameters3A.ManualGainRight = 0;
 
+    mParameters3A.AlgoFixedGamma = OMX_TRUE;
+    mParameters3A.AlgoNSF1 = OMX_TRUE;
+    mParameters3A.AlgoNSF2 = OMX_TRUE;
+    mParameters3A.AlgoSharpening = OMX_TRUE;
+    mParameters3A.AlgoThreeLinColorMap = OMX_TRUE;
+    mParameters3A.AlgoGIC = OMX_TRUE;
+
     LOG_FUNCTION_NAME_EXIT;
     return ErrorUtils::omxToAndroidError(eError);
 
