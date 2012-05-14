@@ -503,18 +503,18 @@ int restartCount = 0;
 bool firstTime = true;
 
 //TI extensions for enable/disable algos
-const char *algoFixedGamma[] = {"disable", "enable"};
-const char *algoNSF1[] = {"disable", "enable"};
-const char *algoNSF2[] = {"disable", "enable"};
-const char *algoSharpening[] = {"disable", "enable"};
-const char *algoThreeLinColorMap[] = {"disable", "enable"};
-const char *algoGIC[] = {"disable", "enable"};
-int algoFixedGammaIDX = 0;
-int algoNSF1IDX = 0;
-int algoNSF2IDX = 0;
-int algoSharpeningIDX = 0;
-int algoThreeLinColorMapIDX = 0;
-int algoGICIDX = 0;
+const char *algoFixedGamma[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+const char *algoNSF1[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+const char *algoNSF2[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+const char *algoSharpening[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+const char *algoThreeLinColorMap[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+const char *algoGIC[] = {CameraParameters::FALSE, CameraParameters::TRUE};
+int algoFixedGammaIDX = 1;
+int algoNSF1IDX = 1;
+int algoNSF2IDX = 1;
+int algoSharpeningIDX = 1;
+int algoThreeLinColorMapIDX = 1;
+int algoGICIDX = 1;
 
 /** Calculate delay from a reference time */
 unsigned long long timeval_delay(const timeval *ref) {
@@ -2002,6 +2002,13 @@ void initDefaults() {
     pictureFormat = getDefaultParameter("jpeg", numpictureFormat, pictureFormatArray);
     stereoCapLayoutIDX = 0;
     stereoLayoutIDX = 0;
+
+    algoFixedGammaIDX = 1;
+    algoNSF1IDX = 1;
+    algoNSF2IDX = 1;
+    algoSharpeningIDX = 1;
+    algoThreeLinColorMapIDX = 1;
+    algoGICIDX = 1;
 
     params.set(params.KEY_VIDEO_STABILIZATION, params.FALSE);
     params.set("vnf", params.FALSE);
