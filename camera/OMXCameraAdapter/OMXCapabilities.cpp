@@ -1782,6 +1782,7 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
         strncat(supported, TICameraParameters::HIGH_QUALITY_ZSL_MODE, REMAINING_BYTES(supported));
         strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
         strncat(supported, TICameraParameters::CP_CAM_MODE, REMAINING_BYTES(supported));
+        strncat(supported, PARAM_SEP, REMAINING_BYTES(supported));
         strncat(supported, TICameraParameters::ZOOM_BRACKETING, REMAINING_BYTES(supported));
     }
 
