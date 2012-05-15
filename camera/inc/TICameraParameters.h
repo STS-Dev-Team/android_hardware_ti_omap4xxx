@@ -113,6 +113,11 @@ static const char  KEY_GPS_MAPDATUM[];
 static const char  KEY_GPS_VERSION[];
 static const char  KEY_GPS_DATESTAMP[];
 
+// TI extensions for VTC
+static const char KEY_VTC_HINT[];
+static const char KEY_VIDEO_ENCODER_HANDLE[];
+static const char KEY_VIDEO_ENCODER_SLICE_HEIGHT[];
+
 static const char  RAW_WIDTH[];
 static const char  RAW_HEIGHT[];
 

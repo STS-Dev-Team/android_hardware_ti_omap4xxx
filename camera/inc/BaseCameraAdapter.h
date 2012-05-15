@@ -58,7 +58,7 @@ public:
     virtual void getParameters(CameraParameters& params)  = 0;
 
     //API to send a command to the camera
-    virtual status_t sendCommand(CameraCommands operation, int value1 = 0, int value2 = 0, int value3 = 0 );
+    virtual status_t sendCommand(CameraCommands operation, int value1 = 0, int value2 = 0, int value3 = 0, int value4 = 0 );
 
     virtual status_t registerImageReleaseCallback(release_image_buffers_callback callback, void *user_data);
 
@@ -149,6 +149,12 @@ protected:
     virtual status_t stopFaceDetection();
 
     virtual status_t switchToExecuting();
+
+    virtual status_t setupTunnel(uint32_t SliceHeight, uint32_t EncoderHandle, uint32_t width, uint32_t height);
+
+    virtual status_t destroyTunnel();
+
+    virtual status_t cameraPreviewInitialization();
 
     // Receive orientation events from CameraHal
     virtual void onOrientationEvent(uint32_t orientation, uint32_t tilt);
