@@ -393,8 +393,7 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
 
 }
 
-status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, int value2, int value3)
-{
+status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, int value2, int value3, int value4) {
     status_t ret = NO_ERROR;
     struct timeval *refTimestamp;
     BuffersDescriptor *desc = NULL;
@@ -1099,9 +1098,21 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
              break;
 
-         case CameraAdapter::CAMERA_SWITCH_TO_EXECUTING:
-           ret = switchToExecuting();
-           break;
+        case CameraAdapter::CAMERA_SWITCH_TO_EXECUTING:
+            ret = switchToExecuting();
+            break;
+
+        case CameraAdapter::CAMERA_SETUP_TUNNEL:
+            ret = setupTunnel(value1, value2, value3, value4);
+            break;
+
+        case CameraAdapter::CAMERA_DESTROY_TUNNEL:
+            ret = destroyTunnel();
+            break;
+
+        case CameraAdapter::CAMERA_PREVIEW_INITIALIZATION:
+            ret = cameraPreviewInitialization();
+            break;
 
         default:
             CAMHAL_LOGEB("Command 0x%x unsupported!", operation);
@@ -1821,6 +1832,27 @@ const char* BaseCameraAdapter::getLUTvalue_translateHAL(int Value, LUTtypeHAL LU
             return LUT.Table[i].userDefinition;
 
     return NULL;
+}
+
+status_t BaseCameraAdapter::setupTunnel(uint32_t SliceHeight, uint32_t EncoderHandle, uint32_t width, uint32_t height) {
+  status_t ret = NO_ERROR;
+  LOG_FUNCTION_NAME;
+  LOG_FUNCTION_NAME_EXIT;
+  return ret;
+}
+
+status_t BaseCameraAdapter::destroyTunnel() {
+  status_t ret = NO_ERROR;
+  LOG_FUNCTION_NAME;
+  LOG_FUNCTION_NAME_EXIT;
+  return ret;
+}
+
+status_t BaseCameraAdapter::cameraPreviewInitialization() {
+  status_t ret = NO_ERROR;
+  LOG_FUNCTION_NAME;
+  LOG_FUNCTION_NAME_EXIT;
+  return ret;
 }
 
 status_t BaseCameraAdapter::setState(CameraCommands operation)
