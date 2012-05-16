@@ -2666,7 +2666,7 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         LOGI("Unable to open gc-core device (%d), blits disabled", errno);
         hwc_dev->blt_policy = BLTPOLICY_DISABLED;
     } else {
-        property_get("persist.hwc.bltmode", value, "0");
+        property_get("persist.hwc.bltmode", value, "1");
         hwc_dev->blt_mode = atoi(value);
         property_get("persist.hwc.bltpolicy", value, "1");
         hwc_dev->blt_policy = atoi(value);
