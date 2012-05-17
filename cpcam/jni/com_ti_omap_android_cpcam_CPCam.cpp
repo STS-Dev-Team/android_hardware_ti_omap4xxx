@@ -572,20 +572,43 @@ static void com_ti_omap_android_cpcam_CPCam_setPreviewTexture(JNIEnv *env,
 }
 
 static void com_ti_omap_android_cpcam_CPCam_setBufferSource(JNIEnv *env,
-        jobject thiz, jobject jSurfaceTexture)
+        jobject thiz, jobject jTapIn, jobject jTapOut)
 {
     LOGV("setBufferSource");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
-    sp<SurfaceTexture> surfaceTexture = NULL;
-    if (jSurfaceTexture != NULL) {
-        surfaceTexture = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
-                jSurfaceTexture, fields.surfaceTexture));
+    sp<SurfaceTexture> tapOut = NULL;
+    if (jTapOut!= NULL) {
+        tapOut = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
+                jTapOut, fields.surfaceTexture));
     }
-    if (camera->setBufferSource(NULL, surfaceTexture) != NO_ERROR) { // tapin not enabled yet
+
+    sp<SurfaceTexture> tapIn = NULL;
+    if (jTapIn != NULL) {
+        tapIn = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
+                jTapIn, fields.surfaceTexture));
+    }
+
+    if (camera->setBufferSource(tapIn, tapOut) != NO_ERROR) { // tapin not enabled yet
        jniThrowException(env, "java/io/IOException",
                "setBufferSource failed");
+    }
+}
+
+static void com_ti_omap_android_cpcam_CPCam_reprocess(JNIEnv *env,
+        jobject thiz, jint msgType, jstring jShotParams)
+{
+    const char *shotParams = (jShotParams) ? env->GetStringUTFChars(jShotParams, NULL) : NULL;
+    String8 params(shotParams ? shotParams: "");
+
+    LOGV("reprocess");
+    sp<Camera> camera = get_native_camera(env, thiz, NULL);
+    if (camera == 0) return;
+
+    if (camera->reprocess(msgType, params) != NO_ERROR) {
+       jniThrowException(env, "java/io/IOException",
+               "reprocess failed");
     }
 }
 
@@ -866,8 +889,11 @@ static JNINativeMethod cpcamMethods[] = {
     "(Landroid/graphics/SurfaceTexture;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setPreviewTexture },
   { "setBufferSource",
-    "(Landroid/graphics/SurfaceTexture;)V",
+    "(Landroid/graphics/SurfaceTexture;Landroid/graphics/SurfaceTexture;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setBufferSource },
+  { "native_reprocess",
+    "(ILjava/lang/String;)V",
+    (void *)com_ti_omap_android_cpcam_CPCam_reprocess },
   { "startPreview",
     "()V",
     (void *)com_ti_omap_android_cpcam_CPCam_startPreview },
