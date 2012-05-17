@@ -1663,7 +1663,74 @@ EXIT:
 }
 
 
-status_t OMXCameraAdapter::switchToLoaded() {
+
+status_t OMXCameraAdapter::prevPortEnable() {
+    status_t ret = NO_ERROR;
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+
+    LOG_FUNCTION_NAME;
+
+    ///Register for Preview port ENABLE event
+    ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
+            OMX_EventCmdComplete,
+            OMX_CommandPortEnable,
+            mCameraAdapterParameters.mPrevPortIndex,
+            mSwitchToLoadedSem);
+
+    if ( NO_ERROR != ret )
+    {
+        CAMHAL_LOGEB("Error in registering for event %d", ret);
+        goto EXIT;
+    }
+
+    ///Enable Preview Port
+    eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
+            OMX_CommandPortEnable,
+            mCameraAdapterParameters.mPrevPortIndex,
+            NULL);
+
+
+    CAMHAL_LOGDB("OMX_SendCommand(OMX_CommandStateSet) 0x%x", eError);
+    GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
+
+    CAMHAL_LOGDA("Enabling Preview port");
+    ///Wait for state to switch to idle
+    ret = mSwitchToLoadedSem.WaitTimeout(OMX_CMD_TIMEOUT);
+
+    //If somethiing bad happened while we wait
+    if (mComponentState == OMX_StateInvalid)
+    {
+        CAMHAL_LOGEA("Invalid State after Enabling Preview port Exitting!!!");
+        goto EXIT;
+    }
+
+    if ( NO_ERROR == ret )
+    {
+        CAMHAL_LOGDA("Preview port enabled!");
+    }
+    else
+    {
+        ret |= RemoveEvent(mCameraAdapterParameters.mHandleComp,
+                OMX_EventCmdComplete,
+                OMX_CommandPortEnable,
+                mCameraAdapterParameters.mPrevPortIndex,
+                NULL);
+        CAMHAL_LOGEA("Preview enable timedout");
+
+        goto EXIT;
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+
+EXIT:
+    CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
+    performCleanupAfterError();
+    LOG_FUNCTION_NAME_EXIT;
+    return (ret | ErrorUtils::omxToAndroidError(eError));
+}
+
+status_t OMXCameraAdapter::switchToLoaded(bool bPortEnableRequired) {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
 
@@ -1737,6 +1804,10 @@ status_t OMXCameraAdapter::switchToLoaded() {
         }
 
     mComponentState = OMX_StateLoaded;
+    if (bPortEnableRequired == true) {
+        prevPortEnable();
+    }
+
     return (ret | ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
@@ -2647,7 +2718,7 @@ status_t OMXCameraAdapter::getFrameSize(size_t &width, size_t &height)
 
     if ( mOMXStateSwitch )
         {
-        ret = switchToLoaded();
+        ret = switchToLoaded(true);
         if ( NO_ERROR != ret )
             {
             CAMHAL_LOGEB("switchToLoaded() failed 0x%x", ret);
