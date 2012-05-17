@@ -463,7 +463,8 @@ private:
 
     status_t switchToIdle();
 
-    status_t switchToLoaded();
+    status_t switchToLoaded(bool bPortEnableRequired = false);
+    status_t prevPortEnable();
 
     OMXCameraPortParameters *getPortParams(CameraFrame::FrameType frameType);
 
