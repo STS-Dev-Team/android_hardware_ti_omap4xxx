@@ -1459,7 +1459,7 @@ int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
     case RGZ_IN_HWC:
         rv = rgz_in_hwccheck(p, rgz);
         if (rv == RGZ_ALL)
-            rv = rgz_in_hwc(p, rgz);
+            rv = rgz_in_hwc(p, rgz) ? 0 : RGZ_ALL;
         break;
     case RGZ_IN_HWCCHK:
         bzero(rgz, sizeof(rgz_t));
