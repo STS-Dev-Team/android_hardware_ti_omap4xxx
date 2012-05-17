@@ -83,6 +83,9 @@ public class CPCam {
     private static final int CAMERA_MSG_PREVIEW_METADATA = 0x400;
     private static final int CAMERA_MSG_ALL_MSGS         = 0x4FF;
 
+    private static final int CAMERA_MSG_COMPRESSED_BURST_IMAGE = 0x0800; // dataCallback
+    private static final int CAMERA_MSG_RAW_BURST = 0x1000;        // dataCallback
+
     private int mNativeContext; // accessed by native methods
     private EventHandler mEventHandler;
     private ShutterCallback mShutterCallback;
@@ -391,7 +394,25 @@ public class CPCam {
      * @throws IOException if the method fails (for example, if the surface
      *     texture is unavailable or unsuitable).
      */
-    public native final void setBufferSource(SurfaceTexture surfaceTexture) throws IOException;
+    public native final void setBufferSource(SurfaceTexture tapIn, SurfaceTexture tapOut) throws IOException;
+
+    /**
+     * Sets the {@link SurfaceTexture} to be used for tap-out.
+     * This is used in conjuntion with cp-cam mode.
+     *
+     * @param surfaceTexture the {@link SurfaceTexture} to which the tap-out
+     * frame will be sent
+     * @throws IOException if the method fails (for example, if the surface
+     *     texture is unavailable or unsuitable).
+     */
+    public final void reprocess(Parameters params) throws IOException {
+        int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
+                      CAMERA_MSG_RAW_IMAGE |
+                      CAMERA_MSG_RAW_BURST;
+
+        native_reprocess(msgType, params.flatten());
+    }
+    public native final void native_reprocess(int msgType, String ShotParams) throws IOException;
 
     /**
      * Callback interface used to deliver copies of preview frames as
