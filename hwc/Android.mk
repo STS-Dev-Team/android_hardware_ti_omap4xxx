@@ -8,7 +8,8 @@ include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 LOCAL_ARM_MODE := arm
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/../vendor/lib/hw
-LOCAL_SHARED_LIBRARIES := liblog libEGL libcutils libutils libhardware libhardware_legacy libz
+LOCAL_SHARED_LIBRARIES := liblog libEGL libcutils libutils libhardware libhardware_legacy libz \
+                          libion
 LOCAL_SRC_FILES := hwc.c rgz_2d.c
 LOCAL_STATIC_LIBRARIES := libpng
 
@@ -16,7 +17,8 @@ LOCAL_MODULE_TAGS := optional
 
 LOCAL_MODULE := hwcomposer.$(TARGET_BOARD_PLATFORM)
 LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\"
-LOCAL_C_INCLUDES += external/libpng external/zlib
+LOCAL_C_INCLUDES += external/libpng external/zlib \
+                    $(HARDWARE_TI_OMAP4_BASE)/ion/
 
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/../edid/inc
