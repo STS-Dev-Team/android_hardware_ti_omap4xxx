@@ -1167,11 +1167,27 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
     // accumulating shots
     if ((ret == NO_ERROR) && (mBurstFramesQueued > 0)) {
         int index = 0;
+        int queued = 0;
         Mutex::Autolock lock(mBurstLock);
-        mCapturedFrames += mBurstFrames;
-        mBurstFramesAccum += mBurstFrames;
 
-        while ((mBurstFramesQueued < mBurstFramesAccum) && (index < capData->mNumBufs)) {
+        if (capParams->mFlushShotConfigQueue) {
+            // reset shot queue
+            mCapturedFrames = mBurstFrames;
+            mBurstFramesAccum = mBurstFrames;
+            mBurstFramesQueued = 0;
+            for ( int index = 0 ; index < capData->mNumBufs ; index++ ) {
+                if (OMXCameraPortParameters::FILL == capData->mStatus[index]) {
+                    mBurstFramesQueued++;
+                }
+            }
+        } else {
+            mCapturedFrames += mBurstFrames;
+            mBurstFramesAccum += mBurstFrames;
+        }
+
+        while ((mBurstFramesQueued < mBurstFramesAccum) &&
+               (index < capData->mNumBufs) &&
+               (queued < capData->mMaxQueueable)) {
             if (capData->mStatus[index] == OMXCameraPortParameters::IDLE) {
                 CAMHAL_LOGDB("Queuing buffer on Capture port - %p",
                              capData->mBufferHeader[index]->pBuffer);
@@ -1180,6 +1196,9 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                             (OMX_BUFFERHEADERTYPE*)capData->mBufferHeader[index]);
                 GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
                 mBurstFramesQueued++;
+                queued++;
+            } else if (OMXCameraPortParameters::FILL == capData->mStatus[index]) {
+                queued++;
             }
             index++;
         }
