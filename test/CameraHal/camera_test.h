@@ -56,6 +56,7 @@
 
 #define BRACKETING_IDX_DEFAULT          0
 #define BRACKETING_IDX_STREAM           1
+#define BRACKETING_STREAM_BUFFERS       9
 
 #define SDCARD_PATH "/sdcard/"
 
