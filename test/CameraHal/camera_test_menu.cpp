@@ -3259,6 +3259,8 @@ int functional_menu() {
             if (bufferSourceOutputThread.get()) {
                 if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
                     setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                    // Queue more frames initially
+                    shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
                 } else {
                     setDefaultExpGainPreset(shotParams, expBracketIdx);
                 }
