@@ -1133,6 +1133,8 @@ int execute_functional_script(char *script) {
                     if (bufferSourceOutputThread->toggleStreamCapture(expBracketIdx)) {
                         expBracketIdx = BRACKETING_IDX_STREAM;
                         setSingleExpGainPreset(shotParams, expBracketIdx, 0, 0);
+                        // Queue more frames initially
+                        shotParams.set(ShotParameters::KEY_BURST, BRACKETING_STREAM_BUFFERS);
                     } else {
                         expBracketIdx = BRACKETING_IDX_DEFAULT;
                         setDefaultExpGainPreset(shotParams, expBracketIdx);
