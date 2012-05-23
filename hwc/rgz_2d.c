@@ -103,6 +103,8 @@ static int rgz_blts_bvdirect(rgz_t* rgz, struct rgz_blts *blts, rgz_out_params_t
 
 int debug = 0;
 struct rgz_blts blts;
+/* Represents a screen sized background layer */
+static hwc_layer_t bg_layer;
 
 static void svgout_header(int htmlw, int htmlh, int coordw, int coordh)
 {
@@ -285,13 +287,11 @@ static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
 }
 
 /*
- * Clear the destination buffer
+ * Clear the destination buffer, if rect is NULL means the whole screen, rect
+ * cannot be outside the boundaries of the screen
  */
-static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
+static void rgz_out_clrdst(rgz_out_params_t *params, blit_rect_t *rect)
 {
-    if (!params->data.bvc.clrdst)
-        return;
-
     struct bvsurfgeom *scrgeom = params->data.bvc.dstgeom;
 
     struct rgz_blt_entry* e;
@@ -323,18 +323,15 @@ static void rgz_out_clrdst(rgz_t *rgz, rgz_out_params_t *params)
     struct bvbltparams *bp = &e->bp;
     bp->structsize = sizeof(struct bvbltparams);
     bp->dstgeom = dstgeom;
-    bp->dstrect.left = 0;
-    bp->dstrect.top = 0;
-    bp->dstrect.width = scrgeom->width;
-    bp->dstrect.height = scrgeom->height;
     bp->src1.desc = src1desc;
     bp->src1geom = src1geom;
     bp->src1rect.left = 0;
     bp->src1rect.top = 0;
     bp->src1rect.width = bp->src1rect.height = 1;
-    bp->cliprect.left = bp->cliprect.top = 0;
-    bp->cliprect.width = scrgeom->width;
-    bp->cliprect.height = scrgeom->height;
+    bp->cliprect.left = bp->dstrect.left = rect ? rect->left : 0;
+    bp->cliprect.top = bp->dstrect.top = rect ? rect->top : 0;
+    bp->cliprect.width = bp->dstrect.width = rect ? (unsigned int) WIDTH(*rect) : scrgeom->width;
+    bp->cliprect.height = bp->dstrect.height = rect ? (unsigned int) HEIGHT(*rect) : scrgeom->height;
 
     bp->flags = BVFLAG_CLIP | BVFLAG_ROP;
     bp->op.rop = 0xCCCC; /* SRCCOPY */
@@ -346,7 +343,7 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
     params->data.bvc.out_blits = 0;
     params->data.bvc.out_nhndls = 0;
     rgz_blts_init(&blts);
-    rgz_out_clrdst(rgz, params);
+    rgz_out_clrdst(params, NULL);
 
     unsigned int i;
     for (i = 0; i < rgz->rgz_layerno; i++) {
@@ -583,12 +580,16 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
 
     int possible_blit = 0, candidates = 0;
     rgz->screen_isdirty = 1;
+
+    /* Insert the background layer at the beginning of the list */
+    rgz->rgz_layers[0].hwc_layer = &bg_layer;
+
     for (l = 0; l < layerno; l++) {
         if (layers[l].compositionType == HWC_FRAMEBUFFER) {
             candidates++;
             if (rgz_in_valid_hwc_layer(&layers[l]) &&
-                    possible_blit < RGZ_MAXLAYERS) {
-                rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit];
+                    possible_blit < RGZ_INPUT_MAXLAYERS) {
+                rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
                 rgz_layer->hwc_layer = &layers[l];
                 rgz_layer->buffidx = memidx++;
                 if (rgz_layer->hwc_layer->handle != rgz_layer->dirty_hndl) {
@@ -596,9 +597,8 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                     rgz_layer->dirty_hndl = (void*)rgz_layer->hwc_layer->handle;
                 } else {
                      rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
-                     /* If a layer is not dirty don't clean the whole screen */
                      if (rgz_layer->dirty_count == 0)
-                         rgz->screen_isdirty = 0;
+                         rgz->screen_isdirty = 0; /* Just update dirty regions from now on */
                 }
                 possible_blit++;
             }
@@ -610,7 +610,7 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     }
 
     rgz->state |= RGZ_STATE_INIT;
-    rgz->rgz_layerno = possible_blit;
+    rgz->rgz_layerno = possible_blit + 1; /* Account for background layer */
 
     return RGZ_ALL;
 }
@@ -1137,7 +1137,7 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
     e->bp.batchflags |= set;
 }
 
-static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params)
+static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params, int screen_isdirty)
 {
     static int loaded = 0;
     if (!loaded)
@@ -1159,8 +1159,29 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
 
     int lix;
     int ldepth = get_layer_ops(hregion, sidx, &lix);
-    if (ldepth == 0) /* No layers in subregion */
-        return 0;
+    if (ldepth == 0) {
+        /* Impossible, there are no layers in this region even if the
+         * background is covering the whole screen
+         */
+        OUTE("hregion %p subregion %d doesn't have any ops", hregion, sidx);
+        return -1;
+    }
+
+    /* Check if the bottom layer is the background */
+    if (hregion->rgz_layers[lix]->hwc_layer == &bg_layer) {
+        if (ldepth == 1) {
+            /* Background layer is the only operation, clear subregion */
+            if (screen_isdirty)
+                rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
+            return 0;
+        } else {
+            /* No need to generate blits with background layer if there is
+             * another layer on top of it, discard it
+             */
+            ldepth--;
+            lix = get_layer_ops_next(hregion, sidx, lix);
+        }
+    }
 
     /* Determine if this region is dirty */
     int dirty = 0, dirtylix = lix;
@@ -1313,25 +1334,24 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
     rgz_blts_init(&blts);
     LOGD_IF(debug, "rgz_out_region:");
 
-    if (IS_BVCMD(params)) {
+    if (IS_BVCMD(params))
         params->data.bvc.out_blits = 0;
-        /* There is no need to clean the screen if it is not completely dirty,
-         * only dirty subregions need to update themselves (generate blits)
-         */
-        if (rgz->screen_isdirty)
-            rgz_out_clrdst(rgz, params);
-    }
 
     int i;
     for (i = 0; i < rgz->nhregions; i++) {
         blit_hregion_t *hregion = &rgz->hregions[i];
         int s;
         LOGD_IF(debug, "h[%d] nsubregions = %d", i, hregion->nsubregions);
-        if (hregion->nlayers == 0)
-            continue;
+        if (hregion->nlayers == 0) {
+            /* Impossible, there are no layers in this region even if the
+             * background is covering the whole screen
+             */
+            OUTE("hregion %p doesn't have any ops", hregion);
+            return -1;
+        }
         for (s = 0; s < hregion->nsubregions; s++) {
             LOGD_IF(debug, "h[%d] -> [%d]", i, s);
-            rgz_hwc_subregion_blit(hregion, s, params);
+            rgz_hwc_subregion_blit(hregion, s, params, rgz->screen_isdirty);
         }
     }
 
@@ -1340,9 +1360,10 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
     if (IS_BVCMD(params)) {
         unsigned int j;
         params->data.bvc.out_nhndls = 0;
-        for (j = 0; j < rgz->rgz_layerno; j++) {
+        /* Begin from index 1 to remove the background layer from the output */
+        for (j = 1; j < rgz->rgz_layerno; j++) {
             hwc_layer_t *layer = rgz->rgz_layers[j].hwc_layer;
-            params->data.bvc.out_hndls[j] = layer->handle;
+            params->data.bvc.out_hndls[j-1] = layer->handle;
             params->data.bvc.out_nhndls++;
         }
 
@@ -1441,6 +1462,10 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
         LOGE("Error gettting fb_varinfo");
         return -EINVAL;
     }
+
+    bg_layer.displayFrame.left = bg_layer.displayFrame.top = 0;
+    bg_layer.displayFrame.right = fb_varinfo.xres;
+    bg_layer.displayFrame.bottom = fb_varinfo.yres;
 
     bzero(geom, sizeof(*geom));
     geom->structsize = sizeof(*geom);
