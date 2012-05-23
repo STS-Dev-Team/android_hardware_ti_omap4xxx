@@ -1123,7 +1123,6 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
 #endif
         //Stride for 1D tiler buffer is zero
         portCheck.format.image.nStride          =  0;
-        portCheck.nBufferSize                   =  portParams.mStride * portParams.mWidth * portParams.mHeight;
         portCheck.nBufferCountActual = portParams.mNumBufs;
      } else if (OMX_CAMERA_PORT_VIDEO_IN_VIDEO == port) {
         portCheck.format.video.nFrameWidth      = portParams.mWidth;
