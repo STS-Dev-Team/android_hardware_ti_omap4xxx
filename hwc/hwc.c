@@ -1520,14 +1520,12 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
         }
     }
 
-    int needclear = (list->numHwLayers != count) ? 1 : 0;
-
     rgz_out_params_t out = {
         .op = rgz_out_op,
         .data = {
             .bvc = {
                 .dstgeom = &gscrngeom,
-                .noblend = 0, .clrdst = needclear,
+                .noblend = 0,
             }
         }
     };
