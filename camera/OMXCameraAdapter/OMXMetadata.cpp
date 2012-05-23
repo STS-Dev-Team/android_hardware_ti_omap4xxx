@@ -65,8 +65,63 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_TI_P
         OMX_TI_VECTSHOTINFOTYPE *shotInfo;
         shotInfo = (OMX_TI_VECTSHOTINFOTYPE*) extraData->data;
 
+        meta_data.set(CameraMetadata::KEY_FRAME_NUMBER, (int)shotInfo->nFrameNum);
+        meta_data.set(CameraMetadata::KEY_SHOT_NUMBER, (int)shotInfo->nConfigId);
         meta_data.set(CameraMetadata::KEY_ANALOG_GAIN, (int)shotInfo->nAGain);
+        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_REQ, (int)shotInfo->nReqGain);
+        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_MIN, (int)shotInfo->nGainMin);
+        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_MAX, (int)shotInfo->nGainMax);
+        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_DEV, (int)shotInfo->nDevAGain);
+        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_ERROR, (int)shotInfo->nSenAGainErr);
         meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME, (int)shotInfo->nExpTime);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_REQ, (int)shotInfo->nReqExpTime);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_MIN, (int)shotInfo->nExpMin);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_MAX, (int)shotInfo->nExpMax);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_DEV, (int)shotInfo->nDevExpTime);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_ERROR, (int)shotInfo->nSenExpTimeErr);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ, (int)shotInfo->nReqEC);
+        meta_data.set(CameraMetadata::KEY_EXPOSURE_DEV, (int)shotInfo->nDevEV);
+    }
+
+    // TODO(XXX): Use format abstraction for LSC values
+    // LSC table
+    extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) plat_pvt->pMetaDataBuffer,
+                             plat_pvt->nMetaDataSize,
+                             (OMX_EXTRADATATYPE) OMX_TI_LSCTable);
+
+    if ( NULL != extraData ) {
+        OMX_TI_LSCTABLETYPE *lscTbl;
+        OMX_U8 *lsc;
+        String8 val;
+        lscTbl = (OMX_TI_LSCTABLETYPE*) extraData->data;
+        lsc = lscTbl->pGainTable;
+        if ( (0U == lscTbl->nWidth) || (0U == lscTbl->nHeight) ) {
+            CAMHAL_LOGE("Zero size LSC table");
+        } else if ( OMX_TI_LSC_GAIN_TABLE_SIZE < (lscTbl->nWidth * lscTbl->nHeight * 4) ) {
+            CAMHAL_LOGE("Oversized LSC table");
+        } else {
+            for (int j = 0; j < lscTbl->nHeight; j++) {
+                if (0 != j) {
+                    val.append(",");
+                }
+                val.append("(");
+                for (int i = 0; i < lscTbl->nWidth; i++) {
+                    if (0 != i) {
+                        val.append(",");
+                    }
+                    for (int h = 0; h < 4; h++) {
+                        if (0 != h) {
+                            val.append(":");
+                        }
+                        val.appendFormat("%d", *(lsc++));
+                    }
+                }
+                val.append(")");
+            }
+            meta_data.set(CameraMetadata::KEY_LSC_TABLE, val);
+            meta_data.setBool(CameraMetadata::KEY_LSC_TABLE_APPLIED,
+                              (OMX_TRUE == lscTbl->bApplied) ? true : false);
+        }
     }
 
     return ret;
