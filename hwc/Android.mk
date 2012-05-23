@@ -18,7 +18,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := hwcomposer.$(TARGET_BOARD_PLATFORM)
 LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\"
 LOCAL_C_INCLUDES += external/libpng external/zlib \
-                    $(HARDWARE_TI_OMAP4_BASE)/ion/
+                    $(LOCAL_PATH)/../ion/
 
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/../edid/inc
