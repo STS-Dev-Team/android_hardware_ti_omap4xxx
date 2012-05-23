@@ -211,6 +211,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mBurstFrames = 1;
     mBurstFramesAccum = 0;
     mCapturedFrames = 0;
+    mFlushShotConfigQueue = false;
     mPictureQuality = 100;
     mCurrentZoomIdx = 0;
     mTargetZoomIdx = 0;
@@ -4016,6 +4017,7 @@ OMXCameraAdapter::CachedCaptureParameters* OMXCameraAdapter::cacheCaptureParamet
     params->mExposureBracketingValidEntries = mExposureBracketingValidEntries;
     params->mExposureBracketMode = mExposureBracketMode;
     params->mBurstFrames = mBurstFrames;
+    params->mFlushShotConfigQueue = mFlushShotConfigQueue;
 
    return params;
 }

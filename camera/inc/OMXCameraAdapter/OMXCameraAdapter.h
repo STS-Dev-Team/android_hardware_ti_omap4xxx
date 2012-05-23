@@ -383,6 +383,7 @@ public:
             size_t mExposureBracketingValidEntries;
             OMX_BRACKETMODETYPE mExposureBracketMode;
             unsigned int mBurstFrames;
+            bool mFlushShotConfigQueue;
     };
 
 public:
@@ -719,7 +720,8 @@ private:
     //Exposure Bracketing
     status_t initVectorShot();
     status_t setVectorShot(int *evValues, int *evValues2, int *evModes2,
-                           size_t evCount, size_t frameCount, OMX_BRACKETMODETYPE bracketMode);
+                           size_t evCount, size_t frameCount,
+                           bool flush, OMX_BRACKETMODETYPE bracketMode);
     status_t setVectorStop(bool toPreview = false);
     status_t setExposureBracketing(int *evValues, int *evValues2,
                                    size_t evCount, size_t frameCount,
@@ -727,6 +729,7 @@ private:
     status_t doExposureBracketing(int *evValues, int *evValues2,
                                   int *evModes2,
                                   size_t evCount, size_t frameCount,
+                                  bool flush,
                                   OMX_BRACKETMODETYPE bracketMode);
     int getBracketingValueMode(const char *a, const char *b) const;
     status_t parseExpRange(const char *rangeStr, int *expRange, int *gainRange,
@@ -1009,6 +1012,7 @@ private:
     size_t mBurstFramesAccum;
     size_t mBurstFramesQueued;
     size_t mCapturedFrames;
+    bool mFlushShotConfigQueue;
 
     bool mMeasurementEnabled;
 
