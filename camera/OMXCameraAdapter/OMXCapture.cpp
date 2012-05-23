@@ -201,6 +201,20 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         mZoomBracketingEnabled = false;
     }
 
+    // Flush config queue
+    // If TRUE: Flush queue and abort processing before enqueing
+    valstr = params.get(TICameraParameters::KEY_FLUSH_SHOT_CONFIG_QUEUE);
+    if ( NULL != valstr ) {
+        if ( 0 == strcmp(valstr, CameraParameters::TRUE) ) {
+            mFlushShotConfigQueue = true;
+        } else if ( 0 == strcmp(valstr, CameraParameters::FALSE) ) {
+            mFlushShotConfigQueue = false;
+        } else {
+            CAMHAL_LOGE("Missing flush shot config parameter. Will use current (%s)",
+                        mFlushShotConfigQueue ? "true" : "false");
+        }
+    }
+
     if ( params.getInt(CameraParameters::KEY_ROTATION) != -1 )
         {
         if (params.getInt(CameraParameters::KEY_ROTATION) != (int) mPictureRotation) {
@@ -476,6 +490,7 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
                                                  int *evModes2,
                                                  size_t evCount,
                                                  size_t frameCount,
+                                                 bool flush,
                                                  OMX_BRACKETMODETYPE bracketMode)
 {
     status_t ret = NO_ERROR;
@@ -494,7 +509,7 @@ status_t OMXCameraAdapter::doExposureBracketing(int *evValues,
 
     if ( NO_ERROR == ret ) {
         if (bracketMode == OMX_BracketVectorShot) {
-            ret = setVectorShot(evValues, evValues2, evModes2, evCount, frameCount, bracketMode);
+            ret = setVectorShot(evValues, evValues2, evModes2, evCount, frameCount, flush, bracketMode);
         } else {
             ret = setExposureBracketing(evValues, evValues2, evCount, frameCount, bracketMode);
         }
@@ -598,12 +613,14 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
                                          int *evModes2,
                                          size_t evCount,
                                          size_t frameCount,
+                                         bool flush,
                                          OMX_BRACKETMODETYPE bracketMode)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_TI_CONFIG_ENQUEUESHOTCONFIGS enqueueShotConfigs;
     OMX_TI_CONFIG_QUERYAVAILABLESHOTS queryAvailableShots;
+    bool doFlush = flush;
 
     LOG_FUNCTION_NAME;
 
@@ -658,7 +675,7 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
         }
 
         enqueueShotConfigs.nPortIndex = mCameraAdapterParameters.mImagePortIndex;
-        enqueueShotConfigs.bFlushQueue = OMX_FALSE;
+        enqueueShotConfigs.bFlushQueue = doFlush ? OMX_TRUE : OMX_FALSE;
         enqueueShotConfigs.nNumConfigs = i;
         eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                         ( OMX_INDEXTYPE ) OMX_TI_IndexConfigEnqueueShotConfigs,
@@ -669,6 +686,8 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
         } else {
             CAMHAL_LOGDA("Bracket shot configured successfully");
         }
+        // Flush only first time
+        doFlush = false;
     }
 
  exit:
@@ -1101,6 +1120,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                                             capParams->mExposureGainBracketingModes,
                                             0,
                                             0,
+                                            capParams->mFlushShotConfigQueue,
                                             capParams->mExposureBracketMode);
             } else {
                 ret = doExposureBracketing(capParams->mExposureBracketingValues,
@@ -1108,6 +1128,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
                                     capParams->mExposureGainBracketingModes,
                                     capParams->mExposureBracketingValidEntries,
                                     capParams->mBurstFrames,
+                                    capParams->mFlushShotConfigQueue,
                                     capParams->mExposureBracketMode);
             }
 

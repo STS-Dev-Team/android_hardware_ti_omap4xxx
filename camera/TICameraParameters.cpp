@@ -71,6 +71,7 @@ const char TICameraParameters::KEY_ZOOM_BRACKETING_RANGE[] = "zoom-bracketing-ra
 const char TICameraParameters::KEY_TEMP_BRACKETING[] = "temporal-bracketing";
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS[] = "temporal-bracketing-range-positive";
 const char TICameraParameters::KEY_TEMP_BRACKETING_RANGE_NEG[] = "temporal-bracketing-range-negative";
+const char TICameraParameters::KEY_FLUSH_SHOT_CONFIG_QUEUE[] = "flush-shot-config-queue";
 const char TICameraParameters::KEY_MEASUREMENT_ENABLE[] = "measurement";
 const char TICameraParameters::KEY_GBCE[] = "gbce";
 const char TICameraParameters::KEY_GBCE_SUPPORTED[] = "gbce-supported";

@@ -2896,6 +2896,18 @@ status_t CameraHal::__takePicture(const char *params)
             mParameters.set(TICameraParameters::KEY_BURST, valNum);
             burst = valNum;
         }
+
+        valStr = shotParams.get(ShotParameters::KEY_FLUSH_CONFIG);
+        if (valStr!= NULL) {
+            if ( 0 == strcmp(valStr, ShotParameters::TRUE) ) {
+                mParameters.set(TICameraParameters::KEY_FLUSH_SHOT_CONFIG_QUEUE,
+                                CameraParameters::TRUE);
+            } else if ( 0 == strcmp(valStr, ShotParameters::FALSE) ) {
+                mParameters.set(TICameraParameters::KEY_FLUSH_SHOT_CONFIG_QUEUE,
+                                CameraParameters::FALSE);
+            }
+        }
+
         mCameraAdapter->setParameters(mParameters);
     } else {
         // TODO(XXX): Should probably reset burst and bracketing params
