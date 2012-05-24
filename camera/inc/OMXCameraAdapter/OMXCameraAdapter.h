@@ -653,17 +653,8 @@ private:
     static status_t encodeSizeCap(OMX_TI_CAPRESTYPE&, const CapResolution *, size_t, char *, size_t);
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
-    static status_t encodeFramerateCap(OMX_U32, OMX_U32, const CapFramerate*, size_t, char*, size_t);
-    static status_t encodeVFramerateCap(OMX_TI_CAPTYPE&,
-                                        const CapFramerate*,
-                                        size_t,
-                                        int&,
-                                        int&,
-                                        char*,
-                                        char*,
-                                        size_t,
-                                        uint32_t,
-                                        uint32_t);
+    static void encodeFrameRates(int minFrameRate, int maxFrameRate, const OMX_TI_CAPTYPE & caps,
+            const CapFramerate * fixedFrameRates, int frameRateCount, Vector<FpsRange> & fpsRanges);
     static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
                                                 const CapCodingFormat *,
                                                 size_t,

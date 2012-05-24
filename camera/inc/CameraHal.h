@@ -155,10 +155,9 @@ class DisplayFrame;
 
 class FpsRange {
 public:
-    static FpsRange create(int min, int max);
-
     static int compare(const FpsRange * left, const FpsRange * right);
 
+    FpsRange(int min, int max);
     FpsRange();
 
     bool operator==(const FpsRange & fpsRange) const;
@@ -174,13 +173,6 @@ private:
     int mMax;
 };
 
-
-inline FpsRange FpsRange::create(const int min, const int max) {
-    FpsRange fpsRange;
-    fpsRange.mMin = min;
-    fpsRange.mMax = max;
-    return fpsRange;
-}
 
 inline int FpsRange::compare(const FpsRange * const left, const FpsRange * const right) {
     if ( left->max() < right->max() ) {
@@ -201,6 +193,8 @@ inline int FpsRange::compare(const FpsRange * const left, const FpsRange * const
 
     return 0;
 }
+
+inline FpsRange::FpsRange(const int min, const int max) : mMin(min), mMax(max) {}
 
 inline FpsRange::FpsRange() : mMin(-1), mMax(-1) {}
 
