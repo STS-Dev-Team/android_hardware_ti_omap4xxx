@@ -109,8 +109,8 @@ BaseCameraAdapter::~BaseCameraAdapter()
      mFocusSubscribers.clear();
      mShutterSubscribers.clear();
      mZoomSubscribers.clear();
-     mFaceSubscribers.clear();
      mSnapshotSubscribers.clear();
+     mMetadataSubscribers.clear();
 
      LOG_FUNCTION_NAME_EXIT;
 }
@@ -214,7 +214,7 @@ void BaseCameraAdapter::enableMsgType(int32_t msgs, frame_callback callback, eve
             mFocusSubscribers.add((int) cookie, eventCb);
             mShutterSubscribers.add((int) cookie, eventCb);
             mZoomSubscribers.add((int) cookie, eventCb);
-            mFaceSubscribers.add((int) cookie, eventCb);
+            mMetadataSubscribers.add((int) cookie, eventCb);
             }
         else
             {
@@ -284,7 +284,7 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
             mFocusSubscribers.removeItem((int) cookie);
             mShutterSubscribers.removeItem((int) cookie);
             mZoomSubscribers.removeItem((int) cookie);
-            mFaceSubscribers.removeItem((int) cookie);
+            mMetadataSubscribers.removeItem((int) cookie);
             }
         else
             {
@@ -1250,35 +1250,35 @@ status_t BaseCameraAdapter::notifyZoomSubscribers(int zoomIdx, bool targetReache
     return ret;
 }
 
-status_t BaseCameraAdapter::notifyFaceSubscribers(sp<CameraFDResult> &faces)
+status_t BaseCameraAdapter::notifyMetadataSubscribers(sp<CameraMetadataResult> &meta)
 {
     event_callback eventCb;
-    CameraHalEvent faceEvent;
+    CameraHalEvent metaEvent;
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
 
-    if ( mFaceSubscribers.size() == 0 ) {
-        CAMHAL_LOGDA("No face detection subscribers!");
+    if ( mMetadataSubscribers.size() == 0 ) {
+        CAMHAL_LOGDA("No preview metadata subscribers!");
         return NO_INIT;
     }
 
-    faceEvent.mEventData = new CameraHalEvent::CameraHalEventData();
-    if ( NULL == faceEvent.mEventData.get() ) {
+    metaEvent.mEventData = new CameraHalEvent::CameraHalEventData();
+    if ( NULL == metaEvent.mEventData.get() ) {
         return -ENOMEM;
     }
 
-    faceEvent.mEventType = CameraHalEvent::EVENT_FACE;
-    faceEvent.mEventData->faceEvent = faces;
+    metaEvent.mEventType = CameraHalEvent::EVENT_METADATA;
+    metaEvent.mEventData->metadataEvent = meta;
 
-    for (unsigned int i = 0 ; i < mFaceSubscribers.size(); i++ ) {
-        faceEvent.mCookie = (void *) mFaceSubscribers.keyAt(i);
-        eventCb = (event_callback) mFaceSubscribers.valueAt(i);
+    for (unsigned int i = 0 ; i < mMetadataSubscribers.size(); i++ ) {
+        metaEvent.mCookie = (void *) mMetadataSubscribers.keyAt(i);
+        eventCb = (event_callback) mMetadataSubscribers.valueAt(i);
 
-        eventCb ( &faceEvent );
+        eventCb ( &metaEvent );
     }
 
-    faceEvent.mEventData.clear();
+    metaEvent.mEventData.clear();
 
     LOG_FUNCTION_NAME_EXIT;
 

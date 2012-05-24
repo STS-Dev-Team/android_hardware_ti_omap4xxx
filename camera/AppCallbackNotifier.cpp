@@ -330,7 +330,7 @@ void AppCallbackNotifier::notifyEvent()
     CameraHalEvent *evt = NULL;
     CameraHalEvent::FocusEventData *focusEvtData;
     CameraHalEvent::ZoomEventData *zoomEvtData;
-    CameraHalEvent::FaceEventData faceEvtData;
+    CameraHalEvent::MetaEventData metaEvtData;
 
     if(mNotifierState != AppCallbackNotifier::NOTIFIER_STARTED)
     {
@@ -396,9 +396,9 @@ void AppCallbackNotifier::notifyEvent()
 
                     break;
 
-                case CameraHalEvent::EVENT_FACE:
+                case CameraHalEvent::EVENT_METADATA:
 
-                    faceEvtData = evt->mEventData->faceEvent;
+                    metaEvtData = evt->mEventData->metadataEvent;
 
                     if ( ( NULL != mCameraHal ) &&
                          ( NULL != mNotifyCb) &&
@@ -410,10 +410,10 @@ void AppCallbackNotifier::notifyEvent()
                         mDataCb(CAMERA_MSG_PREVIEW_METADATA,
                                 tmpBuffer,
                                 0,
-                                faceEvtData->getFaceResult(),
+                                metaEvtData->getMetadataResult(),
                                 mCallbackCookie);
 
-                        faceEvtData.clear();
+                        metaEvtData.clear();
 
                         if ( NULL != tmpBuffer ) {
                             tmpBuffer->release(tmpBuffer);

@@ -114,6 +114,20 @@ void OMXCameraAdapter::pauseFaceDetection(bool pause)
     }
 }
 
+status_t OMXCameraAdapter::setFaceDetectionOrientation(OMX_U32 orientation)
+{
+    status_t ret = NO_ERROR;
+
+    Mutex::Autolock lock(mFaceDetectionLock);
+
+    if (mFaceDetectionRunning) {
+        // restart face detection with new rotation
+        setFaceDetection(true, orientation);
+    }
+
+    return ret;
+}
+
 status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
 {
     status_t ret = NO_ERROR;
@@ -185,17 +199,16 @@ status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
     return ret;
 }
 
-status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
-                                       sp<CameraFDResult> &result,
-                                       size_t previewWidth,
-                                       size_t previewHeight)
+status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHeader,
+                                          sp<CameraMetadataResult> &result,
+                                          size_t previewWidth,
+                                          size_t previewHeight)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_TI_FACERESULT *faceResult;
-    OMX_OTHER_EXTRADATATYPE *extraData;
-    OMX_FACEDETECTIONTYPE *faceData;
-    camera_frame_metadata_t *faces;
+    OMX_FACEDETECTIONTYPE *faceData = NULL;
+    camera_frame_metadata_t *meta;
 
     LOG_FUNCTION_NAME;
 
@@ -209,47 +222,52 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
         return-EINVAL;
     }
 
-    extraData = getExtradata(pBuffHeader->pPlatformPrivate,
-                             (OMX_EXTRADATATYPE)OMX_FaceDetection);
+    if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
+        OMX_OTHER_EXTRADATATYPE *extraData;
 
-    if ( NULL != extraData ) {
-        CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
-                     extraData->nSize,
-                     sizeof(OMX_OTHER_EXTRADATATYPE),
-                     extraData->eType,
-                     extraData->nDataSize,
-                     extraData->nPortIndex,
-                     extraData->nVersion);
-    } else {
-        CAMHAL_LOGD("FD extra data not found!");
-        return -EINVAL;
-    }
+        extraData = getExtradata(pBuffHeader->pPlatformPrivate,
+                                 (OMX_EXTRADATATYPE)OMX_FaceDetection);
 
-    faceData = ( OMX_FACEDETECTIONTYPE * ) extraData->data;
-    if ( NULL != faceData ) {
-        if ( sizeof(OMX_FACEDETECTIONTYPE) == faceData->nSize ) {
-            CAMHAL_LOGVB("Faces detected %d",
-                         faceData->ulFaceCount,
-                         faceData->nSize,
-                         sizeof(OMX_FACEDETECTIONTYPE),
-                         faceData->eCameraView,
-                         faceData->nPortIndex,
-                         faceData->nVersion);
+        if ( NULL != extraData ) {
+            CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
+                         extraData->nSize,
+                         sizeof(OMX_OTHER_EXTRADATATYPE),
+                         extraData->eType,
+                         extraData->nDataSize,
+                         extraData->nPortIndex,
+                         extraData->nVersion);
         } else {
-            CAMHAL_LOGEB("OMX_FACEDETECTIONTYPE size mismatch: expected = %d, received = %d",
-                         ( unsigned int ) sizeof(OMX_FACEDETECTIONTYPE),
-                         ( unsigned int ) faceData->nSize);
+            CAMHAL_LOGD("FD extra data not found!");
             return -EINVAL;
         }
-    } else {
-        CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE");
-        return -EINVAL;
+
+        faceData = ( OMX_FACEDETECTIONTYPE * ) extraData->data;
+        if ( NULL != faceData ) {
+            if ( sizeof(OMX_FACEDETECTIONTYPE) == faceData->nSize ) {
+                CAMHAL_LOGVB("Faces detected %d",
+                             faceData->ulFaceCount,
+                             faceData->nSize,
+                             sizeof(OMX_FACEDETECTIONTYPE),
+                             faceData->eCameraView,
+                             faceData->nPortIndex,
+                             faceData->nVersion);
+            } else {
+                CAMHAL_LOGEB("OMX_FACEDETECTIONTYPE size mismatch: expected = %d, received = %d",
+                             ( unsigned int ) sizeof(OMX_FACEDETECTIONTYPE),
+                             ( unsigned int ) faceData->nSize);
+                return -EINVAL;
+            }
+        } else {
+            CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE");
+            return -EINVAL;
+        }
     }
 
-    ret = encodeFaceCoordinates(faceData, &faces, previewWidth, previewHeight);
+    ret = encodeFaceCoordinates(faceData, &meta, previewWidth, previewHeight);
+    encodePreviewMetadata(meta, pBuffHeader->pPlatformPrivate);
 
-    if ( NO_ERROR == ret ) {
-        result = new CameraFDResult(faces);
+    if ( (NO_ERROR == ret) )  {
+        result = new CameraMetadataResult(meta);
     } else {
         result.clear();
         result = NULL;
@@ -261,32 +279,29 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
 }
 
 status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *faceData,
-                                                 camera_frame_metadata_t **pFaces,
+                                                 camera_frame_metadata_t **pMetadata,
                                                  size_t previewWidth,
                                                  size_t previewHeight)
 {
     status_t ret = NO_ERROR;
     camera_face_t *faces;
-    camera_frame_metadata_t *faceResult;
+    camera_frame_metadata_t *metadataResult;
     size_t hRange, vRange;
     double tmp;
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == faceData ) {
-        CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE parameter");
-        return EINVAL;
-    }
+    hRange = CameraMetadataResult::RIGHT - CameraMetadataResult::LEFT;
+    vRange = CameraMetadataResult::BOTTOM - CameraMetadataResult::TOP;
 
-    hRange = CameraFDResult::RIGHT - CameraFDResult::LEFT;
-    vRange = CameraFDResult::BOTTOM - CameraFDResult::TOP;
-
-    faceResult = ( camera_frame_metadata_t * ) malloc(sizeof(camera_frame_metadata_t));
-    if ( NULL == faceResult ) {
+    metadataResult = ( camera_frame_metadata_t * ) malloc(sizeof(camera_frame_metadata_t));
+    if ( NULL == metadataResult ) {
         return -ENOMEM;
     }
 
-    if ( 0 < faceData->ulFaceCount ) {
+    Mutex::Autolock lock(mFaceDetectionLock);
+
+    if ( (NULL != faceData) && (0 < faceData->ulFaceCount) ) {
         int orient_mult;
         int trans_left, trans_top, trans_right, trans_bot;
 
@@ -386,19 +401,19 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
 
             faces[i].score = faceData->tFacePosition[j].nScore;
             faces[i].id = 0;
-            faces[i].left_eye[0] = CameraFDResult::INVALID_DATA;
-            faces[i].left_eye[1] = CameraFDResult::INVALID_DATA;
-            faces[i].right_eye[0] = CameraFDResult::INVALID_DATA;
-            faces[i].right_eye[1] = CameraFDResult::INVALID_DATA;
-            faces[i].mouth[0] = CameraFDResult::INVALID_DATA;
-            faces[i].mouth[1] = CameraFDResult::INVALID_DATA;
+            faces[i].left_eye[0] = CameraMetadataResult::INVALID_DATA;
+            faces[i].left_eye[1] = CameraMetadataResult::INVALID_DATA;
+            faces[i].right_eye[0] = CameraMetadataResult::INVALID_DATA;
+            faces[i].right_eye[1] = CameraMetadataResult::INVALID_DATA;
+            faces[i].mouth[0] = CameraMetadataResult::INVALID_DATA;
+            faces[i].mouth[1] = CameraMetadataResult::INVALID_DATA;
             i++;
             }
 
-        faceResult->number_of_faces = i;
-        faceResult->faces = faces;
+        metadataResult->number_of_faces = i;
+        metadataResult->faces = faces;
 
-        for (int i = 0; i  < faceResult->number_of_faces; i++)
+        for (int i = 0; i  < metadataResult->number_of_faces; i++)
         {
             int centerX = (faces[i].rect[trans_left] + faces[i].rect[trans_right] ) / 2;
             int centerY = (faces[i].rect[trans_top] + faces[i].rect[trans_bot] ) / 2;
@@ -439,17 +454,17 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
         }
 
         // Save this output for next iteration
-        for (int i = 0; i  < faceResult->number_of_faces; i++)
+        for (int i = 0; i  < metadataResult->number_of_faces; i++)
         {
             faceDetectionLastOutput[i] = faces[i];
         }
-        faceDetectionNumFacesLastOutput = faceResult->number_of_faces;
+        faceDetectionNumFacesLastOutput = metadataResult->number_of_faces;
     } else {
-        faceResult->number_of_faces = 0;
-        faceResult->faces = NULL;
+        metadataResult->number_of_faces = 0;
+        metadataResult->faces = NULL;
     }
 
-    *pFaces = faceResult;
+    *pMetadata = metadataResult;
 
     LOG_FUNCTION_NAME_EXIT;
 

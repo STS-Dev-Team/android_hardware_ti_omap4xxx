@@ -121,5 +121,23 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR 
     return ret;
 }
 
+void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt)
+{
+    OMX_OTHER_EXTRADATATYPE *extraData = NULL;
+
+    extraData = getExtradata(plat_pvt, (OMX_EXTRADATATYPE) OMX_TI_VectShotInfo);
+
+    if ( (NULL != extraData) && (NULL != extraData->data) ) {
+        OMX_TI_VECTSHOTINFOTYPE *shotInfo;
+        shotInfo = (OMX_TI_VECTSHOTINFOTYPE*) extraData->data;
+
+        meta->analog_gain = shotInfo->nAGain;
+        meta->exposure_time = shotInfo->nExpTime;
+    } else {
+        meta->analog_gain = -1;
+        meta->exposure_time = -1;
+    }
+}
+
 };
 

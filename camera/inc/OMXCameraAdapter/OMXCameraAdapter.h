@@ -625,9 +625,10 @@ private:
     status_t setParametersFD(const CameraParameters &params,
                              BaseCameraAdapter::AdapterState state);
     status_t updateFocusDistances(CameraParameters &params);
+    status_t setFaceDetectionOrientation(OMX_U32 orientation);
     status_t setFaceDetection(bool enable, OMX_U32 orientation);
-    status_t detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
-                         sp<CameraFDResult> &result,
+    status_t createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHeader,
+                         sp<CameraMetadataResult> &result,
                          size_t previewWidth,
                          size_t previewHeight);
     status_t encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *faceData,
@@ -760,6 +761,7 @@ private:
 
     // Meta data
     status_t setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const;
+    void encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt);
 
     // Mechanical Misalignment Correction
     status_t setMechanicalMisalignmentCorrection(bool enable);
