@@ -2104,7 +2104,7 @@ status_t OMXCameraAdapter::startPreview()
     // Enable all preview mode extra data.
     if ( OMX_ErrorNone == eError) {
         ret |= setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_AncillaryData);
-        ret |= setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_TI_VectShotInfo);
+        ret |= setExtraData(true, OMX_ALL, OMX_TI_VectShotInfo);
     }
 
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
