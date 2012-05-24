@@ -2101,10 +2101,10 @@ status_t OMXCameraAdapter::startPreview()
         goto EXIT;
         }
 
-    // Enable Ancillary data. The nDCCStatus field is used to signify
-    // whether the preview frame is a snapshot
+    // Enable all preview mode extra data.
     if ( OMX_ErrorNone == eError) {
-        ret =  setExtraData(true, OMX_ALL, OMX_AncillaryData);
+        ret |= setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_AncillaryData);
+        ret |= setExtraData(true, mCameraAdapterParameters.mPrevPortIndex, OMX_TI_VectShotInfo);
     }
 
     mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -2903,12 +2903,8 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
     if (rotation != mDeviceOrientation) {
         mDeviceOrientation = rotation;
 
-        mFaceDetectionLock.lock();
-        if (mFaceDetectionRunning) {
-            // restart face detection with new rotation
-            setFaceDetection(true, mDeviceOrientation);
-        }
-        mFaceDetectionLock.unlock();
+        // restart face detection with new rotation
+        setFaceDetectionOrientation(mDeviceOrientation);
     }
     CAMHAL_LOGVB("orientation = %d tilt = %d device_orientation = %d", orientation, tilt, mDeviceOrientation);
 
@@ -3351,7 +3347,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
     BaseCameraAdapter::AdapterState state, nextState;
     BaseCameraAdapter::getState(state);
     BaseCameraAdapter::getNextState(nextState);
-    sp<CameraFDResult> fdResult = NULL;
+    sp<CameraMetadataResult> metadataResult = NULL;
     unsigned int mask = 0xFFFF;
     CameraFrame cameraFrame;
     OMX_OTHER_EXTRADATATYPE *extraData;
@@ -3473,26 +3469,24 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         recalculateFPS();
 
+        createPreviewMetadata(pBuffHeader, metadataResult, pPortParam->mWidth, pPortParam->mHeight);
+        if ( NULL != metadataResult.get() ) {
+            notifyMetadataSubscribers(metadataResult);
+            metadataResult.clear();
+        }
+
         {
             Mutex::Autolock lock(mFaceDetectionLock);
-            if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
-                detectFaces(pBuffHeader, fdResult, pPortParam->mWidth, pPortParam->mHeight);
-                if ( NULL != fdResult.get() ) {
-                    notifyFaceSubscribers(fdResult);
-                    fdResult.clear();
-                }
+            if ( mFDSwitchAlgoPriority ) {
 
-                if ( mFDSwitchAlgoPriority ) {
+                 //Disable region priority and enable face priority for AF
+                 setAlgoPriority(REGION_PRIORITY, FOCUS_ALGO, false);
+                 setAlgoPriority(FACE_PRIORITY, FOCUS_ALGO , true);
 
-                    //Disable region priority and enable face priority for AF
-                    setAlgoPriority(REGION_PRIORITY, FOCUS_ALGO, false);
-                    setAlgoPriority(FACE_PRIORITY, FOCUS_ALGO , true);
-
-                    //Disable Region priority and enable Face priority
-                    setAlgoPriority(REGION_PRIORITY, EXPOSURE_ALGO, false);
-                    setAlgoPriority(FACE_PRIORITY, EXPOSURE_ALGO, true);
-                    mFDSwitchAlgoPriority = false;
-                }
+                 //Disable Region priority and enable Face priority
+                 setAlgoPriority(REGION_PRIORITY, EXPOSURE_ALGO, false);
+                 setAlgoPriority(FACE_PRIORITY, EXPOSURE_ALGO, true);
+                 mFDSwitchAlgoPriority = false;
             }
         }
 
