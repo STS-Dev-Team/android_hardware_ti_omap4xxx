@@ -1413,7 +1413,9 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     // Disable WB and vector shot extra data for metadata
     setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
-    setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
+    // TODO: WA: if domx client disables VectShotInfo metadata on the image port, this causes
+    // VectShotInfo to be disabled internally on preview port also. Remove setting in OMXCapture
+    // setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
     setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
 
     CAMHAL_LOGDB("Capture set - 0x%x", eError);
@@ -1835,7 +1837,9 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 
     // Enable WB and vector shot extra data for metadata
     setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
-    setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
+    // TODO: WA: if domx client disables VectShotInfo metadata on the image port, this causes
+    // VectShotInfo to be disabled internally on preview port also. Remove setting in OMXCapture
+    // setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
     setExtraData(true, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
 
     // CPCam mode only supports vector shot
@@ -1882,7 +1886,9 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_WhiteBalance);
-    setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
+    // TODO: WA: if domx client disables VectShotInfo metadata on the image port, this causes
+    // VectShotInfo to be disabled internally on preview port also. Remove setting in OMXCapture
+    // setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_VectShotInfo);
     setExtraData(false, mCameraAdapterParameters.mImagePortIndex, OMX_TI_LSCTable);
     //Release image buffers
     if ( NULL != mReleaseImageBuffersCallback ) {
