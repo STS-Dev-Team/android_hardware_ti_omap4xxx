@@ -280,28 +280,28 @@ protected:
     size_t mWeight;
 };
 
-class CameraFDResult : public RefBase
+class CameraMetadataResult : public RefBase
 {
 public:
 
-    CameraFDResult() : mFaceData(NULL) {};
-    CameraFDResult(camera_frame_metadata_t *faces) : mFaceData(faces) {};
+    CameraMetadataResult() : mMetadata(NULL) {};
+    CameraMetadataResult(camera_frame_metadata_t *meta) : mMetadata(meta) {};
 
-    virtual ~CameraFDResult() {
-        if ( ( NULL != mFaceData ) && ( NULL != mFaceData->faces ) ) {
-            free(mFaceData->faces);
-            free(mFaceData);
-            mFaceData=NULL;
+    virtual ~CameraMetadataResult() {
+        if ( ( NULL != mMetadata ) && ( NULL != mMetadata->faces ) ) {
+            free(mMetadata->faces);
+            free(mMetadata);
+            mMetadata=NULL;
         }
 
-        if(( NULL != mFaceData ))
+        if(( NULL != mMetadata ))
             {
-            free(mFaceData);
-            mFaceData = NULL;
+            free(mMetadata);
+            mMetadata = NULL;
             }
     }
 
-    camera_frame_metadata_t *getFaceResult() { return mFaceData; };
+    camera_frame_metadata_t *getMetadataResult() { return mMetadata; };
 
     static const ssize_t TOP = -1000;
     static const ssize_t LEFT = -1000;
@@ -311,7 +311,7 @@ public:
 
 private:
 
-    camera_frame_metadata_t *mFaceData;
+    camera_frame_metadata_t *mMetadata;
 };
 
 typedef enum {
@@ -483,7 +483,7 @@ public:
         EVENT_FOCUS_ERROR = 0x2,
         EVENT_ZOOM_INDEX_REACHED = 0x4,
         EVENT_SHUTTER = 0x8,
-        EVENT_FACE = 0x10,
+        EVENT_METADATA = 0x10,
         ///@remarks Future enum related to display, like frame displayed event, could be added here
         ALL_EVENTS = 0xFFFF ///Maximum of 16 event types supported
     };
@@ -523,7 +523,7 @@ public:
         size_t score;
     } FaceData;
 
-    typedef sp<CameraFDResult> FaceEventData;
+    typedef sp<CameraMetadataResult> MetaEventData;
 
     class CameraHalEventData : public RefBase{
 
@@ -532,7 +532,7 @@ public:
         CameraHalEvent::FocusEventData focusEvent;
         CameraHalEvent::ZoomEventData zoomEvent;
         CameraHalEvent::ShutterEventData shutterEvent;
-        CameraHalEvent::FaceEventData faceEvent;
+        CameraHalEvent::MetaEventData metadataEvent;
     };
 
     //default contrustor

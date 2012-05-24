@@ -164,7 +164,7 @@ protected:
     status_t notifyFocusSubscribers(CameraHalEvent::FocusStatus status);
     status_t notifyShutterSubscribers();
     status_t notifyZoomSubscribers(int zoomIdx, bool targetReached);
-    status_t notifyFaceSubscribers(sp<CameraFDResult> &faces);
+    status_t notifyMetadataSubscribers(sp<CameraMetadataResult> &meta);
 
     //Send the frame to subscribers
     status_t sendFrameToSubscribers(CameraFrame *frame);
@@ -233,7 +233,7 @@ protected:
     KeyedVector<int, event_callback> mFocusSubscribers;
     KeyedVector<int, event_callback> mZoomSubscribers;
     KeyedVector<int, event_callback> mShutterSubscribers;
-    KeyedVector<int, event_callback> mFaceSubscribers;
+    KeyedVector<int, event_callback> mMetadataSubscribers;
 
     //Preview buffer management data
     CameraBuffer *mPreviewBuffers;
