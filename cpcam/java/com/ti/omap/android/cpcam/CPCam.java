@@ -96,6 +96,7 @@ public class CPCam {
     private AutoFocusCallback mAutoFocusCallback;
     private OnZoomChangeListener mZoomListener;
     private FaceDetectionListener mFaceListener;
+    private MetadataListener mMetadataListener;
     private ErrorCallback mErrorCallback;
     private boolean mOneShot;
     private boolean mWithBuffer;
@@ -700,8 +701,12 @@ public class CPCam {
                 return;
 
             case CAMERA_MSG_PREVIEW_METADATA:
+                Metadata data = (Metadata)msg.obj;
                 if (mFaceListener != null) {
-                    mFaceListener.onFaceDetection((Face[])msg.obj, mCamera);
+                    mFaceListener.onFaceDetection(data.faces, mCamera);
+                }
+                if (mMetadataListener != null) {
+                    mMetadataListener.onMetadata(data, mCamera);
                 }
                 return;
 
@@ -1080,6 +1085,33 @@ public class CPCam {
     }
 
     /**
+     * Callback interface for metadata.
+     *
+     * @see #setMetadataListener(MetadataListener)
+     */
+    public interface MetadataListener
+    {
+        /**
+         * Called when metadata is available
+         *
+         * @param metadata the metadata of associated frame
+         * @param camera  the Camera service object
+         */
+        void onMetadata(Metadata metadata, CPCam camera);
+    };
+
+    /**
+     * Registers a listener to be notified when metadata
+     * is available.
+     *
+     * @param listener the listener to notify
+     */
+    public final void setMetadataListener(MetadataListener listener)
+    {
+        mMetadataListener = listener;
+    }
+
+    /**
      * Starts the face detection. This should be called after preview is started.
      * The camera will notify {@link FaceDetectionListener} of the detected
      * faces in the preview frame. The detected faces may be the same as the
@@ -1226,6 +1258,44 @@ public class CPCam {
          * as a set. Either they are all valid, or none of them are.
          */
         public Point mouth = null;
+    }
+
+    /**
+     * Information about metadata values of an associated frame.
+     *
+     * @see MetadataListener
+     */
+    public static class Metadata {
+
+        /**
+         * Create an empty metadata.
+         */
+        public Metadata() {
+        }
+
+        /**
+         * Create metadata with given values.
+         */
+        public Metadata(int exp, int gain, Face[] _faces) {
+            exposureTime = exp;
+            analogGain = gain;
+            faces = _faces;
+        }
+
+        /**
+         * Exposure time in microseconds
+         */
+        public int exposureTime;
+
+        /**
+         * Analog gain in EV units * 1000
+         */
+        public int analogGain;
+
+        /**
+         * List of faces for a particular frame
+         */
+        public Face[] faces;
     }
 
     // Error codes match the enum in include/ui/Camera.h
