@@ -124,6 +124,8 @@ EXIT:
 
 status_t OMXCameraAdapter::stopReprocess()
 {
+    LOG_FUNCTION_NAME;
+
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters *portData = NULL;
