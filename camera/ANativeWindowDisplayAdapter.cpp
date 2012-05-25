@@ -88,6 +88,11 @@ const char* DisplayAdapter::getPixFormatConstant(const char* parameters_format) 
             CAMHAL_LOGVA("RGB565 format selected");
             pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_RGB565;
         }
+        else if(strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0)
+        {
+            CAMHAL_LOGVA("BAYER format selected");
+            pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+        }
         else
         {
             CAMHAL_LOGEA("Invalid format, NV12 format selected as default");
@@ -118,6 +123,10 @@ size_t DisplayAdapter::getBufSize(const char* parameters_format, int width, int 
         }
         else if(strcmp(parameters_format,
                       (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+            buf_size = width * height * 2;
+        }
+        else if (strcmp(parameters_format,
+                  (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
             buf_size = width * height * 2;
         } else {
             CAMHAL_LOGEA("Invalid format");

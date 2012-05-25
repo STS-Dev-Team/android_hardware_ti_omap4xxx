@@ -56,6 +56,9 @@ status_t OMXCameraAdapter::setParametersReprocess(const CameraParameters &params
         if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+        } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
+            CAMHAL_LOGDA("RAW Picture format selected");
+            pixFormat = OMX_COLOR_FormatRawBayer10bit;
         } else {
             CAMHAL_LOGDA("Format not supported, selecting YUV420SP by default");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
@@ -69,7 +72,13 @@ status_t OMXCameraAdapter::setParametersReprocess(const CameraParameters &params
          (s != (int) portData->mStride) || (pixFormat != portData->mColorFormat)) {
         portData->mWidth = w;
         portData->mHeight = h;
-        portData->mStride = s;
+
+        if ( OMX_COLOR_FormatRawBayer10bit == pixFormat ) {
+            portData->mStride = w * 2;
+        } else {
+            portData->mStride = s;
+        }
+
         portData->mColorFormat = pixFormat;
 
         ret = setFormat(OMX_CAMERA_PORT_VIDEO_IN_VIDEO, *portData);

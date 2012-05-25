@@ -1558,10 +1558,10 @@ status_t OMXCameraAdapter::initInternalBuffers(OMX_U32 portIndex)
 
         index++;
 
-        /* 10 is an arbitrary limit */
-    } while (index < 10);
+        /* 1 is an arbitrary limit */
+    } while (index < 1);
 
-    CAMHAL_LOGEA("Ducati requested too many (>10) internal buffers");
+    CAMHAL_LOGV("Ducati requested too many (>1) internal buffers");
 
     return -EINVAL;
 }

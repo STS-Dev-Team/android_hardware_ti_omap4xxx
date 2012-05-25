@@ -37,6 +37,8 @@ static int getANWFormat(const char* parameters_format)
             CAMHAL_LOGDA("RGB565 format selected");
             // TODO(XXX): not defined yet
             format = -1;
+        } else if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
+            format = HAL_PIXEL_FORMAT_TI_Y16;
         } else {
             CAMHAL_LOGDA("Invalid format, NV12 format selected as default");
             format = HAL_PIXEL_FORMAT_TI_NV12;
@@ -57,6 +59,7 @@ static int getUsageFromANW(int format)
             // buffers to come from system heap
             usage |= GRALLOC_USAGE_PRIVATE_0;
             break;
+        case HAL_PIXEL_FORMAT_TI_Y16:
         default:
             // No special flags needed
             break;
@@ -70,6 +73,8 @@ static const char* getFormatFromANW(int format)
         case HAL_PIXEL_FORMAT_TI_NV12:
             // Assuming NV12 1D is RAW or Image frame
             return CameraParameters::PIXEL_FORMAT_YUV420SP;
+        case HAL_PIXEL_FORMAT_TI_Y16:
+            return CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
         default:
             break;
     }
@@ -79,6 +84,7 @@ static const char* getFormatFromANW(int format)
 static CameraFrame::FrameType formatToOutputFrameType(const char* format) {
     switch (getANWFormat(format)) {
         case HAL_PIXEL_FORMAT_TI_NV12:
+        case HAL_PIXEL_FORMAT_TI_Y16:
             // Assuming NV12 1D is RAW or Image frame
             return CameraFrame::RAW_FRAME;
         default:
@@ -336,7 +342,7 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
     // Set window geometry
     err = mBufferSource->set_buffers_geometry(mBufferSource,
                                               width, height,
-                                              getANWFormat(format));
+                                              pixFormat);
 
     if (err != 0) {
         CAMHAL_LOGE("native_window_set_buffers_geometry failed: %s (%d)", strerror(-err), -err);
@@ -447,7 +453,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     LOG_FUNCTION_NAME;
     status_t err;
     const int lnumBufs = 1;
-    int format;
+    int formatSource;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     buffer_handle_t *handle;
 
@@ -476,7 +482,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     mFramesWithCameraAdapterMap.add(handle, 0);
 
     err = mBufferSource->get_buffer_dimension(mBufferSource, &mBuffers[0].width, &mBuffers[0].height);
-    err = mBufferSource->get_buffer_format(mBufferSource, &format);
+    err = mBufferSource->get_buffer_format(mBufferSource, &formatSource);
 
     // lock buffer
     {
@@ -488,7 +494,8 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
 
     mFrameWidth = mBuffers[0].width;
     mFrameHeight = mBuffers[0].height;
-    mPixelFormat = getFormatFromANW(format);
+    mPixelFormat = getFormatFromANW(formatSource);
+
     mBuffers[0].format = mPixelFormat;
     mBufferSourceDirection = BUFFER_SOURCE_TAP_IN;
 
