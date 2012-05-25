@@ -23,7 +23,7 @@ namespace android {
 
 static int getANWFormat(const char* parameters_format)
 {
-    int format = HAL_PIXEL_FORMAT_TI_NV12_1D;
+    int format = HAL_PIXEL_FORMAT_TI_NV12;
 
     if (parameters_format != NULL) {
         if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
@@ -32,24 +32,42 @@ static int getANWFormat(const char* parameters_format)
             format = -1;
         } else if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
-            format = HAL_PIXEL_FORMAT_TI_NV12_1D;
+            format = HAL_PIXEL_FORMAT_TI_NV12;
         } else if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             CAMHAL_LOGDA("RGB565 format selected");
             // TODO(XXX): not defined yet
             format = -1;
         } else {
             CAMHAL_LOGDA("Invalid format, NV12 format selected as default");
-            format = HAL_PIXEL_FORMAT_TI_NV12_1D;
+            format = HAL_PIXEL_FORMAT_TI_NV12;
         }
     }
 
     return format;
 }
 
+static int getUsageFromANW(int format)
+{
+    int usage = GRALLOC_USAGE_SW_READ_RARELY |
+                GRALLOC_USAGE_SW_WRITE_NEVER;
+
+    switch (format) {
+        case HAL_PIXEL_FORMAT_TI_NV12:
+            // This usage flag indicates to gralloc we want the
+            // buffers to come from system heap
+            usage |= GRALLOC_USAGE_PRIVATE_0;
+            break;
+        default:
+            // No special flags needed
+            break;
+    }
+    return usage;
+}
+
 static const char* getFormatFromANW(int format)
 {
     switch (format) {
-        case HAL_PIXEL_FORMAT_TI_NV12_1D:
+        case HAL_PIXEL_FORMAT_TI_NV12:
             // Assuming NV12 1D is RAW or Image frame
             return CameraParameters::PIXEL_FORMAT_YUV420SP;
         default:
@@ -60,12 +78,9 @@ static const char* getFormatFromANW(int format)
 
 static CameraFrame::FrameType formatToOutputFrameType(const char* format) {
     switch (getANWFormat(format)) {
-        case HAL_PIXEL_FORMAT_TI_NV12_1D:
+        case HAL_PIXEL_FORMAT_TI_NV12:
             // Assuming NV12 1D is RAW or Image frame
             return CameraFrame::RAW_FRAME;
-        case HAL_PIXEL_FORMAT_TI_NV12:
-            // Assuming NV12 2D is preview or postview frame
-            return CameraFrame::PREVIEW_FRAME_SYNC;
         default:
             break;
     }
@@ -285,8 +300,11 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
         return NULL;
     }
 
+    int pixFormat = getANWFormat(format);
+    int usage = getUsageFromANW(pixFormat);
+
     // Set gralloc usage bits for window.
-    err = mBufferSource->set_usage(mBufferSource, CAMHAL_GRALLOC_USAGE);
+    err = mBufferSource->set_usage(mBufferSource, usage);
     if (err != 0) {
         CAMHAL_LOGE("native_window_set_usage failed: %s (%d)", strerror(-err), -err);
 
