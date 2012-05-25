@@ -127,8 +127,8 @@ private:
 #   define LOG_FUNCTION_NAME Ti::FunctionLogger __function_logger_instance(__FILE__, __LINE__, __FUNCTION__);
 #   define LOG_FUNCTION_NAME_EXIT __function_logger_instance.setExitLine(__LINE__);
 #else
-#   define LOG_FUNCTION_NAME
-#   define LOG_FUNCTION_NAME_EXIT
+#   define LOG_FUNCTION_NAME int __function_logger_instance;
+#   define LOG_FUNCTION_NAME_EXIT (void*)__function_logger_instance;
 #endif
 
 #ifdef TI_UTILS_DEBUG_USE_TIMESTAMPS
