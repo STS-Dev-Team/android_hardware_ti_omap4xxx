@@ -278,6 +278,8 @@ bool MessageQueue::isEmpty()
 
 void MessageQueue::clear()
 {
+    LOG_FUNCTION_NAME;
+
     if(!this->fd_read)
         {
         MSGQ_LOGEA("read descriptor not initialized for message queue");
