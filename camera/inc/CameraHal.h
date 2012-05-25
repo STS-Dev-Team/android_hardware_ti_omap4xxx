@@ -59,6 +59,8 @@ extern "C" {
 
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
+#define HAL_PIXEL_FORMAT_TI_Y8 0x103
+#define HAL_PIXEL_FORMAT_TI_Y16 0x104
 
 #define MIN_WIDTH           640
 #define MIN_HEIGHT          480

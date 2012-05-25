@@ -3178,7 +3178,10 @@ status_t CameraHal::reprocess(const char *params)
     LOG_FUNCTION_NAME;
 
     // 1. Get buffers
-    if (mBufferSourceAdapter_In.get()) reprocBuffers = mBufferSourceAdapter_In->getBufferList(&bufferCount);
+    if (mBufferSourceAdapter_In.get()) {
+        reprocBuffers = mBufferSourceAdapter_In->getBufferList(&bufferCount);
+    }
+
     if (!reprocBuffers) {
         CAMHAL_LOGE("Error: couldn't get input buffers for reprocess()");
         goto exit;
