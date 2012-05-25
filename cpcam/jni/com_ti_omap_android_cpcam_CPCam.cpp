@@ -62,6 +62,10 @@ struct fields_t {
     jmethodID   post_event;
     jmethodID   rect_constructor;
     jmethodID   face_constructor;
+    jfieldID    exposure_time;
+    jfieldID    analog_gain;
+    jfieldID    faces;
+    jmethodID   metadata_constructor;
 };
 
 static fields_t fields;
@@ -94,6 +98,7 @@ private:
     jclass      mCameraJClass;          // strong reference to java class
     sp<Camera>  mCamera;                // strong reference to native object
     jclass      mFaceClass;  // strong reference to Face class
+    jclass      mMetadataClass;  // strong reference to Metadata class
     jclass      mRectClass;  // strong reference to Rect class
     Mutex       mLock;
 
@@ -148,6 +153,9 @@ JNICPCamContext::JNICPCamContext(JNIEnv* env, jobject weak_this, jclass clazz, c
     jclass faceClazz = env->FindClass("com/ti/omap/android/cpcam/CPCam$Face");
     mFaceClass = (jclass) env->NewGlobalRef(faceClazz);
 
+    jclass metadataClazz = env->FindClass("com/ti/omap/android/cpcam/CPCam$Metadata");
+    mMetadataClass = (jclass) env->NewGlobalRef(metadataClazz);
+
     jclass rectClazz = env->FindClass("android/graphics/Rect");
     mRectClass = (jclass) env->NewGlobalRef(rectClazz);
 
@@ -172,6 +180,10 @@ void JNICPCamContext::release()
     if (mFaceClass != NULL) {
         env->DeleteGlobalRef(mFaceClass);
         mFaceClass = NULL;
+    }
+    if (mMetadataClass != NULL) {
+        env->DeleteGlobalRef(mMetadataClass);
+        mMetadataClass = NULL;
     }
     if (mRectClass != NULL) {
         env->DeleteGlobalRef(mRectClass);
@@ -342,17 +354,27 @@ void JNICPCamContext::postDataTimestamp(nsecs_t timestamp, int32_t msgType, cons
 
 void JNICPCamContext::postMetadata(JNIEnv *env, int32_t msgType, camera_frame_metadata_t *metadata)
 {
-    jobjectArray obj = NULL;
-    obj = (jobjectArray) env->NewObjectArray(metadata->number_of_faces,
-                                             mFaceClass, NULL);
-    if (obj == NULL) {
-        LOGE("Couldn't allocate face metadata array");
+    jobject meta_obj = NULL;
+    meta_obj = (jobject) env->NewObject(mMetadataClass, fields.metadata_constructor);
+    if (meta_obj == NULL) {
+        LOGE("Couldn't allocate metadata class");
         return;
+    }
+
+    env->SetIntField(meta_obj, fields.exposure_time, metadata->exposure_time);
+    env->SetIntField(meta_obj, fields.analog_gain, metadata->analog_gain);
+
+    jobjectArray faces_obj = NULL;
+    faces_obj = (jobjectArray) env->NewObjectArray(metadata->number_of_faces,
+                                             mFaceClass, NULL);
+    if (faces_obj == NULL) {
+        LOGE("Couldn't allocate face metadata array");
+        goto err_alloc_faces;
     }
 
     for (int i = 0; i < metadata->number_of_faces; i++) {
         jobject face = env->NewObject(mFaceClass, fields.face_constructor);
-        env->SetObjectArrayElement(obj, i, face);
+        env->SetObjectArrayElement(faces_obj, i, face);
 
         jobject rect = env->NewObject(mRectClass, fields.rect_constructor);
         env->SetIntField(rect, fields.rect_left, metadata->faces[i].rect[0]);
@@ -366,9 +388,16 @@ void JNICPCamContext::postMetadata(JNIEnv *env, int32_t msgType, camera_frame_me
         env->DeleteLocalRef(face);
         env->DeleteLocalRef(rect);
     }
+
+    env->SetObjectField(meta_obj, fields.faces, faces_obj);
+
     env->CallStaticVoidMethod(mCameraJClass, fields.post_event,
-            mCameraJObjectWeak, msgType, 0, 0, obj);
-    env->DeleteLocalRef(obj);
+            mCameraJObjectWeak, msgType, CAMERA_MSG_PREVIEW_METADATA, 0, meta_obj);
+
+    env->DeleteLocalRef(faces_obj);
+err_alloc_faces:
+    env->DeleteLocalRef(meta_obj);
+    return;
 }
 
 void JNICPCamContext::setCallbackMode(JNIEnv *env, bool installed, bool manualMode)
@@ -703,11 +732,6 @@ static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thi
         const jchar* str = env->GetStringCritical(params, 0);
         params8 = String8(str, env->GetStringLength(params));
         env->ReleaseStringCritical(params, str);
-#ifndef OMAP_ENHANCEMENT
-        LOGE("Application trying to take picture with parameters applied,");
-        LOGE("but currently, using picture parameters is disabled in hardware.");
-        LOGW("Ignored picture parameters: %s", params8.string());
-#endif
     }
 
     /*
@@ -728,11 +752,7 @@ static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thi
         }
     }
 
-#ifdef OMAP_ENHANCEMENT
     if (camera->takePicture(msgType, params8) != NO_ERROR) {
-#else
-    if (camera->takePicture(msgType) != NO_ERROR) {
-#endif
         jniThrowRuntimeException(env, "takePicture failed");
         return;
     }
@@ -995,6 +1015,9 @@ int registerCPCamMethods(JNIEnv *env)
         { "android/graphics/Rect", "top", "I", &fields.rect_top },
         { "android/graphics/Rect", "right", "I", &fields.rect_right },
         { "android/graphics/Rect", "bottom", "I", &fields.rect_bottom },
+        { "com/ti/omap/android/cpcam/CPCam$Metadata", "exposureTime", "I", &fields.exposure_time },
+        { "com/ti/omap/android/cpcam/CPCam$Metadata", "analogGain", "I", &fields.analog_gain },
+        { "com/ti/omap/android/cpcam/CPCam$Metadata", "faces", "[Lcom/ti/omap/android/cpcam/CPCam$Face;", &fields.faces },
     };
 
     if (find_fields(env, fields_to_find, NELEM(fields_to_find)) < 0)
@@ -1021,6 +1044,14 @@ int registerCPCamMethods(JNIEnv *env)
         LOGE("Can't find com/ti/omap/android/cpcam/CPCam$Face.Face()");
         return -1;
     }
+
+    clazz = env->FindClass("com/ti/omap/android/cpcam/CPCam$Metadata");
+    fields.metadata_constructor = env->GetMethodID(clazz, "<init>", "()V");
+    if (fields.metadata_constructor == NULL) {
+        LOGE("Can't find com/ti/omap/android/cpcam/CPCam$Metadata.Metadata()");
+        return -1;
+    }
+
 /*
     // Register native functions
     return AndroidRuntime::registerNativeMethods(env, "com/ti/omap/android/cpcam/CPCam",
@@ -1034,6 +1065,7 @@ int registerCPCamMethods(JNIEnv *env)
         LOGE("Failed registering methods for %s\n", "com/ti/omap/android/cpcam/CPCam");
         return -1;
     }
+
     return 0;
 }
 
