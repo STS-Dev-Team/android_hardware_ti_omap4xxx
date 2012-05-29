@@ -533,35 +533,23 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
     BaseCameraAdapter::getState(state);
 
     ///@todo Include more camera parameters
-    if ( (valstr = params.getPreviewFormat()) != NULL )
-        {
-        if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-            {
-            CAMHAL_LOGDA("CbYCrY format selected");
-            pixFormat = OMX_COLOR_FormatCbYCrY;
-            }
-        else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-                strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
-            {
+    if ( (valstr = params.getPreviewFormat()) != NULL ) {
+        if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
+           strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0 ||
+           strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420PackedSemiPlanar;
-            }
-        else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-            {
+        } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             CAMHAL_LOGDA("RGB565 format selected");
             pixFormat = OMX_COLOR_Format16bitRGB565;
-            }
-        else
-            {
-            CAMHAL_LOGDA("Invalid format, NV12 format selected as default");
-            pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
-            }
+        } else {
+            CAMHAL_LOGDA("Invalid format, CbYCrY format selected as default");
+            pixFormat = OMX_COLOR_FormatCbYCrY;
         }
-    else
-        {
-        CAMHAL_LOGEA("Preview format is NULL, defaulting to NV12");
-        pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
-        }
+    } else {
+        CAMHAL_LOGEA("Preview format is NULL, defaulting to CbYCrY");
+        pixFormat = OMX_COLOR_FormatCbYCrY;
+    }
 
     OMXCameraPortParameters *cap;
     cap = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
