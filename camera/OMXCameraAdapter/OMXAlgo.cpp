@@ -27,9 +27,10 @@
 
 #undef TRUE
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
-status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &params,
                                              BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -125,7 +126,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         CAMHAL_LOGVB("IPP Mode set %d", ipp);
 
         if (((valstr = params.get(TICameraParameters::KEY_GBCE)) != NULL) ) {
-            if (strcmp(valstr, CameraParameters::TRUE ) == 0) {
+            if (strcmp(valstr, android::CameraParameters::TRUE ) == 0) {
                 gbce = BRIGHTNESS_ON;
             } else {
                 gbce = BRIGHTNESS_OFF;
@@ -143,7 +144,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
         if ( ( valstr = params.get(TICameraParameters::KEY_GLBCE) ) != NULL ) {
 
-            if (strcmp(valstr, CameraParameters::TRUE) == 0) {
+            if (strcmp(valstr, android::CameraParameters::TRUE) == 0) {
                 glbce = BRIGHTNESS_ON;
             } else {
                 glbce = BRIGHTNESS_OFF;
@@ -174,7 +175,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
     ///Set VNF Configuration
     bool vnfEnabled = false;
     valstr = params.get(TICameraParameters::KEY_VNF);
-    if (valstr && strcmp(valstr, CameraParameters::TRUE) == 0)
+    if (valstr && strcmp(valstr, android::CameraParameters::TRUE) == 0)
         {
         CAMHAL_LOGDA("VNF Enabled");
         vnfEnabled = true;
@@ -194,8 +195,8 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
     ///Set VSTAB Configuration
     bool vstabEnabled = false;
-    valstr = params.get(CameraParameters::KEY_VIDEO_STABILIZATION);
-    if (valstr && strcmp(valstr, CameraParameters::TRUE) == 0) {
+    valstr = params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION);
+    if (valstr && strcmp(valstr, android::CameraParameters::TRUE) == 0) {
         CAMHAL_LOGDA("VSTAB Enabled");
         vstabEnabled = true;
         }
@@ -239,7 +240,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         //Set Mechanical Misalignment Correction
         valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
         if ( valstr != NULL ) {
-            setMechanicalMisalignmentCorrection(strcmp(valstr, CameraParameters::TRUE) == 0);
+            setMechanicalMisalignmentCorrection(strcmp(valstr, android::CameraParameters::TRUE) == 0);
             CAMHAL_LOGDB("Mechanical Misalignment Correction %s", valstr);
         }
     }
@@ -250,13 +251,13 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 }
 
 // Set AutoConvergence
-status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const char *pValManualstr, const CameraParameters &params)
+status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const char *pValManualstr, const android::CameraParameters &params)
 {
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_TI_CONFIG_CONVERGENCETYPE ACParams;
     const char *str = NULL;
-    Vector< sp<CameraArea> > tempAreas;
+    android::Vector<android::sp<CameraArea> > tempAreas;
     int mode;
     int changed = 0;
 
@@ -287,15 +288,15 @@ status_t OMXCameraAdapter::setAutoConvergence(const char *pValstr, const char *p
     }
 
     if ( OMX_TI_AutoConvergenceModeFocusFaceTouch == mAutoConv ) {
-        Mutex::Autolock lock(mTouchAreasLock);
+        android::AutoMutex lock(mTouchAreasLock);
 
-        str = params.get((const char *)CameraParameters::KEY_METERING_AREAS);
+        str = params.get(android::CameraParameters::KEY_METERING_AREAS);
 
         if ( NULL != str ) {
             ret = CameraArea::parseAreas(str, ( strlen(str) + 1 ), tempAreas);
         } else {
             CAMHAL_LOGEB("Touch areas not received in %s",
-                         CameraParameters::KEY_METERING_AREAS);
+                         android::CameraParameters::KEY_METERING_AREAS);
             LOG_FUNCTION_NAME_EXIT;
             return BAD_VALUE;
         }
@@ -688,7 +689,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
             if ( OMX_ErrorNone != eError )
                 {
                 CAMHAL_LOGEB("Error while configuring camera mode 0x%x", eError);
-                ret = ErrorUtils::omxToAndroidError(eError);
+                ret = Utils::ErrorUtils::omxToAndroidError(eError);
                 }
             else
                 {
@@ -703,7 +704,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                                     &singlePrevMode);
             if ( OMX_ErrorNone != eError ) {
                 CAMHAL_LOGEB("Error while configuring single preview mode 0x%x", eError);
-                ret = ErrorUtils::omxToAndroidError(eError);
+                ret = Utils::ErrorUtils::omxToAndroidError(eError);
             } else {
                 CAMHAL_LOGDA("single preview mode configured successfully");
             }
@@ -719,7 +720,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
             if ( OMX_ErrorNone != eError )
                 {
                 CAMHAL_LOGEB("Error while configuring CAC 0x%x", eError);
-                ret = ErrorUtils::omxToAndroidError(eError);
+                ret = Utils::ErrorUtils::omxToAndroidError(eError);
                 }
             else
                 {
@@ -1027,7 +1028,7 @@ status_t OMXCameraAdapter::setAlgoPriority(AlgoPriority priority,
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setPictureRotation(unsigned int degree)
@@ -1217,4 +1218,5 @@ status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const bool enable
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

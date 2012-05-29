@@ -32,6 +32,9 @@
 #define ARRAY_SIZE(array) (sizeof((array)) / sizeof((array)[0]))
 #endif
 
+namespace Ti {
+namespace Camera {
+
 struct SceneModesEntry {
     OMX_SCENEMODETYPE scene;
     OMX_IMAGE_FLASHCONTROLTYPE flash;
@@ -543,5 +546,8 @@ static const CameraToSensorModesLUTEntry CameraToSensorModesLUT [] = {
     { "OV5640", OV5640_SceneModesLUT, ARRAY_SIZE(OV5640_SceneModesLUT)},
     { "OV5650", OV5650_SceneModesLUT, ARRAY_SIZE(OV5650_SceneModesLUT)},
 };
+
+} // namespace Camera
+} // namespace Ti
 
 #endif

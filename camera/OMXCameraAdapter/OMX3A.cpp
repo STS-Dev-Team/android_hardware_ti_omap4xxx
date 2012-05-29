@@ -31,7 +31,9 @@
 
 static const char PARAM_SEP[] = ",";
 
-namespace android {
+namespace Ti {
+namespace Camera {
+
 const SceneModesEntry* OMXCameraAdapter::getSceneModeEntry(const char* name,
                                                                   OMX_SCENEMODETYPE scene) {
     const SceneModesEntry* cameraLUT = NULL;
@@ -62,7 +64,7 @@ const SceneModesEntry* OMXCameraAdapter::getSceneModeEntry(const char* name,
     return entry;
 }
 
-status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
+status_t OMXCameraAdapter::setParameters3A(const android::CameraParameters &params,
                                            BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -73,9 +75,9 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(m3ASettingsUpdateLock);
+    android::AutoMutex lock(m3ASettingsUpdateLock);
 
-    str = params.get(CameraParameters::KEY_SCENE_MODE);
+    str = params.get(android::CameraParameters::KEY_SCENE_MODE);
     mode = getLUTvalue_HALtoOMX( str, SceneLUT);
     if ( mFirstTimeInit || ((str != NULL) && ( mParameters3A.SceneMode != mode )) ) {
         if ( 0 <= mode ) {
@@ -148,7 +150,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         }
     }
 
-    str = params.get(CameraParameters::KEY_WHITE_BALANCE);
+    str = params.get(android::CameraParameters::KEY_WHITE_BALANCE);
     mode = getLUTvalue_HALtoOMX( str, WBalLUT);
     if (mFirstTimeInit || ((str != NULL) && (mode != mParameters3A.WhiteBallance)))
         {
@@ -208,7 +210,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
             }
         }
 
-    str = params.get(CameraParameters::KEY_ANTIBANDING);
+    str = params.get(android::CameraParameters::KEY_ANTIBANDING);
     mode = getLUTvalue_HALtoOMX(str,FlickerLUT);
     if ( mFirstTimeInit || ( ( str != NULL ) && ( mParameters3A.Flicker != mode ) ))
         {
@@ -233,7 +235,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
             }
         }
 
-    str = params.get(CameraParameters::KEY_FOCUS_MODE);
+    str = params.get(android::CameraParameters::KEY_FOCUS_MODE);
     mode = getLUTvalue_HALtoOMX(str, FocusLUT);
     if ( (mFirstTimeInit || ((str != NULL) && (mParameters3A.Focus != mode))))
         {
@@ -249,20 +251,20 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         CAMHAL_LOGDB("Focus %x", mParameters3A.Focus);
         }
 
-    str = params.get(CameraParameters::KEY_EXPOSURE_COMPENSATION);
+    str = params.get(android::CameraParameters::KEY_EXPOSURE_COMPENSATION);
     if ( mFirstTimeInit ||
           (( str != NULL ) &&
                   (mParameters3A.EVCompensation !=
-                          params.getInt(CameraParameters::KEY_EXPOSURE_COMPENSATION))))
+                          params.getInt(android::CameraParameters::KEY_EXPOSURE_COMPENSATION))))
         {
         CAMHAL_LOGDB("Setting EV Compensation to %d",
-                     params.getInt(CameraParameters::KEY_EXPOSURE_COMPENSATION));
+                     params.getInt(android::CameraParameters::KEY_EXPOSURE_COMPENSATION));
 
-        mParameters3A.EVCompensation = params.getInt(CameraParameters::KEY_EXPOSURE_COMPENSATION);
+        mParameters3A.EVCompensation = params.getInt(android::CameraParameters::KEY_EXPOSURE_COMPENSATION);
         mPending3Asettings |= SetEVCompensation;
         }
 
-    str = params.get(CameraParameters::KEY_FLASH_MODE);
+    str = params.get(android::CameraParameters::KEY_FLASH_MODE);
     mode = getLUTvalue_HALtoOMX( str, FlashLUT);
     if (  mFirstTimeInit || (( str != NULL ) && ( mParameters3A.FlashMode != mode )) )
         {
@@ -280,7 +282,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
     CAMHAL_LOGVB("Flash Setting %s", str);
     CAMHAL_LOGVB("FlashMode %d", mParameters3A.FlashMode);
 
-    str = params.get(CameraParameters::KEY_EFFECT);
+    str = params.get(android::CameraParameters::KEY_EFFECT);
     mode = getLUTvalue_HALtoOMX( str, EffLUT);
     if (  mFirstTimeInit || (( str != NULL ) && ( mParameters3A.Effect != mode )) )
         {
@@ -292,13 +294,13 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
             }
         }
 
-    str = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED);
-    if ( (str != NULL) && (!strcmp(str, CameraParameters::TRUE)) )
+    str = params.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED);
+    if ( (str != NULL) && (!strcmp(str, android::CameraParameters::TRUE)) )
       {
         OMX_BOOL lock = OMX_FALSE;
         mUserSetExpLock = OMX_FALSE;
-        str = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK);
-        if (str && ((strcmp(str, CameraParameters::TRUE)) == 0))
+        str = params.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK);
+        if (str && ((strcmp(str, android::CameraParameters::TRUE)) == 0))
           {
             CAMHAL_LOGVA("Locking Exposure");
             lock = OMX_TRUE;
@@ -317,13 +319,13 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
           }
       }
 
-    str = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED);
-    if ( (str != NULL) && (!strcmp(str, CameraParameters::TRUE)) )
+    str = params.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED);
+    if ( (str != NULL) && (!strcmp(str, android::CameraParameters::TRUE)) )
       {
         OMX_BOOL lock = OMX_FALSE;
         mUserSetWbLock = OMX_FALSE;
-        str = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK);
-        if (str && ((strcmp(str, CameraParameters::TRUE)) == 0))
+        str = params.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK);
+        if (str && ((strcmp(str, android::CameraParameters::TRUE)) == 0))
           {
             CAMHAL_LOGVA("Locking WhiteBalance");
             lock = OMX_TRUE;
@@ -342,24 +344,24 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
       }
 
     str = params.get(TICameraParameters::KEY_AUTO_FOCUS_LOCK);
-    if (str && (strcmp(str, CameraParameters::TRUE) == 0) && (mParameters3A.FocusLock != OMX_TRUE)) {
+    if (str && (strcmp(str, android::CameraParameters::TRUE) == 0) && (mParameters3A.FocusLock != OMX_TRUE)) {
         CAMHAL_LOGVA("Locking Focus");
         mParameters3A.FocusLock = OMX_TRUE;
         setFocusLock(mParameters3A);
-    } else if (str && (strcmp(str, CameraParameters::FALSE) == 0) && (mParameters3A.FocusLock != OMX_FALSE)) {
+    } else if (str && (strcmp(str, android::CameraParameters::FALSE) == 0) && (mParameters3A.FocusLock != OMX_FALSE)) {
         CAMHAL_LOGVA("UnLocking Focus");
         mParameters3A.FocusLock = OMX_FALSE;
         setFocusLock(mParameters3A);
     }
 
-    str = params.get(CameraParameters::KEY_METERING_AREAS);
+    str = params.get(android::CameraParameters::KEY_METERING_AREAS);
     if ( (str != NULL) ) {
         size_t MAX_METERING_AREAS;
-        Vector< sp<CameraArea> > tempAreas;
+        android::Vector<android::sp<CameraArea> > tempAreas;
 
-        MAX_METERING_AREAS = atoi(params.get(CameraParameters::KEY_MAX_NUM_METERING_AREAS));
+        MAX_METERING_AREAS = atoi(params.get(android::CameraParameters::KEY_MAX_NUM_METERING_AREAS));
 
-        Mutex::Autolock lock(mMeteringAreasLock);
+        android::AutoMutex lock(mMeteringAreasLock);
 
         ret = CameraArea::parseAreas(str, ( strlen(str) + 1 ), tempAreas);
 
@@ -372,7 +374,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
 
             if ( MAX_METERING_AREAS >= mMeteringAreas.size() ) {
                 CAMHAL_LOGDB("Setting Metering Areas %s",
-                        params.get(CameraParameters::KEY_METERING_AREAS));
+                        params.get(android::CameraParameters::KEY_METERING_AREAS));
 
                 mPending3Asettings |= SetMeteringAreas;
             } else {
@@ -401,14 +403,14 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
     return ret;
 }
 
-void OMXCameraAdapter::declareParameter3ABool(const CameraParameters &params, const char *key,
+void OMXCameraAdapter::declareParameter3ABool(const android::CameraParameters &params, const char *key,
                                               OMX_BOOL &current_setting, E3ASettingsFlags pending,
                                               const char *msg)
 {
     OMX_BOOL val = OMX_TRUE;
     const char *str = params.get(key);
 
-    if (str && ((strcmp(str, CameraParameters::FALSE)) == 0))
+    if (str && ((strcmp(str, android::CameraParameters::FALSE)) == 0))
         {
         CAMHAL_LOGVB("Disabling %s", msg);
         val = OMX_FALSE;
@@ -496,7 +498,7 @@ status_t OMXCameraAdapter::setExposureMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 static bool isFlashDisabled() {
@@ -513,7 +515,7 @@ static bool isFlashDisabled() {
 
     char value[PROPERTY_VALUE_MAX];
     if (property_get("camera.flash_off", value, NULL) &&
-        (!strcasecmp(value, CameraParameters::TRUE) || !strcasecmp(value, "1"))) {
+        (!strcasecmp(value, android::CameraParameters::TRUE) || !strcasecmp(value, "1"))) {
         CAMHAL_LOGW("flash is disabled for testing purpose");
         return true;
     }
@@ -548,7 +550,7 @@ status_t OMXCameraAdapter::setManualExposureVal(Gen3A_settings& Gen3A) {
     }
     if ( OMX_ErrorNone != eError ) {
         CAMHAL_LOGEB("OMX_GetConfig error 0x%x (manual exposure values)", eError);
-        return ErrorUtils::omxToAndroidError(eError);
+        return Utils::ErrorUtils::omxToAndroidError(eError);
     }
 
     if ( Gen3A.Exposure != OMX_ExposureControlOff ) {
@@ -584,7 +586,7 @@ status_t OMXCameraAdapter::setManualExposureVal(Gen3A_settings& Gen3A) {
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setFlashMode(Gen3A_settings& Gen3A)
@@ -653,7 +655,7 @@ status_t OMXCameraAdapter::setFlashMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getFlashMode(Gen3A_settings& Gen3A)
@@ -685,7 +687,7 @@ status_t OMXCameraAdapter::getFlashMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setFocusMode(Gen3A_settings& Gen3A)
@@ -794,7 +796,7 @@ status_t OMXCameraAdapter::setFocusMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getFocusMode(Gen3A_settings& Gen3A)
@@ -825,7 +827,7 @@ status_t OMXCameraAdapter::getFocusMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setScene(Gen3A_settings& Gen3A)
@@ -869,7 +871,7 @@ status_t OMXCameraAdapter::setScene(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setEVCompensation(Gen3A_settings& Gen3A)
@@ -913,7 +915,7 @@ status_t OMXCameraAdapter::setEVCompensation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getEVCompensation(Gen3A_settings& Gen3A)
@@ -944,7 +946,7 @@ status_t OMXCameraAdapter::getEVCompensation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setWBMode(Gen3A_settings& Gen3A)
@@ -1053,7 +1055,7 @@ status_t OMXCameraAdapter::setFlicker(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setBrightness(Gen3A_settings& Gen3A)
@@ -1090,7 +1092,7 @@ status_t OMXCameraAdapter::setBrightness(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setContrast(Gen3A_settings& Gen3A)
@@ -1173,7 +1175,7 @@ status_t OMXCameraAdapter::setSharpness(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getSharpness(Gen3A_settings& Gen3A)
@@ -1204,7 +1206,7 @@ status_t OMXCameraAdapter::getSharpness(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setSaturation(Gen3A_settings& Gen3A)
@@ -1241,7 +1243,7 @@ status_t OMXCameraAdapter::setSaturation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getSaturation(Gen3A_settings& Gen3A)
@@ -1272,7 +1274,7 @@ status_t OMXCameraAdapter::getSaturation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setISO(Gen3A_settings& Gen3A)
@@ -1311,7 +1313,7 @@ status_t OMXCameraAdapter::setISO(Gen3A_settings& Gen3A)
 
     if ( OMX_ErrorNone != eError ) {
         CAMHAL_LOGEB("OMX_GetConfig error 0x%x (manual exposure values)", eError);
-        return ErrorUtils::omxToAndroidError(eError);
+        return Utils::ErrorUtils::omxToAndroidError(eError);
     }
 
     if( 0 == Gen3A.ISO ) {
@@ -1342,7 +1344,7 @@ status_t OMXCameraAdapter::setISO(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getISO(Gen3A_settings& Gen3A)
@@ -1373,7 +1375,7 @@ status_t OMXCameraAdapter::getISO(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setEffect(Gen3A_settings& Gen3A)
@@ -1410,7 +1412,7 @@ status_t OMXCameraAdapter::setEffect(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setWhiteBalanceLock(Gen3A_settings& Gen3A)
@@ -1442,7 +1444,7 @@ status_t OMXCameraAdapter::setWhiteBalanceLock(Gen3A_settings& Gen3A)
     }
   LOG_FUNCTION_NAME_EXIT
 
-  return ErrorUtils::omxToAndroidError(eError);
+  return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setExposureLock(Gen3A_settings& Gen3A)
@@ -1474,7 +1476,7 @@ status_t OMXCameraAdapter::setExposureLock(Gen3A_settings& Gen3A)
     }
   LOG_FUNCTION_NAME_EXIT
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setFocusLock(Gen3A_settings& Gen3A)
@@ -1505,7 +1507,7 @@ status_t OMXCameraAdapter::setFocusLock(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_BOOL toggleFocus)
@@ -1539,7 +1541,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
     }
     else
     {
-        const char *lock_state_exp = toggleExp ? CameraParameters::TRUE : CameraParameters::FALSE;
         CAMHAL_LOGDA("Exposure Lock GetConfig successfull");
 
         /* Apply locks only when not applied already */
@@ -1585,7 +1586,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
     }
     else
     {
-        const char *lock_state_wb = toggleWb ? CameraParameters::TRUE : CameraParameters::FALSE;
         CAMHAL_LOGDA("WhiteBalance Lock GetConfig successfull");
 
         /* Apply locks only when not applied already */
@@ -1596,7 +1596,7 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
 
     }
  EXIT:
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
@@ -1618,7 +1618,7 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
         return ret;
     }
 
-  Mutex::Autolock lock(mMeteringAreasLock);
+    android::AutoMutex lock(mMeteringAreasLock);
 
   if ( OMX_StateInvalid == mComponentState )
     {
@@ -1769,7 +1769,7 @@ status_t OMXCameraAdapter::setParameter3ABool(const OMX_INDEXTYPE omx_idx,
 
   LOG_FUNCTION_NAME_EXIT
 
-  return ErrorUtils::omxToAndroidError(eError);
+  return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setAlgoFixedGamma(Gen3A_settings& Gen3A)
@@ -1810,7 +1810,7 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(m3ASettingsUpdateLock);
+    android::AutoMutex lock(m3ASettingsUpdateLock);
 
     /*
      * Scenes have a priority during the process
@@ -1987,4 +1987,5 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
         return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

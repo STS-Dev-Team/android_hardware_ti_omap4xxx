@@ -22,7 +22,8 @@
 
 #define TI_KEY_ALGO_PREFIX "ti-algo-"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 //TI extensions to camera mode
 const char TICameraParameters::HIGH_PERFORMANCE_MODE[] = "high-performance";
@@ -226,5 +227,5 @@ const char TICameraParameters::KEY_ALGO_SHARPENING[] = TI_KEY_ALGO_PREFIX "sharp
 const char TICameraParameters::KEY_ALGO_THREELINCOLORMAP[] = TI_KEY_ALGO_PREFIX "threelinecolormap";
 const char TICameraParameters::KEY_ALGO_GIC[] = TI_KEY_ALGO_PREFIX "gic";
 
-};
-
+} // namespace Camera
+} // namespace Ti

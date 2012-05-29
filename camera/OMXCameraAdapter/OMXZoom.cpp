@@ -24,7 +24,8 @@
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const int32_t OMXCameraAdapter::ZOOM_STEPS [ZOOM_STAGES] =  {
                                 65536, 68157, 70124, 72745,
@@ -45,18 +46,18 @@ const int32_t OMXCameraAdapter::ZOOM_STEPS [ZOOM_STAGES] =  {
                                 524288 };
 
 
-status_t OMXCameraAdapter::setParametersZoom(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersZoom(const android::CameraParameters &params,
                                              BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     LOG_FUNCTION_NAME;
 
     //Immediate zoom should not be avaialable while smooth zoom is running
     if ( ( ZOOM_ACTIVE & state ) != ZOOM_ACTIVE )
         {
-        int zoom = params.getInt(CameraParameters::KEY_ZOOM);
+        int zoom = params.getInt(android::CameraParameters::KEY_ZOOM);
         if (( zoom >= 0 ) && ( zoom < mMaxZoomSupported )) {
             mTargetZoomIdx = zoom;
 
@@ -133,7 +134,7 @@ status_t OMXCameraAdapter::advanceZoom()
 {
     status_t ret = NO_ERROR;
     AdapterState state;
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     BaseCameraAdapter::getState(state);
 
@@ -235,7 +236,7 @@ status_t OMXCameraAdapter::startSmoothZoom(int targetIdx)
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     CAMHAL_LOGDB("Start smooth zoom target = %d, mCurrentIdx = %d",
                  targetIdx,
@@ -258,7 +259,7 @@ status_t OMXCameraAdapter::startSmoothZoom(int targetIdx)
 status_t OMXCameraAdapter::stopSmoothZoom()
 {
     status_t ret = NO_ERROR;
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     LOG_FUNCTION_NAME;
 
@@ -284,4 +285,5 @@ status_t OMXCameraAdapter::stopSmoothZoom()
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

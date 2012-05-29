@@ -16,7 +16,8 @@
 
 #include "CameraHal.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const char CameraHal::PARAMS_DELIMITER []= ",";
 
@@ -116,6 +117,5 @@ void CameraHal::PPM(const char* str, struct timeval* ppm_first, ...){
 
 #endif
 
-};
-
-
+} // namespace Camera
+} // namespace Ti

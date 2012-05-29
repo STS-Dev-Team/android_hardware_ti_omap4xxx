@@ -26,7 +26,8 @@
 #define CAMERA_ROOT         "CameraRoot"
 #define CAMERA_INSTANCE     "CameraInstance"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 // lower entries have higher priority
 static const char* g_camera_adapters[] = {
@@ -67,7 +68,7 @@ status_t CameraProperties::initialize()
 
     status_t ret;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     if(mInitialized)
         return NO_ERROR;
@@ -130,4 +131,5 @@ int CameraProperties::camerasSupported()
     return mCamerasSupported;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

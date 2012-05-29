@@ -23,7 +23,8 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /**
  * Handles enqueueing/dequeing buffers to tap-in/tap-out points
@@ -37,7 +38,7 @@ class BufferSourceAdapter : public DisplayAdapter
 // private types
 private:
     // helper class to return frame in different thread context
-    class ReturnFrame : public Thread {
+    class ReturnFrame : public android::Thread {
     public:
         ReturnFrame(BufferSourceAdapter* __this) : mBufferSourceAdapter(__this) {
             mWaitForSignal.Create(0);
@@ -61,12 +62,12 @@ private:
 
     private:
         BufferSourceAdapter* mBufferSourceAdapter;
-        Semaphore mWaitForSignal;
+        Utils::Semaphore mWaitForSignal;
         bool mDestroying;
     };
 
     // helper class to queue frame in different thread context
-    class QueueFrame : public Thread {
+    class QueueFrame : public android::Thread {
     public:
         QueueFrame(BufferSourceAdapter* __this) : mBufferSourceAdapter(__this) {
             mDestroying = false;
@@ -75,7 +76,7 @@ private:
         ~QueueFrame() {
             mDestroying = true;
 
-            Mutex::Autolock lock(mFramesMutex);
+            android::AutoMutex lock(mFramesMutex);
             while (!mFrames.empty()) {
                 CameraFrame *frame = mFrames.itemAt(0);
                 mFrames.removeAt(0);
@@ -85,7 +86,7 @@ private:
          }
 
         void addFrame(CameraFrame *frame) {
-            Mutex::Autolock lock(mFramesMutex);
+            android::AutoMutex lock(mFramesMutex);
             mFrames.add(new CameraFrame(*frame));
             mFramesCondition.signal();
         }
@@ -93,7 +94,7 @@ private:
         virtual bool threadLoop() {
             CameraFrame *frame = NULL;
             {
-                Mutex::Autolock lock(mFramesMutex);
+                android::AutoMutex lock(mFramesMutex);
                 while (mFrames.empty() && !mDestroying) mFramesCondition.wait(mFramesMutex);
                 if (!mDestroying) {
                     frame = mFrames.itemAt(0);
@@ -111,9 +112,9 @@ private:
 
     private:
         BufferSourceAdapter* mBufferSourceAdapter;
-        Vector<CameraFrame *> mFrames;
-        Condition mFramesCondition;
-        Mutex mFramesMutex;
+        android::Vector<CameraFrame *> mFrames;
+        android::Condition mFramesCondition;
+        android::Mutex mFramesMutex;
         bool mDestroying;
     };
 
@@ -160,14 +161,14 @@ private:
     preview_stream_ops_t*  mBufferSource;
     FrameProvider *mFrameProvider; // Pointer to the frame provider interface
 
-    mutable Mutex mLock;
+    mutable android::Mutex mLock;
     int mBufferCount;
     CameraBuffer *mBuffers;
 
-    KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
-    sp<ErrorNotifier> mErrorNotifier;
-    sp<ReturnFrame> mReturnFrame;
-    sp<QueueFrame> mQueueFrame;
+    android::KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
+    android::sp<ErrorNotifier> mErrorNotifier;
+    android::sp<ReturnFrame> mReturnFrame;
+    android::sp<QueueFrame> mQueueFrame;
 
     uint32_t mFrameWidth;
     uint32_t mFrameHeight;
@@ -179,7 +180,8 @@ private:
     const char *mPixelFormat;
 };
 
-};
+} // namespace Camera
+} // namespace Ti
 
 #endif
 

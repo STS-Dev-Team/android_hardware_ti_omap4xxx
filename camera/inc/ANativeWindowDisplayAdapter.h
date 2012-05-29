@@ -20,7 +20,8 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /**
  * Display handler class - This class basically handles the buffer posting to display
@@ -103,17 +104,17 @@ public:
     static const int DISPLAY_TIMEOUT;
     static const int FAILED_DQS_TO_SUSPEND;
 
-    class DisplayThread : public Thread
+    class DisplayThread : public android::Thread
         {
         ANativeWindowDisplayAdapter* mDisplayAdapter;
-        TIUTILS::MessageQueue mDisplayThreadQ;
+        Utils::MessageQueue mDisplayThreadQ;
 
         public:
             DisplayThread(ANativeWindowDisplayAdapter* da)
             : Thread(false), mDisplayAdapter(da) { }
 
         ///Returns a reference to the display message Q for display adapter to post messages
-            TIUTILS::MessageQueue& msgQ()
+            Utils::MessageQueue& msgQ()
                 {
                 return mDisplayThreadQ;
                 }
@@ -145,12 +146,12 @@ private:
     int mFailedDQs;
     bool mPaused; //Pause state
     preview_stream_ops_t*  mANativeWindow;
-    sp<DisplayThread> mDisplayThread;
+    android::sp<DisplayThread> mDisplayThread;
     FrameProvider *mFrameProvider; ///Pointer to the frame provider interface
-    TIUTILS::MessageQueue mDisplayQ;
+    Utils::MessageQueue mDisplayQ;
     unsigned int mDisplayState;
     ///@todo Have a common class for these members
-    mutable Mutex mLock;
+    mutable android::Mutex mLock;
     bool mDisplayEnabled;
     int mBufferCount;
     CameraBuffer *mBuffers;
@@ -158,9 +159,9 @@ private:
     //IMG_native_handle_t** mGrallocHandleMap; // -> frames[i].GrallocHandle
     uint32_t* mOffsetsMap; // -> frames[i].Offset
     int mFD;
-    KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
-    KeyedVector<int, int> mFramesType;
-    sp<ErrorNotifier> mErrorNotifier;
+    android::KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
+    android::KeyedVector<int, int> mFramesType;
+    android::sp<ErrorNotifier> mErrorNotifier;
 
     uint32_t mFrameWidth;
     uint32_t mFrameHeight;
@@ -184,5 +185,5 @@ private:
 
 };
 
-};
-
+} // namespace Camera
+} // namespace Ti

@@ -20,7 +20,8 @@
 #include <utils/KeyedVector.h>
 #include <utils/String8.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 ///TI Specific Camera Parameters
 class TICameraParameters
@@ -252,6 +253,7 @@ static const char KEY_ALGO_GIC[];
 
 };
 
-};
+} // namespace Camera
+} // namespace Ti
 
 #endif

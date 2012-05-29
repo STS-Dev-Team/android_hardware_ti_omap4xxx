@@ -44,7 +44,9 @@ extern "C" {
 #define ARRAY_SIZE(array) (sizeof((array)) / sizeof((array)[0]))
 #define MIN(x,y) ((x < y) ? x : y)
 
-namespace android {
+namespace Ti {
+namespace Camera {
+
 struct integer_string_pair {
     unsigned int integer;
     const char* string;
@@ -444,14 +446,14 @@ size_t Encoder_libjpeg::encode(params* input) {
         goto exit;
     }
 
-    if (strcmp(input->format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+    if (strcmp(input->format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
         bpp = 1;
         if ((in_width != out_width) || (in_height != out_height)) {
             resize_src = (uint8_t*) malloc(input->dst_size);
             resize_nv12(input, resize_src);
             if (resize_src) src = resize_src;
         }
-    } else if (strcmp(input->format, CameraParameters::PIXEL_FORMAT_YUV422I) &&
+    } else if (strcmp(input->format, android::CameraParameters::PIXEL_FORMAT_YUV422I) &&
                strcmp(input->format, TICameraParameters::PIXEL_FORMAT_YUV422I_UYVY)) {
         // we currently only support yuv422i and yuv420sp
         CAMHAL_LOGEB("Encoder: format not supported: %s", input->format);
@@ -496,11 +498,11 @@ size_t Encoder_libjpeg::encode(params* input) {
         JSAMPROW row[1];    /* pointer to JSAMPLE row[s] */
 
         // convert input yuv format to yuv444
-        if (strcmp(input->format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+        if (strcmp(input->format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             nv21_to_yuv(row_tmp, row_src, row_uv, out_width - right_crop);
         } else if (strcmp(input->format, TICameraParameters::PIXEL_FORMAT_YUV422I_UYVY) == 0) {
             uyvy_to_yuv(row_tmp, (uint32_t*)row_src, out_width - right_crop);
-        } else if (strcmp(input->format, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        } else if (strcmp(input->format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             yuyv_to_yuv(row_tmp, (uint32_t*)row_src, out_width - right_crop);
         }
 
@@ -509,7 +511,7 @@ size_t Encoder_libjpeg::encode(params* input) {
         row_src = row_src + out_width*bpp;
 
         // move uv row if input format needs it
-        if (strcmp(input->format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+        if (strcmp(input->format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             if (!(cinfo.next_scanline % 2))
                 row_uv = row_uv +  out_width * bpp;
         }
@@ -529,4 +531,5 @@ size_t Encoder_libjpeg::encode(params* input) {
     return dest_mgr.jpegsize;
 }
 
-} // namespace android
+} // namespace Camera
+} // namespace Ti

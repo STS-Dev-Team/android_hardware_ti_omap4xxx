@@ -25,7 +25,8 @@
 #include "BaseCameraAdapter.h"
 #include "DebugUtils.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
 
@@ -106,8 +107,8 @@ public:
     virtual status_t initialize(CameraProperties::Properties*);
 
     //APIs to configure Camera adapter and get the current parameter set
-    virtual status_t setParameters(const CameraParameters& params);
-    virtual void getParameters(CameraParameters& params);
+    virtual status_t setParameters(const android::CameraParameters& params);
+    virtual void getParameters(android::CameraParameters& params);
 
     // API
     virtual status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
@@ -134,13 +135,13 @@ protected:
 
 private:
 
-    class PreviewThread : public Thread {
+    class PreviewThread : public android::Thread {
             V4LCameraAdapter* mAdapter;
         public:
             PreviewThread(V4LCameraAdapter* hw) :
                     Thread(false), mAdapter(hw) { }
             virtual void onFirstRef() {
-                run("CameraPreviewThread", PRIORITY_URGENT_DISPLAY);
+                run("CameraPreviewThread", android::PRIORITY_URGENT_DISPLAY);
             }
             virtual bool threadLoop() {
                 mAdapter->previewThread();
@@ -198,17 +199,17 @@ private:
     int mPreviewBufferCountQueueable;
     int mCaptureBufferCount;
     int mCaptureBufferCountQueueable;
-    KeyedVector<CameraBuffer *, int> mPreviewBufs;
-    KeyedVector<CameraBuffer *, int> mCaptureBufs;
-    mutable Mutex mPreviewBufsLock;
-    mutable Mutex mCaptureBufsLock;
-    mutable Mutex mStopPreviewLock;
+    android::KeyedVector<CameraBuffer *, int> mPreviewBufs;
+    android::KeyedVector<CameraBuffer *, int> mCaptureBufs;
+    mutable android::Mutex mPreviewBufsLock;
+    mutable android::Mutex mCaptureBufsLock;
+    mutable android::Mutex mStopPreviewLock;
 
-    CameraParameters mParams;
+    android::CameraParameters mParams;
 
     bool mPreviewing;
     bool mCapturing;
-    Mutex mLock;
+    android::Mutex mLock;
 
     int mFrameCount;
     int mLastFrameCount;
@@ -221,7 +222,7 @@ private:
     int mSensorIndex;
 
     // protected by mLock
-    sp<PreviewThread>   mPreviewThread;
+    android::sp<PreviewThread>   mPreviewThread;
 
     struct VideoInfo *mVideoInfo;
     int mCameraHandle;
@@ -230,6 +231,8 @@ private:
     int nDequeued;
 
 };
-}; //// namespace
-#endif //V4L_CAMERA_ADAPTER_H
 
+} // namespace Camera
+} // namespace Ti
+
+#endif //V4L_CAMERA_ADAPTER_H

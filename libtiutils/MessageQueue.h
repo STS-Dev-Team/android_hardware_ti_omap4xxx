@@ -33,7 +33,8 @@
 #define MSGQ_LOGEA DBGUTILS_LOGEA
 #define MSGQ_LOGEB DBGUTILS_LOGEB
 
-namespace TIUTILS {
+namespace Ti {
+namespace Utils {
 
 ///Message type
 struct Message
@@ -88,6 +89,19 @@ private:
     bool mHasMsg;
 };
 
-};
+} // namespace Utils
+} // namespace Ti
+
+
+
+
+// FIXME: Temporary workaround to avoid namespace fixes in VTC test code right now.
+namespace TIUTILS {
+    typedef Ti::Utils::Message Message;
+    typedef Ti::Utils::MessageQueue MessageQueue;
+}
+
+
+
 
 #endif

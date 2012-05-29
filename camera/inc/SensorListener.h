@@ -32,7 +32,8 @@
 
 #include "Common.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /**
  * SensorListner class - Registers with sensor manager to get sensor events
@@ -40,11 +41,11 @@ namespace android {
 
 typedef void (*orientation_callback_t) (uint32_t orientation, uint32_t tilt, void* cookie);
 
-class SensorLooperThread : public Thread {
+class SensorLooperThread : public android::Thread {
     public:
-        SensorLooperThread(Looper* looper)
+        SensorLooperThread(android::Looper* looper)
             : Thread(false) {
-            mLooper = sp<Looper>(looper);
+            mLooper = android::sp<android::Looper>(looper);
         }
         ~SensorLooperThread() {
             mLooper.clear();
@@ -60,11 +61,11 @@ class SensorLooperThread : public Thread {
             mLooper->wake();
         }
     private:
-        sp<Looper> mLooper;
+        android::sp<android::Looper> mLooper;
 };
 
 
-class SensorListener : public RefBase
+class SensorListener : public android::RefBase
 {
 /* public - types */
 public:
@@ -87,17 +88,18 @@ public:
     void handleOrientation(uint32_t orientation, uint32_t tilt);
 /* public - member variables */
 public:
-    sp<SensorEventQueue> mSensorEventQueue;
+    android::sp<android::SensorEventQueue> mSensorEventQueue;
 /* private - member variables */
 private:
     int sensorsEnabled;
     orientation_callback_t mOrientationCb;
     void *mCbCookie;
-    sp<Looper> mLooper;
-    sp<SensorLooperThread> mSensorLooperThread;
-    Mutex mLock;
+    android::sp<android::Looper> mLooper;
+    android::sp<SensorLooperThread> mSensorLooperThread;
+    android::Mutex mLock;
 };
 
-}
+} // namespace Camera
+} // namespace Ti
 
 #endif

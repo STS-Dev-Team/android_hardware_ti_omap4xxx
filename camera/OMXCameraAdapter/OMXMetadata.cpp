@@ -27,10 +27,11 @@
 
 #include "OMXCameraAdapter.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
-status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const
+status_t OMXCameraAdapter::setMetaData(android::CameraMetadata &meta_data, const OMX_PTR plat_pvt) const
 {
     status_t ret = NO_ERROR;
     OMX_OTHER_EXTRADATATYPE *extraData;
@@ -41,13 +42,13 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR 
         OMX_TI_WHITEBALANCERESULTTYPE * WBdata;
         WBdata = (OMX_TI_WHITEBALANCERESULTTYPE*) extraData->data;
 
-        meta_data.set(CameraMetadata::KEY_AWB_TEMP, (int)WBdata->nColorTemperature);
-        meta_data.set4(CameraMetadata::KEY_AWB_GAINS,
+        meta_data.set(android::CameraMetadata::KEY_AWB_TEMP, (int)WBdata->nColorTemperature);
+        meta_data.set4(android::CameraMetadata::KEY_AWB_GAINS,
                                    (int)WBdata->nGainR,
                                    (int)WBdata->nGainGR,
                                    (int)WBdata->nGainGB,
                                    (int)WBdata->nGainB);
-        meta_data.set4(CameraMetadata::KEY_AWB_OFFSETS,
+        meta_data.set4(android::CameraMetadata::KEY_AWB_OFFSETS,
                                    (int)WBdata->nOffsetR,
                                    (int)WBdata->nOffsetGR,
                                    (int)WBdata->nOffsetGB,
@@ -62,22 +63,22 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR 
         OMX_TI_VECTSHOTINFOTYPE *shotInfo;
         shotInfo = (OMX_TI_VECTSHOTINFOTYPE*) extraData->data;
 
-        meta_data.set(CameraMetadata::KEY_FRAME_NUMBER, (int)shotInfo->nFrameNum);
-        meta_data.set(CameraMetadata::KEY_SHOT_NUMBER, (int)shotInfo->nConfigId);
-        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN, (int)shotInfo->nAGain);
-        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_REQ, (int)shotInfo->nReqGain);
-        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_MIN, (int)shotInfo->nGainMin);
-        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_MAX, (int)shotInfo->nGainMax);
-        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_DEV, (int)shotInfo->nDevAGain);
-        meta_data.set(CameraMetadata::KEY_ANALOG_GAIN_ERROR, (int)shotInfo->nSenAGainErr);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME, (int)shotInfo->nExpTime);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_REQ, (int)shotInfo->nReqExpTime);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_MIN, (int)shotInfo->nExpMin);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_MAX, (int)shotInfo->nExpMax);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_DEV, (int)shotInfo->nDevExpTime);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_TIME_ERROR, (int)shotInfo->nSenExpTimeErr);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ, (int)shotInfo->nReqEC);
-        meta_data.set(CameraMetadata::KEY_EXPOSURE_DEV, (int)shotInfo->nDevEV);
+        meta_data.set(android::CameraMetadata::KEY_FRAME_NUMBER, (int)shotInfo->nFrameNum);
+        meta_data.set(android::CameraMetadata::KEY_SHOT_NUMBER, (int)shotInfo->nConfigId);
+        meta_data.set(android::CameraMetadata::KEY_ANALOG_GAIN, (int)shotInfo->nAGain);
+        meta_data.set(android::CameraMetadata::KEY_ANALOG_GAIN_REQ, (int)shotInfo->nReqGain);
+        meta_data.set(android::CameraMetadata::KEY_ANALOG_GAIN_MIN, (int)shotInfo->nGainMin);
+        meta_data.set(android::CameraMetadata::KEY_ANALOG_GAIN_MAX, (int)shotInfo->nGainMax);
+        meta_data.set(android::CameraMetadata::KEY_ANALOG_GAIN_DEV, (int)shotInfo->nDevAGain);
+        meta_data.set(android::CameraMetadata::KEY_ANALOG_GAIN_ERROR, (int)shotInfo->nSenAGainErr);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_TIME, (int)shotInfo->nExpTime);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_TIME_REQ, (int)shotInfo->nReqExpTime);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_TIME_MIN, (int)shotInfo->nExpMin);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_TIME_MAX, (int)shotInfo->nExpMax);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_TIME_DEV, (int)shotInfo->nDevExpTime);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_TIME_ERROR, (int)shotInfo->nSenExpTimeErr);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ, (int)shotInfo->nReqEC);
+        meta_data.set(android::CameraMetadata::KEY_EXPOSURE_DEV, (int)shotInfo->nDevEV);
     }
 
     // TODO(XXX): Use format abstraction for LSC values
@@ -87,7 +88,7 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR 
     if ( NULL != extraData ) {
         OMX_TI_LSCTABLETYPE *lscTbl;
         OMX_U8 *lsc;
-        String8 val;
+        android::String8 val;
         lscTbl = (OMX_TI_LSCTABLETYPE*) extraData->data;
         lsc = lscTbl->pGainTable;
         if ( (0U == lscTbl->nWidth) || (0U == lscTbl->nHeight) ) {
@@ -113,8 +114,8 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR 
                 }
                 val.append(")");
             }
-            meta_data.set(CameraMetadata::KEY_LSC_TABLE, val);
-            meta_data.setBool(CameraMetadata::KEY_LSC_TABLE_APPLIED,
+            meta_data.set(android::CameraMetadata::KEY_LSC_TABLE, val);
+            meta_data.setBool(android::CameraMetadata::KEY_LSC_TABLE_APPLIED,
                               (OMX_TRUE == lscTbl->bApplied) ? true : false);
         }
     }
@@ -147,4 +148,5 @@ void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, cons
 #endif
 }
 
-};
+} // namespace Camera
+} // namespace Ti

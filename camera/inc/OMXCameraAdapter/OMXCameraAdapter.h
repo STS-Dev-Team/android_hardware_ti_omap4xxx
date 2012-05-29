@@ -48,7 +48,8 @@ extern "C"
 }
 
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #define Q16_OFFSET                  16
 
@@ -396,8 +397,8 @@ public:
     virtual status_t initialize(CameraProperties::Properties*);
 
     //APIs to configure Camera adapter and get the current parameter set
-    virtual status_t setParameters(const CameraParameters& params);
-    virtual void getParameters(CameraParameters& params);
+    virtual status_t setParameters(const android::CameraParameters& params);
+    virtual void getParameters(android::CameraParameters& params);
 
     // API
     status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
@@ -485,7 +486,7 @@ private:
                                           OMX_IN OMX_EVENTTYPE eEvent,
                                           OMX_IN OMX_U32 nData1,
                                           OMX_IN OMX_U32 nData2,
-                                          OMX_IN Semaphore &semaphore);
+                                          OMX_IN Utils::Semaphore &semaphore);
 
     status_t setPictureRotation(unsigned int degree);
     status_t setSensorOrientation(unsigned int degree);
@@ -499,7 +500,7 @@ private:
     status_t destroyTunnel();
 
     //EXIF
-    status_t setParametersEXIF(const CameraParameters &params,
+    status_t setParametersEXIF(const android::CameraParameters &params,
                                BaseCameraAdapter::AdapterState state);
     status_t convertGPSCoord(double coord, int &deg, int &min, int &sec, int &secDivisor);
     status_t setupEXIF();
@@ -516,12 +517,12 @@ private:
 
 
     //Focus distances
-    status_t setParametersFocus(const CameraParameters &params,
+    status_t setParametersFocus(const android::CameraParameters &params,
                                 BaseCameraAdapter::AdapterState state);
     status_t addFocusDistances(OMX_U32 &near,
                                OMX_U32 &optimal,
                                OMX_U32 &far,
-                               CameraParameters& params);
+                               android::CameraParameters& params);
     status_t encodeFocusDistance(OMX_U32 dist, char *buffer, size_t length);
     status_t getFocusDistances(OMX_U32 &near,OMX_U32 &optimal, OMX_U32 &far);
 
@@ -530,15 +531,15 @@ private:
     status_t enableVideoStabilization(bool enable);
 
     //Digital zoom
-    status_t setParametersZoom(const CameraParameters &params,
+    status_t setParametersZoom(const android::CameraParameters &params,
                                BaseCameraAdapter::AdapterState state);
     status_t doZoom(int index);
     status_t advanceZoom();
 
     //3A related parameters
-    status_t setParameters3A(const CameraParameters &params,
+    status_t setParameters3A(const android::CameraParameters &params,
                              BaseCameraAdapter::AdapterState state);
-    void declareParameter3ABool(const CameraParameters &params, const char *key,
+    void declareParameter3ABool(const android::CameraParameters &params, const char *key,
                                 OMX_BOOL &current_setting, E3ASettingsFlags pending,
                                 const char *msg);
 
@@ -601,7 +602,7 @@ private:
     //API to set FrameRate using VFR interface
     status_t setVFramerate(OMX_U32 minFrameRate,OMX_U32 maxFrameRate);
 
-    status_t setParametersAlgo(const CameraParameters &params,
+    status_t setParametersAlgo(const android::CameraParameters &params,
                                BaseCameraAdapter::AdapterState state);
 
     //Noise filtering
@@ -622,13 +623,13 @@ private:
     status_t setTouchFocus();
 
     //Face detection
-    status_t setParametersFD(const CameraParameters &params,
+    status_t setParametersFD(const android::CameraParameters &params,
                              BaseCameraAdapter::AdapterState state);
-    status_t updateFocusDistances(CameraParameters &params);
+    status_t updateFocusDistances(android::CameraParameters &params);
     status_t setFaceDetectionOrientation(OMX_U32 orientation);
     status_t setFaceDetection(bool enable, OMX_U32 orientation);
     status_t createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHeader,
-                         sp<CameraMetadataResult> &result,
+                         android::sp<CameraMetadataResult> &result,
                          size_t previewWidth,
                          size_t previewHeight);
     status_t encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *faceData,
@@ -652,7 +653,7 @@ private:
     static status_t encodeISOCap(OMX_U32, const CapISO*, size_t, char*, size_t);
     static size_t encodeZoomCap(OMX_S32, const CapZoom*, size_t, char*, size_t);
     static void encodeFrameRates(int minFrameRate, int maxFrameRate, const OMX_TI_CAPTYPE & caps,
-            const CapFramerate * fixedFrameRates, int frameRateCount, Vector<FpsRange> & fpsRanges);
+            const CapFramerate * fixedFrameRates, int frameRateCount, android::Vector<FpsRange> & fpsRanges);
     static status_t encodeImageCodingFormatCap(OMX_IMAGE_CODINGTYPE,
                                                 const CapCodingFormat *,
                                                 size_t,
@@ -706,7 +707,7 @@ private:
                                          const OMX_TI_CAPTYPE &caps);
     static status_t insertRaw(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
 
-    status_t setParametersCapture(const CameraParameters &params,
+    status_t setParametersCapture(const android::CameraParameters &params,
                                   BaseCameraAdapter::AdapterState state);
 
     //Exposure Bracketing
@@ -754,14 +755,14 @@ private:
     status_t apply3Asettings( Gen3A_settings& Gen3A );
 
     // AutoConvergence
-    status_t setAutoConvergence(const char *valstr, const char *pValManualstr, const CameraParameters &params);
+    status_t setAutoConvergence(const char *valstr, const char *pValManualstr, const android::CameraParameters &params);
 
     status_t setExtraData(bool enable, OMX_U32, OMX_EXT_EXTRADATATYPE);
     OMX_OTHER_EXTRADATATYPE *getExtradata(const OMX_PTR ptrPrivate, OMX_EXTRADATATYPE type) const;
 
     // Meta data
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    status_t setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const;
+    status_t setMetaData(android::CameraMetadata &meta_data, const OMX_PTR plat_pvt) const;
 #endif
     void encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt);
 
@@ -786,17 +787,17 @@ private:
     status_t deinitInternalBuffers (OMX_U32);
 
     // Reprocess Methods -- implementation in OMXReprocess.cpp
-    status_t setParametersReprocess(const CameraParameters &params, CameraBuffer* bufs,
+    status_t setParametersReprocess(const android::CameraParameters &params, CameraBuffer* bufs,
                                   BaseCameraAdapter::AdapterState state);
     status_t startReprocess();
     status_t disableReprocess();
     status_t stopReprocess();
     status_t UseBuffersReprocess(CameraBuffer *bufArr, int num);
 
-    class CommandHandler : public Thread {
+    class CommandHandler : public android::Thread {
         public:
             CommandHandler(OMXCameraAdapter* ca)
-                : Thread(false), mCameraAdapter(ca) { }
+                : android::Thread(false), mCameraAdapter(ca) { }
 
             virtual bool threadLoop() {
                 bool ret;
@@ -804,14 +805,14 @@ private:
                 return ret;
             }
 
-            status_t put(TIUTILS::Message* msg){
-                Mutex::Autolock lock(mLock);
+            status_t put(Utils::Message* msg){
+                android::AutoMutex lock(mLock);
                 return mCommandMsgQ.put(msg);
             }
 
             void clearCommandQ()
                 {
-                Mutex::Autolock lock(mLock);
+                android::AutoMutex lock(mLock);
                 mCommandMsgQ.clear();
                 }
 
@@ -825,15 +826,15 @@ private:
 
         private:
             bool Handler();
-            TIUTILS::MessageQueue mCommandMsgQ;
+            Utils::MessageQueue mCommandMsgQ;
             OMXCameraAdapter* mCameraAdapter;
-            Mutex mLock;
+            android::Mutex mLock;
     };
-    sp<CommandHandler> mCommandHandler;
+    android::sp<CommandHandler> mCommandHandler;
 
 public:
 
-    class OMXCallbackHandler : public Thread {
+    class OMXCallbackHandler : public android::Thread {
         public:
         OMXCallbackHandler(OMXCameraAdapter* ca)
             : Thread(false), mCameraAdapter(ca)
@@ -847,15 +848,15 @@ public:
             return ret;
         }
 
-        status_t put(TIUTILS::Message* msg){
-            Mutex::Autolock lock(mLock);
+        status_t put(Utils::Message* msg){
+            android::AutoMutex lock(mLock);
             mIsProcessed = false;
             return mCommandMsgQ.put(msg);
         }
 
         void clearCommandQ()
             {
-            Mutex::Autolock lock(mLock);
+            android::AutoMutex lock(mLock);
             mCommandMsgQ.clear();
             }
 
@@ -869,14 +870,14 @@ public:
 
     private:
         bool Handler();
-        TIUTILS::MessageQueue mCommandMsgQ;
+        Utils::MessageQueue mCommandMsgQ;
         OMXCameraAdapter* mCameraAdapter;
-        Mutex mLock;
-        Condition mCondition;
+        android::Mutex mLock;
+        android::Condition mCondition;
         bool mIsProcessed;
     };
 
-    sp<OMXCallbackHandler> mOMXCallbackHandler;
+    android::sp<OMXCallbackHandler> mOMXCallbackHandler;
 
 private:
 
@@ -987,23 +988,23 @@ private:
     char mFocusDistBuffer[FOCUS_DIST_BUFFER_SIZE];
 
     // Current Focus areas
-    Vector< sp<CameraArea> > mFocusAreas;
-    mutable Mutex mFocusAreasLock;
+    android::Vector<android::sp<CameraArea> > mFocusAreas;
+    mutable android::Mutex mFocusAreasLock;
 
     // Current Touch convergence areas
-    Vector< sp<CameraArea> > mTouchAreas;
-    mutable Mutex mTouchAreasLock;
+    android::Vector<android::sp<CameraArea> > mTouchAreas;
+    mutable android::Mutex mTouchAreasLock;
 
     // Current Metering areas
-    Vector< sp<CameraArea> > mMeteringAreas;
-    mutable Mutex mMeteringAreasLock;
+    android::Vector<android::sp<CameraArea> > mMeteringAreas;
+    mutable android::Mutex mMeteringAreasLock;
 
     OperatingMode mCapabilitiesOpMode;
     CaptureMode mCapMode;
     // TODO(XXX): Do we really need this lock? Let's
     // try to merge temporal bracketing and burst
     // capture later
-    mutable Mutex mBurstLock;
+    mutable android::Mutex mBurstLock;
     size_t mBurstFrames;
     size_t mBurstFramesAccum;
     size_t mBurstFramesQueued;
@@ -1023,13 +1024,13 @@ private:
     int mZoomBracketingValues[ZOOM_BRACKET_RANGE];
     size_t mZoomBracketingValidEntries;
 
-    mutable Mutex mFaceDetectionLock;
+    mutable android::Mutex mFaceDetectionLock;
     //Face detection status
     bool mFaceDetectionRunning;
     bool mFaceDetectionPaused;
     bool mFDSwitchAlgoPriority;
 
-    camera_face_t  faceDetectionLastOutput [MAX_NUM_FACES_SUPPORTED];
+    camera_face_t  faceDetectionLastOutput[MAX_NUM_FACES_SUPPORTED];
     int faceDetectionNumFacesLastOutput;
 
     //Geo-tagging
@@ -1060,7 +1061,7 @@ private:
     unsigned int mZoomParameterIdx;
 
     //current zoom
-    Mutex mZoomLock;
+    android::Mutex mZoomLock;
     unsigned int mCurrentZoomIdx, mTargetZoomIdx, mPreviousZoomIndx;
     bool mZoomUpdating, mZoomUpdate;
     int mZoomInc;
@@ -1071,7 +1072,7 @@ private:
     OMX_VERSIONTYPE mLocalVersionParam;
 
     unsigned int mPending3Asettings;
-    Mutex m3ASettingsUpdateLock;
+    android::Mutex m3ASettingsUpdateLock;
     Gen3A_settings mParameters3A;
     const char *mPictureFormatFromClient;
 
@@ -1081,7 +1082,7 @@ private:
     OMX_TI_CONFIG_3A_FACE_PRIORITY mFacePriority;
     OMX_TI_CONFIG_3A_REGION_PRIORITY mRegionPriority;
 
-    CameraParameters mParams;
+    android::CameraParameters mParams;
     CameraProperties::Properties* mCapabilities;
     unsigned int mPictureRotation;
     bool mWaitingForSnapshot;
@@ -1095,7 +1096,7 @@ private:
 
     //Temporal bracketing management data
     bool mBracketingSet;
-    mutable Mutex mBracketingLock;
+    mutable android::Mutex mBracketingLock;
     bool *mBracketingBuffersQueued;
     int mBracketingBuffersQueuedCount;
     int mLastBracetingBufferIdx;
@@ -1103,31 +1104,31 @@ private:
     bool mZoomBracketingEnabled;
     size_t mBracketingRange;
     int mCurrentZoomBracketing;
-    CameraParameters mParameters;
+    android::CameraParameters mParameters;
     bool mOmxInitialized;
     OMXCameraAdapterComponentContext mCameraAdapterParameters;
     bool mFirstTimeInit;
 
     ///Semaphores used internally
-    Semaphore mInitSem;
-    Semaphore mFlushSem;
-    Semaphore mUsePreviewDataSem;
-    Semaphore mUsePreviewSem;
-    Semaphore mUseCaptureSem;
-    Semaphore mStartPreviewSem;
-    Semaphore mStopPreviewSem;
-    Semaphore mStartCaptureSem;
-    Semaphore mStopCaptureSem;
-    Semaphore mSwitchToLoadedSem;
-    Semaphore mSwitchToExecSem;
-    Semaphore mStopReprocSem;
-    Semaphore mUseReprocessSem;
+    Utils::Semaphore mInitSem;
+    Utils::Semaphore mFlushSem;
+    Utils::Semaphore mUsePreviewDataSem;
+    Utils::Semaphore mUsePreviewSem;
+    Utils::Semaphore mUseCaptureSem;
+    Utils::Semaphore mStartPreviewSem;
+    Utils::Semaphore mStopPreviewSem;
+    Utils::Semaphore mStartCaptureSem;
+    Utils::Semaphore mStopCaptureSem;
+    Utils::Semaphore mSwitchToLoadedSem;
+    Utils::Semaphore mSwitchToExecSem;
+    Utils::Semaphore mStopReprocSem;
+    Utils::Semaphore mUseReprocessSem;
 
-    mutable Mutex mStateSwitchLock;
-    mutable Mutex mIdleStateSwitchLock;
+    mutable android::Mutex mStateSwitchLock;
+    mutable android::Mutex mIdleStateSwitchLock;
 
-    Vector<struct TIUTILS::Message *> mEventSignalQ;
-    Mutex mEventLock;
+    android::Vector<Utils::Message *> mEventSignalQ;
+    android::Mutex mEventLock;
 
     OMX_STATETYPE mComponentState;
 
@@ -1149,15 +1150,15 @@ private:
     int mLastFrameCount;
     unsigned int mIter;
     nsecs_t mLastFPSTime;
-    Mutex mFrameCountMutex;
-    Condition mFirstFrameCondition;
+    android::Mutex mFrameCountMutex;
+    android::Condition mFirstFrameCondition;
 
     static const nsecs_t CANCEL_AF_TIMEOUT;
-    Mutex mCancelAFMutex;
-    Condition mCancelAFCond;
+    android::Mutex mCancelAFMutex;
+    android::Condition mCancelAFCond;
 
-    Mutex mDoAFMutex;
-    Condition mDoAFCond;
+    android::Mutex mDoAFMutex;
+    android::Condition mDoAFCond;
 
     size_t mSensorIndex;
     CodingMode mCodingMode;
@@ -1166,7 +1167,7 @@ private:
     OMX_TICKS mTimeSourceDelta;
     bool onlyOnce;
 
-    Semaphore mCaptureSem;
+    Utils::Semaphore mCaptureSem;
     bool mCaptureSignalled;
 
     OMX_BOOL mUserSetExpLock;
@@ -1180,13 +1181,16 @@ private:
     bool mSetFormatDone;
 
     OMX_TI_DCCDATATYPE mDccData;
-    Mutex mDccDataLock;
+    android::Mutex mDccDataLock;
 
     int mMaxZoomSupported;
-    Mutex mImageCaptureLock;
+    android::Mutex mImageCaptureLock;
 
     bool mTunnelDestroyed;
 
 };
-}; //// namespace
+
+} // namespace Camera
+} // namespace Ti
+
 #endif //OMX_CAMERA_ADAPTER_H

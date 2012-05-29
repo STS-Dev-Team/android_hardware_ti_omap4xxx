@@ -24,7 +24,8 @@
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #define __STRINGIFY(s) __STRING(s)
 
@@ -60,22 +61,23 @@ const char OMXCameraAdapter::DEFAULT_NUM_PIC_BUFS[] = "1";
 const char OMXCameraAdapter::DEFAULT_SATURATION[] = "100";
 const char OMXCameraAdapter::DEFAULT_SCENE_MODE[] = "auto";
 const char OMXCameraAdapter::DEFAULT_SHARPNESS[] = "100";
-const char * OMXCameraAdapter::DEFAULT_VSTAB = CameraParameters::FALSE;
-const char * OMXCameraAdapter::DEFAULT_VNF = CameraParameters::FALSE;
+const char * OMXCameraAdapter::DEFAULT_VSTAB = android::CameraParameters::FALSE;
+const char * OMXCameraAdapter::DEFAULT_VNF = android::CameraParameters::FALSE;
 const char OMXCameraAdapter::DEFAULT_WB[] = "auto";
 const char OMXCameraAdapter::DEFAULT_ZOOM[] = "0";
 const char OMXCameraAdapter::DEFAULT_MAX_FD_HW_FACES[] = __STRINGIFY(MAX_NUM_FACES_SUPPORTED);
 const char OMXCameraAdapter::DEFAULT_MAX_FD_SW_FACES[] = "0";
 const char OMXCameraAdapter::DEFAULT_HOR_ANGLE[] = "54.8";
 const char OMXCameraAdapter::DEFAULT_VER_ANGLE[] = "42.5";
-const char * OMXCameraAdapter::DEFAULT_AE_LOCK = CameraParameters::FALSE;
-const char * OMXCameraAdapter::DEFAULT_AWB_LOCK = CameraParameters::FALSE;
+const char * OMXCameraAdapter::DEFAULT_AE_LOCK = android::CameraParameters::FALSE;
+const char * OMXCameraAdapter::DEFAULT_AWB_LOCK = android::CameraParameters::FALSE;
 const char OMXCameraAdapter::DEFAULT_VIDEO_SIZE[] = "1920x1080";
 const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 const char OMXCameraAdapter::DEFAULT_AUTOCONVERGENCE_MODE[] = "frame";
 const char OMXCameraAdapter::DEFAULT_MANUAL_CONVERGENCE[] = "0";
-const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = CameraParameters::TRUE;
+const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = android::CameraParameters::TRUE;
 const char OMXCameraAdapter::DEFAULT_EXIF_MAKE[] = "default_make";
 const char OMXCameraAdapter::DEFAULT_EXIF_MODEL[] = "default_model";
-};
 
+} // namespace Camera
+} // namespace Ti

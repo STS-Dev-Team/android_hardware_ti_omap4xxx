@@ -26,7 +26,8 @@
 #include "ErrorUtils.h"
 #include "TICameraParameters.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /************************************
  * global constants and variables
@@ -187,12 +188,12 @@ const CapResolution OMXCameraAdapter::mThumbRes [] = {
 };
 
 const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
-    { OMX_COLOR_FormatCbYCrY, CameraParameters::PIXEL_FORMAT_YUV422I },
-    { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420SP },
-    { OMX_COLOR_Format16bitRGB565, CameraParameters::PIXEL_FORMAT_RGB565 },
-    { OMX_COLOR_FormatYUV420SemiPlanar, CameraParameters::PIXEL_FORMAT_YUV420P },
+    { OMX_COLOR_FormatCbYCrY, android::CameraParameters::PIXEL_FORMAT_YUV422I },
+    { OMX_COLOR_FormatYUV420SemiPlanar, android::CameraParameters::PIXEL_FORMAT_YUV420SP },
+    { OMX_COLOR_Format16bitRGB565, android::CameraParameters::PIXEL_FORMAT_RGB565 },
+    { OMX_COLOR_FormatYUV420SemiPlanar, android::CameraParameters::PIXEL_FORMAT_YUV420P },
     { OMX_COLOR_FormatUnused, TICameraParameters::PIXEL_FORMAT_UNUSED },
-    { OMX_COLOR_FormatRawBayer10bit, CameraParameters::PIXEL_FORMAT_BAYER_RGGB },
+    { OMX_COLOR_FormatRawBayer10bit, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB },
 };
 
 const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
@@ -209,7 +210,7 @@ const LUTtype OMXCameraAdapter::mLayoutLUT = {
 };
 
 const CapCodingFormat OMXCameraAdapter::mImageCodingFormat [] = {
-      { OMX_IMAGE_CodingJPEG, CameraParameters::PIXEL_FORMAT_JPEG },
+      { OMX_IMAGE_CodingJPEG, android::CameraParameters::PIXEL_FORMAT_JPEG },
       { (OMX_IMAGE_CODINGTYPE)OMX_TI_IMAGE_CodingJPS, TICameraParameters::PIXEL_FORMAT_JPS },
       { (OMX_IMAGE_CODINGTYPE)OMX_TI_IMAGE_CodingMPO, TICameraParameters::PIXEL_FORMAT_MPO },
 };
@@ -408,7 +409,7 @@ status_t OMXCameraAdapter::encodePixelformatCap(OMX_COLOR_FORMATTYPE format,
 
 void OMXCameraAdapter::encodeFrameRates(const int minFrameRate, const int maxFrameRate,
         const OMX_TI_CAPTYPE & caps, const CapFramerate * const fixedFrameRates,
-        const int frameRateCount, Vector<FpsRange> & fpsRanges) {
+        const int frameRateCount, android::Vector<FpsRange> & fpsRanges) {
     LOG_FUNCTION_NAME;
 
     if ( minFrameRate == maxFrameRate ) {
@@ -903,11 +904,11 @@ status_t OMXCameraAdapter::insertZoomStages(CameraProperties::Properties* params
     params->set(CameraProperties::SUPPORTED_ZOOM_STAGES, zoomStageCount - 1); //As per CTS requirement
 
     if ( 0 == zoomStageCount ) {
-        params->set(CameraProperties::ZOOM_SUPPORTED, CameraParameters::FALSE);
-        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::ZOOM_SUPPORTED, android::CameraParameters::FALSE);
+        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, android::CameraParameters::FALSE);
     } else {
-        params->set(CameraProperties::ZOOM_SUPPORTED, CameraParameters::TRUE);
-        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::ZOOM_SUPPORTED, android::CameraParameters::TRUE);
+        params->set(CameraProperties::SMOOTH_ZOOM_SUPPORTED, android::CameraParameters::TRUE);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -985,7 +986,7 @@ status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
         if (supported[0] != '\0') {
             strncat(supported, PARAM_SEP, 1);
         }
-        strncat(supported, CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
+        strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
         params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     }
 
@@ -998,7 +999,7 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
 {
     // collect supported normal frame rates
     {
-        Vector<FpsRange> fpsRanges;
+        android::Vector<FpsRange> fpsRanges;
 
         const int minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE,
                 androidFromDucatiFrameRate(caps.xFramerateMin));
@@ -1062,7 +1063,7 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
 
     // collect supported extended frame rates
     {
-        Vector<FpsRange> fpsRanges;
+        android::Vector<FpsRange> fpsRanges;
 
         const int minFrameRate = max<int>(FPS_MIN * CameraHal::VFR_SCALE,
                 androidFromDucatiFrameRate(caps.xFramerateMin));
@@ -1396,7 +1397,7 @@ status_t OMXCameraAdapter::insertFocusModes(CameraProperties::Properties* params
         if (supported[0] != '\0') {
             strncat(supported, PARAM_SEP, 1);
         }
-        strncat(supported, CameraParameters::FOCUS_MODE_INFINITY, MAX_PROP_NAME_LENGTH);
+        strncat(supported, android::CameraParameters::FOCUS_MODE_INFINITY, MAX_PROP_NAME_LENGTH);
     }
 
     params->set(CameraProperties::SUPPORTED_FOCUS_MODES, supported);
@@ -1460,15 +1461,15 @@ status_t OMXCameraAdapter::insertAreas(CameraProperties::Properties* params, OMX
 status_t OMXCameraAdapter::insertVNFSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
     status_t ret = NO_ERROR;
 
-    LOG_FUNCTION_NAME
+    LOG_FUNCTION_NAME;
 
     if ( OMX_TRUE == caps.bVideoNoiseFilterSupported ) {
-        params->set(CameraProperties::VNF_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::VNF_SUPPORTED, android::CameraParameters::TRUE);
     } else {
-        params->set(CameraProperties::VNF_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::VNF_SUPPORTED, android::CameraParameters::FALSE);
     }
 
-    LOG_FUNCTION_NAME_EXIT
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1476,15 +1477,15 @@ status_t OMXCameraAdapter::insertVNFSupported(CameraProperties::Properties* para
 status_t OMXCameraAdapter::insertVSTABSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps) {
     status_t ret = NO_ERROR;
 
-    LOG_FUNCTION_NAME
+    LOG_FUNCTION_NAME;
 
     if ( OMX_TRUE == caps.bVideoStabilizationSupported ) {
-        params->set(CameraProperties::VSTAB_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::VSTAB_SUPPORTED, android::CameraParameters::TRUE);
     } else {
-        params->set(CameraProperties::VSTAB_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::VSTAB_SUPPORTED, android::CameraParameters::FALSE);
     }
 
-    LOG_FUNCTION_NAME_EXIT
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -1496,15 +1497,15 @@ status_t OMXCameraAdapter::insertLocks(CameraProperties::Properties* params, OMX
     LOG_FUNCTION_NAME
 
     if ( caps.bAELockSupported ) {
-        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, android::CameraParameters::TRUE);
     } else {
-        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED, android::CameraParameters::FALSE);
     }
 
     if ( caps.bAWBLockSupported ) {
-        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, android::CameraParameters::TRUE);
     } else {
-        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED, android::CameraParameters::FALSE);
     }
 
     LOG_FUNCTION_NAME_EXIT
@@ -1675,7 +1676,7 @@ status_t OMXCameraAdapter::insertMechanicalMisalignmentCorrection(CameraProperti
 
     params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED,
             caps.bMechanicalMisalignmentSupported == OMX_TRUE ?
-            CameraParameters::TRUE : CameraParameters::FALSE);
+            android::CameraParameters::TRUE : android::CameraParameters::FALSE);
 
     return OK;
 }
@@ -1777,11 +1778,11 @@ status_t OMXCameraAdapter::insertVideoSnapshotSupported(CameraProperties::Proper
 
     if (caps.bStillCapDuringVideoSupported)
     {
-        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, CameraParameters::TRUE);
+        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, android::CameraParameters::TRUE);
     }
     else
     {
-        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, CameraParameters::FALSE);
+        params->set(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED, android::CameraParameters::FALSE);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1798,10 +1799,10 @@ status_t OMXCameraAdapter::insertGBCESupported(CameraProperties::Properties* par
 
     if (caps.bGbceSupported) {
         params->set(CameraProperties::SUPPORTED_GBCE,
-                    CameraParameters::TRUE);
+                    android::CameraParameters::TRUE);
     } else {
         params->set(CameraProperties::SUPPORTED_GBCE,
-                    CameraParameters::FALSE);
+                    android::CameraParameters::FALSE);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1818,10 +1819,10 @@ status_t OMXCameraAdapter::insertGLBCESupported(CameraProperties::Properties* pa
 
     if (caps.bGlbceSupported) {
         params->set(CameraProperties::SUPPORTED_GLBCE,
-                    CameraParameters::TRUE);
+                    android::CameraParameters::TRUE);
     } else {
         params->set(CameraProperties::SUPPORTED_GLBCE,
-                    CameraParameters::FALSE);
+                    android::CameraParameters::FALSE);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1897,8 +1898,8 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
         params->set(CameraProperties::FOCUS_MODE, DEFAULT_FOCUS_MODE);
         }
     params->set(CameraProperties::IPP, DEFAULT_IPP);
-    params->set(CameraProperties::GBCE, CameraParameters::FALSE);
-    params->set(CameraProperties::GLBCE, CameraParameters::FALSE);
+    params->set(CameraProperties::GBCE, android::CameraParameters::FALSE);
+    params->set(CameraProperties::GLBCE, android::CameraParameters::FALSE);
     params->set(CameraProperties::ISO_MODE, DEFAULT_ISO_MODE);
     params->set(CameraProperties::JPEG_QUALITY, DEFAULT_JPEG_QUALITY);
     params->set(CameraProperties::JPEG_THUMBNAIL_QUALITY, DEFAULT_THUMBNAIL_QUALITY);
@@ -2453,4 +2454,5 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

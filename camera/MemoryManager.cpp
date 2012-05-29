@@ -25,7 +25,8 @@ extern "C" {
 
 };
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 ///@todo Move these constants to a common header file, preferably in tiler.h
 #define STRIDE_8BIT (4 * 1024)
@@ -223,7 +224,8 @@ status_t MemoryManager::setErrorHandler(ErrorNotifier *errorNotifier)
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti
 
 
 /*--------------------MemoryManager Class ENDS here-----------------------------*/

@@ -26,7 +26,8 @@
 #include "ErrorUtils.h"
 #include "TICameraParameters.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /************************************
  * global constants and variables
@@ -47,13 +48,13 @@ const char V4LCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
 const char V4LCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char V4LCameraAdapter::DEFAULT_FRAMERATE[] = "30";
 const char V4LCameraAdapter::DEFAULT_FOCUS_MODE[] = "infinity";
-const char * V4LCameraAdapter::DEFAULT_VSTAB = CameraParameters::FALSE;
-const char * V4LCameraAdapter::DEFAULT_VNF = CameraParameters::FALSE;
+const char * V4LCameraAdapter::DEFAULT_VSTAB = android::CameraParameters::FALSE;
+const char * V4LCameraAdapter::DEFAULT_VNF = android::CameraParameters::FALSE;
 
 
 const CapPixelformat V4LCameraAdapter::mPixelformats [] = {
-    { V4L2_PIX_FMT_YUYV, CameraParameters::PIXEL_FORMAT_YUV422I },
-    { V4L2_PIX_FMT_JPEG, CameraParameters::PIXEL_FORMAT_JPEG },
+    { V4L2_PIX_FMT_YUYV, android::CameraParameters::PIXEL_FORMAT_YUV422I },
+    { V4L2_PIX_FMT_JPEG, android::CameraParameters::PIXEL_FORMAT_JPEG },
 };
 
 /*****************************************
@@ -113,7 +114,7 @@ status_t V4LCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
             }
         }
     }
-    strncat(supported, CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
+    strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
     params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     return NO_ERROR;
 }
@@ -341,4 +342,5 @@ status_t V4LCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
 
 
 
-};
+} // namespace Camera
+} // namespace Ti

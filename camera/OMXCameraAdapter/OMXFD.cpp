@@ -33,9 +33,10 @@ static const int HorizontalFaceSizeThreshold = 30;
 static const int VerticalFaceSizeThreshold = 30;
 
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
-status_t OMXCameraAdapter::setParametersFD(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersFD(const android::CameraParameters &params,
                                            BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -51,7 +52,7 @@ status_t OMXCameraAdapter::startFaceDetection()
 {
     status_t ret = NO_ERROR;
 
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
 
     ret = setFaceDetection(true, mDeviceOrientation);
     if (ret != NO_ERROR) {
@@ -78,7 +79,7 @@ status_t OMXCameraAdapter::stopFaceDetection()
     BaseCameraAdapter::AdapterState state;
     BaseCameraAdapter::getState(state);
 
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
 
     ret = setFaceDetection(false, mDeviceOrientation);
     if (ret != NO_ERROR) {
@@ -106,7 +107,7 @@ status_t OMXCameraAdapter::stopFaceDetection()
 
 void OMXCameraAdapter::pauseFaceDetection(bool pause)
 {
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
     // pausing will only take affect if fd is already running
     if (mFaceDetectionRunning) {
         mFaceDetectionPaused = pause;
@@ -118,7 +119,7 @@ status_t OMXCameraAdapter::setFaceDetectionOrientation(OMX_U32 orientation)
 {
     status_t ret = NO_ERROR;
 
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
 
     if (mFaceDetectionRunning) {
         // restart face detection with new rotation
@@ -200,7 +201,7 @@ status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
 }
 
 status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHeader,
-                                          sp<CameraMetadataResult> &result,
+                                          android::sp<CameraMetadataResult> &result,
                                           size_t previewWidth,
                                           size_t previewHeight)
 {
@@ -299,7 +300,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
         return -ENOMEM;
     }
 
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
 
     if ( (NULL != faceData) && (0 < faceData->ulFaceCount) ) {
         int orient_mult;
@@ -471,4 +472,5 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

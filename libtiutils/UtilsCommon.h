@@ -22,7 +22,7 @@
 
 
 
-namespace android {
+namespace Ti {
 
 
 
@@ -91,7 +91,7 @@ inline T abs(const T & x) {
 
 
 
-} // namespace android
+} // namespace Ti
 
 
 

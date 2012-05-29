@@ -32,7 +32,8 @@
 
 #include "Common.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #define MAX_CAMERAS_SUPPORTED 3
 #define MAX_SIMUL_CAMERAS_SUPPORTED 1
@@ -214,7 +215,7 @@ public:
 
         private:
             OperatingMode mCurrentMode;
-            DefaultKeyedVector<String8, String8> mProperties[MODE_MAX];
+            android::DefaultKeyedVector<android::String8, android::String8> mProperties[MODE_MAX];
 
     };
 
@@ -228,12 +229,13 @@ private:
 
     int mCamerasSupported;
     int mInitialized;
-    mutable Mutex mLock;
+    mutable android::Mutex mLock;
 
     Properties mCameraProps[MAX_CAMERAS_SUPPORTED];
 
 };
 
-};
+} // namespace Camera
+} // namespace Ti
 
 #endif //CAMERA_PROPERTIES_H

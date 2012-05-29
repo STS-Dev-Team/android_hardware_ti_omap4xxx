@@ -25,7 +25,8 @@
 #include "OMXCameraAdapter.h"
 
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 status_t OMXCameraAdapter::initDccFileDataSave(OMX_HANDLETYPE* omxHandle, int portIndex)
 {
@@ -69,7 +70,7 @@ status_t OMXCameraAdapter::sniffDccFileDataSave(OMX_BUFFERHEADERTYPE* pBuffHeade
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mDccDataLock);
+    android::AutoMutex lock(mDccDataLock);
 
     if ( NULL == pBuffHeader ) {
         CAMHAL_LOGEA("Invalid Buffer header");
@@ -305,7 +306,7 @@ status_t OMXCameraAdapter::saveDccFileDataSave()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mDccDataLock);
+    android::AutoMutex lock(mDccDataLock);
 
     if (mDccData.pData)
         {
@@ -345,7 +346,7 @@ status_t OMXCameraAdapter::closeDccFileDataSave()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mDccDataLock);
+    android::AutoMutex lock(mDccDataLock);
 
     if (mDccData.pData) {
         free(mDccData.pData);
@@ -356,4 +357,5 @@ status_t OMXCameraAdapter::closeDccFileDataSave()
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

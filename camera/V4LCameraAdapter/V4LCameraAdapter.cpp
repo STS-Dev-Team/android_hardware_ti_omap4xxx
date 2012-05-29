@@ -49,7 +49,8 @@ static int mDebugFps = 0;
 
 #define HERE(Msg) {CAMHAL_LOGEB("--=== %s===--\n", Msg);}
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 //frames skipped before recalculating the framerate
 #define FPS_PERIOD 30
@@ -64,7 +65,7 @@ static void convertYUV422i_yuyvTouyvy(uint8_t *src, uint8_t *dest, size_t size )
 static void convertYUV422ToNV12Tiler(unsigned char *src, unsigned char *dest, int width, int height );
 static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int width, int height );
 
-Mutex gV4LAdapterLock;
+android::Mutex gV4LAdapterLock;
 char device[15];
 
 
@@ -377,7 +378,7 @@ EXIT:
 
 }
 
-status_t V4LCameraAdapter::setParameters(const CameraParameters &params)
+status_t V4LCameraAdapter::setParameters(const android::CameraParameters &params)
 {
     status_t ret = NO_ERROR;
     int width, height;
@@ -419,7 +420,7 @@ EXIT:
 }
 
 
-void V4LCameraAdapter::getParameters(CameraParameters& params)
+void V4LCameraAdapter::getParameters(android::CameraParameters& params)
 {
     LOG_FUNCTION_NAME;
 
@@ -437,7 +438,7 @@ status_t V4LCameraAdapter::useBuffers(CameraMode mode, CameraBuffer *bufArr, int
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     switch(mode)
         {
@@ -530,7 +531,7 @@ status_t V4LCameraAdapter::takePicture() {
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mCaptureBufsLock);
+    android::AutoMutex lock(mCaptureBufsLock);
 
     if(mCapturing) {
         CAMHAL_LOGEA("Already Capture in Progress...");
@@ -685,7 +686,7 @@ status_t V4LCameraAdapter::startPreview()
     status_t ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
-    Mutex::Autolock lock(mPreviewBufsLock);
+    android::AutoMutex lock(mPreviewBufsLock);
 
     if(mPreviewing) {
         ret = BAD_VALUE;
@@ -729,7 +730,7 @@ status_t V4LCameraAdapter::stopPreview()
     int ret = NO_ERROR;
 
     LOG_FUNCTION_NAME;
-    Mutex::Autolock lock(mStopPreviewLock);
+    android::AutoMutex lock(mStopPreviewLock);
 
     if(!mPreviewing) {
         return NO_INIT;
@@ -1210,7 +1211,7 @@ void detectVideoDevice(char** video_device_list, int& num_device) {
 extern "C" CameraAdapter* V4LCameraAdapter_Factory(size_t sensor_index)
 {
     CameraAdapter *adapter = NULL;
-    Mutex::Autolock lock(gV4LAdapterLock);
+    android::AutoMutex lock(gV4LAdapterLock);
 
     LOG_FUNCTION_NAME;
 
@@ -1309,7 +1310,8 @@ EXIT:
     return NO_ERROR;
 }
 
-};
+} // namespace Camera
+} // namespace Ti
 
 
 /*--------------------Camera Adapter Class ENDS here-----------------------------*/

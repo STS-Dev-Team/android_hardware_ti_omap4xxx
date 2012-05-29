@@ -23,7 +23,8 @@
 
 #include "CameraProperties.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const char CameraProperties::INVALID[]="prop-invalid-key";
 const char CameraProperties::CAMERA_NAME[]="prop-camera-name";
@@ -166,9 +167,9 @@ void CameraProperties::Properties::set(const char * const prop, const char * con
     CAMHAL_ASSERT(prop);
 
     if ( !value ) {
-        mProperties[mCurrentMode].removeItem(String8(prop));
+        mProperties[mCurrentMode].removeItem(android::String8(prop));
     } else {
-        mProperties[mCurrentMode].replaceValueFor(String8(prop), String8(value));
+        mProperties[mCurrentMode].replaceValueFor(android::String8(prop), android::String8(value));
     }
 }
 
@@ -179,11 +180,11 @@ void CameraProperties::Properties::set(const char * const prop, const int value)
 }
 
 const char* CameraProperties::Properties::get(const char * prop) const {
-    return mProperties[mCurrentMode].valueFor(String8(prop)).string();
+    return mProperties[mCurrentMode].valueFor(android::String8(prop)).string();
 }
 
 int CameraProperties::Properties::getInt(const char * prop) const {
-    String8 value = mProperties[mCurrentMode].valueFor(String8(prop));
+    android::String8 value = mProperties[mCurrentMode].valueFor(android::String8(prop));
     if (value.isEmpty()) {
         return -1;
     }
@@ -235,4 +236,5 @@ const char* CameraProperties::Properties::valueAt(const unsigned int index) cons
     return NULL;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

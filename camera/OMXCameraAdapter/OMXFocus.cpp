@@ -30,25 +30,26 @@
 #define AF_IMAGE_CALLBACK_TIMEOUT 5000000 //5 seconds timeout
 #define AF_VIDEO_CALLBACK_TIMEOUT 2800000 //2.8 seconds timeout
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const nsecs_t OMXCameraAdapter::CANCEL_AF_TIMEOUT =  seconds_to_nanoseconds(1);
 
-status_t OMXCameraAdapter::setParametersFocus(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersFocus(const android::CameraParameters &params,
                                               BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
     const char *str = NULL;
-    Vector< sp<CameraArea> > tempAreas;
+    android::Vector<android::sp<CameraArea> > tempAreas;
     size_t MAX_FOCUS_AREAS;
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mFocusAreasLock);
+    android::AutoMutex lock(mFocusAreasLock);
 
-    str = params.get(CameraParameters::KEY_FOCUS_AREAS);
+    str = params.get(android::CameraParameters::KEY_FOCUS_AREAS);
 
-    MAX_FOCUS_AREAS = atoi(params.get(CameraParameters::KEY_MAX_NUM_FOCUS_AREAS));
+    MAX_FOCUS_AREAS = atoi(params.get(android::CameraParameters::KEY_MAX_NUM_FOCUS_AREAS));
 
     if ( NULL != str ) {
         ret = CameraArea::parseAreas(str, ( strlen(str) + 1 ), tempAreas);
@@ -167,11 +168,11 @@ status_t OMXCameraAdapter::doAutoFocus()
                                (OMX_INDEXTYPE)OMX_TI_IndexConfigAutofocusEnable,
                                &bOMX);
         if ( OMX_ErrorNone != eError ) {
-            return ErrorUtils::omxToAndroidError(eError);
+            return Utils::ErrorUtils::omxToAndroidError(eError);
         }
 
         {
-            Mutex::Autolock lock(mDoAFMutex);
+            android::AutoMutex lock(mDoAFMutex);
 
         // force AF, Ducati will take care of whether CAF
         // or AF will be performed, depending on light conditions
@@ -264,7 +265,7 @@ status_t OMXCameraAdapter::stopAutoFocus()
                             &focusControl);
     if ( OMX_ErrorNone != eError ) {
         CAMHAL_LOGEB("Error while stopping focus 0x%x", eError);
-        return ErrorUtils::omxToAndroidError(eError);
+        return Utils::ErrorUtils::omxToAndroidError(eError);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -296,7 +297,7 @@ status_t OMXCameraAdapter::getFocusMode(OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE &focus
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::cancelAutoFocus()
@@ -317,7 +318,7 @@ status_t OMXCameraAdapter::cancelAutoFocus()
          ( focusMode.eFocusControl != ( OMX_IMAGE_FOCUSCONTROLTYPE )
                  OMX_IMAGE_FocusControlAutoInfinity ) &&
          ( focusMode.eFocusControl != OMX_IMAGE_FocusControlOff ) ) {
-        Mutex::Autolock lock(mCancelAFMutex);
+        android::AutoMutex lock(mCancelAFMutex);
         stopAutoFocus();
         ret = mCancelAFCond.waitRelative(mCancelAFMutex, CANCEL_AF_TIMEOUT);
         if ( NO_ERROR != ret ) {
@@ -332,7 +333,7 @@ status_t OMXCameraAdapter::cancelAutoFocus()
 
     {
         // Signal to 'doAutoFocus()'
-        Mutex::Autolock lock(mDoAFMutex);
+        android::AutoMutex lock(mDoAFMutex);
         mDoAFCond.broadcast();
     }
 
@@ -546,7 +547,7 @@ status_t OMXCameraAdapter::checkFocus(OMX_PARAM_FOCUSSTATUSTYPE *eFocusStatus)
     return ret;
 }
 
-status_t OMXCameraAdapter::updateFocusDistances(CameraParameters &params)
+status_t OMXCameraAdapter::updateFocusDistances(android::CameraParameters &params)
 {
     OMX_U32 focusNear, focusOptimal, focusFar;
     status_t ret = NO_ERROR;
@@ -632,7 +633,7 @@ status_t OMXCameraAdapter::encodeFocusDistance(OMX_U32 dist, char *buffer, size_
         {
         if ( 0 == dist )
             {
-            strncpy(buffer, CameraParameters::FOCUS_DISTANCE_INFINITY, ( length - 1 ));
+            strncpy(buffer, android::CameraParameters::FOCUS_DISTANCE_INFINITY, ( length - 1 ));
             }
         else
             {
@@ -650,7 +651,7 @@ status_t OMXCameraAdapter::encodeFocusDistance(OMX_U32 dist, char *buffer, size_
 status_t OMXCameraAdapter::addFocusDistances(OMX_U32 &near,
                                              OMX_U32 &optimal,
                                              OMX_U32 &far,
-                                             CameraParameters& params)
+                                             android::CameraParameters& params)
 {
     status_t ret = NO_ERROR;
 
@@ -689,7 +690,7 @@ status_t OMXCameraAdapter::addFocusDistances(OMX_U32 &near,
                                                                               mFocusDistOptimal,
                                                                               mFocusDistFar);
 
-        params.set(CameraParameters::KEY_FOCUS_DISTANCES, mFocusDistBuffer);
+        params.set(android::CameraParameters::KEY_FOCUS_DISTANCES, mFocusDistBuffer);
         }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -836,14 +837,14 @@ void OMXCameraAdapter::handleFocusCallback() {
         CAMHAL_LOGEA("Focus status check failed!");
         // signal and unblock doAutoFocus
         if (AF_ACTIVE & nextState) {
-            Mutex::Autolock lock(mDoAFMutex);
+            android::AutoMutex lock(mDoAFMutex);
             mDoAFCond.broadcast();
         }
         return;
     }
 
     if ( eFocusStatus.eFocusStatus == OMX_FocusStatusOff ) {
-        Mutex::Autolock lock(mCancelAFMutex);
+        android::AutoMutex lock(mCancelAFMutex);
         mCancelAFCond.signal();
         return;
     }
@@ -851,7 +852,7 @@ void OMXCameraAdapter::handleFocusCallback() {
     if (eFocusStatus.eFocusStatus != OMX_FocusStatusRequest) {
         // signal doAutoFocus when a end of scan message comes
         // ignore start of scan
-        Mutex::Autolock lock(mDoAFMutex);
+        android::AutoMutex lock(mDoAFMutex);
         mDoAFCond.broadcast();
     }
 
@@ -876,4 +877,5 @@ void OMXCameraAdapter::handleFocusCallback() {
     notifyFocusSubscribers(focusStatus);
 }
 
-};
+} // namespace Camera
+} // namespace Ti
