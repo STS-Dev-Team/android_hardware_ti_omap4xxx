@@ -3387,26 +3387,23 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             return OMX_ErrorNone;
             }
 
-        if ( mWaitingForSnapshot )
-            {
+        if ( mWaitingForSnapshot ) {
+            platformPrivate = (OMX_TI_PLATFORMPRIVATE*) pBuffHeader->pPlatformPrivate;
             extraData = getExtradata((OMX_OTHER_EXTRADATATYPE*) platformPrivate->pMetaDataBuffer,
                     platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE) OMX_AncillaryData);
 
-            if ( NULL != extraData )
-                {
+            if ( NULL != extraData ) {
                 ancillaryData = (OMX_TI_ANCILLARYDATATYPE*) extraData->data;
                 if ((OMX_2D_Snap == ancillaryData->eCameraView)
                     || (OMX_3D_Left_Snap == ancillaryData->eCameraView)
-                    || (OMX_3D_Right_Snap == ancillaryData->eCameraView))
-                    {
+                    || (OMX_3D_Right_Snap == ancillaryData->eCameraView)) {
                     snapshotFrame = OMX_TRUE;
-                    }
-                else
-                    {
+                } else {
                     snapshotFrame = OMX_FALSE;
-                    }
                 }
+                mPending3Asettings |= SetFocus;
             }
+        }
 
         ///Prepare the frames to be sent - initialize CameraFrame object and reference count
         // TODO(XXX): ancillary data for snapshot frame is not being sent for video snapshot
