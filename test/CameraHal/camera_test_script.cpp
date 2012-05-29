@@ -156,7 +156,6 @@ extern char **stereoLayout;
 extern char **stereoCapLayout;
 extern void getSizeParametersFromCapabilities();
 
-
 void trim_script_cmd(char *cmd) {
     char *nl, *cr;
 
@@ -364,10 +363,13 @@ int execute_functional_script(char *script) {
             case '4':
                 printf("Setting resolution...");
                 a = checkSupportedParamScriptResol(preview_Array, numpreviewSize, cmd, &resol_index);
-                if (a > -1) {
-                    params.setPreviewSize(preview_Array[resol_index]->width,  preview_Array[resol_index]->height);
-                    previewSizeIDX = resol_index;
-                    reSizePreview = true;
+                if (camera_index != 2) {
+                    if (a > -1) {
+                        params.setPreviewSize(preview_Array[resol_index]->width, preview_Array[resol_index]->height);
+                        previewSizeIDX = resol_index;
+                    } else {
+                        printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
+                    }
                 } else {
                     int width, height;
                     char *res = NULL;
@@ -377,7 +379,6 @@ int execute_functional_script(char *script) {
                     height = atoi(res);
                     params.setPreviewSize(width, height);
                 }
-
                 if ( hardwareActive && previewRunning ) {
                     camera->stopPreview();
                     camera->setParameters(params.flatten());
@@ -388,24 +389,43 @@ int execute_functional_script(char *script) {
                 break;
 
             case '5':
-                a = checkSupportedParamScriptResol(capture_Array, numcaptureSize, cmd, &resol_index);
-                if (a > -1) {
-                    params.setPictureSize(capture_Array[resol_index]->width, capture_Array[resol_index]->height);
-                    captureSizeIDX = resol_index;
+                if( strcmp((cmd + 1), "MAX_CAPTURE_SIZE") == 0) {
+                    resol_index = 0;
+                    for (int i=0; i<numcaptureSize; i++) {
+                        if ((capture_Array[resol_index]->width * capture_Array[resol_index]->height) < (capture_Array[i]->width * capture_Array[i]->height)) {
+                            resol_index = i;
+                        }
+                    }
+                    if ((0 < capture_Array[resol_index]->width) && (0 < capture_Array[resol_index]->height)) {
+                        params.setPictureSize(capture_Array[resol_index]->width, capture_Array[resol_index]->height);
+                        captureSizeIDX = resol_index;
+                        printf("Capture Size set: %dx%d\n", capture_Array[resol_index]->width, capture_Array[resol_index]->height);
+                    } else {
+                        printf("\nCapture size is 0!\n");
+                    }
                 } else {
-                    int widthC, heightC;
-                    char *resC = NULL;
-                    resC = strtok(cmd + 1, "x");
-                    widthC = atoi(resC);
-                    resC = strtok(NULL, "x");
-                    heightC = atoi(resC);
-                    params.setPictureSize(widthC,heightC);
-                }
+                    a = checkSupportedParamScriptResol(capture_Array, numcaptureSize, cmd, &resol_index);
+                    if (camera_index != 2) {
+                        if (a > -1) {
+                            params.setPictureSize(capture_Array[resol_index]->width, capture_Array[resol_index]->height);
+                            captureSizeIDX = resol_index;
+                        } else {
+                            printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
+                        }
+                    } else {
+                        int widthC, heightC;
+                        char *resC = NULL;
+                        resC = strtok(cmd + 1, "x");
+                        widthC = atoi(resC);
+                        resC = strtok(NULL, "x");
+                        heightC = atoi(resC);
+                        params.setPictureSize(widthC,heightC);
+                    }
 
-                if ( hardwareActive ) {
-                    camera->setParameters(params.flatten());
+                    if ( hardwareActive ) {
+                        camera->setParameters(params.flatten());
+                    }
                 }
-
                 break;
 
             case '6':
@@ -458,7 +478,6 @@ int execute_functional_script(char *script) {
                     params.set(params.KEY_WHITE_BALANCE, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -500,7 +519,6 @@ int execute_functional_script(char *script) {
                     params.setPreviewFormat(cmd + 1);
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -515,7 +533,6 @@ int execute_functional_script(char *script) {
                     params.setPictureFormat(cmd + 1);
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -577,7 +594,6 @@ int execute_functional_script(char *script) {
                     VcaptureSizeIDX = resol_index;
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
                 break;
 
@@ -633,7 +649,6 @@ int execute_functional_script(char *script) {
                     thumbSizeIDX = resol_index;
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive ) {
@@ -739,7 +754,6 @@ int execute_functional_script(char *script) {
                     params.set(KEY_MODE, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -812,7 +826,6 @@ int execute_functional_script(char *script) {
                     params.set(CameraParameters::KEY_FLASH_MODE, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -827,7 +840,6 @@ int execute_functional_script(char *script) {
                     params.set(params.KEY_SCENE_MODE, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
                 if ( hardwareActive )
                     camera->setParameters(params.flatten());
@@ -862,11 +874,9 @@ int execute_functional_script(char *script) {
                         trySetVideoStabilization(false);
                     } else {
                         printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                        return -1;
                     }
                 } else {
                     printf("\nNot supported parameter vstab from sensor %d\n\n", camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive ) {
@@ -891,7 +901,6 @@ int execute_functional_script(char *script) {
                     params.set(KEY_ISO, isoMode[iso_mode]);
                 } else {
                     printf("\nNot supported parameter %s for iso mode from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -944,7 +953,6 @@ int execute_functional_script(char *script) {
 
                     if (!zoomtoggle) {
                         printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                        return -1;
                     }
 
 
@@ -969,7 +977,6 @@ int execute_functional_script(char *script) {
 
                     if (!smoothzoomtoggle) {
                         printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                        return -1;
                     }
 
                     if ( hardwareActive ) {
@@ -985,7 +992,6 @@ int execute_functional_script(char *script) {
                     params.set(KEY_EXPOSURE, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -1017,7 +1023,6 @@ int execute_functional_script(char *script) {
                     params.set(params.KEY_EFFECT, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -1026,15 +1031,29 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'r':
-                a = checkSupportedParamScriptfpsConst(constFramerate, constCnt, cmd, &frameRConst);
-                if (a > -1) {
-                    params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRConst]);
-                    frameRateIDX = frameRConst;
+                if (strcmp((cmd + 1), "MAX_FRAMERATE") == 0) {
+                    frameRConst = 0;
+                    for (int i=0; i<constCnt; i++) {
+                        if (constFramerate[frameRConst] < constFramerate[i]) {
+                            frameRConst = i;
+                        }
+                    }
+                    if (0 < constFramerate[frameRConst]) {
+                        params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRConst]);
+                        frameRateIDX = frameRConst;
+                        printf("Framerate set: %d fps\n", constFramerate[frameRConst]);
+                    } else {
+                        printf("\nFramerate is 0!\n");
+                    }
                 } else {
-                    printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
+                    a = checkSupportedParamScriptfpsConst(constFramerate, constCnt, cmd, &frameRConst);
+                    if (a > -1) {
+                        params.set(CameraParameters::KEY_PREVIEW_FPS_RANGE, fps_const_str[frameRConst]);
+                        frameRateIDX = frameRConst;
+                    } else {
+                        printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
+                    }
                 }
-
                 if ( hardwareActive && previewRunning ) {
                     camera->stopPreview();
                     camera->setParameters(params.flatten());
@@ -1051,7 +1070,6 @@ int execute_functional_script(char *script) {
                     fpsRangeIdx = frameRRange;
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
                 break;
 
@@ -1061,7 +1079,6 @@ int execute_functional_script(char *script) {
                 params.set(params.KEY_ANTIBANDING, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -1074,7 +1091,6 @@ int execute_functional_script(char *script) {
                     params.set(params.KEY_FOCUS_MODE, (cmd + 1));
                 } else {
                     printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    return -1;
                 }
 
                 if ( hardwareActive )
