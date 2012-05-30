@@ -95,13 +95,4 @@ private:
 
 
 
-// FIXME: Temporary workaround to avoid namespace fixes in VTC test code right now.
-namespace TIUTILS {
-    typedef Ti::Utils::Message Message;
-    typedef Ti::Utils::MessageQueue MessageQueue;
-}
-
-
-
-
 #endif
