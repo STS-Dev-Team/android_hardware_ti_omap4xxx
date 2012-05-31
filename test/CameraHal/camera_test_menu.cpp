@@ -3435,7 +3435,7 @@ void print_usage() {
     printf(" -a            -> API tests.\n");
     printf(" -e [<script>] -> Error scenario tests. If no script file is provided\n");
     printf("                  the test is run in interactive mode.\n");
-    printf(" -s <script>   -> Stress / regression tests.\n");
+    printf(" -s <script> -c <sensorID>  -> Stress / regression tests.\n");
     printf(" -l [<flags>]  -> Enable different kinds of logging capture. Multiple flags\n");
     printf("                  should be combined into a string. If flags are not provided\n");
     printf("                  no logs are captured.\n");
@@ -3775,6 +3775,20 @@ int parseCommandLine(int argc, char *argv[], cmd_args_t *cmd_args) {
                     cmd_args->output_path = argv[++a];
                 } else {
                     printf("Error: No output path is specified.\n");
+                    return -2;
+                }
+                break;
+
+            case 'c':
+                if (a < argc -1) {
+                    camera_index = atoi(argv[++a]);
+                    if ( camera_index == 2) {
+                        params.set(KEY_STEREO_CAMERA, "true");
+                    } else {
+                        params.set(KEY_STEREO_CAMERA, "false");
+                    }
+                } else {
+                    printf("Error: No sensorID is specified.\n");
                     return -2;
                 }
                 break;
