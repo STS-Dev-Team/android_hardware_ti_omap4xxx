@@ -933,31 +933,61 @@ static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int wid
     //convert YUV422I to YUV420 NV12 format.
     size_t        nv12_buf_size = (width * height)*3/2;
     unsigned char *bf = src;
-    unsigned char *dst = dest;
+    unsigned char *dst_y = dest;
+    unsigned char *dst_uv = dest + (width * height);
 
     LOG_FUNCTION_NAME;
-    for(int i = 0; i < height; i++)
-    {
-        for(int j = 0; j < width; j++)
-        {
-            *dst = *bf;
-             dst++;
-             bf = bf + 2;
+
+    if (width % 16 ) {
+        for(int i = 0; i < height; i++) {
+            for(int j = 0; j < width; j++) {
+                *dst_y = *bf;
+                dst_y++;
+                bf = bf + 2;
+            }
+        }
+
+        bf = src;
+        bf++;  //U sample
+        for(int i = 0; i < height/2; i++) {
+            for(int j=0; j<width; j++) {
+                *dst_uv = *bf;
+                dst_uv++;
+                bf = bf + 2;
+            }
+            bf = bf + width*2;
+        }
+    } else {
+        //neon conversion
+        for(int i = 0; i < height; i++) {
+            int n = width;
+            int skip = i & 0x1;       // skip uv elements for the odd rows
+            asm volatile (
+                "   pld [%[src], %[src_stride], lsl #2]                         \n\t"
+                "   cmp %[n], #16                                               \n\t"
+                "   blt 5f                                                      \n\t"
+                "0: @ 16 pixel copy                                             \n\t"
+                "   vld2.8  {q0, q1} , [%[src]]! @ q0 = yyyy.. q1 = uvuv..      \n\t"
+                "                                @ now q0 = y q1 = uv           \n\t"
+                "   vst1.32   {d0,d1}, [%[dst_y]]!                              \n\t"
+                "   cmp    %[skip], #0                                          \n\t"
+                "   bne 1f                                                      \n\t"
+                "   vst1.32  {d2,d3},[%[dst_uv]]!                               \n\t"
+                "1: @ skip odd rows for UV                                      \n\t"
+                "   sub %[n], %[n], #16                                         \n\t"
+                "   cmp %[n], #16                                               \n\t"
+                "   bge 0b                                                      \n\t"
+                "5: @ end                                                       \n\t"
+#ifdef NEEDS_ARM_ERRATA_754319_754320
+                "   vmov s0,s0  @ add noop for errata item                      \n\t"
+#endif
+                : [dst_y] "+r" (dst_y), [dst_uv] "+r" (dst_uv), [src] "+r" (src), [n] "+r" (n)
+                : [src_stride] "r" (width), [skip] "r" (skip)
+                : "cc", "memory", "q0", "q1", "q2", "d0", "d1", "d2", "d3"
+            );
         }
     }
 
-    bf = src;
-    bf++;  //U sample
-    for(int i = 0; i < height/2; i++)
-    {
-        for(int j=0; j<width; j++)
-        {
-            *dst = *bf;
-             dst++;
-             bf = bf + 2;
-        }
-        bf = bf + width*2;
-    }
     LOG_FUNCTION_NAME_EXIT;
 }
 
