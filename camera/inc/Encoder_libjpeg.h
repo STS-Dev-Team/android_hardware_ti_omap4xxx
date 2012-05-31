@@ -35,6 +35,8 @@ extern "C" {
 
 }
 
+#include "CameraHal.h"
+
 #define CANCEL_TIMEOUT 5000000 // 5 seconds
 
 namespace android {

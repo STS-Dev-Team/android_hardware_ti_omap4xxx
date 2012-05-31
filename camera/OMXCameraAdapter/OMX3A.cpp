@@ -514,7 +514,7 @@ static bool isFlashDisabled() {
     char value[PROPERTY_VALUE_MAX];
     if (property_get("camera.flash_off", value, NULL) &&
         (!strcasecmp(value, CameraParameters::TRUE) || !strcasecmp(value, "1"))) {
-        LOGW("flash is disabled for testing purpose");
+        CAMHAL_LOGW("flash is disabled for testing purpose");
         return true;
     }
 

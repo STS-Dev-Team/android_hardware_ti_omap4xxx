@@ -21,7 +21,6 @@
 *
 */
 
-#include "CameraHal.h"
 #include "CameraProperties.h"
 
 namespace android {

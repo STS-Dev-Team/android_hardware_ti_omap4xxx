@@ -10,7 +10,6 @@
 #define LOG_TAG "NV12_resize"
 
 #define STRIDE 4096
-#include <utils/Log.h>
 
 /*----------------------------------------------------------------------------
     Define : TRUE/FALSE for boolean operations
@@ -51,7 +50,7 @@ VT_resizeFrame_Video_opt2_lp
  mmUint16 dummy                         /* Transparent pixel value              */
  )
 {
-  LOGV("VT_resizeFrame_Video_opt2_lp+");
+  CAMHAL_LOGV("VT_resizeFrame_Video_opt2_lp+");
 
   mmUint16 row,col;
   mmUint32 resizeFactorX;
@@ -75,19 +74,19 @@ VT_resizeFrame_Video_opt2_lp
 	{
 		if(i_img_ptr->uHeight == o_img_ptr->uHeight)
 			{
-				LOGV("************************f(i_img_ptr->uHeight == o_img_ptr->uHeight) are same *********************\n");
-				LOGV("************************(i_img_ptr->width == %d" , i_img_ptr->uWidth );
-				LOGV("************************(i_img_ptr->uHeight == %d" , i_img_ptr->uHeight );
-				LOGV("************************(o_img_ptr->width == %d" ,o_img_ptr->uWidth );
-				LOGV("************************(o_img_ptr->uHeight == %d" , o_img_ptr->uHeight );
+				CAMHAL_LOGV("************************f(i_img_ptr->uHeight == o_img_ptr->uHeight) are same *********************\n");
+				CAMHAL_LOGV("************************(i_img_ptr->width == %d" , i_img_ptr->uWidth );
+				CAMHAL_LOGV("************************(i_img_ptr->uHeight == %d" , i_img_ptr->uHeight );
+				CAMHAL_LOGV("************************(o_img_ptr->width == %d" ,o_img_ptr->uWidth );
+				CAMHAL_LOGV("************************(o_img_ptr->uHeight == %d" , o_img_ptr->uHeight );
 			}
 	}
 
   if (!i_img_ptr || !i_img_ptr->imgPtr ||
     !o_img_ptr || !o_img_ptr->imgPtr)
   {
-	LOGE("Image Point NULL");
-	LOGV("VT_resizeFrame_Video_opt2_lp-");
+	CAMHAL_LOGE("Image Point NULL");
+	CAMHAL_LOGV("VT_resizeFrame_Video_opt2_lp-");
 	return FALSE;
   }
 
@@ -115,8 +114,8 @@ VT_resizeFrame_Video_opt2_lp
   /* make sure valid input size */
   if (idx < 1 || idy < 1 || i_img_ptr->uStride < 1)
 	{
-	LOGE("idx or idy less then 1 idx = %d idy = %d stride = %d", idx, idy, i_img_ptr->uStride);
-	LOGV("VT_resizeFrame_Video_opt2_lp-");
+	CAMHAL_LOGE("idx or idy less then 1 idx = %d idy = %d stride = %d", idx, idy, i_img_ptr->uStride);
+	CAMHAL_LOGV("VT_resizeFrame_Video_opt2_lp-");
 	return FALSE;
 	}
 
@@ -317,11 +316,11 @@ VT_resizeFrame_Video_opt2_lp
   }
   else
   {
-	LOGE("eFormat not supported");
-	LOGV("VT_resizeFrame_Video_opt2_lp-");
+	CAMHAL_LOGE("eFormat not supported");
+	CAMHAL_LOGV("VT_resizeFrame_Video_opt2_lp-");
 	return FALSE;
   }
-  LOGV("success");
-  LOGV("VT_resizeFrame_Video_opt2_lp-");
+  CAMHAL_LOGV("success");
+  CAMHAL_LOGV("VT_resizeFrame_Video_opt2_lp-");
   return TRUE;
 }

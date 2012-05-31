@@ -30,6 +30,8 @@
 #include <gui/SensorEventQueue.h>
 #include <utils/Looper.h>
 
+#include "Common.h"
+
 namespace android {
 
 /**

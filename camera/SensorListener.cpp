@@ -22,7 +22,6 @@
 */
 
 #include "SensorListener.h"
-#include "CameraHal.h"
 
 #include <stdint.h>
 #include <math.h>

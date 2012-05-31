@@ -578,7 +578,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
             /*toOMXPixFormat(format)*/HAL_PIXEL_FORMAT_TI_NV12);  // Gralloc only supports NV12 alloc!
 
     if ( NO_ERROR != err ) {
-        LOGE("native_window_set_buffers_geometry failed: %s (%d)", strerror(-err), -err);
+        CAMHAL_LOGE("native_window_set_buffers_geometry failed: %s (%d)", strerror(-err), -err);
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
@@ -869,7 +869,7 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
              }
          }
      else
-         LOGE("mANativeWindow is NULL");
+         CAMHAL_LOGE("mANativeWindow is NULL");
 
      ///Clear the frames with camera adapter map
      mFramesWithCameraAdapterMap.clear();

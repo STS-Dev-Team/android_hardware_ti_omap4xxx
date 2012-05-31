@@ -30,6 +30,8 @@
 #include <ctype.h>
 #include "cutils/properties.h"
 
+#include "Common.h"
+
 namespace android {
 
 #define MAX_CAMERAS_SUPPORTED 3

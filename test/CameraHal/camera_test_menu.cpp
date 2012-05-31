@@ -610,19 +610,19 @@ void saveFile(const sp<IMemory>& mem) {
     sprintf(fn, "%s/preview%03d.yuv", images_dir_path, counter);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
     if(fd < 0) {
-        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
         goto out;
     }
 
     size = mem->size();
     if (size <= 0) {
-        LOGE("IMemory object is of zero size");
+        CAMHAL_LOGE("IMemory object is of zero size");
         goto out;
     }
 
     buff = (unsigned char *)mem->pointer();
     if (!buff) {
-        LOGE("Buffer pointer is invalid");
+        CAMHAL_LOGE("Buffer pointer is invalid");
         goto out;
     }
 
@@ -700,19 +700,19 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
 
     if(fd < 0) {
-        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
         goto out;
     }
 
     size = mem->size();
     if (size <= 0) {
-        LOGE("IMemory object is of zero size");
+        CAMHAL_LOGE("IMemory object is of zero size");
         goto out;
     }
 
     buff = (unsigned char *)mem->pointer();
     if (!buff) {
-        LOGE("Buffer pointer is invalid");
+        CAMHAL_LOGE("Buffer pointer is invalid");
         goto out;
     }
 

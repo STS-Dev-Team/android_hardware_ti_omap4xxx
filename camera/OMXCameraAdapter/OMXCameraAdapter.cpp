@@ -703,7 +703,7 @@ void saveFile(unsigned char   *buff, int width, int height, int format) {
     sprintf(fn, "/preview%03d.yuv", counter);
     fd = open(fn, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
     if(fd < 0) {
-        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
         return;
     }
 
@@ -3294,7 +3294,7 @@ static void debugShowFPS()
         mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
-        LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
+        CAMHAL_LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
     }
     // XXX: mFPS has the value we want
 }
@@ -3473,7 +3473,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             mFramesWithEncoder++;
             }
 
-        //LOGV("FBD pBuffer = 0x%x", pBuffHeader->pBuffer);
+        //CAMHAL_LOGV("FBD pBuffer = 0x%x", pBuffHeader->pBuffer);
 
         if( mWaitingForSnapshot )
           {
@@ -3494,8 +3494,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 #ifdef CAMERAHAL_DEBUG
         if(mBuffersWithDucati.indexOfKey((uint32_t)pBuffHeader->pBuffer)<0)
             {
-            LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
-            for(unsigned int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
+            CAMHAL_LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
+            for(unsigned int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGE("0x%x", mBuffersWithDucati.keyAt(i));
             }
         mBuffersWithDucati.removeItem((int)pBuffHeader->pBuffer);
 #endif

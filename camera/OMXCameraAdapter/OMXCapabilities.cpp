@@ -406,17 +406,6 @@ status_t OMXCameraAdapter::encodePixelformatCap(OMX_COLOR_FORMATTYPE format,
     return ret;
 }
 
-// TODO: Move the min() and max() functions globally.
-template <typename T>
-inline const T & min(const T & a, const T & b) {
-    return a < b ? a : b;
-}
-
-template <typename T>
-inline const T & max(const T & a, const T & b) {
-    return a < b ? b : a;
-}
-
 void OMXCameraAdapter::encodeFrameRates(const int minFrameRate, const int maxFrameRate,
         const OMX_TI_CAPTYPE & caps, const CapFramerate * const fixedFrameRates,
         const int frameRateCount, Vector<FpsRange> & fpsRanges) {

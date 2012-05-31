@@ -23,7 +23,6 @@
 *
 */
 
-#include "CameraHal.h"
 #include "Encoder_libjpeg.h"
 #include "NV12_resize.h"
 #include "TICameraParameters.h"

@@ -1,6 +1,8 @@
 #ifndef NV12_RESIZE_H_
 #define NV12_RESIZE_H_
 
+#include "Common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

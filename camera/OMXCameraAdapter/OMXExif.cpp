@@ -813,7 +813,7 @@ status_t OMXCameraAdapter::convertGPSCoord(double coord,
 
     if ( coord == 0 ) {
 
-        LOGE("Invalid GPS coordinate");
+        CAMHAL_LOGE("Invalid GPS coordinate");
 
         return -EINVAL;
     }

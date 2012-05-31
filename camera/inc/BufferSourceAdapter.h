@@ -20,7 +20,6 @@
 #ifdef OMAP_ENHANCEMENT_CPCAM
 
 #include "CameraHal.h"
-#include <ui/egl/android_natives.h>
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 

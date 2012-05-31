@@ -1,6 +1,9 @@
 #ifndef CAMERA_TEST_H
 #define CAMERA_TEST_H
 
+#define CAMHAL_LOGV LOGV
+#define CAMHAL_LOGE LOGE
+
 #define PRINTOVER(arg...)     LOGD(#arg)
 #define LOG_FUNCTION_NAME         LOGD("%d: %s() ENTER", __LINE__, __FUNCTION__);
 #define LOG_FUNCTION_NAME_EXIT    LOGD("%d: %s() EXIT", __LINE__, __FUNCTION__);

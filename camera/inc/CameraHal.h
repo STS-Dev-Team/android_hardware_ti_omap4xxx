@@ -45,16 +45,15 @@
 #include <ui/GraphicBuffer.h>
 
 /* For IMG_native_handle_t */
-#include <ui/egl/android_natives.h>
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
 #include <ion/ion.h>
 
+#include "Common.h"
 #include "MessageQueue.h"
 #include "Semaphore.h"
 #include "CameraProperties.h"
-#include "DebugUtils.h"
 #include "SensorListener.h"
 
 //temporarily define format here
@@ -94,41 +93,6 @@
 
 #define LOCK_BUFFER_TRIES 5
 #define HAL_PIXEL_FORMAT_NV12 0x100
-
-#define CAMHAL_LOGI LOGI
-
-// logging functions
-#ifdef CAMERAHAL_DEBUG
-#   define CAMHAL_LOGD  DBGUTILS_LOGD
-#   define CAMHAL_LOGDA DBGUTILS_LOGDA
-#   define CAMHAL_LOGDB DBGUTILS_LOGDB
-#   ifdef CAMERAHAL_DEBUG_VERBOSE
-#       define CAMHAL_LOGV  DBGUTILS_LOGV
-#       define CAMHAL_LOGVA DBGUTILS_LOGVA
-#       define CAMHAL_LOGVB DBGUTILS_LOGVB
-#   else
-#       define CAMHAL_LOGV(...)
-#       define CAMHAL_LOGVA(str)
-#       define CAMHAL_LOGVB(str, ...)
-#   endif
-#else
-#   define CAMHAL_LOGD(...)
-#   define CAMHAL_LOGDA(str)
-#   define CAMHAL_LOGDB(str, ...)
-#   define CAMHAL_LOGV(...)
-#   define CAMHAL_LOGVA(str)
-#   define CAMHAL_LOGVB(str, ...)
-#endif
-
-#define CAMHAL_LOGE  DBGUTILS_LOGE
-#define CAMHAL_LOGEA DBGUTILS_LOGEA
-#define CAMHAL_LOGEB DBGUTILS_LOGEB
-#define CAMHAL_LOGF  DBGUTILS_LOGF
-
-#define CAMHAL_ASSERT DBGUTILS_ASSERT
-#define CAMHAL_ASSERT_X DBGUTILS_ASSERT_X
-
-#define CAMHAL_UNUSED(x) (void)x
 
 #define NONNEG_ASSIGN(x,y) \
     if(x > -1) \

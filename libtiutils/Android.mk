@@ -20,7 +20,9 @@ LOCAL_SHARED_LIBRARIES:= \
     libcutils
 
 LOCAL_C_INCLUDES += \
-    frameworks/base/include/utils \
+    frameworks/base/include
+
+LOCAL_C_INCLUDES += \
     bionic/libc/include \
     $(DOMX_PATH)/omx_core/inc \
     $(DOMX_PATH)/mm_osal/inc

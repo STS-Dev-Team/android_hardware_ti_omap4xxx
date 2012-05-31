@@ -127,7 +127,7 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
 
 error:
 
-    LOGE("Freeing buffers already allocated after error occurred");
+    CAMHAL_LOGE("Freeing buffers already allocated after error occurred");
     if(buffers)
         freeBufferList(buffers);
 

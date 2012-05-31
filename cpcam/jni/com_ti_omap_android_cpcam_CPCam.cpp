@@ -45,6 +45,9 @@
 #include <camera/Camera.h>
 #include <binder/IMemory.h>
 
+#define CAMHAL_LOGV LOGV
+#define CAMHAL_LOGE LOGE
+
 using namespace android;
 
 struct fields_t {
@@ -135,7 +138,7 @@ sp<Camera> get_native_camera(JNIEnv *env, jobject thiz, JNICPCamContext** pConte
     if (context != NULL) {
         camera = context->getCamera();
     }
-    LOGV("get_native_camera: context=%p, camera=%p", context, camera.get());
+    CAMHAL_LOGV("get_native_camera: context=%p, camera=%p", context, camera.get());
     if (camera == 0) {
         jniThrowRuntimeException(env, "Method called after release()");
     }
@@ -165,7 +168,7 @@ JNICPCamContext::JNICPCamContext(JNIEnv* env, jobject weak_this, jclass clazz, c
 
 void JNICPCamContext::release()
 {
-    LOGV("release");
+    CAMHAL_LOGV("release");
     Mutex::Autolock _l(mLock);
     JNIEnv *env = AndroidRuntime::getJNIEnv();
 
@@ -195,7 +198,7 @@ void JNICPCamContext::release()
 
 void JNICPCamContext::notify(int32_t msgType, int32_t ext1, int32_t ext2)
 {
-    LOGV("notify");
+    CAMHAL_LOGV("notify");
 
     // VM pointer will be NULL if object is released
     Mutex::Autolock _l(mLock);
@@ -225,7 +228,7 @@ jbyteArray JNICPCamContext::getCallbackBuffer(
 
     // Vector access should be protected by lock in postData()
     if (!buffers->isEmpty()) {
-        LOGV("Using callback buffer from queue of length %d", buffers->size());
+        CAMHAL_LOGV("Using callback buffer from queue of length %d", buffers->size());
         jbyteArray globalBuffer = buffers->itemAt(0);
         buffers->removeAt(0);
 
@@ -235,7 +238,7 @@ jbyteArray JNICPCamContext::getCallbackBuffer(
         if (obj != NULL) {
             jsize bufferLength = env->GetArrayLength(obj);
             if ((int)bufferLength < (int)bufferSize) {
-                LOGE("Callback buffer was too small! Expected %d bytes, but got %d bytes!",
+                CAMHAL_LOGE("Callback buffer was too small! Expected %d bytes, but got %d bytes!",
                     bufferSize, bufferLength);
                 env->DeleteLocalRef(obj);
                 return NULL;
@@ -255,7 +258,7 @@ void JNICPCamContext::copyAndPost(JNIEnv* env, const sp<IMemory>& dataPtr, int m
         ssize_t offset;
         size_t size;
         sp<IMemoryHeap> heap = dataPtr->getMemory(&offset, &size);
-        LOGV("copyAndPost: off=%ld, size=%d", offset, size);
+        CAMHAL_LOGV("copyAndPost: off=%ld, size=%d", offset, size);
         uint8_t *heapBase = (uint8_t*)heap->base();
 
         if (heapBase != NULL) {
@@ -267,7 +270,7 @@ void JNICPCamContext::copyAndPost(JNIEnv* env, const sp<IMemory>& dataPtr, int m
                 obj = getCallbackBuffer(env, &mCallbackBuffers, size);
 
                 if (mCallbackBuffers.isEmpty()) {
-                    LOGV("Out of buffers, clearing callback!");
+                    CAMHAL_LOGV("Out of buffers, clearing callback!");
                     mCamera->setPreviewCallbackFlags(CAMERA_FRAME_CALLBACK_FLAG_NOOP);
                     mManualCameraCallbackSet = false;
 
@@ -276,18 +279,18 @@ void JNICPCamContext::copyAndPost(JNIEnv* env, const sp<IMemory>& dataPtr, int m
                     }
                 }
             } else {
-                LOGV("Allocating callback buffer");
+                CAMHAL_LOGV("Allocating callback buffer");
                 obj = env->NewByteArray(size);
             }
 
             if (obj == NULL) {
-                LOGE("Couldn't allocate byte array for JPEG data");
+                CAMHAL_LOGE("Couldn't allocate byte array for JPEG data");
                 env->ExceptionClear();
             } else {
                 env->SetByteArrayRegion(obj, 0, size, data);
             }
         } else {
-            LOGE("image heap is NULL");
+            CAMHAL_LOGE("image heap is NULL");
         }
     }
 
@@ -321,7 +324,7 @@ void JNICPCamContext::postData(int32_t msgType, const sp<IMemory>& dataPtr,
         // For backward-compatibility purpose, if there is no callback
         // buffer for raw image, the callback returns null.
         case CAMERA_MSG_RAW_IMAGE:
-            LOGV("rawCallback");
+            CAMHAL_LOGV("rawCallback");
             if (mRawImageCallbackBuffers.isEmpty()) {
                 env->CallStaticVoidMethod(mCameraJClass, fields.post_event,
                         mCameraJObjectWeak, dataMsgType, 0, 0, NULL);
@@ -335,7 +338,7 @@ void JNICPCamContext::postData(int32_t msgType, const sp<IMemory>& dataPtr,
             break;
 
         default:
-            LOGV("dataCallback(%d, %p)", dataMsgType, dataPtr.get());
+            CAMHAL_LOGV("dataCallback(%d, %p)", dataMsgType, dataPtr.get());
             copyAndPost(env, dataPtr, dataMsgType);
             break;
     }
@@ -357,7 +360,7 @@ void JNICPCamContext::postMetadata(JNIEnv *env, int32_t msgType, camera_frame_me
     jobject meta_obj = NULL;
     meta_obj = (jobject) env->NewObject(mMetadataClass, fields.metadata_constructor);
     if (meta_obj == NULL) {
-        LOGE("Couldn't allocate metadata class");
+        CAMHAL_LOGE("Couldn't allocate metadata class");
         return;
     }
 
@@ -368,7 +371,7 @@ void JNICPCamContext::postMetadata(JNIEnv *env, int32_t msgType, camera_frame_me
     faces_obj = (jobjectArray) env->NewObjectArray(metadata->number_of_faces,
                                              mFaceClass, NULL);
     if (faces_obj == NULL) {
-        LOGE("Couldn't allocate face metadata array");
+        CAMHAL_LOGE("Couldn't allocate face metadata array");
         goto err_alloc_faces;
     }
 
@@ -430,7 +433,7 @@ void JNICPCamContext::setCallbackMode(JNIEnv *env, bool installed, bool manualMo
 void JNICPCamContext::addCallbackBuffer(
         JNIEnv *env, jbyteArray cbb, int msgType)
 {
-    LOGV("addCallbackBuffer: 0x%x", msgType);
+    CAMHAL_LOGV("addCallbackBuffer: 0x%x", msgType);
     if (cbb != NULL) {
         Mutex::Autolock _l(mLock);
         switch (msgType) {
@@ -438,7 +441,7 @@ void JNICPCamContext::addCallbackBuffer(
                 jbyteArray callbackBuffer = (jbyteArray)env->NewGlobalRef(cbb);
                 mCallbackBuffers.push(callbackBuffer);
 
-                LOGV("Adding callback buffer to queue, %d total",
+                CAMHAL_LOGV("Adding callback buffer to queue, %d total",
                         mCallbackBuffers.size());
 
                 // We want to make sure the camera knows we're ready for the
@@ -463,7 +466,7 @@ void JNICPCamContext::addCallbackBuffer(
             }
         }
     } else {
-       LOGE("Null byte array!");
+       CAMHAL_LOGE("Null byte array!");
     }
 }
 
@@ -474,7 +477,7 @@ void JNICPCamContext::clearCallbackBuffers_l(JNIEnv *env)
 }
 
 void JNICPCamContext::clearCallbackBuffers_l(JNIEnv *env, Vector<jbyteArray> *buffers) {
-    LOGV("Clearing callback buffers, %d remained", buffers->size());
+    CAMHAL_LOGV("Clearing callback buffers, %d remained", buffers->size());
     while (!buffers->isEmpty()) {
         env->DeleteGlobalRef(buffers->top());
         buffers->pop();
@@ -538,8 +541,8 @@ static void com_ti_omap_android_cpcam_CPCam_native_setup(JNIEnv *env, jobject th
 // finalizer is invoked later.
 static void com_ti_omap_android_cpcam_CPCam_release(JNIEnv *env, jobject thiz)
 {
-    // TODO: Change to LOGV
-    LOGV("release camera");
+    // TODO: Change to CAMHAL_LOGV
+    CAMHAL_LOGV("release camera");
     JNICPCamContext* context = NULL;
     sp<Camera> camera;
     {
@@ -554,7 +557,7 @@ static void com_ti_omap_android_cpcam_CPCam_release(JNIEnv *env, jobject thiz)
     if (context != NULL) {
         camera = context->getCamera();
         context->release();
-        LOGV("native_release: context=%p camera=%p", context, camera.get());
+        CAMHAL_LOGV("native_release: context=%p camera=%p", context, camera.get());
 
         // clear callbacks
         if (camera != NULL) {
@@ -569,7 +572,7 @@ static void com_ti_omap_android_cpcam_CPCam_release(JNIEnv *env, jobject thiz)
 
 static void com_ti_omap_android_cpcam_CPCam_setPreviewDisplay(JNIEnv *env, jobject thiz, jobject jSurface)
 {
-    LOGV("setPreviewDisplay");
+    CAMHAL_LOGV("setPreviewDisplay");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -585,7 +588,7 @@ static void com_ti_omap_android_cpcam_CPCam_setPreviewDisplay(JNIEnv *env, jobje
 static void com_ti_omap_android_cpcam_CPCam_setPreviewTexture(JNIEnv *env,
         jobject thiz, jobject jSurfaceTexture)
 {
-    LOGV("setPreviewTexture");
+    CAMHAL_LOGV("setPreviewTexture");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -603,7 +606,7 @@ static void com_ti_omap_android_cpcam_CPCam_setPreviewTexture(JNIEnv *env,
 static void com_ti_omap_android_cpcam_CPCam_setBufferSource(JNIEnv *env,
         jobject thiz, jobject jTapIn, jobject jTapOut)
 {
-    LOGV("setBufferSource");
+    CAMHAL_LOGV("setBufferSource");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -631,7 +634,7 @@ static void com_ti_omap_android_cpcam_CPCam_reprocess(JNIEnv *env,
     const char *shotParams = (jShotParams) ? env->GetStringUTFChars(jShotParams, NULL) : NULL;
     String8 params(shotParams ? shotParams: "");
 
-    LOGV("reprocess");
+    CAMHAL_LOGV("reprocess");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -643,7 +646,7 @@ static void com_ti_omap_android_cpcam_CPCam_reprocess(JNIEnv *env,
 
 static void com_ti_omap_android_cpcam_CPCam_startPreview(JNIEnv *env, jobject thiz)
 {
-    LOGV("startPreview");
+    CAMHAL_LOGV("startPreview");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -655,7 +658,7 @@ static void com_ti_omap_android_cpcam_CPCam_startPreview(JNIEnv *env, jobject th
 
 static void com_ti_omap_android_cpcam_CPCam_stopPreview(JNIEnv *env, jobject thiz)
 {
-    LOGV("stopPreview");
+    CAMHAL_LOGV("stopPreview");
     sp<Camera> c = get_native_camera(env, thiz, NULL);
     if (c == 0) return;
 
@@ -664,7 +667,7 @@ static void com_ti_omap_android_cpcam_CPCam_stopPreview(JNIEnv *env, jobject thi
 
 static bool com_ti_omap_android_cpcam_CPCam_previewEnabled(JNIEnv *env, jobject thiz)
 {
-    LOGV("previewEnabled");
+    CAMHAL_LOGV("previewEnabled");
     sp<Camera> c = get_native_camera(env, thiz, NULL);
     if (c == 0) return false;
 
@@ -673,7 +676,7 @@ static bool com_ti_omap_android_cpcam_CPCam_previewEnabled(JNIEnv *env, jobject 
 
 static void com_ti_omap_android_cpcam_CPCam_setHasPreviewCallback(JNIEnv *env, jobject thiz, jboolean installed, jboolean manualBuffer)
 {
-    LOGV("setHasPreviewCallback: installed:%d, manualBuffer:%d", (int)installed, (int)manualBuffer);
+    CAMHAL_LOGV("setHasPreviewCallback: installed:%d, manualBuffer:%d", (int)installed, (int)manualBuffer);
     // Important: Only install preview_callback if the Java code has called
     // setPreviewCallback() with a non-null value, otherwise we'd pay to memcpy
     // each preview frame for nothing.
@@ -687,7 +690,7 @@ static void com_ti_omap_android_cpcam_CPCam_setHasPreviewCallback(JNIEnv *env, j
 }
 
 static void com_ti_omap_android_cpcam_CPCam_addCallbackBuffer(JNIEnv *env, jobject thiz, jbyteArray bytes, int msgType) {
-    LOGV("addCallbackBuffer: 0x%x", msgType);
+    CAMHAL_LOGV("addCallbackBuffer: 0x%x", msgType);
 
     JNICPCamContext* context = reinterpret_cast<JNICPCamContext*>(env->GetIntField(thiz, fields.context));
 
@@ -698,7 +701,7 @@ static void com_ti_omap_android_cpcam_CPCam_addCallbackBuffer(JNIEnv *env, jobje
 
 static void com_ti_omap_android_cpcam_CPCam_autoFocus(JNIEnv *env, jobject thiz)
 {
-    LOGV("autoFocus");
+    CAMHAL_LOGV("autoFocus");
     JNICPCamContext* context;
     sp<Camera> c = get_native_camera(env, thiz, &context);
     if (c == 0) return;
@@ -710,7 +713,7 @@ static void com_ti_omap_android_cpcam_CPCam_autoFocus(JNIEnv *env, jobject thiz)
 
 static void com_ti_omap_android_cpcam_CPCam_cancelAutoFocus(JNIEnv *env, jobject thiz)
 {
-    LOGV("cancelAutoFocus");
+    CAMHAL_LOGV("cancelAutoFocus");
     JNICPCamContext* context;
     sp<Camera> c = get_native_camera(env, thiz, &context);
     if (c == 0) return;
@@ -722,7 +725,7 @@ static void com_ti_omap_android_cpcam_CPCam_cancelAutoFocus(JNIEnv *env, jobject
 
 static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thiz, int msgType, jstring params)
 {
-    LOGV("takePicture");
+    CAMHAL_LOGV("takePicture");
     JNICPCamContext* context;
     sp<Camera> camera = get_native_camera(env, thiz, &context);
     if (camera == 0) return;
@@ -744,9 +747,9 @@ static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thi
      * Java application.
      */
     if (msgType & CAMERA_MSG_RAW_IMAGE) {
-        LOGV("Enable raw image callback buffer");
+        CAMHAL_LOGV("Enable raw image callback buffer");
         if (!context->isRawImageCallbackBufferAvailable()) {
-            LOGV("Enable raw image notification, since no callback buffer exists");
+            CAMHAL_LOGV("Enable raw image notification, since no callback buffer exists");
             msgType &= ~CAMERA_MSG_RAW_IMAGE;
             msgType |= CAMERA_MSG_RAW_IMAGE_NOTIFY;
         }
@@ -760,7 +763,7 @@ static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thi
 
 static void com_ti_omap_android_cpcam_CPCam_setParameters(JNIEnv *env, jobject thiz, jstring params)
 {
-    LOGV("setParameters");
+    CAMHAL_LOGV("setParameters");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -778,7 +781,7 @@ static void com_ti_omap_android_cpcam_CPCam_setParameters(JNIEnv *env, jobject t
 
 static jstring com_ti_omap_android_cpcam_CPCam_getParameters(JNIEnv *env, jobject thiz)
 {
-    LOGV("getParameters");
+    CAMHAL_LOGV("getParameters");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return 0;
 
@@ -787,7 +790,7 @@ static jstring com_ti_omap_android_cpcam_CPCam_getParameters(JNIEnv *env, jobjec
 
 static void com_ti_omap_android_cpcam_CPCam_reconnect(JNIEnv *env, jobject thiz)
 {
-    LOGV("reconnect");
+    CAMHAL_LOGV("reconnect");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -799,7 +802,7 @@ static void com_ti_omap_android_cpcam_CPCam_reconnect(JNIEnv *env, jobject thiz)
 
 static void com_ti_omap_android_cpcam_CPCam_lock(JNIEnv *env, jobject thiz)
 {
-    LOGV("lock");
+    CAMHAL_LOGV("lock");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -810,7 +813,7 @@ static void com_ti_omap_android_cpcam_CPCam_lock(JNIEnv *env, jobject thiz)
 
 static void com_ti_omap_android_cpcam_CPCam_unlock(JNIEnv *env, jobject thiz)
 {
-    LOGV("unlock");
+    CAMHAL_LOGV("unlock");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -821,7 +824,7 @@ static void com_ti_omap_android_cpcam_CPCam_unlock(JNIEnv *env, jobject thiz)
 
 static void com_ti_omap_android_cpcam_CPCam_startSmoothZoom(JNIEnv *env, jobject thiz, jint value)
 {
-    LOGV("startSmoothZoom");
+    CAMHAL_LOGV("startSmoothZoom");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -837,7 +840,7 @@ static void com_ti_omap_android_cpcam_CPCam_startSmoothZoom(JNIEnv *env, jobject
 
 static void com_ti_omap_android_cpcam_CPCam_stopSmoothZoom(JNIEnv *env, jobject thiz)
 {
-    LOGV("stopSmoothZoom");
+    CAMHAL_LOGV("stopSmoothZoom");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -849,7 +852,7 @@ static void com_ti_omap_android_cpcam_CPCam_stopSmoothZoom(JNIEnv *env, jobject 
 static void com_ti_omap_android_cpcam_CPCam_setDisplayOrientation(JNIEnv *env, jobject thiz,
         jint value)
 {
-    LOGV("setDisplayOrientation");
+    CAMHAL_LOGV("setDisplayOrientation");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -861,7 +864,7 @@ static void com_ti_omap_android_cpcam_CPCam_setDisplayOrientation(JNIEnv *env, j
 static void com_ti_omap_android_cpcam_CPCam_startFaceDetection(JNIEnv *env, jobject thiz,
         jint type)
 {
-    LOGV("startFaceDetection");
+    CAMHAL_LOGV("startFaceDetection");
     JNICPCamContext* context;
     sp<Camera> camera = get_native_camera(env, thiz, &context);
     if (camera == 0) return;
@@ -878,7 +881,7 @@ static void com_ti_omap_android_cpcam_CPCam_startFaceDetection(JNIEnv *env, jobj
 
 static void com_ti_omap_android_cpcam_CPCam_stopFaceDetection(JNIEnv *env, jobject thiz)
 {
-    LOGV("stopFaceDetection");
+    CAMHAL_LOGV("stopFaceDetection");
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
@@ -983,13 +986,13 @@ static int find_fields(JNIEnv *env, field *fields, int count)
         field *f = &fields[i];
         jclass clazz = env->FindClass(f->class_name);
         if (clazz == NULL) {
-            LOGE("Can't find %s", f->class_name);
+            CAMHAL_LOGE("Can't find %s", f->class_name);
             return -1;
         }
 
         jfieldID field = env->GetFieldID(clazz, f->field_name, f->field_type);
         if (field == NULL) {
-            LOGE("Can't find %s.%s", f->class_name, f->field_name);
+            CAMHAL_LOGE("Can't find %s.%s", f->class_name, f->field_name);
             return -1;
         }
 
@@ -1027,28 +1030,28 @@ int registerCPCamMethods(JNIEnv *env)
     fields.post_event = env->GetStaticMethodID(clazz, "postEventFromNative",
                                                "(Ljava/lang/Object;IIILjava/lang/Object;)V");
     if (fields.post_event == NULL) {
-        LOGE("Can't find com/ti/omap/android/cpcam/CPCam.postEventFromNative");
+        CAMHAL_LOGE("Can't find com/ti/omap/android/cpcam/CPCam.postEventFromNative");
         return -1;
     }
 
     clazz = env->FindClass("android/graphics/Rect");
     fields.rect_constructor = env->GetMethodID(clazz, "<init>", "()V");
     if (fields.rect_constructor == NULL) {
-        LOGE("Can't find android/graphics/Rect.Rect()");
+        CAMHAL_LOGE("Can't find android/graphics/Rect.Rect()");
         return -1;
     }
 
     clazz = env->FindClass("com/ti/omap/android/cpcam/CPCam$Face");
     fields.face_constructor = env->GetMethodID(clazz, "<init>", "()V");
     if (fields.face_constructor == NULL) {
-        LOGE("Can't find com/ti/omap/android/cpcam/CPCam$Face.Face()");
+        CAMHAL_LOGE("Can't find com/ti/omap/android/cpcam/CPCam$Face.Face()");
         return -1;
     }
 
     clazz = env->FindClass("com/ti/omap/android/cpcam/CPCam$Metadata");
     fields.metadata_constructor = env->GetMethodID(clazz, "<init>", "()V");
     if (fields.metadata_constructor == NULL) {
-        LOGE("Can't find com/ti/omap/android/cpcam/CPCam$Metadata.Metadata()");
+        CAMHAL_LOGE("Can't find com/ti/omap/android/cpcam/CPCam$Metadata.Metadata()");
         return -1;
     }
 
@@ -1062,7 +1065,7 @@ int registerCPCamMethods(JNIEnv *env)
     if (env->RegisterNatives(clazz, cpcamMethods,
             sizeof(cpcamMethods) / sizeof(cpcamMethods[0])) != JNI_OK)
     {
-        LOGE("Failed registering methods for %s\n", "com/ti/omap/android/cpcam/CPCam");
+        CAMHAL_LOGE("Failed registering methods for %s\n", "com/ti/omap/android/cpcam/CPCam");
         return -1;
     }
 
@@ -1079,13 +1082,13 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     jint result = -1;
 
     if (vm->GetEnv((void**) &env, JNI_VERSION_1_4) != JNI_OK) {
-        LOGE("ERROR: GetEnv failed\n");
+        CAMHAL_LOGE("ERROR: GetEnv failed\n");
         goto bail;
     }
     assert(env != NULL);
 
     if (registerCPCamMethods(env) != 0) {
-        LOGE("ERROR: PlatformLibrary native registration failed\n");
+        CAMHAL_LOGE("ERROR: PlatformLibrary native registration failed\n");
         goto bail;
     }
 

@@ -836,7 +836,7 @@ static void debugShowFPS()
             mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
             mLastFpsTime = now;
             mLastFrameCount = mFrameCount;
-            LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
+            CAMHAL_LOGD("Camera %d Frames, %f FPS", mFrameCount, mFps);
         }
     }
 }
@@ -1091,7 +1091,7 @@ void saveFile(unsigned char* buff, int buff_size) {
 
     fd = open(fn, O_CREAT | O_WRONLY | O_SYNC | O_TRUNC, 0777);
     if(fd < 0) {
-        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
         return;
     }
 

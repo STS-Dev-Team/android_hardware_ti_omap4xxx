@@ -156,6 +156,8 @@ private:
 
 #define DBGUTILS_LOGV(...) DBGUTILS_LOGV_FULL(ANDROID_LOG_VERBOSE, __FILE__, __LINE__, __FUNCTION__, TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - " __VA_ARGS__, "")
 #define DBGUTILS_LOGD(...) DBGUTILS_LOGV_FULL(ANDROID_LOG_DEBUG,   __FILE__, __LINE__, __FUNCTION__, TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - " __VA_ARGS__, "")
+#define DBGUTILS_LOGI(...) DBGUTILS_LOGV_FULL(ANDROID_LOG_INFO,    __FILE__, __LINE__, __FUNCTION__, TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - " __VA_ARGS__, "")
+#define DBGUTILS_LOGW(...) DBGUTILS_LOGV_FULL(ANDROID_LOG_WARN,    __FILE__, __LINE__, __FUNCTION__, TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - " __VA_ARGS__, "")
 #define DBGUTILS_LOGE(...) DBGUTILS_LOGV_FULL(ANDROID_LOG_ERROR,   __FILE__, __LINE__, __FUNCTION__, TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - " __VA_ARGS__, "")
 #define DBGUTILS_LOGF(...) DBGUTILS_LOGV_FULL(ANDROID_LOG_FATAL,   __FILE__, __LINE__, __FUNCTION__, TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - " __VA_ARGS__, "")
 
@@ -349,7 +351,8 @@ inline FunctionLogger::FunctionLogger(const char * const file, const int line, c
 {
     Debug * const debug = Debug::instance();
     debug->increaseOffsetForCurrentThread();
-    LOGD(TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s+ %s:%d %s - ENTER",
+    android_printLog(ANDROID_LOG_DEBUG, LOG_TAG,
+            TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s+ %s:%d %s - ENTER",
             TI_UTILS_DEBUG_TIMESTAMP_VARIABLE
             (int)mThreadId, IndentString<>(debug->offsetForCurrentThread()).string(),
             mFile, mLine, mFunction);
@@ -359,7 +362,8 @@ inline FunctionLogger::FunctionLogger(const char * const file, const int line, c
 inline FunctionLogger::~FunctionLogger()
 {
     Debug * const debug = Debug::instance();
-    LOGD(TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s- %s:%d %s - EXIT",
+    android_printLog(ANDROID_LOG_DEBUG, LOG_TAG,
+            TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s- %s:%d %s - EXIT",
             TI_UTILS_DEBUG_TIMESTAMP_VARIABLE
             (int)mThreadId, IndentString<>(debug->offsetForCurrentThread()).string(),
             mFile, mExitLine == -1 ? mLine : mExitLine, mFunction);
@@ -372,7 +376,8 @@ inline void FunctionLogger::setExitLine(const int line)
     if ( mExitLine != -1 )
     {
         Debug * const debug = Debug::instance();
-        LOGD(TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - Double function exit trace detected. Previous: %d",
+        android_printLog(ANDROID_LOG_DEBUG, LOG_TAG,
+                TI_UTILS_DEBUG_TIMESTAMP_TOKEN "(%x) %s  %s:%d %s - Double function exit trace detected. Previous: %d",
                 TI_UTILS_DEBUG_TIMESTAMP_VARIABLE
                 (int)mThreadId, IndentString<>(debug->offsetForCurrentThread()).string(),
                 mFile, line, mFunction, mExitLine);
