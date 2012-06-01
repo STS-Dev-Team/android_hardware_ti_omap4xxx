@@ -1520,14 +1520,12 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
         }
     }
 
-    int needclear = (list->numHwLayers != count) ? 1 : 0;
-
     rgz_out_params_t out = {
         .op = rgz_out_op,
         .data = {
             .bvc = {
                 .dstgeom = &gscrngeom,
-                .noblend = 0, .clrdst = needclear,
+                .noblend = 0,
             }
         }
     };
@@ -1563,7 +1561,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
     for (i = 0; i < list->numHwLayers; i++) {
         if (list->hwLayers[i].compositionType != HWC_OVERLAY) {
             list->hwLayers[i].compositionType = HWC_OVERLAY;
-            //LOGI("blitting layer %d", i);
+            list->hwLayers[i].hints &= ~HWC_HINT_TRIPLE_BUFFER;
         }
         list->hwLayers[i].hints &= ~HWC_HINT_CLEAR_FB;
     }
@@ -1711,6 +1709,12 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
             /* render via DSS overlay */
             mem_used += mem1d(handle);
             layer->compositionType = HWC_OVERLAY;
+            /*
+             * This hint will not be used in vanilla ICS, but maybe in
+             * JellyBean, it is useful to distinguish between blts and true
+             * overlays
+             */
+            layer->hints |= HWC_HINT_TRIPLE_BUFFER;
 
             /* clear FB above all opaque layers if rendering via SGX */
             if (hwc_dev->use_sgx && !is_BLENDED(layer))
@@ -2665,7 +2669,7 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         LOGI("Unable to open gc-core device (%d), blits disabled", errno);
         hwc_dev->blt_policy = BLTPOLICY_DISABLED;
     } else {
-        property_get("persist.hwc.bltmode", value, "0");
+        property_get("persist.hwc.bltmode", value, "1");
         hwc_dev->blt_mode = atoi(value);
         property_get("persist.hwc.bltpolicy", value, "1");
         hwc_dev->blt_policy = atoi(value);
