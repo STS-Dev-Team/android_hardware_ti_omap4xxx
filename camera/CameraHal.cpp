@@ -218,10 +218,18 @@ void CameraHal::disableMsgType(int32_t msgType)
  */
 int CameraHal::msgTypeEnabled(int32_t msgType)
 {
+    int32_t msgEnabled = 0;
+
     LOG_FUNCTION_NAME;
     Mutex::Autolock lock(mLock);
+
+    msgEnabled = mMsgEnabled;
+    if (!previewEnabled()) {
+        msgEnabled &= ~(CAMERA_MSG_PREVIEW_FRAME | CAMERA_MSG_PREVIEW_METADATA);
+    }
+
     LOG_FUNCTION_NAME_EXIT;
-    return (mMsgEnabled & msgType);
+    return (msgEnabled & msgType);
 }
 
 /**
