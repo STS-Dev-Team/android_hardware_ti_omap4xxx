@@ -323,11 +323,13 @@ status_t V4LCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     }
 
     //update the preview resolution with the highest resolution which supports 30fps.
+/*  // for video preview the application choose the resolution from the mediaprofiles.xml.
+    // so populating all supported preview resolution is required for video mode.
     caps.tPreviewRes[0].width = caps.tPreviewRes[j].width;
     caps.tPreviewRes[0].height = caps.tPreviewRes[j].height;
     snprintf(caps.tPreviewRes[0].param, MAX_RES_STRING_LENGTH,"%dx%d",caps.tPreviewRes[j].width,caps.tPreviewRes[j].height);
     caps.ulPreviewResCount = 1;
-
+*/
     insertCapabilities (params, caps);
     return NO_ERROR;
 }

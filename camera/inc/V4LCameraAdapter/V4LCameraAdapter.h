@@ -185,7 +185,7 @@ private:
     status_t v4lInitMmap(int&);
     status_t v4lInitUsrPtr(int&);
     status_t v4lStartStreaming();
-    status_t v4lStopStreaming();
+    status_t v4lStopStreaming(int nBufferCount);
     status_t v4lSetFormat(int, int, uint32_t);
     status_t restartPreview();
 
@@ -196,6 +196,7 @@ private:
     KeyedVector<CameraBuffer *, int> mCaptureBufs;
     mutable Mutex mPreviewBufsLock;
     mutable Mutex mCaptureBufsLock;
+    mutable Mutex mStopPreviewLock;
 
     CameraParameters mParams;
 
