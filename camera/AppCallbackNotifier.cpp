@@ -1526,6 +1526,10 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, Ca
          mFrameProvider->enableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
     }
 
+    if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_POSTVIEW_FRAME) ) {
+         mFrameProvider->enableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
+    }
+
     mPreviewBufCount = 0;
 
     mPreviewing = true;
@@ -1589,6 +1593,7 @@ status_t AppCallbackNotifier::stopPreviewCallbacks()
         }
 
     mFrameProvider->disableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    mFrameProvider->disableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
 
     {
     Mutex::Autolock lock(mLock);
@@ -1773,8 +1778,12 @@ status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
 
 status_t AppCallbackNotifier::enableMsgType(int32_t msgType)
 {
-    if( msgType & (CAMERA_MSG_POSTVIEW_FRAME | CAMERA_MSG_PREVIEW_FRAME) ) {
+    if( msgType & CAMERA_MSG_PREVIEW_FRAME ) {
         mFrameProvider->enableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    }
+
+    if( msgType & CAMERA_MSG_POSTVIEW_FRAME ) {
+        mFrameProvider->enableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
     }
 
     if(msgType & CAMERA_MSG_RAW_IMAGE) {
@@ -1786,8 +1795,12 @@ status_t AppCallbackNotifier::enableMsgType(int32_t msgType)
 
 status_t AppCallbackNotifier::disableMsgType(int32_t msgType)
 {
-    if( msgType & (CAMERA_MSG_PREVIEW_FRAME | CAMERA_MSG_POSTVIEW_FRAME) ) {
+    if( msgType & CAMERA_MSG_PREVIEW_FRAME ) {
         mFrameProvider->disableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    }
+
+    if( msgType & CAMERA_MSG_POSTVIEW_FRAME ) {
+        mFrameProvider->disableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
     }
 
     if(msgType & CAMERA_MSG_RAW_IMAGE) {

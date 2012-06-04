@@ -160,6 +160,7 @@ private:
     uint32_t* mOffsetsMap; // -> frames[i].Offset
     int mFD;
     KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
+    KeyedVector<int, int> mFramesType;
     sp<ErrorNotifier> mErrorNotifier;
 
     uint32_t mFrameWidth;
