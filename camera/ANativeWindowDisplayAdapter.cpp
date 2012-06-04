@@ -397,6 +397,7 @@ int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct tim
 
     // Register with the frame provider for frames
     mFrameProvider->enableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    mFrameProvider->enableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
 
     mDisplayEnabled = true;
     mPreviewWidth = width;
@@ -425,6 +426,7 @@ int ANativeWindowDisplayAdapter::disableDisplay(bool cancel_buffer)
 
     // Unregister with the frame provider here
     mFrameProvider->disableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    mFrameProvider->disableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
     mFrameProvider->removeFramePointers();
 
     if ( NULL != mDisplayThread.get() )
@@ -532,6 +534,8 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     mBuffers = new CameraBuffer [lnumBufs];
     memset (mBuffers, 0, sizeof(CameraBuffer) * lnumBufs);
 
+    mFramesType.clear();
+
     if ( NULL == mANativeWindow ) {
         return NULL;
     }
@@ -619,6 +623,12 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         mBuffers[i].opaque = (void *)handle;
         mBuffers[i].type = CAMERA_BUFFER_ANW;
         mFramesWithCameraAdapterMap.add(handle, i);
+
+        // Tag remaining preview buffers as preview frames
+        if ( i >= ( mBufferCount - undequeued ) ) {
+            mFramesType.add( (int) mBuffers[i].opaque,
+                            CameraFrame::PREVIEW_FRAME_SYNC);
+        }
 
         bytes =  getBufSize(format, width, height);
 
@@ -911,6 +921,8 @@ int ANativeWindowDisplayAdapter::freeBufferList(CameraBuffer * buflist)
         mFD = -1;
     }
 
+    mFramesType.clear();
+
     return NO_ERROR;
 }
 
@@ -1085,6 +1097,9 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
         }
     }
 
+
+    mFramesType.add( (int)mBuffers[i].opaque ,dispFrame.mType );
+
     if ( mDisplayState == ANativeWindowDisplayAdapter::DISPLAY_STARTED &&
                 (!mPaused ||  CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) &&
                 !mSuspend)
@@ -1197,6 +1212,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     status_t err;
     buffer_handle_t *buf;
     int i = 0;
+    unsigned int k;
     int stride;  // dummy variable to get stride
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     Rect bounds;
@@ -1264,8 +1280,21 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
         mFramesWithCameraAdapterMap.add((buffer_handle_t *) mBuffers[i].opaque, i);
     }
 
+    for( k = 0; k < mFramesType.size() ; k++) {
+        if(mFramesType.keyAt(k) == (int)mBuffers[i].opaque)
+            break;
+    }
+    if ( k == mFramesType.size() ) {
+        CAMHAL_LOGE("Frame type for preview buffer 0%x not found!!", mBuffers[i].opaque);
+        return false;
+    }
+
+    CameraFrame::FrameType frameType = (CameraFrame::FrameType) mFramesType.valueAt(k);
+
     CAMHAL_LOGVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount-1);
-    mFrameProvider->returnFrame(&mBuffers[i], CameraFrame::PREVIEW_FRAME_SYNC);
+    mFrameProvider->returnFrame(&mBuffers[i], frameType);
+    mFramesType.removeItem((int) mBuffers[i].opaque);
+
     return true;
 }
 
