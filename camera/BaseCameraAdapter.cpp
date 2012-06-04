@@ -110,6 +110,7 @@ BaseCameraAdapter::~BaseCameraAdapter()
      mShutterSubscribers.clear();
      mZoomSubscribers.clear();
      mFaceSubscribers.clear();
+     mSnapshotSubscribers.clear();
 
      LOG_FUNCTION_NAME_EXIT;
 }
@@ -184,6 +185,9 @@ void BaseCameraAdapter::enableMsgType(int32_t msgs, frame_callback callback, eve
             case CameraFrame::FRAME_DATA_SYNC:
                 mFrameDataSubscribers.add((int) cookie, callback);
                 break;
+            case CameraFrame::SNAPSHOT_FRAME:
+                mSnapshotSubscribers.add((int) cookie, callback);
+                break;
             case CameraFrame::IMAGE_FRAME:
                 mImageSubscribers.add((int) cookie, callback);
                 break;
@@ -241,6 +245,9 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
             case CameraFrame::FRAME_DATA_SYNC:
                 mFrameDataSubscribers.removeItem((int) cookie);
                 break;
+            case CameraFrame::SNAPSHOT_FRAME:
+                mSnapshotSubscribers.removeItem((int) cookie);
+                break;
             case CameraFrame::IMAGE_FRAME:
                 mImageSubscribers.removeItem((int) cookie);
                 break;
@@ -256,6 +263,7 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
             case CameraFrame::ALL_FRAMES:
                 mFrameSubscribers.removeItem((int) cookie);
                 mFrameDataSubscribers.removeItem((int) cookie);
+                mSnapshotSubscribers.removeItem((int) cookie);
                 mImageSubscribers.removeItem((int) cookie);
                 mRawSubscribers.removeItem((int) cookie);
                 mVideoSubscribers.removeItem((int) cookie);
@@ -423,6 +431,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                     mPreviewBuffers = desc->mBuffers;
                     mPreviewBuffersLength = desc->mLength;
                     mPreviewBuffersAvailable.clear();
+                    mSnapshotBuffersAvailable.clear();
                     for ( uint32_t i = 0 ; i < desc->mMaxQueueable ; i++ )
                         {
                         mPreviewBuffersAvailable.add(&mPreviewBuffers[i], 0);
@@ -1311,7 +1320,7 @@ status_t BaseCameraAdapter::sendFrameToSubscribers(CameraFrame *frame)
           break;
         case CameraFrame::SNAPSHOT_FRAME:
           {
-            ret = __sendFrameToSubscribers(frame, &mFrameSubscribers, CameraFrame::SNAPSHOT_FRAME);
+            ret = __sendFrameToSubscribers(frame, &mSnapshotSubscribers, CameraFrame::SNAPSHOT_FRAME);
           }
           break;
         case CameraFrame::VIDEO_FRAME_SYNC:
@@ -1439,7 +1448,7 @@ int BaseCameraAdapter::setInitFrameRefCount(CameraBuffer * buf, unsigned int mas
         break;
       case CameraFrame::SNAPSHOT_FRAME:
         {
-          setFrameRefCount(buf, CameraFrame::SNAPSHOT_FRAME, mFrameSubscribers.size());
+          setFrameRefCount(buf, CameraFrame::SNAPSHOT_FRAME, mSnapshotSubscribers.size());
         }
         break;
       case CameraFrame::VIDEO_FRAME_SYNC:
@@ -1483,8 +1492,13 @@ int BaseCameraAdapter::getFrameRefCount(CameraBuffer * frameBuf, CameraFrame::Fr
                 res = mCaptureBuffersAvailable.valueFor(frameBuf );
                 }
             break;
-        case CameraFrame::PREVIEW_FRAME_SYNC:
         case CameraFrame::SNAPSHOT_FRAME:
+                {
+                Mutex::Autolock lock(mSnapshotBufferLock);
+                res = mSnapshotBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
+                }
+            break;
+        case CameraFrame::PREVIEW_FRAME_SYNC:
                 {
                 Mutex::Autolock lock(mPreviewBufferLock);
                 res = mPreviewBuffersAvailable.valueFor(frameBuf );
@@ -1530,8 +1544,13 @@ void BaseCameraAdapter::setFrameRefCount(CameraBuffer * frameBuf, CameraFrame::F
                 mCaptureBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
-        case CameraFrame::PREVIEW_FRAME_SYNC:
         case CameraFrame::SNAPSHOT_FRAME:
+                {
+                Mutex::Autolock lock(mSnapshotBufferLock);
+                mSnapshotBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
+                }
+            break;
+        case CameraFrame::PREVIEW_FRAME_SYNC:
                 {
                 Mutex::Autolock lock(mPreviewBufferLock);
                 mPreviewBuffersAvailable.replaceValueFor(frameBuf, refCount);

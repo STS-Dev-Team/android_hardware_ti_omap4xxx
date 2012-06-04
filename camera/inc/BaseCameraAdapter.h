@@ -224,6 +224,7 @@ protected:
 
     //Different frame subscribers get stored using these
     KeyedVector<int, frame_callback> mFrameSubscribers;
+    KeyedVector<int, frame_callback> mSnapshotSubscribers;
     KeyedVector<int, frame_callback> mFrameDataSubscribers;
     KeyedVector<int, frame_callback> mVideoSubscribers;
     KeyedVector<int, frame_callback> mVideoInSubscribers;
@@ -240,6 +241,10 @@ protected:
     size_t mPreviewBuffersLength;
     KeyedVector<CameraBuffer *, int> mPreviewBuffersAvailable;
     mutable Mutex mPreviewBufferLock;
+
+    //Snapshot buffer management data
+    KeyedVector<int, int> mSnapshotBuffersAvailable;
+    mutable Mutex mSnapshotBufferLock;
 
     //Video buffer management data
     CameraBuffer *mVideoBuffers;
