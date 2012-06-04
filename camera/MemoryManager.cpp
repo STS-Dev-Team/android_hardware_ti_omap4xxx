@@ -74,43 +74,43 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
 
     ///Allocate a buffer array
     CameraBuffer *buffers = new CameraBuffer [numArrayEntriesC];
-    if(!buffers)
-        {
+    if(!buffers) {
         CAMHAL_LOGEB("Allocation failed when creating buffers array of %d CameraBuffer elements", numArrayEntriesC);
         goto error;
-        }
+    }
 
     ///Initialize the array with zeros - this will help us while freeing the array in case of error
     ///If a value of an array element is NULL, it means we didnt allocate it
     memset(buffers, 0, sizeof(CameraBuffer) * numArrayEntriesC);
 
     //2D Allocations are not supported currently
-    if(size != 0)
-        {
+    if(size != 0) {
         struct ion_handle *handle;
         int mmap_fd;
+        size_t stride;
 
         ///1D buffers
-        for (int i = 0; i < numBufs; i++)
-            {
+        for (int i = 0; i < numBufs; i++) {
+            unsigned char *data;
             int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT,
                     &handle);
-            unsigned char *data;
+            if((ret < 0) || ((int)handle == -ENOMEM)) {
+                ret = ion_alloc_tiler(mIonFd, (size_t)size, 1, TILER_PIXEL_FMT_PAGE,
+                OMAP_ION_HEAP_TILER_MASK, &handle, &stride);
+            }
 
-            if(ret < 0)
-                {
-                CAMHAL_LOGEB("ion_alloc resulted in error %d", ret);
+            if((ret < 0) || ((int)handle == -ENOMEM)) {
+                CAMHAL_LOGEB("FAILED to allocate ion buffer of size=%d. ret=%d(0x%x)", size, ret, ret);
                 goto error;
-                }
+            }
 
             CAMHAL_LOGDB("Before mapping, handle = %p, nSize = %d", handle, size);
             if ((ret = ion_map(mIonFd, handle, size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-                          &data, &mmap_fd)) < 0)
-                {
+                          &data, &mmap_fd)) < 0) {
                 CAMHAL_LOGEB("Userspace mapping of ION buffers returned error %d", ret);
                 ion_free(mIonFd, handle);
                 goto error;
-                }
+            }
 
             buffers[i].type = CAMERA_BUFFER_ION;
             buffers[i].opaque = data;
@@ -120,16 +120,12 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
             buffers[i].fd = mmap_fd;
             buffers[i].size = size;
 
-            }
-
         }
-    else // If size is not zero, then it is a 2-D tiler buffer request
-        {
-        }
+    }
 
-        LOG_FUNCTION_NAME_EXIT;
+    LOG_FUNCTION_NAME_EXIT;
 
-        return buffers;
+    return buffers;
 
 error:
 
@@ -138,11 +134,9 @@ error:
         freeBufferList(buffers);
 
     if ( NULL != mErrorNotifier.get() )
-        {
         mErrorNotifier->errorNotify(-ENOMEM);
-        }
-
     LOG_FUNCTION_NAME_EXIT;
+
     return NULL;
 }
 
