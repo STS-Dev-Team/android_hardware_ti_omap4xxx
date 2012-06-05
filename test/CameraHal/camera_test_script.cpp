@@ -91,6 +91,8 @@ extern int numfocus;
 extern int numpreviewFormat;
 extern int numpictureFormat;
 extern int nummodevalues;
+extern int numLay;
+extern int numCLay;
 extern int constCnt;
 extern int rangeCnt;
 extern int * constFramerate;
@@ -136,7 +138,8 @@ extern char images_dir_path[];
 extern int AutoConvergenceModeIDX;
 extern const char *autoconvergencemode[];
 extern const int ManualConvergenceDefaultValue;
-extern size_t length_cam;
+extern int numCamera;
+extern bool stereoMode;
 extern char script_name[];
 extern int bufferStarvationTest;
 extern size_t length_previewSize;
@@ -362,22 +365,13 @@ int execute_functional_script(char *script) {
 
             case '4':
                 printf("Setting resolution...");
+
                 a = checkSupportedParamScriptResol(preview_Array, numpreviewSize, cmd, &resol_index);
-                if (camera_index != 2) {
-                    if (a > -1) {
-                        params.setPreviewSize(preview_Array[resol_index]->width, preview_Array[resol_index]->height);
-                        previewSizeIDX = resol_index;
-                    } else {
-                        printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
-                    }
+                if (a > -1) {
+                    params.setPreviewSize(preview_Array[resol_index]->width, preview_Array[resol_index]->height);
+                    previewSizeIDX = resol_index;
                 } else {
-                    int width, height;
-                    char *res = NULL;
-                    res = strtok(cmd + 1, "x");
-                    width = atoi(res);
-                    res = strtok(NULL, "x");
-                    height = atoi(res);
-                    params.setPreviewSize(width, height);
+                    printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
                 }
                 if ( hardwareActive && previewRunning ) {
                     camera->stopPreview();
@@ -553,13 +547,10 @@ int execute_functional_script(char *script) {
 
             case 'A':
                 camera_index=atoi(cmd+1);
-                camera_index %= length_cam;
-                if ( camera_index == 2)
-                    params.set(KEY_STEREO_CAMERA, "true");
-                else
-                    params.set(KEY_STEREO_CAMERA, "false");
+                camera_index %= numCamera;
 
                 printf("%s selected.\n", cameras[camera_index]);
+                firstTime = true;
 
                 if ( hardwareActive ) {
                     stopPreview();
@@ -598,26 +589,15 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'L':
-                    if (strcmp((cmd + 1),"tb-full") == 0) {
-                          stereoLayoutIDX = 0;     //tb-full
-                          stereoCapLayoutIDX = 0;   //tb-full
-                    } else if(strcmp((cmd + 1),"tb-subsampled") == 0) {
-                          stereoLayoutIDX = 2;        //tb-subsampled
-                          stereoCapLayoutIDX = 0;    //tb-full
-                    } else if(strcmp((cmd + 1),"ss-full") == 0) {
-                          stereoLayoutIDX = 1;        //ss-full
-                          stereoCapLayoutIDX = 1;     //ss-full
-                    } else if(strcmp((cmd + 1),"ss-subsampled") == 0) {
-                          stereoLayoutIDX = 3;        //ss-subsamped
-                          stereoCapLayoutIDX = 1;     //ss-full
+                if(stereoMode)
+                {
+                    a = checkSupportedParamScriptLayout(stereoLayout, numLay, cmd, &stereoLayoutIDX);
+                    if (a > -1) {
+                        params.set(KEY_S3D_PRV_FRAME_LAYOUT, cmd + 1);
                     } else {
-                        printf(" invalid layout - the layout will receive the defauilt parameters");
-                        stereoLayoutIDX = 0;     //tb-full
-                        stereoCapLayoutIDX = 0;   //tb-full
+                        printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
                     }
 
-                    params.set(KEY_S3D_PRV_FRAME_LAYOUT, stereoLayout[stereoLayoutIDX]);
-                    params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
 
                     getSizeParametersFromCapabilities();
                     if (hardwareActive && previewRunning) {
@@ -627,7 +607,31 @@ int execute_functional_script(char *script) {
                     } else if (hardwareActive) {
                         camera->setParameters(params.flatten());
                     }
-                    break;
+                }
+                break;
+
+
+            case '.':
+                if(stereoMode)
+                {
+                    a = checkSupportedParamScriptLayout(stereoCapLayout, numCLay, cmd, &stereoCapLayoutIDX);
+                    if (a > -1) {
+                        params.set(KEY_S3D_CAP_FRAME_LAYOUT_VALUES, cmd + 1);
+                    } else {
+                        printf("\nNot supported parameter %s from sensor %d\n\n", cmd + 1, camera_index);
+                    }
+
+
+                    getSizeParametersFromCapabilities();
+                    if (hardwareActive && previewRunning) {
+                        stopPreview();
+                        camera->setParameters(params.flatten());
+                        startPreview();
+                    } else if (hardwareActive) {
+                        camera->setParameters(params.flatten());
+                    }
+                }
+                break;
 
             case ']':
                 for(i = 0; i < length_V_bitRate; i++)
@@ -1372,6 +1376,16 @@ exit:
 int checkSupportedParamScript(char **array, int size, char *param) {
     for (int i=0; i<size; i++) {
         if (strcmp((param + 1), array[i]) == 0) {
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int checkSupportedParamScriptLayout(char **array, int size, char *param, int *index) {
+    for (int i=0; i<size; i++) {
+        if (strcmp((param + 1), array[i]) == 0) {
+            *index = i;
             return 0;
         }
     }
