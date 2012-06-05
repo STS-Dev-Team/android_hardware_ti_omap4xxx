@@ -199,7 +199,7 @@ int numLay = 0;
 char **stereoCapLayout;
 int numCLay = 0;
 
-int stereoLayoutIDX = 0;
+int stereoLayoutIDX = 1;
 int stereoCapLayoutIDX = 0;
 
 char *layoutstr =0;
@@ -279,7 +279,8 @@ const char *ipp_mode[] = { "off", "ldc", "nsf", "ldc-nsf" };
 
 const char *caf [] = { "Off", "On" };
 
-size_t length_cam =  ARRAY_SIZE(cameras);
+int numCamera = 0;
+bool stereoMode = false;
 
 param_Array previewSize [] = {
   { 0,   0,  "NULL"},
@@ -503,6 +504,7 @@ bool stressTest = false;
 bool stopScript = false;
 int restartCount = 0;
 bool firstTime = true;
+bool firstTimeStereo = true;
 
 //TI extensions for enable/disable algos
 const char *algoFixedGamma[] = {CameraParameters::FALSE, CameraParameters::TRUE};
@@ -1160,13 +1162,14 @@ int openCamera() {
         params = camera->getParameters();
         firstTime = false;
     }
+    getParametersFromCapabilities();
+    getSizeParametersFromCapabilities();
     camera->setParameters(params.flatten());
     camera->setListener(new CameraHandler());
 
     hardwareActive = true;
 
-    getParametersFromCapabilities();
-    getSizeParametersFromCapabilities();
+
 
     return 0;
 }
@@ -1250,6 +1253,11 @@ int startPreview() {
         if ( !hardwareActive ) {
             openCamera();
         }
+        if(stereoMode && firstTimeStereo)
+        {
+             params.set(KEY_S3D_PRV_FRAME_LAYOUT, stereoLayout[stereoLayoutIDX]);
+             params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
+        }
 
         params.setPreviewSize(preview_Array[previewSizeIDX]->width, preview_Array[previewSizeIDX]->height);
         params.setPictureSize(capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height);
@@ -1278,6 +1286,8 @@ int startPreview() {
 
 int getParametersFromCapabilities() {
     const char *valstr = NULL;
+
+    numCamera = camera->getNumberOfCameras();
 
     params.unflatten(camera->getParameters());
 
@@ -1315,9 +1325,11 @@ int getParametersFromCapabilities() {
 
     valstr = params.get(KEY_S3D_PRV_FRAME_LAYOUT_VALUES);
     if ((NULL != valstr) && (0 != strcmp(valstr, "none"))) {
+        stereoMode = true;
         strcpy(layoutstr, valstr);
         getSupportedParameters(layoutstr,&numLay,(char***)&stereoLayout);
     } else {
+        stereoMode = false;
         printf("layout is not supported\n");
     }
 
@@ -1470,7 +1482,7 @@ int getParametersFromCapabilities() {
 }
 
 void getSizeParametersFromCapabilities() {
-    if(camera_index != 2) {
+    if(!stereoMode) {
         if (params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES) != NULL) {
             strcpy(captureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES));
         } else {
@@ -1484,75 +1496,67 @@ void getSizeParametersFromCapabilities() {
             printf("Preview sizes are not supported\n");
         }
     } else { //stereo
-        switch (stereoLayoutIDX) {
-                case 0: // tb_full
-                    if (params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES) != NULL) {
-                        strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
-                    } else {
-                        printf("Picture sizes are not supported\n");
-                    }
-
+        if(strcmp(stereoLayout[stereoLayoutIDX],"tb-full") == 0)
+        {
                     if (params.get(KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES) != NULL) {
                         strcpy(previewSizeStr, params.get(KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
                         strcpy(VcaptureSizeStr, params.get(KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
                     } else {
                         printf("Preview sizes are not supported\n");
                     }
-
-                    break;
-                case 1: // ss_full
-                    if (params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES) != NULL) {
-                        strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
-                    } else {
-                        printf("Picture sizes are not supported\n");
-                    }
-
+        }
+        else  if(strcmp(stereoLayout[stereoLayoutIDX],"ss-full") == 0)
+        {
                     if (params.get(KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES) != NULL) {
                         strcpy(previewSizeStr, params.get(KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
                         strcpy(VcaptureSizeStr, params.get(KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
                     } else {
                         printf("Preview sizes are not supported\n");
                     }
-
-                    break;
-
-                case 2: // tb_subsampled
+        }
+        else  if(strcmp(stereoLayout[stereoLayoutIDX],"tb-subsampled") == 0)
+        {
+                    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
+                        strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+                        strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
+                    } else {
+                        printf("Preview sizes are not supported\n");
+                    }
+        }
+        else  if(strcmp(stereoLayout[stereoLayoutIDX],"ss-subsampled") == 0)
+        {
+                    if (params.get(KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES) != NULL) {
+                        strcpy(previewSizeStr, params.get(KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
+                        strcpy(VcaptureSizeStr, params.get(KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
+                    } else {
+                        printf("Preview sizes are not supported\n");
+                    }
+        }
+        else
+        {
+                    printf("Preview sizes are not supported\n");
+        }
+        if(strcmp(stereoCapLayout[stereoCapLayoutIDX],"tb-full") == 0)
+        {
                     if (params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES) != NULL) {
                         strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
                     } else {
                         printf("Picture sizes are not supported\n");
                     }
-
-                    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
-                        strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
-                        strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
-                    } else {
-                        printf("Preview sizes are not supported\n");
-                    }
-
-                    break;
-
-                case 3: // ss_subsampled
+        }
+        else  if(strcmp(stereoCapLayout[stereoCapLayoutIDX],"ss-full") == 0)
+        {
                     if (params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES) != NULL) {
                         strcpy(captureSizeStr, params.get(KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
                     } else {
                         printf("Picture sizes are not supported\n");
                     }
-
-                    if (params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES) != NULL) {
-                        strcpy(previewSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
-                        strcpy(VcaptureSizeStr, params.get(CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES));
-                    } else {
-                        printf("Preview sizes are not supported\n");
-                    }
-
-                    break;
-
-                default:
-                    printf("Picture sizes are not supported\n");
-                    printf("Preview sizes are not supported\n");
-                    break;
         }
+        else
+        {
+                    printf("Picture sizes are not supported\n");
+        }
+
     }
     getSupportedParametersCaptureSize(captureSizeStr, &numcaptureSize, captureSize, length_capture_Size);
     getSupportedParametersPreviewSize(previewSizeStr, &numpreviewSize, previewSize, length_previewSize);
@@ -1861,6 +1865,7 @@ int deleteAllocatedMemory() {
         }
         numLay = 0;
     }
+
     if (numCLay) {
         for (i = 0; i < numCLay; i++) {
             delete [] stereoCapLayout[i];
@@ -2012,7 +2017,7 @@ void initDefaults() {
     previewFormat = getDefaultParameter("yuv420sp", numpreviewFormat, previewFormatArray);
     pictureFormat = getDefaultParameter("jpeg", numpictureFormat, pictureFormatArray);
     stereoCapLayoutIDX = 0;
-    stereoLayoutIDX = 0;
+    stereoLayoutIDX = 1;
 
     algoFixedGammaIDX = 1;
     algoNSF1IDX = 1;
@@ -2056,7 +2061,6 @@ void initDefaults() {
     ManualConvergenceValues = ManualConvergenceDefaultValue;
     params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
     params.set(KEY_S3D2D_PREVIEW_MODE, "off");
-    params.set(KEY_STEREO_CAMERA, "false");
     params.set(KEY_EXIF_MODEL, MODEL);
     params.set(KEY_EXIF_MAKE, MAKE);
 
@@ -2396,14 +2400,15 @@ int functional_menu() {
 #if defined(OMAP_ENHANCEMENT) && defined(TARGET_OMAP3)
         snprintf(area1[j++], MAX_SYMBOLS, "4. Preview size: %4d x %4d - %s",preview_Array[previewSizeIDX]->width,  preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
 #else
-        snprintf(area1[j++], MAX_SYMBOLS, "4. Preview size: %4d x %4d - %s",preview_Array[previewSizeIDX]->width, camera_index == 2 ? preview_Array[previewSizeIDX]->height*2 : preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
+        snprintf(area1[j++], MAX_SYMBOLS, "4. Preview size: %4d x %4d - %s",preview_Array[previewSizeIDX]->width, stereoMode ? preview_Array[previewSizeIDX]->height*2 : preview_Array[previewSizeIDX]->height, preview_Array[previewSizeIDX]->name);
 #endif
         snprintf(area1[j++], MAX_SYMBOLS, "R. Preview framerate range: %s", rangeDescription[fpsRangeIdx]);
         snprintf(area1[j++], MAX_SYMBOLS, "&. Dump a preview frame");
-        if (camera_index == 2) {
+        if (stereoMode) {
             snprintf(area1[j++], MAX_SYMBOLS, "_. Auto Convergence mode: %s", autoconvergencemode[AutoConvergenceModeIDX]);
             snprintf(area1[j++], MAX_SYMBOLS, "^. Manual Convergence Value: %d\n", ManualConvergenceValues);
-            snprintf(area1[j++], MAX_SYMBOLS, "   L. Stereo Layout: %s\n", stereoLayout[stereoLayoutIDX]);
+            snprintf(area1[j++], MAX_SYMBOLS, "L. Stereo Preview Layout: %s\n", stereoLayout[stereoLayoutIDX]);
+            snprintf(area1[j++], MAX_SYMBOLS, ".  Stereo Capture Layout: %s\n", stereoCapLayout[stereoCapLayoutIDX]);
         }
         snprintf(area1[j++], MAX_SYMBOLS, "{. 2D Preview in 3D Stereo Mode: %s", params.get(KEY_S3D2D_PREVIEW_MODE));
 
@@ -2515,12 +2520,7 @@ int functional_menu() {
         break;
     case 'A':
         camera_index++;
-        camera_index %= ARRAY_SIZE(cameras);
-        if ( camera_index == 2) {
-            params.set(KEY_STEREO_CAMERA, "true");
-        } else {
-            params.set(KEY_STEREO_CAMERA, "false");
-        }
+        camera_index %= numCamera;
         firstTime = true;
         closeCamera();
         openCamera();
@@ -2636,16 +2636,30 @@ int functional_menu() {
             stereoLayoutIDX++;
             stereoLayoutIDX %= numLay;
 
+            if (stereoMode) {
+                firstTimeStereo = false;
+                params.set(KEY_S3D_PRV_FRAME_LAYOUT, stereoLayout[stereoLayoutIDX]);
+            }
+
+            getSizeParametersFromCapabilities();
+
+            if (hardwareActive && previewRunning) {
+                stopPreview();
+                camera->setParameters(params.flatten());
+                startPreview();
+            } else if (hardwareActive) {
+                camera->setParameters(params.flatten());
+            }
+
+            break;
+
+        case '.' :
             stereoCapLayoutIDX++;
             stereoCapLayoutIDX %= numCLay;
 
-            if (camera_index == 2) {
-                params.set(KEY_STEREO_CAMERA, "true");
-                params.set(KEY_S3D_PRV_FRAME_LAYOUT, stereoLayout[stereoLayoutIDX]);
+            if (stereoMode) {
+                firstTimeStereo = false;
                 params.set(KEY_S3D_CAP_FRAME_LAYOUT, stereoCapLayout[stereoCapLayoutIDX]);
-                printf("preview = %s, capture = %s",stereoLayout[stereoLayoutIDX],stereoCapLayout[stereoCapLayoutIDX]);
-            } else {
-                params.set(KEY_STEREO_CAMERA, "false");
             }
 
             getSizeParametersFromCapabilities();
@@ -3782,11 +3796,6 @@ int parseCommandLine(int argc, char *argv[], cmd_args_t *cmd_args) {
             case 'c':
                 if (a < argc -1) {
                     camera_index = atoi(argv[++a]);
-                    if ( camera_index == 2) {
-                        params.set(KEY_STEREO_CAMERA, "true");
-                    } else {
-                        params.set(KEY_STEREO_CAMERA, "false");
-                    }
                 } else {
                     printf("Error: No sensorID is specified.\n");
                     return -2;

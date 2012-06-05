@@ -34,7 +34,6 @@
 #define KEY_TEMP_BRACKETING_NEG "temporal-bracketing-range-negative"
 #define KEY_MEASUREMENT "measurement"
 #define KEY_S3D2D_PREVIEW_MODE "s3d2d-preview"
-#define KEY_STEREO_CAMERA "s3d-supported"
 #define KEY_S3D_PRV_FRAME_LAYOUT "s3d-prv-frame-layout"
 #define KEY_S3D_CAP_FRAME_LAYOUT "s3d-cap-frame-layout"
 #define KEY_EXIF_MODEL "exif-model"
@@ -240,6 +239,7 @@ int getSupportedParametersPreviewSize(char* parameters, int *optionsCount, param
 int getSupportedParametersThumbnailSize(char* parameters, int *optionsCount, param_Array array[], int arraySize);
 int getSupportedParametersNames(int width, int height, param_Array array[], int arraySize);
 int checkSupportedParamScript(char **array, int size, char *param);
+int checkSupportedParamScriptLayout(char **array, int size, char *param,int *index);
 int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num);
 int getSupportedParametersfps(char* parameters, int *optionsCount);
 int checkSupportedParamScriptfpsConst(int *array, int size, char *param, int *num);
@@ -254,10 +254,14 @@ void initDefaultsSec();
 
 const char KEY_S3D_PRV_FRAME_LAYOUT_VALUES[] = "s3d-prv-frame-layout-values";
 const char KEY_S3D_CAP_FRAME_LAYOUT_VALUES[] = "s3d-cap-frame-layout-values";
+
 const char KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[] = "supported-picture-topbottom-size-values";
-const char KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "supported-picture-sidebyside-size-values";
 const char KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[] = "supported-preview-topbottom-size-values";
+const char KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "supported-picture-sidebyside-size-values";
 const char KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[] = "supported-preview-sidebyside-size-values";
+const char KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES[] = "supported-picture-subsampled-size-values";
+const char KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[] = "supported-preview-subsampled-size-values";
+
 const char KEY_AUTOCONVERGENCE_MODE[] = "auto-convergence-mode";
 const char KEY_AUTOCONVERGENCE_MODE_VALUES[] = "auto-convergence-mode-values";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "supported-manual-convergence-min";
