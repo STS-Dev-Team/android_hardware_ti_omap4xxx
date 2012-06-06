@@ -1,3 +1,6 @@
+
+ifdef OMAP_ENHANCEMENT_VTC
+
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
@@ -100,3 +103,4 @@ endif
 
 include $(BUILD_HEAPTRACKED_EXECUTABLE)
 
+endif

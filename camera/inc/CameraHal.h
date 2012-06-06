@@ -29,22 +29,18 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+
+#include <hardware/camera.h>
 #include <utils/Log.h>
 #include <utils/threads.h>
-#include <linux/videodev2.h>
-#include "binder/MemoryBase.h"
-#include "binder/MemoryHeapBase.h"
 #include <utils/threads.h>
+#include <binder/MemoryBase.h>
+#include <binder/MemoryHeapBase.h>
 #include <camera/CameraParameters.h>
-#include <camera/ShotParameters.h>
-#include <hardware/camera.h>
-#include "MessageQueue.h"
-#include "Semaphore.h"
-#include "CameraProperties.h"
-#include "DebugUtils.h"
-#include "SensorListener.h"
+#ifdef OMAP_ENHANCEMENT_CPCAM
 #include <camera/CameraMetadata.h>
-
+#include <camera/ShotParameters.h>
+#endif
 #include <ui/GraphicBufferAllocator.h>
 #include <ui/GraphicBuffer.h>
 
@@ -56,6 +52,12 @@
 extern "C" {
 #include <ion.h>
 }
+
+#include "MessageQueue.h"
+#include "Semaphore.h"
+#include "CameraProperties.h"
+#include "DebugUtils.h"
+#include "SensorListener.h"
 
 //temporarily define format here
 #define HAL_PIXEL_FORMAT_TI_NV12 0x100
@@ -408,47 +410,6 @@ class CameraFrame
       mYuv[1] = NULL;
     }
 
-    //copy constructor
-    CameraFrame(const CameraFrame &frame) :
-    mCookie(frame.mCookie),
-    mCookie2(frame.mCookie2),
-    mBuffer(frame.mBuffer),
-    mFrameType(frame.mFrameType),
-    mTimestamp(frame.mTimestamp),
-    mWidth(frame.mWidth),
-    mHeight(frame.mHeight),
-    mOffset(frame.mOffset),
-    mAlignment(frame.mAlignment),
-    mFd(frame.mFd),
-    mLength(frame.mLength),
-    mFrameMask(frame.mFrameMask),
-    mQuirks(frame.mQuirks),
-    mMetaData(frame.mMetaData) {
-
-      mYuv[0] = frame.mYuv[0];
-      mYuv[1] = frame.mYuv[1];
-    }
-
-    //copy constructor 2
-    CameraFrame(const CameraFrame *frame) :
-    mCookie(frame->mCookie),
-    mCookie2(frame->mCookie2),
-    mBuffer(frame->mBuffer),
-    mFrameType(frame->mFrameType),
-    mTimestamp(frame->mTimestamp),
-    mWidth(frame->mWidth),
-    mHeight(frame->mHeight),
-    mOffset(frame->mOffset),
-    mAlignment(frame->mAlignment),
-    mFd(frame->mFd),
-    mLength(frame->mLength),
-    mFrameMask(frame->mFrameMask),
-    mQuirks(frame->mQuirks),
-    mMetaData(frame->mMetaData) {
-      mYuv[0] = frame->mYuv[0];
-      mYuv[1] = frame->mYuv[1];
-    }
-
     void *mCookie;
     void *mCookie2;
     CameraBuffer *mBuffer;
@@ -462,7 +423,9 @@ class CameraFrame
     unsigned mFrameMask;
     unsigned int mQuirks;
     unsigned int mYuv[2];
+#ifdef OMAP_ENHANCEMENT_CPCAM
     CameraMetadata mMetaData;
+#endif
     ///@todo add other member vars like  stride etc
 };
 
@@ -933,10 +896,14 @@ public:
         CAMERA_STOP_FD                              = 23,
         CAMERA_SWITCH_TO_EXECUTING                  = 24,
         CAMERA_USE_BUFFERS_VIDEO_CAPTURE            = 25,
+#ifdef OMAP_ENHANCEMENT_CPCAM
         CAMERA_USE_BUFFERS_REPROCESS                = 26,
         CAMERA_START_REPROCESS                      = 27,
+#endif
+#ifdef OMAP_ENHANCEMENT_VTC
         CAMERA_SETUP_TUNNEL                         = 28,
         CAMERA_DESTROY_TUNNEL                       = 29,
+#endif
         CAMERA_PREVIEW_INITIALIZATION               = 30,
         };
 
@@ -1140,10 +1107,12 @@ public:
      */
     int setPreviewWindow(struct preview_stream_ops *window);
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
     /**
      * Set a tap-in or tap-out point.
      */
     int setBufferSource(struct preview_stream_ops *tapin, struct preview_stream_ops *tapout);
+#endif
 
     /**
      * Stop a previously started preview.
@@ -1227,6 +1196,7 @@ public:
      */
     int dump(int fd) const;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
     /**
      * start a reprocessing operation.
      */
@@ -1236,7 +1206,7 @@ public:
      * cancels current reprocessing operation
      */
     int    cancel_reprocess();
-
+#endif
 
     status_t storeMetaDataInBuffers(bool enable);
 
@@ -1423,8 +1393,12 @@ private:
     bool mDynamicPreviewSwitch;
     //keeps paused state of display
     bool mDisplayPaused;
+
+#ifdef OMAP_ENHANCEMENT_VTC
     bool mTunnelSetup;
     bool mVTCUseCase;
+#endif
+
     //Index of current camera adapter
     int mCameraIndex;
 

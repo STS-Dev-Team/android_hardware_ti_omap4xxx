@@ -33,6 +33,8 @@
 # shipped on the system of a phone, and included additional examples of
 # including JNI code with the library and writing client applications against it.
 
+ifdef OMAP_ENHANCEMENT_CPCAM
+
 LOCAL_PATH := $(call my-dir)
 
 # the library
@@ -70,3 +72,4 @@ include $(CLEAR_VARS)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))
 
+endif

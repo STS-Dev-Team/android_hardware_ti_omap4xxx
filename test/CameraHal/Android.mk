@@ -1,4 +1,11 @@
+
 LOCAL_PATH:= $(call my-dir)
+
+# Temporary wrapper to disable the camera_test in non CPCAM mode.
+# The camera_test source code should respect the lack of
+# OMAP_ENHANCEMENT and OMAP_ENHANCEMENT_CPCAM macros in order to
+# be returned back into build.
+ifdef OMAP_ENHANCEMENT_CPCAM
 
 include $(CLEAR_VARS)
 
@@ -75,4 +82,4 @@ endif
 
 include $(BUILD_HEAPTRACKED_EXECUTABLE)
 
-
+endif

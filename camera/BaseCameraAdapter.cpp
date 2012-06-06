@@ -47,8 +47,10 @@ const LUT cameraCommandsUserToHAL[] = {
     { "CAMERA_STOP_FD",                         CameraAdapter::CAMERA_STOP_FD },
     { "CAMERA_SWITCH_TO_EXECUTING",             CameraAdapter::CAMERA_SWITCH_TO_EXECUTING },
     { "CAMERA_USE_BUFFERS_VIDEO_CAPTURE",       CameraAdapter::CAMERA_USE_BUFFERS_VIDEO_CAPTURE },
+#ifdef OMAP_ENHANCEMENT_CPCAM
     { "CAMERA_USE_BUFFERS_REPROCESS",           CameraAdapter::CAMERA_USE_BUFFERS_REPROCESS },
-    { "CAMERA_START_REPROCESS",                 CameraAdapter::CAMERA_START_REPROCESS }
+    { "CAMERA_START_REPROCESS",                 CameraAdapter::CAMERA_START_REPROCESS },
+#endif
 };
 
 const LUTtypeHAL CamCommandsLUT =
@@ -570,6 +572,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
                 break;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
         case CameraAdapter::CAMERA_USE_BUFFERS_REPROCESS:
             CAMHAL_LOGDA("Use buffers for reprocessing");
             desc = (BuffersDescriptor *) value1;
@@ -609,6 +612,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
             }
 
             break;
+#endif
 
         case CameraAdapter::CAMERA_START_SMOOTH_ZOOM:
             {
@@ -1111,6 +1115,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
             ret = switchToExecuting();
             break;
 
+#ifdef OMAP_ENHANCEMENT_VTC
         case CameraAdapter::CAMERA_SETUP_TUNNEL:
             ret = setupTunnel(value1, value2, value3, value4);
             break;
@@ -1118,6 +1123,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
         case CameraAdapter::CAMERA_DESTROY_TUNNEL:
             ret = destroyTunnel();
             break;
+#endif
 
         case CameraAdapter::CAMERA_PREVIEW_INITIALIZATION:
             ret = cameraPreviewInitialization();
@@ -1983,11 +1989,13 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = LOADED_CAPTURE_STATE;
                     break;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
                 case CAMERA_USE_BUFFERS_REPROCESS:
                     CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->LOADED_REPROCESS_STATE event = %s",
                                  printState);
                     mNextState = LOADED_REPROCESS_STATE;
                     break;
+#endif
 
                 case CAMERA_START_VIDEO:
                     CAMHAL_LOGDB("Adapter state switch PREVIEW_STATE->VIDEO_STATE event = %s",
@@ -2020,6 +2028,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
 
             break;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
         case LOADED_REPROCESS_STATE:
             switch (operation) {
                 case CAMERA_USE_BUFFERS_IMAGE_CAPTURE:
@@ -2055,6 +2064,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     break;
             }
             break;
+#endif
 
         case LOADED_CAPTURE_STATE:
 
@@ -2100,11 +2110,13 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     mNextState = CAPTURE_STATE;
                     break;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
                 case CAMERA_USE_BUFFERS_REPROCESS:
                     CAMHAL_LOGDB("Adapter state switch CAPTURE_STATE->->LOADED_REPROCESS_STATE event = %s",
                                  printState);
                     mNextState = LOADED_REPROCESS_STATE;
                     break;
+#endif
 
                 default:
                     CAMHAL_LOGEB("Adapter state switch CAPTURE_STATE Invalid Op! event = %s",
@@ -2392,6 +2404,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
 
             break;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
         case REPROCESS_STATE:
             switch (operation) {
                 case CAMERA_STOP_IMAGE_CAPTURE:
@@ -2415,6 +2428,7 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                 }
 
             break;
+#endif
 
 
         default:
@@ -2459,7 +2473,9 @@ status_t BaseCameraAdapter::rollbackToPreviousState()
             break;
 
         case CAPTURE_STATE:
+#ifdef OMAP_ENHANCEMENT_CPCAM
         case REPROCESS_STATE:
+#endif
             ret = sendCommand(CAMERA_STOP_IMAGE_CAPTURE);
             break;
 
