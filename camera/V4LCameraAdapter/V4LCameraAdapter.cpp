@@ -1205,7 +1205,12 @@ extern "C" status_t V4LCameraAdapter_Capabilities(
             properties = properties_array + starting_camera + num_cameras_supported;
 
             //fetch capabilities for this camera
-            V4LCameraAdapter::getCaps( sensorId, properties, tempHandle );
+            ret = V4LCameraAdapter::getCaps( sensorId, properties, tempHandle );
+            if (ret < 0) {
+                CAMHAL_LOGEA("Error while getting capabilities.");
+                close(tempHandle);
+                continue;
+            }
 
             num_cameras_supported++;
 
