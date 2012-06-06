@@ -29,6 +29,7 @@
 
 namespace android {
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
 status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const
 {
     status_t ret = NO_ERROR;
@@ -120,9 +121,11 @@ status_t OMXCameraAdapter::setMetaData(CameraMetadata &meta_data, const OMX_PTR 
 
     return ret;
 }
+#endif
 
 void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt)
 {
+#ifdef OMAP_ENHANCEMENT
     OMX_OTHER_EXTRADATATYPE *extraData = NULL;
 
     extraData = getExtradata(plat_pvt, (OMX_EXTRADATATYPE) OMX_TI_VectShotInfo);
@@ -137,7 +140,11 @@ void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, cons
         meta->analog_gain = -1;
         meta->exposure_time = -1;
     }
+#else
+    // no-op in non enhancement mode
+    CAMHAL_UNUSED(meta);
+    CAMHAL_UNUSED(plat_pvt);
+#endif
 }
 
 };
-

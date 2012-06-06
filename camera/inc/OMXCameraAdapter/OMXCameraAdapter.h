@@ -788,7 +788,9 @@ private:
     OMX_OTHER_EXTRADATATYPE *getExtradata(const OMX_PTR ptrPrivate, OMX_EXTRADATATYPE type) const;
 
     // Meta data
+#ifdef OMAP_ENHANCEMENT_CPCAM
     status_t setMetaData(CameraMetadata &meta_data, const OMX_PTR plat_pvt) const;
+#endif
     void encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt);
 
     // Mechanical Misalignment Correction

@@ -3611,7 +3611,9 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             goto EXIT;
             }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
         setMetaData(cameraFrame.mMetaData, pBuffHeader->pPlatformPrivate);
+#endif
 
         CAMHAL_LOGDB("Captured Frames: %d", mCapturedFrames);
 

@@ -19,6 +19,8 @@
 #ifndef V4L_CAMERA_ADAPTER_H
 #define V4L_CAMERA_ADAPTER_H
 
+#include <linux/videodev2.h>
+
 #include "CameraHal.h"
 #include "BaseCameraAdapter.h"
 #include "DebugUtils.h"

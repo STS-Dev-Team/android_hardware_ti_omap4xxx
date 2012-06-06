@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
+#ifndef BUFFER_SOURCE_ADAPTER_H
+#define BUFFER_SOURCE_ADAPTER_H
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
 
 #include "CameraHal.h"
 #include <ui/egl/android_natives.h>
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
-
-#ifndef BUFFER_SOURCE_ADAPTER_H
-#define BUFFER_SOURCE_ADAPTER_H
 
 namespace android {
 
@@ -87,7 +87,7 @@ private:
 
         void addFrame(CameraFrame *frame) {
             Mutex::Autolock lock(mFramesMutex);
-            mFrames.add(new CameraFrame(frame));
+            mFrames.add(new CameraFrame(*frame));
             mFramesCondition.signal();
         }
 
@@ -181,5 +181,7 @@ private:
 };
 
 };
+
+#endif
 
 #endif
