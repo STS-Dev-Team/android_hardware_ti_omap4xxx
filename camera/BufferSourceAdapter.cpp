@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+
 #include "BufferSourceAdapter.h"
 #include <ui/GraphicBuffer.h>
 #include <ui/GraphicBufferMapper.h>
@@ -787,3 +789,4 @@ void BufferSourceAdapter::frameCallback(CameraFrame* caFrame)
 
 };
 
+#endif

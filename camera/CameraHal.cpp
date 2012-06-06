@@ -362,6 +362,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                 }
             }
 
+#ifdef OMAP_ENHANCEMENT_VTC
             if ((valstr = params.get(TICameraParameters::KEY_VTC_HINT)) != NULL ) {
                 mParameters.set(TICameraParameters::KEY_VTC_HINT, valstr);
                 if (strcmp(valstr, CameraParameters::TRUE) == 0) {
@@ -381,7 +382,7 @@ int CameraHal::setParameters(const CameraParameters& params)
                     mParameters.set(TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT, valstr);
                 }
             }
-
+#endif
             }
 
         if ( (valstr = params.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT)) != NULL )
@@ -428,7 +429,10 @@ int CameraHal::setParameters(const CameraParameters& params)
             if(strcmp(valstr, CameraParameters::TRUE) == 0)
                 {
                 CAMHAL_LOGVB("Video Resolution: %d x %d", mVideoWidth, mVideoHeight);
-                if (!mVTCUseCase) {
+#ifdef OMAP_ENHANCEMENT_VTC
+                if (!mVTCUseCase)
+#endif
+                {
                     int maxFPS, minFPS;
 
                     params.getPreviewFpsRange(&minFPS, &maxFPS);
@@ -1139,6 +1143,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             mParameters.remove(TICameraParameters::KEY_TEMP_BRACKETING);
         }
 
+#ifdef OMAP_ENHANCEMENT_VTC
         if (mVTCUseCase && !mTunnelSetup && (mCameraAdapter != NULL) &&
                 ((mParameters.get(TICameraParameters::KEY_VIDEO_ENCODER_HANDLE)) != NULL )&&
                 ((mParameters.get(TICameraParameters::KEY_VIDEO_ENCODER_SLICE_HEIGHT)) != NULL )) {
@@ -1151,6 +1156,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             if (done == NO_ERROR) mTunnelSetup = true;
             ret |= done;
         }
+#endif
 
         // Only send parameters to adapter if preview is already
         // enabled or doesSetParameterNeedUpdate says so. Initial setParameters to camera adapter,
@@ -2009,6 +2015,9 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
     return ret;
 
 }
+
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
 /**
    @brief Sets ANativeWindow object.
 
@@ -2140,6 +2149,7 @@ status_t CameraHal::setBufferSource(struct preview_stream_ops *tapin, struct pre
  exit:
     return ret;
 }
+#endif
 
 
 /**
@@ -2860,6 +2870,7 @@ status_t CameraHal::__takePicture(const char *params)
     valstr = mParameters.get(TICameraParameters::KEY_CAP_MODE);
 
     isCPCamMode = valstr && !strcmp(valstr, TICameraParameters::CP_CAM_MODE);
+
     // return error if we are already capturing
     // however, we can queue a capture when in cpcam mode
     if ( ((mCameraAdapter->getState() == CameraAdapter::CAPTURE_STATE &&
@@ -2878,6 +2889,7 @@ status_t CameraHal::__takePicture(const char *params)
         return INVALID_OPERATION;
     }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
     // check if camera application is using shots parameters
     // api. parameters set here override anything set using setParameters
     // TODO(XXX): Just going to use legacy TI parameters for now. Need
@@ -2922,10 +2934,13 @@ status_t CameraHal::__takePicture(const char *params)
         }
 
         mCameraAdapter->setParameters(mParameters);
-    } else {
+    } else
+#else
+    {
         // TODO(XXX): Should probably reset burst and bracketing params
         // when we remove legacy TI parameters implementation
     }
+#endif
 
     // if we are already in the middle of a capture...then we just need
     // setParameters and start image capture to queue more shots
@@ -3187,6 +3202,8 @@ char* CameraHal::getParameters()
     return params_string;
 }
 
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
 /**
    @brief Starts reprocessing operation.
  */
@@ -3256,6 +3273,8 @@ status_t CameraHal::cancel_reprocess( )
     ret = signalEndImageCapture();
     return NO_ERROR;
 }
+#endif
+
 
 void CameraHal::putParameters(char *parms)
 {
@@ -3283,8 +3302,11 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
         return -EINVAL;
         }
 
-    if ( ( NO_ERROR == ret ) && ( !previewEnabled() ) &&
-            (cmd != CAMERA_CMD_PREVIEW_INITIALIZATION)) {
+    if ( ( NO_ERROR == ret ) && ( !previewEnabled() )
+#ifdef OMAP_ENHANCEMENT_VTC
+            && (cmd != CAMERA_CMD_PREVIEW_INITIALIZATION)
+#endif
+         ) {
         CAMHAL_LOGEA("Preview is not running");
         ret = -EINVAL;
     }
@@ -3315,6 +3337,7 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
 
                 break;
 
+#ifdef OMAP_ENHANCEMENT_VTC
             case CAMERA_CMD_PREVIEW_DEINITIALIZATION:
                 if(mDisplayAdapter.get() != NULL) {
                     ///Stop the buffer display first
@@ -3337,6 +3360,7 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
                 ret = cameraPreviewInitialization();
 
                 break;
+#endif
 
             default:
                 break;
@@ -3449,8 +3473,10 @@ CameraHal::CameraHal(int cameraId)
     mSensorListener = NULL;
     mVideoWidth = 0;
     mVideoHeight = 0;
+#ifdef OMAP_ENHANCEMENT_VTC
     mVTCUseCase = false;
     mTunnelSetup = false;
+#endif
     mPreviewInitializationDone = false;
 
     //These values depends on the sensor characteristics
