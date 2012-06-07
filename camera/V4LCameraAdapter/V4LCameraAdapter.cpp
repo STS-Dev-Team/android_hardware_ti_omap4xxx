@@ -258,7 +258,7 @@ status_t V4LCameraAdapter::restartPreview ()
         goto EXIT;
     }
 
-    for (int i = 0; i < mPreviewBufferCount; i++) {
+    for (int i = 0; i < mPreviewBufferCountQueueable; i++) {
 
         mVideoInfo->buf.index = i;
         mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -436,15 +436,18 @@ status_t V4LCameraAdapter::useBuffers(CameraMode mode, CameraBuffer *bufArr, int
     switch(mode)
         {
         case CAMERA_PREVIEW:
+            mPreviewBufferCountQueueable = queueable;
             ret = UseBuffersPreview(bufArr, num);
             break;
 
         case CAMERA_IMAGE_CAPTURE:
+            mCaptureBufferCountQueueable = queueable;
             ret = UseBuffersCapture(bufArr, num);
             break;
 
         case CAMERA_VIDEO:
             //@warn Video capture is not fully supported yet
+            mPreviewBufferCountQueueable = queueable;
             ret = UseBuffersPreview(bufArr, num);
             break;
 
@@ -556,7 +559,7 @@ status_t V4LCameraAdapter::takePicture() {
         goto EXIT;
     }
 
-    for (int i = 0; i < mCaptureBufferCount; i++) {
+    for (int i = 0; i < mCaptureBufferCountQueueable; i++) {
 
        mVideoInfo->buf.index = i;
        mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -683,7 +686,7 @@ status_t V4LCameraAdapter::startPreview()
         goto EXIT;
     }
 
-    for (int i = 0; i < mPreviewBufferCount; i++) {
+    for (int i = 0; i < mPreviewBufferCountQueueable; i++) {
 
         mVideoInfo->buf.index = i;
         mVideoInfo->buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
