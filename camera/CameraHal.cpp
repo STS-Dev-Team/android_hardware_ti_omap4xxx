@@ -332,8 +332,19 @@ int CameraHal::setParameters(const CameraParameters& params)
                     if (strcmp(TICameraParameters::VIDEO_MODE, valstr)) {
                         mCapModeBackup = valstr;
                     }
-                CAMHAL_LOGDB("Capture mode set %s", params.get(TICameraParameters::KEY_CAP_MODE));
-                mParameters.set(TICameraParameters::KEY_CAP_MODE, valstr);
+
+                    CAMHAL_LOGDB("Capture mode set %s", valstr);
+
+                    const char *currentMode = mParameters.get(TICameraParameters::KEY_CAP_MODE);
+                    if ( NULL != currentMode ) {
+                        if ( strcmp(currentMode, valstr) != 0 ) {
+                            updateRequired = true;
+                        }
+                    } else {
+                        updateRequired = true;
+                    }
+
+                    mParameters.set(TICameraParameters::KEY_CAP_MODE, valstr);
                 }
 
             if ((valstr = params.get(TICameraParameters::KEY_IPP)) != NULL) {

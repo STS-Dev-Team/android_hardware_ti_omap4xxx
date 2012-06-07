@@ -117,7 +117,7 @@ status_t CameraProperties::loadProperties()
         LOGI("num_cameras = %d", mCamerasSupported);
 
         for (int i = 0; i < mCamerasSupported; i++) {
-            mCameraProps[i].set(CAMERA_SENSOR_INDEX, i);
+            mCameraProps[i].setSensorIndex(i);
             mCameraProps[i].dump();
         }
     }
