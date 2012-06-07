@@ -163,64 +163,75 @@ int CameraProperties::getProperties(int cameraIndex, CameraProperties::Propertie
     return 0;
 }
 
-ssize_t CameraProperties::Properties::set(const char *prop, const char *value)
-{
-    if(!prop)
-        return -EINVAL;
-    if(!value)
-        value = DEFAULT_VALUE;
+void CameraProperties::Properties::set(const char * const prop, const char * const value) {
+    CAMHAL_ASSERT(prop);
 
-    return mProperties->replaceValueFor(String8(prop), String8(value));
+    if ( !value ) {
+        mProperties[mCurrentMode].removeItem(String8(prop));
+    } else {
+        mProperties[mCurrentMode].replaceValueFor(String8(prop), String8(value));
+    }
 }
 
-ssize_t CameraProperties::Properties::set(const char *prop, int value)
-{
+void CameraProperties::Properties::set(const char * const prop, const int value) {
     char s_val[30];
-
     sprintf(s_val, "%d", value);
-
-    return set(prop, s_val);
+    set(prop, s_val);
 }
 
-const char* CameraProperties::Properties::get(const char * prop)
-{
-    String8 value = mProperties->valueFor(String8(prop));
-    return value.string();
+const char* CameraProperties::Properties::get(const char * prop) const {
+    return mProperties[mCurrentMode].valueFor(String8(prop)).string();
 }
 
-int CameraProperties::Properties::getInt(const char * prop)
-{
-    String8 value = mProperties->valueFor(String8(prop));
+int CameraProperties::Properties::getInt(const char * prop) const {
+    String8 value = mProperties[mCurrentMode].valueFor(String8(prop));
     if (value.isEmpty()) {
         return -1;
     }
     return strtol(value, 0, 0);
 }
 
-void CameraProperties::Properties::dump()
-{
-    for (size_t i = 0; i < mProperties->size(); i++)
-    {
-        CAMHAL_LOGDB("%s = %s\n",
-                        mProperties->keyAt(i).string(),
-                        mProperties->valueAt(i).string());
+void CameraProperties::Properties::setSensorIndex(int idx) {
+    OperatingMode originalMode = getMode();
+    for ( int i = 0 ; i < MODE_MAX ; i++ ) {
+        setMode(static_cast<OperatingMode>(i));
+        set(CAMERA_SENSOR_INDEX, idx);
     }
+    setMode(originalMode);
 }
 
-const char* CameraProperties::Properties::keyAt(unsigned int index)
-{
-    if(index < mProperties->size())
-    {
-        return mProperties->keyAt(index).string();
+void CameraProperties::Properties::setMode(OperatingMode mode) {
+    CAMHAL_ASSERT(mode >= 0 && mode < MODE_MAX);
+    mCurrentMode = mode;
+}
+
+OperatingMode CameraProperties::Properties::getMode() const {
+    return mCurrentMode;
+}
+
+void CameraProperties::Properties::dump() {
+    CAMHAL_LOGD("================================");
+    CAMHAL_LOGD("Dumping properties for camera: %d", getInt("prop-sensor-index"));
+
+    for (size_t i = 0; i < mProperties[mCurrentMode].size(); i++) {
+        CAMHAL_LOGD("%s = %s",
+                mProperties[mCurrentMode].keyAt(i).string(),
+                mProperties[mCurrentMode].valueAt(i).string());
+    }
+
+    CAMHAL_LOGD("--------------------------------");
+}
+
+const char* CameraProperties::Properties::keyAt(const unsigned int index) const {
+    if (index < mProperties[mCurrentMode].size()) {
+        return mProperties[mCurrentMode].keyAt(index).string();
     }
     return NULL;
 }
 
-const char* CameraProperties::Properties::valueAt(unsigned int index)
-{
-    if(index < mProperties->size())
-    {
-        return mProperties->valueAt(index).string();
+const char* CameraProperties::Properties::valueAt(const unsigned int index) const {
+    if (index < mProperties[mCurrentMode].size()) {
+        return mProperties[mCurrentMode].valueAt(index).string();
     }
     return NULL;
 }

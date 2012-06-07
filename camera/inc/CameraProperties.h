@@ -44,11 +44,17 @@ namespace android {
 #define MAX_PROP_NAME_LENGTH 50
 #define MAX_PROP_VALUE_LENGTH 2048
 
-#define EXIF_MAKE_DEFAULT "default_make"
-#define EXIF_MODEL_DEFAULT "default_model"
-
 #define REMAINING_BYTES(buff) ((((int)sizeof(buff) - 1 - (int)strlen(buff)) < 0) ? 0 : (sizeof(buff) - 1 - strlen(buff)))
 
+enum OperatingMode {
+    MODE_HIGH_SPEED = 0,
+    MODE_HIGH_QUALITY,
+    MODE_ZEROSHUTTERLAG,
+    MODE_VIDEO,
+    MODE_STEREO,
+    MODE_CPCAM,
+    MODE_MAX
+};
 
 // Class that handles the Camera Properties
 class CameraProperties
@@ -189,33 +195,31 @@ public:
     class Properties
     {
         public:
+
             Properties()
             {
-                mProperties = new DefaultKeyedVector<String8, String8>(String8(DEFAULT_VALUE));
-                char property[PROPERTY_VALUE_MAX];
-                property_get("ro.product.manufacturer", property, EXIF_MAKE_DEFAULT);
-                property[0] = toupper(property[0]);
-                set(EXIF_MAKE, property);
-                property_get("ro.product.model", property, EXIF_MODEL_DEFAULT);
-                property[0] = toupper(property[0]);
-                set(EXIF_MODEL, property);
             }
+
             ~Properties()
             {
-                delete mProperties;
             }
-            ssize_t set(const char *prop, const char *value);
-            ssize_t set(const char *prop, int value);
-            const char* get(const char * prop);
-            int getInt(const char * prop);
+
+            void set(const char *prop, const char *value);
+            void set(const char *prop, int value);
+            const char* get(const char * prop) const;
+            int getInt(const char * prop) const;
+            void setSensorIndex(int idx);
+            void setMode(OperatingMode mode);
+            OperatingMode getMode() const;
             void dump();
 
         protected:
-            const char* keyAt(unsigned int);
-            const char* valueAt(unsigned int);
+            const char* keyAt(const unsigned int) const;
+            const char* valueAt(const unsigned int) const;
 
         private:
-            DefaultKeyedVector<String8, String8>* mProperties;
+            OperatingMode mCurrentMode;
+            DefaultKeyedVector<String8, String8> mProperties[MODE_MAX];
 
     };
 

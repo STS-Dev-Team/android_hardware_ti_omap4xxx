@@ -963,6 +963,8 @@ private:
     static const char DEFAULT_AUTOCONVERGENCE_MODE[];
     static const char DEFAULT_MANUAL_CONVERGENCE[];
     static const char * DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE;
+    static const char DEFAULT_EXIF_MODEL[];
+    static const char DEFAULT_EXIF_MAKE[];
 
     static const size_t MAX_FOCUS_AREAS;
 
@@ -996,6 +998,7 @@ private:
     Vector< sp<CameraArea> > mMeteringAreas;
     mutable Mutex mMeteringAreasLock;
 
+    OperatingMode mCapabilitiesOpMode;
     CaptureMode mCapMode;
     // TODO(XXX): Do we really need this lock? Let's
     // try to merge temporal bracketing and burst
