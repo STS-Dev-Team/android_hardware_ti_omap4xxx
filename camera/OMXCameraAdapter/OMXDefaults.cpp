@@ -75,5 +75,7 @@ const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 const char OMXCameraAdapter::DEFAULT_AUTOCONVERGENCE_MODE[] = "frame";
 const char OMXCameraAdapter::DEFAULT_MANUAL_CONVERGENCE[] = "0";
 const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = CameraParameters::TRUE;
+const char OMXCameraAdapter::DEFAULT_EXIF_MAKE[] = "default_make";
+const char OMXCameraAdapter::DEFAULT_EXIF_MODEL[] = "default_model";
 };
 

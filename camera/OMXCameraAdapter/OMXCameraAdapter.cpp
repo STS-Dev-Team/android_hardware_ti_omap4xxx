@@ -204,6 +204,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mSnapshotCount = 0;
     mPictureFormatFromClient = NULL;
 
+    mCapabilitiesOpMode = MODE_MAX;
     mCapMode = INITIAL_MODE;
     mIPP = IPP_NULL;
     mVstabEnabled = false;
@@ -243,6 +244,10 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mEXIFData.mGPSData.mTimeStampValid = false;
     mEXIFData.mModelValid = false;
     mEXIFData.mMakeValid = false;
+
+    if (mSensorIndex != 2) {
+        mCapabilities->setMode(MODE_HIGH_SPEED);
+    }
 
     if (mCapabilities->get(CameraProperties::SUPPORTED_ZOOM_STAGES) != NULL) {
         mMaxZoomSupported = mCapabilities->getInt(CameraProperties::SUPPORTED_ZOOM_STAGES) + 1;
@@ -669,6 +674,10 @@ status_t OMXCameraAdapter::setParameters(const CameraParameters &params)
     mParams = params;
     mFirstTimeInit = false;
 
+    if ( MODE_MAX != mCapabilitiesOpMode ) {
+        mCapabilities->setMode(mCapabilitiesOpMode);
+    }
+
     LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
@@ -870,6 +879,23 @@ void OMXCameraAdapter::getParameters(CameraParameters& params)
         params.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK,
                 CameraParameters::FALSE);
     }
+
+    // Update Picture size capabilities dynamically
+    params.set(CameraParameters::KEY_SUPPORTED_PICTURE_SIZES,
+                mCapabilities->get(CameraProperties::SUPPORTED_PICTURE_SIZES));
+
+    // Update framerate capabilities dynamically
+    params.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES,
+               mCapabilities->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
+
+    params.set(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED,
+               mCapabilities->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT));
+
+    params.set(CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE,
+               mCapabilities->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
+
+    params.set(TICameraParameters::KEY_FRAMERATE_RANGES_EXT_SUPPORTED,
+               mCapabilities->get(CameraProperties::FRAMERATE_RANGE_EXT_SUPPORTED));
 
     LOG_FUNCTION_NAME_EXIT;
 }
@@ -4294,18 +4320,53 @@ public:
         return NO_ERROR;
     }
 
-    status_t fetchCapabilitiesForSensor(int sensorId, CameraProperties::Properties * properties)
+    status_t fetchCapabiltiesForMode(OMX_CAMOPERATINGMODETYPE mode,
+                                     int sensorId,
+                                     CameraProperties::Properties * properties)
     {
-        {
-            CAMHAL_LOGD("Disabling all ports...");
-            const status_t disableAllPortsError = disableAllPorts();
-            CAMHAL_LOGD("Disabling all ports... DONE");
+        OMX_CONFIG_CAMOPERATINGMODETYPE camMode;
 
-            if ( disableAllPortsError != NO_ERROR )
-            {
-                CAMHAL_LOGE("Failed to disable all ports, error: %d", disableAllPortsError);
-                return UNKNOWN_ERROR;
-            }
+        OMX_INIT_STRUCT_PTR (&camMode, OMX_CONFIG_CAMOPERATINGMODETYPE);
+        camMode.eCamOperatingMode = mode;
+
+        OMX_ERRORTYPE eError =  OMX_SetParameter(component(),
+                           ( OMX_INDEXTYPE ) OMX_IndexCameraOperatingMode,
+                           &camMode);
+
+        if ( OMX_ErrorNone != eError ) {
+            CAMHAL_LOGE("Error while configuring camera mode in CameraAdapter_Capabilities 0x%x", eError);
+            return BAD_VALUE;
+        }
+
+        const status_t idleSwitchError = switchToState(OMX_StateIdle);
+        if ( idleSwitchError != NO_ERROR ) {
+            CAMHAL_LOGE("Failed to switch to Idle state, error: %d", idleSwitchError);
+            return UNKNOWN_ERROR;
+        }
+
+        // get and fill capabilities
+        OMXCameraAdapter::getCaps(sensorId, properties, component());
+
+        const status_t loadedSwitchError = switchToState(OMX_StateLoaded);
+        if ( loadedSwitchError != NO_ERROR ) {
+            CAMHAL_LOGE("Failed to switch to Loaded state, error: %d", loadedSwitchError);
+            return UNKNOWN_ERROR;
+        }
+
+        return NO_ERROR;
+    }
+
+    status_t fetchCapabilitiesForSensor(int sensorId,
+                                        CameraProperties::Properties * properties)
+    {
+        CAMHAL_LOGD("Disabling all ports...");
+        const status_t disableAllPortsError = disableAllPorts();
+        CAMHAL_LOGD("Disabling all ports... DONE");
+
+        if ( disableAllPortsError != NO_ERROR ) {
+            CAMHAL_LOGE("Failed to disable all ports, error: %d",
+                        disableAllPortsError);
+            return UNKNOWN_ERROR;
         }
 
         // sensor select
@@ -4318,55 +4379,69 @@ public:
                 (OMX_INDEXTYPE)OMX_TI_IndexConfigSensorSelect, &sensorSelect);
         CAMHAL_LOGD("Selecting sensor %d... DONE", sensorId);
 
-        if ( sensorSelectError != OMX_ErrorNone )
-        {
+        if ( sensorSelectError != OMX_ErrorNone ) {
             CAMHAL_LOGD("Max supported sensor number reached: %d", sensorId);
             return BAD_VALUE;
         }
 
-        OMX_CONFIG_CAMOPERATINGMODETYPE camMode;
+        status_t err = NO_ERROR;
+        if ( sensorId == 2 ) {
+            CAMHAL_LOGD("Camera mode: STEREO");
+            properties->setMode(MODE_STEREO);
+            err = fetchCapabiltiesForMode(OMX_CaptureStereoImageCapture,
+                                          sensorId,
+                                          properties);
+        } else {
+            CAMHAL_LOGD("Camera MONO");
 
-        OMX_INIT_STRUCT_PTR (&camMode, OMX_CONFIG_CAMOPERATINGMODETYPE);
+            CAMHAL_LOGD("Camera mode: HQ ");
+            properties->setMode(MODE_HIGH_QUALITY);
+            err = fetchCapabiltiesForMode(OMX_CaptureImageProfileBase,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
 
-        if ( sensorId == 2 )
-        {
-            CAMHAL_LOGDA("Camera mode: STEREO");
-            camMode.eCamOperatingMode = OMX_CaptureStereoImageCapture;
+            CAMHAL_LOGD("Camera mode: VIDEO ");
+            properties->setMode(MODE_VIDEO);
+            err = fetchCapabiltiesForMode(OMX_CaptureVideo,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
+
+            CAMHAL_LOGD("Camera mode: ZSL ");
+            properties->setMode(MODE_ZEROSHUTTERLAG);
+            err = fetchCapabiltiesForMode(OMX_TI_CaptureImageProfileZeroShutterLag,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
+
+            CAMHAL_LOGD("Camera mode: HS ");
+            properties->setMode(MODE_HIGH_SPEED);
+            err = fetchCapabiltiesForMode(OMX_CaptureImageHighSpeedTemporalBracketing,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
+
+            CAMHAL_LOGD("Camera mode: CPCAM ");
+            properties->setMode(MODE_CPCAM);
+            err = fetchCapabiltiesForMode(OMX_TI_CPCam,
+                                          sensorId,
+                                          properties);
+            if ( NO_ERROR != err ) {
+                return err;
+            }
+
         }
-        else
-        {
-            CAMHAL_LOGDA("Camera mode: MONO");
-            camMode.eCamOperatingMode = OMX_CaptureImageHighSpeedTemporalBracketing;
-        }
 
-        const OMX_ERRORTYPE eError =  OMX_SetParameter(component(),
-                           ( OMX_INDEXTYPE ) OMX_IndexCameraOperatingMode,
-                           &camMode);
-
-        if ( OMX_ErrorNone != eError )
-        {
-            CAMHAL_LOGDB("Error while configuring camera mode in CameraAdapter_Capabilities 0x%x", eError);
-            return BAD_VALUE;
-        }
-
-        const status_t idleSwitchError = switchToState(OMX_StateIdle);
-        if ( idleSwitchError != NO_ERROR )
-        {
-            CAMHAL_LOGE("Failed to switch to Idle state, error: %d", idleSwitchError);
-            return UNKNOWN_ERROR;
-        }
-
-        // get and fill capabilities
-        OMXCameraAdapter::getCaps(sensorId, properties, component());
-
-        const status_t loadedSwitchError = switchToState(OMX_StateLoaded);
-        if ( loadedSwitchError != NO_ERROR )
-        {
-            CAMHAL_LOGE("Failed to switch to Loaded state, error: %d", loadedSwitchError);
-            return UNKNOWN_ERROR;
-        }
-
-        return NO_ERROR;
+        return err;
     }
 
 public:

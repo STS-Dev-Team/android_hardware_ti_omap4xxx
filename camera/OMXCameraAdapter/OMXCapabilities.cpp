@@ -1979,6 +1979,18 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::MANUAL_CONVERGENCE, DEFAULT_MANUAL_CONVERGENCE);
     params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION, DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE);
 
+    char property[PROPERTY_VALUE_MAX];
+    property_get("ro.product.manufacturer",
+                 property,
+                 DEFAULT_EXIF_MAKE);
+    property[0] = toupper(property[0]);
+    params->set(CameraProperties::EXIF_MAKE, property);
+    property_get("ro.product.model",
+                 property,
+                 DEFAULT_EXIF_MODEL);
+    property[0] = toupper(property[0]);
+    params->set(CameraProperties::EXIF_MODEL, property);
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
