@@ -191,7 +191,9 @@ private:
 
 
     int mPreviewBufferCount;
+    int mPreviewBufferCountQueueable;
     int mCaptureBufferCount;
+    int mCaptureBufferCountQueueable;
     KeyedVector<CameraBuffer *, int> mPreviewBufs;
     KeyedVector<CameraBuffer *, int> mCaptureBufs;
     mutable Mutex mPreviewBufsLock;
