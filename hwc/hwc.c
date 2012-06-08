@@ -179,6 +179,8 @@ struct omap4_hwc_device {
     int hdmi_fb_fd;             /* file descriptor for /dev/fb1 */
     int pipe_fds[2];            /* pipe to event thread */
 
+    long fb_refresh;            /* display refresh time in nsec */
+
     int img_mem_size;           /* size of fb for hdmi */
     void *img_mem_ptr;          /* start of fb for hdmi */
 
@@ -2060,12 +2062,12 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
             clock_gettime(CLOCK_MONOTONIC, &now);
             sleep_time.tv_sec = 0;
             sleep_time.tv_nsec = 0;
-            /* wait at least 16ms from last set */
+            /* wait at least fb_refresh ns from last set */
             if (now.tv_sec - last_set_time.tv_sec == 0) {
-                sleep_time.tv_nsec = DISPLAY_REFRESH_TIME_IN_NSEC -
+                sleep_time.tv_nsec = hwc_dev->fb_refresh -
                     (now.tv_nsec - last_set_time.tv_nsec);
             } else if (now.tv_sec - last_set_time.tv_sec == 1) {
-                sleep_time.tv_nsec = DISPLAY_REFRESH_TIME_IN_NSEC -
+                sleep_time.tv_nsec = hwc_dev->fb_refresh -
                     (now.tv_nsec + 1000000000 - last_set_time.tv_nsec);
             }
             if (sleep_time.tv_nsec > 0) {
@@ -2606,6 +2608,13 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
     if (!hwc_dev->buffers) {
         err = -ENOMEM;
         goto done;
+    }
+
+    if (hwc_dev->fb_dev->base.fps > 0)
+        hwc_dev->fb_refresh = (long)(1000000000.0 / hwc_dev->fb_dev->base.fps);
+    else {
+        LOGE("invalid fb fps: %f", hwc_dev->fb_dev->base.fps);
+        hwc_dev->fb_refresh = (long)DISPLAY_REFRESH_TIME_IN_NSEC;
     }
 
     ret = ioctl(hwc_dev->dsscomp_fd, DSSCIOC_QUERY_DISPLAY, &hwc_dev->fb_dis);
