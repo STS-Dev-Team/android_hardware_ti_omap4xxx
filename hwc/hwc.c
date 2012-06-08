@@ -37,6 +37,7 @@
 
 #include <ui/S3DFormat.h>
 #include <edid_parser.h>
+#include <DSSWBHal.h>
 
 #include <linux/bltsville.h>
 
@@ -63,6 +64,7 @@
 #include <ion.h>
 
 #define MAX_HW_OVERLAYS 4
+#define WB_OVERLAY 4
 #define NUM_NONSCALING_OVERLAYS 1
 #define HAL_PIXEL_FORMAT_BGRX_8888      0x1FF
 #define HAL_PIXEL_FORMAT_TI_NV12        0x100
@@ -192,6 +194,8 @@ struct omap4_hwc_device {
 
     buffer_handle_t *buffers;
     int use_sgx;
+    int use_wb;
+    hwc_layer_t wb_layer;
     int swap_rb;
     unsigned int post2_layers; /* Buffers used with DSS pipes*/
     unsigned int post2_blit_buffers; /* Buffers used with blit */
@@ -1885,7 +1889,38 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
         z |= 1 << c->zorder;
         ix |= 1 << c->ix;
     }
-    dsscomp->mode = DSSCOMP_SETUP_DISPLAY;
+
+    // configure dsscomp for WB if any capture is pending
+    hwc_dev->use_wb = wb_capture_layer(&hwc_dev->wb_layer);
+    if (hwc_dev->use_wb) {
+        hwc_layer_t *layer = &hwc_dev->wb_layer;
+        IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
+
+        layer->compositionType = HWC_OVERLAY;
+        hwc_dev->buffers[hwc_dev->post2_layers] = (buffer_handle_t)handle;
+
+        //dump_layer(layer);
+        omap4_hwc_setup_layer(hwc_dev,
+                              &dsscomp->ovls[dsscomp->num_ovls],
+                              layer,
+                              0, /* z-order doesn't matter for WB */
+                              handle->iFormat,
+                              handle->iWidth,
+                              handle->iHeight);
+
+        dsscomp->ovls[dsscomp->num_ovls].cfg.ix = WB_OVERLAY;
+        dsscomp->ovls[dsscomp->num_ovls].addressing = OMAP_DSS_BUFADDR_LAYER_IX;
+        dsscomp->ovls[dsscomp->num_ovls].ba = hwc_dev->post2_layers;
+        dsscomp->ovls[dsscomp->num_ovls].cfg.wb_source = OMAP_WB_LCD1;
+        dsscomp->ovls[dsscomp->num_ovls].cfg.wb_mode = OMAP_WB_CAPTURE_MODE;
+
+        dsscomp->num_ovls++;
+        dsscomp->mode = DSSCOMP_SETUP_DISPLAY_CAPTURE;
+        hwc_dev->post2_layers++;
+    } else {
+        dsscomp->mode = DSSCOMP_SETUP_DISPLAY;
+    }
+
     dsscomp->mgrs[0].ix = 0;
     dsscomp->mgrs[0].alpha_blending = 1;
     dsscomp->mgrs[0].swap_rb = hwc_dev->swap_rb;
@@ -1899,7 +1934,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     }
 
     if (debug) {
-        LOGD("prepare (%d) - %s (comp=%d, poss=%d/%d scaled, RGB=%d,BGR=%d,NV12=%d) (ext=%s%s%ddeg%s %dex/%dmx (last %dex,%din)\n",
+        LOGD("prepare (%d) - %s (comp=%d, poss=%d/%d scaled, RGB=%d,BGR=%d,NV12=%d) (ext=%s%s%ddeg%s %dex/%dmx (last %dex,%din) wb=%d\n",
              dsscomp->sync_id,
              hwc_dev->use_sgx ? "SGX+OVL" : "all-OVL",
              num.composited_layers,
@@ -1909,7 +1944,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
              ext->current.enabled ? ext->current.docking ? "dock+" : "mirror+" : "OFF+",
              ext->current.rotation * 90,
              ext->current.hflip ? "+hflip" : "",
-             hwc_dev->ext_ovls, num.max_hw_overlays, hwc_dev->last_ext_ovls, hwc_dev->last_int_ovls);
+             hwc_dev->ext_ovls, num.max_hw_overlays, hwc_dev->last_ext_ovls, hwc_dev->last_int_ovls, hwc_dev->use_wb);
     }
 
     pthread_mutex_unlock(&hwc_dev->lock);
@@ -1958,6 +1993,8 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
 
     invalidate = hwc_dev->ext_ovls_wanted && (hwc_dev->ext_ovls < hwc_dev->ext_ovls_wanted) &&
                                               (hwc_dev->stats.protected || !hwc_dev->ext_ovls);
+    // hwc_prepare needs to be called again if any capture with WB is pending
+    invalidate |= wb_capture_pending();
 
     if (debug)
         dump_set_info(hwc_dev, list);
@@ -2037,9 +2074,15 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
         have_last = 1;
         clock_gettime(CLOCK_MONOTONIC, &last_set_time);
         showfps();
+
+        if (hwc_dev->use_wb) {
+            wb_capture_started(hwc_dev->wb_layer.handle);
+        }
     }
     hwc_dev->last_ext_ovls = hwc_dev->ext_ovls;
-    hwc_dev->last_int_ovls = hwc_dev->post2_layers;
+    // remove wb from the count of overlays used for composition
+    hwc_dev->last_int_ovls = hwc_dev->post2_layers - hwc_dev->use_wb;
+
     if (err)
         LOGE("Post2 error");
 
@@ -2660,6 +2703,8 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         close(sw_fd);
     }
     handle_hotplug(hwc_dev);
+
+    wb_open();
 
     LOGI("omap4_hwc_device_open(rgb_order=%d nv12_only=%d)",
         hwc_dev->flags_rgb_order, hwc_dev->flags_nv12_only);
