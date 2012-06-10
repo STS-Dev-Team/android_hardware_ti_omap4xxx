@@ -244,7 +244,11 @@ status_t V4LCameraAdapter::restartPreview ()
         goto EXIT;
     }
 
-    v4lInitMmap(mPreviewBufferCount);
+    ret = v4lInitMmap(mPreviewBufferCount);
+    if (ret < 0) {
+        CAMHAL_LOGEB("v4lInitMmap Failed: %s", strerror(errno));
+        goto EXIT;
+    }
 
     //set frame rate
     streamParams.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
