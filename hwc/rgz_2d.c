@@ -542,8 +542,11 @@ static int rgz_in_valid_hwc_layer(hwc_layer_t *layer)
     if ((layer->flags & HWC_SKIP_LAYER) || !handle)
         return 0;
 
-    if (is_NV12(handle->iFormat) || layer->transform || rgz_hwc_scaled(layer))
+    if (layer->transform || rgz_hwc_scaled(layer))
         return 0;
+
+    if (is_NV12(handle->iFormat))
+        return (handle->iFormat == HAL_PIXEL_FORMAT_TI_NV12);
 
     switch(handle->iFormat) {
     case HAL_PIXEL_FORMAT_BGRX_8888:
