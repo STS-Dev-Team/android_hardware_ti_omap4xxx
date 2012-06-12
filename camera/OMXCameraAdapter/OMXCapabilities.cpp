@@ -2405,6 +2405,12 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
 
     LOG_FUNCTION_NAME;
 
+    ret = memMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
+
     // allocate tiler (or ion) buffer for caps (size is always a multiple of 4K)
     caps_size = ((sizeof(OMX_TI_CAPTYPE)+4095)/4096)*4096;
     bufferlist = memMgr.allocateBufferList(0, 0, NULL, caps_size, 1);
