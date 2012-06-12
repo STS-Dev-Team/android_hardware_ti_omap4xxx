@@ -1612,6 +1612,12 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
 
   LOG_FUNCTION_NAME
 
+    ret = memMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
+
   Mutex::Autolock lock(mMeteringAreasLock);
 
   if ( OMX_StateInvalid == mComponentState )

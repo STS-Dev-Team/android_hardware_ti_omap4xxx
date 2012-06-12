@@ -853,10 +853,10 @@ private:
 class MemoryManager : public BufferProvider, public virtual RefBase
 {
 public:
-    MemoryManager():mIonFd(0){ }
+    MemoryManager();
+    ~MemoryManager();
 
-    ///Initializes the memory manager creates any resources required
-    status_t initialize() { return NO_ERROR; }
+    status_t initialize();
 
     int setErrorHandler(ErrorNotifier *errorNotifier);
     virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
@@ -866,7 +866,6 @@ public:
     virtual int freeBufferList(CameraBuffer * buflist);
 
 private:
-
     sp<ErrorNotifier> mErrorNotifier;
     int mIonFd;
 };

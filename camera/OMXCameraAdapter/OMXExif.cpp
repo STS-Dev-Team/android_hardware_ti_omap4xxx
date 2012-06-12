@@ -242,6 +242,12 @@ status_t OMXCameraAdapter::setupEXIF()
 
     LOG_FUNCTION_NAME;
 
+    ret = memMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
+
     sharedBuffer.pSharedBuff = NULL;
     capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
 
