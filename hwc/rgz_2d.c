@@ -287,6 +287,11 @@ static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
     return rv;
 }
 
+static void rgz_set_async(struct rgz_blt_entry *e, int async)
+{
+    e->bp.flags = async ? e->bp.flags | BVFLAG_ASYNC : e->bp.flags & ~BVFLAG_ASYNC;
+}
+
 /*
  * Clear the destination buffer, if rect is NULL means the whole screen, rect
  * cannot be outside the boundaries of the screen
@@ -336,6 +341,7 @@ static void rgz_out_clrdst(rgz_out_params_t *params, blit_rect_t *rect)
 
     bp->flags = BVFLAG_CLIP | BVFLAG_ROP;
     bp->op.rop = 0xCCCC; /* SRCCOPY */
+    rgz_set_async(e, 1);
 }
 
 static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
@@ -380,6 +386,10 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
         params->data.bvc.out_hndls[j++] = l->handle;
         params->data.bvc.out_nhndls++;
     }
+
+    /* Last blit is made sync to act like a fence for the previous async blits */
+    struct rgz_blt_entry* e = &blts.bvcmds[blts.idx-1];
+    rgz_set_async(e, 0);
 
     /* FIXME: we want to be able to call rgz_blts_free and populate the actual
      * composition data structure ourselves */
@@ -1022,6 +1032,7 @@ static int rgz_hwc_layer_blit(hwc_layer_t *l, rgz_out_params_t *params, int buff
         bpflags |= BVFLAG_VERT_FLIP_SRC1;
 
     bp->flags = bpflags;
+    rgz_set_async(e, 1);
 
     return 0;
 }
@@ -1265,6 +1276,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
         rgz_src1_prep(e, hregion->rgz_layers[lix], rect, scrdesc, scrgeom, params);
         rgz_src2blend_prep(e, hregion->rgz_layers[s2lix], rect, params);
         rgz_batch_entry(e, BVFLAG_BATCH_BEGIN, 0);
+        rgz_set_async(e, 1);
 
         /* Rest of layers blended with FB */
         int first = 1;
@@ -1285,6 +1297,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
             if (rgz_hwc_scaled(layer))
                 batchflags |= BVBATCH_SRC1RECT_ORIGIN | BVBATCH_SRC1RECT_SIZE;
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
+            rgz_set_async(e, 1);
         }
 
         if (e->bp.flags & BVFLAG_BATCH_BEGIN)
@@ -1316,6 +1329,7 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
         if (l->transform & HWC_TRANSFORM_FLIP_V)
             bpflags |= BVFLAG_VERT_FLIP_SRC1;
         e->bp.flags = bpflags;
+        rgz_set_async(e, 1);
     }
     return 0;
 }
@@ -1422,6 +1436,10 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
             params->data.bvc.out_hndls[i++] = layer->handle;
             params->data.bvc.out_nhndls++;
         }
+
+        /* Last blit is made sync to act like a fence for the previous async blits */
+        struct rgz_blt_entry* e = &blts.bvcmds[blts.idx-1];
+        rgz_set_async(e, 0);
 
         /* FIXME: we want to be able to call rgz_blts_free and populate the actual
          * composition data structure ourselves */
