@@ -38,20 +38,35 @@ namespace android {
 ///Utility Macro Declarations
 
 /*--------------------MemoryManager Class STARTS here-----------------------------*/
+MemoryManager::MemoryManager() {
+    mIonFd = -1;
+}
+
+MemoryManager::~MemoryManager() {
+    if ( mIonFd >= 0 ) {
+        ion_close(mIonFd);
+        mIonFd = -1;
+    }
+}
+
+status_t MemoryManager::initialize() {
+    if ( mIonFd == -1 ) {
+        mIonFd = ion_open();
+        if ( mIonFd < 0 ) {
+            CAMHAL_LOGE("ion_open() failed, error: %d", mIonFd);
+            mIonFd = -1;
+            return NO_INIT;
+        }
+    }
+
+    return OK;
+}
+
 CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const char* format, int &size, int numBufs)
 {
     LOG_FUNCTION_NAME;
 
-    if(mIonFd == 0)
-        {
-        mIonFd = ion_open();
-        if(mIonFd <= 0)
-            {
-            CAMHAL_LOGEA("ion_open failed!!!");
-            mIonFd = 0;
-            return NULL;
-            }
-        }
+    CAMHAL_ASSERT(mIonFd != -1);
 
     ///We allocate numBufs+1 because the last entry will be marked NULL to indicate end of array, which is used when freeing
     ///the buffers
@@ -126,12 +141,6 @@ error:
         {
         mErrorNotifier->errorNotify(-ENOMEM);
         }
-
-    if ( 0 < mIonFd )
-    {
-        ion_close(mIonFd);
-        mIonFd = 0;
-    }
 
     LOG_FUNCTION_NAME_EXIT;
     return NULL;

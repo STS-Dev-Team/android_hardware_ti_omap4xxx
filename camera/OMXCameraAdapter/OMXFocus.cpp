@@ -710,6 +710,12 @@ status_t OMXCameraAdapter::setTouchFocus()
 
     LOG_FUNCTION_NAME;
 
+    ret = memMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
+
     if ( OMX_StateInvalid == mComponentState )
         {
         CAMHAL_LOGEA("OMX component is in invalid state");
