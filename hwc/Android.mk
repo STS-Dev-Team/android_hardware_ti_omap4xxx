@@ -24,6 +24,9 @@ LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/../edid/inc
 LOCAL_SHARED_LIBRARIES += libedid
 
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libdsswb
+LOCAL_SHARED_LIBRARIES += libdsswbhal
+
 # LOG_NDEBUG=0 means verbose logging enabled
 # LOCAL_CFLAGS += -DLOG_NDEBUG=0
 include $(BUILD_SHARED_LIBRARY)
