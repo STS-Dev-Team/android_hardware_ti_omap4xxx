@@ -284,6 +284,34 @@ public:
         BracketingValueCompensationForced
     };
 
+    class OMXCamera
+    {
+        public:
+            OMXCamera() : mAndroidId(-1), mOmxId(-1), mIsStereo(false) {}
+            OMXCamera(const int android_id, const int omx_id, const bool is_stereo) :
+                    mAndroidId(android_id), mOmxId(omx_id), mIsStereo(is_stereo) {}
+
+            int GetAndroidId() const
+            {
+                return mAndroidId;
+            }
+
+            int GetOmxId() const
+            {
+                return mOmxId;
+            }
+
+            bool IsStereo() const
+            {
+                return mIsStereo;
+            }
+
+        private:
+            int mAndroidId;
+            int mOmxId;
+            bool mIsStereo;
+    };
+
     class GPSData
     {
         public:
@@ -389,7 +417,7 @@ public:
 
 public:
 
-    OMXCameraAdapter(size_t sensor_index);
+    OMXCameraAdapter(int sensor_index);
     ~OMXCameraAdapter();
 
     ///Initialzes the camera adapter creates any resources required
@@ -1159,7 +1187,8 @@ private:
     Mutex mDoAFMutex;
     Condition mDoAFCond;
 
-    size_t mSensorIndex;
+    int mSensorIndex;
+    bool mIsStereo;
     CodingMode mCodingMode;
 
     // Time source delta of ducati & system time

@@ -47,6 +47,10 @@ const char OMXCameraAdapter::DEFAULT_PROFILE_PATH[] = "/data/dbg/profile_data.bi
 #define FPS_PERIOD 30
 
 Mutex gAdapterLock;
+// android <-> omx camera indexes correlation container filled when
+// omx camera capabilities are parsed
+static Vector<OMXCameraAdapter::OMXCamera> OMXCameras;
+
 /*--------------------Camera Adapter Class STARTS here-----------------------------*/
 
 status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
@@ -245,7 +249,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mEXIFData.mModelValid = false;
     mEXIFData.mMakeValid = false;
 
-    if (mSensorIndex != 2) {
+    if (!mIsStereo) {
         mCapabilities->setMode(MODE_HIGH_SPEED);
     }
 
@@ -1161,7 +1165,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         CAMHAL_LOGEB("Unsupported port index (%lu)", port);
     }
 
-    if (( mSensorIndex == OMX_TI_StereoSensor ) && (OMX_CAMERA_PORT_VIDEO_OUT_VIDEO != port)) {
+    if (mIsStereo && (OMX_CAMERA_PORT_VIDEO_OUT_VIDEO != port)) {
         ret = setS3DFrameLayout(port);
         if ( NO_ERROR != ret )
             {
@@ -4050,13 +4054,24 @@ OMXCameraAdapter::CachedCaptureParameters* OMXCameraAdapter::cacheCaptureParamet
    return params;
 }
 
-OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
+OMXCameraAdapter::OMXCameraAdapter(int sensor_index)
 {
     LOG_FUNCTION_NAME;
 
+    mSensorIndex = sensor_index;
+    mIsStereo = false;
+
+    for (int i = 0; i < static_cast<int>(OMXCameras.size()); i++) {
+        const OMXCamera & omxCam = OMXCameras.itemAt(i);
+        if (omxCam.GetAndroidId() == sensor_index) {
+            mSensorIndex = omxCam.GetOmxId();
+            mIsStereo = omxCam.IsStereo();
+            break;
+        }
+    }
+
     mOmxInitialized = false;
     mComponentState = OMX_StateInvalid;
-    mSensorIndex = sensor_index;
     mPictureRotation = 0;
     // Initial values
     mTimeSourceDelta = 0;
@@ -4179,7 +4194,7 @@ extern "C" CameraAdapter* OMXCameraAdapter_Factory(size_t sensor_index)
     if ( adapter ) {
         CAMHAL_LOGDB("New OMX Camera adapter instance created for sensor %d",sensor_index);
     } else {
-        CAMHAL_LOGEA("OMX Camera adapter create failed for sensor index = %d!",sensor_index);
+        CAMHAL_LOGEB("OMX Camera adapter create failed for sensor index = %d!",sensor_index);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -4359,7 +4374,8 @@ public:
     }
 
     status_t fetchCapabilitiesForSensor(int sensorId,
-                                        CameraProperties::Properties * properties)
+                                        CameraProperties::Properties * properties,
+                                        bool stereo_mode)
     {
         CAMHAL_LOGD("Disabling all ports...");
         const status_t disableAllPortsError = disableAllPorts();
@@ -4387,7 +4403,7 @@ public:
         }
 
         status_t err = NO_ERROR;
-        if ( sensorId == 2 ) {
+        if (stereo_mode) {
             CAMHAL_LOGD("Camera mode: STEREO");
             properties->setMode(MODE_STEREO);
             err = fetchCapabiltiesForMode(OMX_CaptureStereoImageCapture,
@@ -4551,8 +4567,6 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
     LOG_FUNCTION_NAME;
 
     supportedCameras = 0;
-
-    int num_cameras_supported = 0;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
 
     Mutex::Autolock lock(gAdapterLock);
@@ -4569,44 +4583,60 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
       return ErrorUtils::omxToAndroidError(eError);
     }
 
-    // Continue selecting sensor and then querying OMX Camera for it's capabilities
-    // When sensor select returns an error, we know to break and stop
-    while (eError == OMX_ErrorNone &&
-           (starting_camera + num_cameras_supported) < max_camera) {
-
-        CapabilitiesHandler handler;
-
-        OMX_CALLBACKTYPE callbacks;
-        callbacks.EventHandler = CapabilitiesHandler::eventCallback;
-        callbacks.EmptyBufferDone = 0;
-        callbacks.FillBufferDone = 0;
-
-        eError = OMXCameraAdapter::OMXCameraGetHandle(&handler.componentRef(), &handler, callbacks);
-        if (eError != OMX_ErrorNone) {
-            CAMHAL_LOGEB("OMX_GetHandle -0x%x", eError);
-            goto EXIT;
-        }
-
-        const int sensorId = num_cameras_supported;
-        CameraProperties::Properties * properties = properties_array + starting_camera + sensorId;
-        const status_t err = handler.fetchCapabilitiesForSensor(sensorId, properties);
-
-        // clean up
-        if(handler.component()) {
-            CAMHAL_LOGD("Freeing the component...");
-            OMX_FreeHandle(handler.component());
-            CAMHAL_LOGD("Freeing the component... DONE");
-            handler.componentRef() = NULL;
-        }
-
-        if ( err != NO_ERROR )
-            break;
-
-        num_cameras_supported++;
-        CAMHAL_LOGDB("Number of OMX Cameras detected = %d \n",num_cameras_supported);
+    // clear container previous state
+    while (!OMXCameras.empty()) {
+        OMXCameras.erase(OMXCameras.end());
     }
 
- EXIT:
+    // Parse first all sensors in mono mode then continue with stereo mode
+    for (bool stereo_mode = false; (starting_camera + supportedCameras) < max_camera; stereo_mode = true) {
+        bool stereo_mode_found = false;
+        // Go through all sensor indexes
+        for (int sensorId = 0; sensorId <= OMX_TI_StereoSensor && (starting_camera + supportedCameras) < max_camera; ) {
+            CapabilitiesHandler handler;
+            OMX_CALLBACKTYPE callbacks;
+
+            callbacks.EventHandler = CapabilitiesHandler::eventCallback;
+            callbacks.EmptyBufferDone = 0;
+            callbacks.FillBufferDone = 0;
+
+            eError = OMXCameraAdapter::OMXCameraGetHandle(&handler.componentRef(), &handler, callbacks);
+            if (eError != OMX_ErrorNone) {
+                CAMHAL_LOGEB("OMX_GetHandle -0x%x", eError);
+                goto EXIT;
+            }
+
+            CameraProperties::Properties * properties = properties_array + starting_camera + supportedCameras;
+            const status_t err = handler.fetchCapabilitiesForSensor(sensorId, properties, stereo_mode);
+
+            // clean up
+            if (handler.component()) {
+                CAMHAL_LOGD("Freeing the component...");
+                OMX_FreeHandle(handler.component());
+                CAMHAL_LOGD("Freeing the component... DONE");
+                handler.componentRef() = NULL;
+            }
+
+            if (err == NO_ERROR) {
+                OMXCameras.add(OMXCameraAdapter::OMXCamera(
+                        starting_camera + supportedCameras, sensorId, stereo_mode));
+                supportedCameras++;
+                if (stereo_mode) {
+                    stereo_mode_found = true;
+                }
+            }
+            // if stereo sensor already found skip parsing OMX_TI_StereoSensor
+            if (++sensorId == OMX_TI_StereoSensor && (!stereo_mode || stereo_mode_found)) {
+                break;
+            }
+        }
+        if (stereo_mode) {
+            break;
+        }
+    }
+    CAMHAL_LOGDB("Number of OMX Cameras detected = %d \n", supportedCameras);
+
+EXIT:
     CAMHAL_LOGD("Deinit...");
     OMX_Deinit();
     CAMHAL_LOGD("Deinit... DONE");
@@ -4617,8 +4647,6 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
         LOG_FUNCTION_NAME_EXIT;
         return ErrorUtils::omxToAndroidError(eError);
     }
-
-    supportedCameras = num_cameras_supported;
 
     LOG_FUNCTION_NAME_EXIT;
 
