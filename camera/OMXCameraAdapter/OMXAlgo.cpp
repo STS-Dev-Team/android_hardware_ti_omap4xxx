@@ -71,7 +71,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
             mCapabilitiesOpMode = MODE_HIGH_QUALITY;
         }
 
-            if ( mSensorIndex == 2 ) {
+            if (mIsStereo) {
                 mCapabilitiesOpMode = MODE_STEREO;
             }
     } else {
@@ -635,7 +635,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
         {
 
         OMX_INIT_STRUCT_PTR (&camMode, OMX_CONFIG_CAMOPERATINGMODETYPE);
-        if ( mSensorIndex == OMX_TI_StereoSensor )
+        if (mIsStereo)
             {
             if ( OMXCameraAdapter::VIDEO_MODE == mode ) {
                 CAMHAL_LOGDA("Camera mode: STEREO VIDEO");
