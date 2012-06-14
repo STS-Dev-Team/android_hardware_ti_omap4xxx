@@ -1908,7 +1908,6 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
     status_t ret;
     OMX_ERRORTYPE eError;
     OMXCameraPortParameters * imgRawCaptureData = NULL;
-    uint32_t *buffers = (uint32_t*)bufArr;
     Semaphore camSem;
     OMXCameraPortParameters cap;
 
@@ -1970,20 +1969,24 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
     mCaptureBuffersLength = (int)imgRawCaptureData->mBufSize;
     for ( int index = 0 ; index < imgRawCaptureData->mNumBufs ; index++ ) {
         OMX_BUFFERHEADERTYPE *pBufferHdr;
+        CAMHAL_LOGDB("OMX_UseBuffer rawCapture address: 0x%x, size = %d ",
+                     (unsigned int)bufArr[index].opaque,
+                     (int)imgRawCaptureData->mBufSize );
 
         eError = OMX_UseBuffer( mCameraAdapterParameters.mHandleComp,
                                 &pBufferHdr,
                                 mCameraAdapterParameters.mVideoPortIndex,
                                 0,
                                 mCaptureBuffersLength,
-                                (OMX_U8*)buffers[index]);
+                                (OMX_U8*)camera_buffer_get_omx_ptr(&bufArr[index]));
         if (eError != OMX_ErrorNone) {
             CAMHAL_LOGEB("OMX_UseBuffer = 0x%x", eError);
         }
 
         GOTO_EXIT_IF(( eError != OMX_ErrorNone ), eError);
 
-        pBufferHdr->pAppPrivate = (OMX_PTR) index;
+        pBufferHdr->pAppPrivate = (OMX_PTR) &bufArr[index];
+        bufArr[index].index = index;
         pBufferHdr->nSize = sizeof(OMX_BUFFERHEADERTYPE);
         pBufferHdr->nVersion.s.nVersionMajor = 1 ;
         pBufferHdr->nVersion.s.nVersionMinor = 1 ;
