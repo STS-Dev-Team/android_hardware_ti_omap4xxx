@@ -270,7 +270,8 @@ static int rgz_out_bvdirect_paint(rgz_t *rgz, rgz_out_params_t *params)
 
     rgz_blts_init(&blts);
 
-    for (i = 0; i < rgz->rgz_layerno; i++) {
+    /* Begin from index 1 to remove the background layer from the output */
+    for (i = 1; i < rgz->rgz_layerno; i++) {
         hwc_layer_t *l = rgz->rgz_layers[i].hwc_layer;
 
         rv = rgz_hwc_layer_blit(l, params, -1);
@@ -346,7 +347,9 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
     rgz_out_clrdst(params, NULL);
 
     unsigned int i;
-    for (i = 0; i < rgz->rgz_layerno; i++) {
+
+    /* Begin from index 1 to remove the background layer from the output */
+    for (i = 1; i < rgz->rgz_layerno; i++) {
         hwc_layer_t *l = rgz->rgz_layers[i].hwc_layer;
 
         //OUTP("blitting meminfo %d", rgz->rgz_layers[i].buffidx);
@@ -358,7 +361,7 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
             rgz_blts_free(&blts);
             return rv;
         }
-        params->data.bvc.out_hndls[i] = l->handle;
+        params->data.bvc.out_hndls[i-1] = l->handle;
         params->data.bvc.out_nhndls++;
     }
 
