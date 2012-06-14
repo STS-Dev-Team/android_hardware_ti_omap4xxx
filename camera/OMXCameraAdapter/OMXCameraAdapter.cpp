@@ -738,7 +738,7 @@ static status_t saveBufferToFile(const void *buf, int size, const char *filename
     }
 
     if (write(fd, buf, size) != (signed)size) {
-        CAMHAL_LOGE("ERROR: Unable to write to raw file");
+        CAMHAL_LOGE("ERROR: Unable to write to raw file: %s ", strerror(errno));
         close(fd);
         return NO_MEMORY;
     }
@@ -3630,7 +3630,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                     timeStamp->tm_sec,
                     timeStampUsec.tv_usec);
 
-            const status_t saveBufferStatus = saveBufferToFile(pBuffHeader->pBuffer, pBuffHeader->nFilledLen, filename);
+            const status_t saveBufferStatus = saveBufferToFile(((CameraBuffer*)pBuffHeader->pAppPrivate)->mapped,
+                                               pBuffHeader->nFilledLen, filename);
 
             if (saveBufferStatus != OK) {
                 CAMHAL_LOGE("ERROR: %d, while saving yuv!", saveBufferStatus);
@@ -3678,7 +3679,8 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                          timeStamp->tm_sec,
                          timeStampUsec.tv_usec);
 
-                const status_t saveBufferStatus = saveBufferToFile(pBuffHeader->pBuffer, pBuffHeader->nFilledLen, filename);
+                const status_t saveBufferStatus = saveBufferToFile( ((CameraBuffer*)pBuffHeader->pAppPrivate)->mapped,
+                                                   pBuffHeader->nFilledLen, filename);
 
                 if (saveBufferStatus != OK) {
                     CAMHAL_LOGE("ERROR: %d , while saving raw!", saveBufferStatus);
