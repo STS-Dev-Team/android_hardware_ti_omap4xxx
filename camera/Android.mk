@@ -97,7 +97,6 @@ LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/OMXCameraAdapter \
     $(LOCAL_PATH)/../libtiutils \
     hardware/ti/omap4xxx/tiler \
-    hardware/ti/omap4xxx/ion \
     frameworks/base/include/ui \
     frameworks/base/include/utils \
     $(DOMX_PATH)/omx_core/inc \
@@ -154,7 +153,6 @@ LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/V4LCameraAdapter \
     $(LOCAL_PATH)/../libtiutils \
     hardware/ti/omap4xxx/tiler \
-    hardware/ti/omap4xxx/ion \
     frameworks/base/include/ui \
     frameworks/base/include/utils \
     frameworks/base/include/media/stagefright \
@@ -201,7 +199,6 @@ LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/V4LCameraAdapter \
     $(LOCAL_PATH)/../libtiutils \
     hardware/ti/omap4xxx/tiler \
-    hardware/ti/omap4xxx/ion \
     frameworks/base/include/ui \
     frameworks/base/include/utils \
     $(DOMX_PATH)/omx_core/inc \

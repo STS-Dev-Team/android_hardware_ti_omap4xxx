@@ -49,9 +49,7 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-extern "C" {
-#include <ion.h>
-}
+#include <ion/ion.h>
 
 #include "MessageQueue.h"
 #include "Semaphore.h"
