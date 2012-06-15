@@ -44,53 +44,40 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
 
     CaptureMode capMode;
     CAMHAL_LOGDB("Capture mode %s",  params.get(TICameraParameters::KEY_CAP_MODE));
-    if ( (valstr = params.get(TICameraParameters::KEY_CAP_MODE)) != NULL )
-        {
-        if (strcmp(valstr, (const char *) TICameraParameters::HIGH_PERFORMANCE_MODE) == 0)
-            {
+    if ( (valstr = params.get(TICameraParameters::KEY_CAP_MODE)) != NULL ) {
+        if (strcmp(valstr, (const char *) TICameraParameters::HIGH_PERFORMANCE_MODE) == 0) {
             capMode = OMXCameraAdapter::HIGH_SPEED;
             mCapabilitiesOpMode = MODE_HIGH_SPEED;
-            }
-        else if (strcmp(valstr, (const char *) TICameraParameters::EXPOSURE_BRACKETING) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::EXPOSURE_BRACKETING) == 0) {
             capMode = OMXCameraAdapter::HIGH_SPEED;
             mCapabilitiesOpMode = MODE_HIGH_SPEED;
-            }
-        else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_MODE) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_MODE) == 0) {
             capMode = OMXCameraAdapter::HIGH_QUALITY;
             mCapabilitiesOpMode = MODE_HIGH_QUALITY;
-            }
-        else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_ZSL_MODE) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::HIGH_QUALITY_ZSL_MODE) == 0) {
             capMode = OMXCameraAdapter::HIGH_QUALITY_ZSL;
             mCapabilitiesOpMode = MODE_ZEROSHUTTERLAG;
-            }
-        else if (strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) == 0) {
             capMode = OMXCameraAdapter::VIDEO_MODE;
             mCapabilitiesOpMode = MODE_VIDEO;
-            }
-        else if (strcmp(valstr, (const char *) TICameraParameters::CP_CAM_MODE) == 0)
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::CP_CAM_MODE) == 0) {
             capMode = OMXCameraAdapter::CP_CAM;
             mCapabilitiesOpMode = MODE_CPCAM;
-            }
-        else
-            {
+        } else if (strcmp(valstr, (const char *) TICameraParameters::TEMP_BRACKETING) == 0) {
+            capMode = OMXCameraAdapter::HIGH_SPEED;
+            mCapabilitiesOpMode = MODE_HIGH_SPEED;
+        } else {
             capMode = OMXCameraAdapter::HIGH_QUALITY;
             mCapabilitiesOpMode = MODE_HIGH_QUALITY;
-            }
+        }
 
             if ( mSensorIndex == 2 ) {
                 mCapabilitiesOpMode = MODE_STEREO;
             }
-        }
-    else
-        {
+    } else {
         capMode = OMXCameraAdapter::HIGH_QUALITY;
         mCapabilitiesOpMode = MODE_HIGH_QUALITY;
-        }
+    }
 
     if ( mCapMode != capMode )
         {
