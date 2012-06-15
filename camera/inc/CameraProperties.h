@@ -32,14 +32,7 @@
 
 namespace android {
 
-#ifdef TARGET_OMAP5
-//Temporary WA to avoid the S3D capabilities queried as ducati has some issues-
-//-while querying S3D capabilities.
-#define MAX_CAMERAS_SUPPORTED 2
-#else
 #define MAX_CAMERAS_SUPPORTED 3
-#endif
-
 #define MAX_SIMUL_CAMERAS_SUPPORTED 1
 #define MAX_PROP_NAME_LENGTH 50
 #define MAX_PROP_VALUE_LENGTH 2048
