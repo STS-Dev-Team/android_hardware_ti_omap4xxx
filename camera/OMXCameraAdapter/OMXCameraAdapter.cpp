@@ -458,7 +458,7 @@ status_t OMXCameraAdapter::fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::
     if ( NO_ERROR == ret ) {
         for ( int i = 0 ; i < port->mNumBufs ; i++) {
             if ((CameraBuffer *) port->mBufferHeader[i]->pAppPrivate == frameBuf) {
-                if (isCaptureFrame) {
+                if ( isCaptureFrame && !mBracketingEnabled ) {
                     Mutex::Autolock lock(mBurstLock);
                     if (mBurstFramesQueued >= mBurstFramesAccum) {
                         port->mStatus[i] = OMXCameraPortParameters::IDLE;

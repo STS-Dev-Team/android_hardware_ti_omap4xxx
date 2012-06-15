@@ -327,8 +327,8 @@ int CameraHal::setParameters(const CameraParameters& params)
                 }
             }
 
-            if( (valstr = params.get(TICameraParameters::KEY_CAP_MODE)) != NULL)
-                {
+            if( (valstr = params.get(TICameraParameters::KEY_CAP_MODE)) != NULL) {
+
                     if (strcmp(TICameraParameters::VIDEO_MODE, valstr)) {
                         mCapModeBackup = valstr;
                     }
@@ -345,7 +345,12 @@ int CameraHal::setParameters(const CameraParameters& params)
                     }
 
                     mParameters.set(TICameraParameters::KEY_CAP_MODE, valstr);
-                }
+            } else if (!mCapModeBackup.isEmpty()) {
+                // Restore previous capture mode after stopPreview()
+                mParameters.set(TICameraParameters::KEY_CAP_MODE,
+                                mCapModeBackup.string());
+                updateRequired = true;
+            }
 
             if ((valstr = params.get(TICameraParameters::KEY_IPP)) != NULL) {
                 if (isParameterValid(valstr,mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES))) {

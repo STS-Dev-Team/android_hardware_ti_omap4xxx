@@ -1010,6 +1010,7 @@ status_t OMXCameraAdapter::startBracketing(int range)
         if ( NO_ERROR == ret )
             {
             mBracketingBuffersQueuedCount = imgCaptureData->mNumBufs;
+            mBurstFramesAccum = imgCaptureData->mNumBufs;
             mLastBracetingBufferIdx = mBracketingBuffersQueuedCount - 1;
 
             for ( int i = 0 ; i  < imgCaptureData->mNumBufs ; i++ )
@@ -1050,14 +1051,14 @@ status_t OMXCameraAdapter::stopBracketing()
 
     LOG_FUNCTION_NAME;
 
+    ret = stopImageCapture();
+
     Mutex::Autolock lock(mBracketingLock);
 
     if ( NULL != mBracketingBuffersQueued )
     {
         delete [] mBracketingBuffersQueued;
     }
-
-    ret = stopImageCapture();
 
     mBracketingBuffersQueued = NULL;
     mBracketingEnabled = false;
@@ -1126,6 +1127,8 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
             {
             mCapturedFrames = mBracketingRange;
             }
+        mBurstFramesQueued = 0;
+        mBurstFramesAccum = mCapturedFrames;
 
         if(ret != NO_ERROR)
             goto EXIT;
