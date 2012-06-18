@@ -1279,10 +1279,9 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
 
             if (first) {
                 first = 0;
-                batchflags |= BVBATCH_DST | BVBATCH_SRC2 | \
-                              BVBATCH_SRC2RECT_ORIGIN | BVBATCH_SRC2RECT_SIZE;
+                batchflags |= BVBATCH_SRC2 | BVBATCH_SRC2RECT_ORIGIN;
             }
-            batchflags |= BVBATCH_SRC1;
+            batchflags |= BVBATCH_SRC1 | BVBATCH_SRC1RECT_ORIGIN;
             if (rgz_hwc_scaled(layer))
                 batchflags |= BVBATCH_SRC1RECT_ORIGIN | BVBATCH_SRC1RECT_SIZE;
             rgz_batch_entry(e, BVFLAG_BATCH_CONTINUE, batchflags);
