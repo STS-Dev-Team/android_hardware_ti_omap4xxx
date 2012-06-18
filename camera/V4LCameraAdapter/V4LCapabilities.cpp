@@ -47,6 +47,8 @@ const char V4LCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
 const char V4LCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char V4LCameraAdapter::DEFAULT_FRAMERATE[] = "30";
 const char V4LCameraAdapter::DEFAULT_FOCUS_MODE[] = "infinity";
+const char * V4LCameraAdapter::DEFAULT_VSTAB = CameraParameters::FALSE;
+const char * V4LCameraAdapter::DEFAULT_VNF = CameraParameters::FALSE;
 
 
 const CapPixelformat V4LCameraAdapter::mPixelformats [] = {
@@ -87,7 +89,10 @@ status_t V4LCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SUPPORTED_EFFECTS, "none");
     params->set(CameraProperties::SUPPORTED_IPP_MODES, "ldc-nsf");
     params->set(CameraProperties::FACING_INDEX, TICameraParameters::FACING_FRONT);
-
+    params->set(CameraProperties::ORIENTATION_INDEX, 0);
+    params->set(CameraProperties::SENSOR_ORIENTATION, "0");
+    params->set(CameraProperties::VSTAB, DEFAULT_VSTAB);
+    params->set(CameraProperties::VNF, DEFAULT_VNF);
 
 
     LOG_FUNCTION_NAME_EXIT;
