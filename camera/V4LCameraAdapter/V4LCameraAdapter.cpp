@@ -57,9 +57,11 @@ namespace android {
 //define this macro to save first few raw frames when starting the preview.
 //#define SAVE_RAW_FRAMES 1
 //#define DUMP_CAPTURE_FRAME 1
+//#define PPM_PER_FRAME_CONVERSION 1
 
 //Proto Types
 static void convertYUV422i_yuyvTouyvy(uint8_t *src, uint8_t *dest, size_t size );
+static void convertYUV422ToNV12Tiler(unsigned char *src, unsigned char *dest, int width, int height );
 static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int width, int height );
 
 Mutex gV4LAdapterLock;
@@ -916,9 +918,94 @@ static void convertYUV422i_yuyvTouyvy(uint8_t *src, uint8_t *dest, size_t size )
     LOG_FUNCTION_NAME_EXIT;
 }
 
+static void convertYUV422ToNV12Tiler(unsigned char *src, unsigned char *dest, int width, int height ) {
+    //convert YUV422I to YUV420 NV12 format and copies directly to preview buffers (Tiler memory).
+    int stride = 4096;
+    unsigned char *bf = src;
+    unsigned char *dst_y = dest;
+    unsigned char *dst_uv = dest + ( height * stride);
+#ifdef PPM_PER_FRAME_CONVERSION
+    static int frameCount = 0;
+    static nsecs_t ppm_diff = 0;
+    nsecs_t ppm_start  = systemTime();
+#endif
+
+    LOG_FUNCTION_NAME;
+
+    if (width % 16 ) {
+        for(int i = 0; i < height; i++) {
+            for(int j = 0; j < width; j++) {
+                *dst_y = *bf;
+                dst_y++;
+                bf = bf + 2;
+            }
+            dst_y += (stride - width);
+        }
+
+        bf = src;
+        bf++;  //UV sample
+        for(int i = 0; i < height/2; i++) {
+            for(int j=0; j<width; j++) {
+                *dst_uv = *bf;
+                dst_uv++;
+                bf = bf + 2;
+            }
+            bf = bf + width*2;
+            dst_uv = dst_uv + (stride - width);
+        }
+    } else {
+        //neon conversion
+        for(int i = 0; i < height; i++) {
+            int n = width;
+            int skip = i & 0x1;       // skip uv elements for the odd rows
+            asm volatile (
+                "   pld [%[src], %[src_stride], lsl #2]                         \n\t"
+                "   cmp %[n], #16                                               \n\t"
+                "   blt 5f                                                      \n\t"
+                "0: @ 16 pixel copy                                             \n\t"
+                "   vld2.8  {q0, q1} , [%[src]]! @ q0 = yyyy.. q1 = uvuv..      \n\t"
+                "                                @ now q0 = y q1 = uv           \n\t"
+                "   vst1.32   {d0,d1}, [%[dst_y]]!                              \n\t"
+                "   cmp    %[skip], #0                                          \n\t"
+                "   bne 1f                                                      \n\t"
+                "   vst1.32  {d2,d3},[%[dst_uv]]!                               \n\t"
+                "1: @ skip odd rows for UV                                      \n\t"
+                "   sub %[n], %[n], #16                                         \n\t"
+                "   cmp %[n], #16                                               \n\t"
+                "   bge 0b                                                      \n\t"
+                "5: @ end                                                       \n\t"
+#ifdef NEEDS_ARM_ERRATA_754319_754320
+                "   vmov s0,s0  @ add noop for errata item                      \n\t"
+#endif
+                : [dst_y] "+r" (dst_y), [dst_uv] "+r" (dst_uv), [src] "+r" (src), [n] "+r" (n)
+                : [src_stride] "r" (width), [skip] "r" (skip)
+                : "cc", "memory", "q0", "q1", "q2", "d0", "d1", "d2", "d3"
+            );
+            dst_y = dst_y + (stride - width);
+            if (skip == 0) {
+                dst_uv = dst_uv + (stride - width);
+            }
+        } //end of for()
+    }
+
+#ifdef PPM_PER_FRAME_CONVERSION
+    ppm_diff += (systemTime() - ppm_start);
+    frameCount++;
+
+    if (frameCount >= 30) {
+        ppm_diff = ppm_diff / frameCount;
+        LOGD("PPM: YUV422i to NV12 Conversion(%d x %d): %llu us ( %llu ms )", width, height,
+                ns2us(ppm_diff), ns2ms(ppm_diff) );
+        ppm_diff = 0;
+        frameCount = 0;
+    }
+#endif
+
+    LOG_FUNCTION_NAME_EXIT;
+}
+
 static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int width, int height ) {
     //convert YUV422I to YUV420 NV12 format.
-    size_t        nv12_buf_size = (width * height)*3/2;
     unsigned char *bf = src;
     unsigned char *dst_y = dest;
     unsigned char *dst_uv = dest + (width * height);
@@ -935,7 +1022,7 @@ static void convertYUV422ToNV12(unsigned char *src, unsigned char *dest, int wid
         }
 
         bf = src;
-        bf++;  //U sample
+        bf++;  //UV sample
         for(int i = 0; i < height/2; i++) {
             for(int j=0; j<width; j++) {
                 *dst_uv = *bf;
@@ -1014,15 +1101,12 @@ int V4LCameraAdapter::previewThread()
     status_t ret = NO_ERROR;
     int width, height;
     CameraFrame frame;
-    unsigned char *nv12_buff = NULL;
     void *y_uv[2];
     int index = 0;
-    uint8_t* ptr = NULL;
     int stride = 4096;
     char *fp = NULL;
 
     mParams.getPreviewSize(&width, &height);
-    nv12_buff = (unsigned char*) malloc(width*height*3/2);
 
     if (mPreviewing) {
 
@@ -1040,39 +1124,23 @@ int V4LCameraAdapter::previewThread()
 
         debugShowFPS();
 
-        //Convert yuv422i ti yuv420sp(NV12) & dump the frame to a file
-        convertYUV422ToNV12 ( (unsigned char*)fp, nv12_buff, width, height);
-#ifdef SAVE_RAW_FRAMES
-        saveFile( nv12_buff, ((width*height)*3/2) );
-#endif
-
         if ( mFrameSubscribers.size() == 0 ) {
             ret = BAD_VALUE;
             goto EXIT;
         }
         y_uv[0] = (void*) lframe->mYuv[0];
         //y_uv[1] = (void*) lframe->mYuv[1];
-        y_uv[1] = (void*) (lframe->mYuv[0] + height*stride);
-
+        //y_uv[1] = (void*) (lframe->mYuv[0] + height*stride);
+        convertYUV422ToNV12Tiler ( (unsigned char*)fp, (unsigned char*)y_uv[0], width, height);
         CAMHAL_LOGVB("##...index= %d.;camera buffer= 0x%x; y= 0x%x; UV= 0x%x.",index, buffer, y_uv[0], y_uv[1] );
 
-        unsigned char *bufferDst = ( unsigned char * ) y_uv[0];
-        unsigned char *bufferSrc = nv12_buff;
-        int rowBytes = width;
-
-        //Copy the Y plane to Gralloc buffer
-        for(int i = 0; i < height; i++) {
-            memcpy(bufferDst, bufferSrc, rowBytes);
-            bufferDst += stride;
-            bufferSrc += rowBytes;
-        }
-        //Copy UV plane, now Y & UV are contiguous.
-        //bufferDst = ( unsigned char * ) y_uv[1];
-        for(int j = 0; j < height/2; j++) {
-            memcpy(bufferDst, bufferSrc, rowBytes);
-            bufferDst += stride;
-            bufferSrc += rowBytes;
-        }
+#ifdef SAVE_RAW_FRAMES
+        unsigned char* nv12_buff = (unsigned char*) malloc(width*height*3/2);
+        //Convert yuv422i to yuv420sp(NV12) & dump the frame to a file
+        convertYUV422ToNV12 ( (unsigned char*)fp, nv12_buff, width, height);
+        saveFile( nv12_buff, ((width*height)*3/2) );
+        free (nv12_buff);
+#endif
 
         frame.mFrameType = CameraFrame::PREVIEW_FRAME_SYNC;
         frame.mBuffer = buffer;
@@ -1097,7 +1165,6 @@ int V4LCameraAdapter::previewThread()
     }
 EXIT:
 
-    free (nv12_buff);
     return ret;
 }
 
