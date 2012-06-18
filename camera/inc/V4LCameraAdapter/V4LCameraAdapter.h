@@ -172,6 +172,8 @@ private:
     static const char DEFAULT_PICTURE_FORMAT[];
     static const char DEFAULT_PICTURE_SIZE[];
     static const char DEFAULT_FOCUS_MODE[];
+    static const char * DEFAULT_VSTAB;
+    static const char * DEFAULT_VNF;
 
     static status_t insertDefaults(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
     static status_t insertCapabilities(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
