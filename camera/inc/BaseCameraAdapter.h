@@ -138,7 +138,7 @@ protected:
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
 
     //API to get required picture buffers size with the current configuration in CameraParameters
-    virtual status_t getPictureBufferSize(size_t &length, size_t bufferCount);
+    virtual status_t getPictureBufferSize(CameraFrame &frame, size_t bufferCount);
 
     // Should be implemented by deriving classes in order to start face detection
     // ( if supported )

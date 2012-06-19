@@ -3042,10 +3042,7 @@ status_t CameraHal::__takePicture(const char *params)
 
         if ( NO_ERROR == ret )
             {
-            mParameters.getPictureSize(( int * ) &frame.mWidth,
-                                       ( int * ) &frame.mHeight);
-
-            ret = allocImageBufs(frame.mWidth,
+            ret = allocImageBufs(frame.mAlignment,
                                  frame.mHeight,
                                  frame.mLength,
                                  mParameters.getPictureFormat(),

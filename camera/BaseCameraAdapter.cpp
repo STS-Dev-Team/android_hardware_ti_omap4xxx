@@ -1002,7 +1002,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
                  if ( NULL != frame )
                      {
-                     ret = getPictureBufferSize(frame->mLength, value2);
+                     ret = getPictureBufferSize(*frame, value2);
                      }
                  else
                      {
@@ -1807,7 +1807,7 @@ status_t BaseCameraAdapter::getFrameDataSize(size_t &dataFrameSize, size_t buffe
     return ret;
 }
 
-status_t BaseCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCount)
+status_t BaseCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     status_t ret = NO_ERROR;
 

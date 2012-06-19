@@ -363,7 +363,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     return ret;
 }
 
-status_t OMXCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCount)
+status_t OMXCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     status_t ret = NO_ERROR;
     OMXCameraPortParameters *imgCaptureData = NULL;
@@ -385,16 +385,18 @@ status_t OMXCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCou
 
         if ( ret == NO_ERROR )
             {
-            length = imgCaptureData->mBufSize;
+            frame.mLength = imgCaptureData->mBufSize;
+            frame.mWidth = imgCaptureData->mWidth;
+            frame.mHeight = imgCaptureData->mHeight;
+            frame.mAlignment = imgCaptureData->mStride;
+            CAMHAL_LOGDB("getPictureBufferSize: width:%u height:%u alignment:%u length:%u",
+                         frame->mWidth, frame->mHeight, frame->mAlignment, frame->mLength);
             }
         else
             {
             CAMHAL_LOGEB("setFormat() failed 0x%x", ret);
-            length = 0;
             }
         }
-
-    CAMHAL_LOGDB("getPictureBufferSize %d", length);
 
     LOG_FUNCTION_NAME_EXIT;
 

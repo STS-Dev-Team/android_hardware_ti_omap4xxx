@@ -447,7 +447,7 @@ protected:
     virtual status_t useBuffers(CameraMode mode, CameraBuffer * bufArr, int num, size_t length, unsigned int queueable);
     virtual status_t fillThisBuffer(CameraBuffer * frameBuf, CameraFrame::FrameType frameType);
     virtual status_t getFrameSize(size_t &width, size_t &height);
-    virtual status_t getPictureBufferSize(size_t &length, size_t bufferCount);
+    virtual status_t getPictureBufferSize(CameraFrame &frame, size_t bufferCount);
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
     virtual status_t startFaceDetection();
     virtual status_t stopFaceDetection();
