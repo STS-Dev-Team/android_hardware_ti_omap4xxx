@@ -137,7 +137,6 @@ extern char output_dir_path[];
 extern char images_dir_path[];
 extern int AutoConvergenceModeIDX;
 extern const char *autoconvergencemode[];
-extern const int ManualConvergenceDefaultValue;
 extern int numCamera;
 extern bool stereoMode;
 extern char script_name[];
@@ -158,6 +157,19 @@ extern int platformID;
 extern char **stereoLayout;
 extern char **stereoCapLayout;
 extern void getSizeParametersFromCapabilities();
+extern int exposure_mode;
+int manE = 0;
+extern int manualExp ;
+extern int manualExpMin ;
+extern int manualExpMax ;
+int manG = 0;
+extern int manualGain ;
+extern int manualGainMin ;
+extern int manualGainMax ;
+int manC = 0;
+extern int manualConv ;
+extern int manualConvMin ;
+extern int manualConvMax ;
 
 void trim_script_cmd(char *cmd) {
     char *nl, *cr;
@@ -1333,7 +1345,7 @@ int execute_functional_script(char *script) {
                     AutoConvergenceModeIDX = 0;
                 params.set(KEY_AUTOCONVERGENCE, autoconvergencemode[AutoConvergenceModeIDX]);
                 if (AutoConvergenceModeIDX != 4) {
-                    params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceDefaultValue);
+                    params.set(KEY_MANUAL_CONVERGENCE, manualConv);
                 }
                 if (hardwareActive) {
                     camera->setParameters(params.flatten());
@@ -1342,16 +1354,79 @@ int execute_functional_script(char *script) {
             }
 
             case '^':
-            {
-                char strtmpval[7];
                 if (strcmp(autoconvergencemode[AutoConvergenceModeIDX], "manual") == 0) {
-                    sprintf(strtmpval,"%d", atoi(cmd + 1));
-                    params.set(KEY_MANUAL_CONVERGENCE, strtmpval);
+                    manC = atoi(cmd + 1);
+                    if(manC >= manualConvMin  &&  manC <= manualConvMax)
+                    {
+                        params.set(KEY_MANUAL_CONVERGENCE, manC);
+                    }
+                    else if(manC < manualConvMin)
+                    {
+                        printf(" wrong parameter for manual convergence \n");
+                        params.set(KEY_MANUAL_CONVERGENCE, manualConvMin);
+                    }
+                    else
+                    {
+                        printf(" wrong parameter for manual convergence \n");
+                        params.set(KEY_MANUAL_CONVERGENCE, manualConvMax);
+                    }
                     if ( hardwareActive )
                         camera->setParameters(params.flatten());
                 }
                 break;
-            }
+
+
+            case 'Q':
+                if ( strcmp (exposureMode[exposure_mode], "manual") == 0) {
+                    manE = atoi(cmd + 1);
+                    if(manE >= manualExpMin  &&  manE <= manualExpMax)
+                    {
+                        params.set(KEY_MANUAL_EXPOSURE, manE);
+                        params.set(KEY_MANUAL_EXPOSURE_RIGHT, manE);
+                    }
+                    else if(manE < manualExpMin)
+                    {
+                        printf(" wrong parameter for manual exposure \n");
+                        params.set(KEY_MANUAL_EXPOSURE, manualExpMin);
+                        params.set(KEY_MANUAL_EXPOSURE_RIGHT, manualExpMin);
+                    }
+                    else
+                    {
+                        printf(" wrong parameter for manual exposure \n");
+                        params.set(KEY_MANUAL_EXPOSURE, manualExpMax);
+                        params.set(KEY_MANUAL_EXPOSURE_RIGHT, manualExpMax);
+                    }
+
+                    if ( hardwareActive )
+                    camera->setParameters(params.flatten());
+                }
+                break;
+
+            case ',':
+                if ( strcmp (exposureMode[exposure_mode], "manual") == 0) {
+                    manG = atoi(cmd + 1);
+                    if(manG >= manualGainMin  &&  manG <= manualGainMax)
+                    {
+                        params.set(KEY_MANUAL_GAIN_ISO, manG);
+                        params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manG);
+                    }
+                    else if(manG < manualGainMin)
+                    {
+                        printf(" wrong parameter for manual gain \n");
+                        params.set(KEY_MANUAL_GAIN_ISO, manualGainMin);
+                        params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manualGainMin);
+                    }
+                    else
+                    {
+                        printf(" wrong parameter for manual gain \n");
+                        params.set(KEY_MANUAL_GAIN_ISO, manualGainMax);
+                        params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manualGainMax);
+                    }
+
+                    if ( hardwareActive )
+                    camera->setParameters(params.flatten());
+                }
+                break;
 
             default:
                 printf("Unrecognized command!\n");
