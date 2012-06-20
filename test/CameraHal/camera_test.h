@@ -264,9 +264,23 @@ const char KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[] = "supported-preview-subsamp
 
 const char KEY_AUTOCONVERGENCE_MODE[] = "auto-convergence-mode";
 const char KEY_AUTOCONVERGENCE_MODE_VALUES[] = "auto-convergence-mode-values";
+
+const char KEY_MANUAL_EXPOSURE[] = "manual-exposure";
+const char KEY_MANUAL_GAIN_ISO[] = "manual-gain-iso";
+const char KEY_MANUAL_EXPOSURE_RIGHT[] = "manual-exposure-right";
+const char KEY_MANUAL_GAIN_ISO_RIGHT[] = "manual-gain-iso-right";
+
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "supported-manual-convergence-min";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "supported-manual-convergence-max";
 const char KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "supported-manual-convergence-step";
+
+const char KEY_SUPPORTED_MANUAL_EXPOSURE_MIN[] = "supported-manual-exposure-min";
+const char KEY_SUPPORTED_MANUAL_EXPOSURE_MAX[] = "supported-manual-exposure-max";
+const char KEY_SUPPORTED_MANUAL_EXPOSURE_STEP[] = "supported-manual-exposure-step";
+
+const char KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN[] = "supported-manual-gain-iso-min";
+const char KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX[] = "supported-manual-gain-iso-max";
+const char KEY_SUPPORTED_MANUAL_GAIN_ISO_STEP[] = "supported-manual-gain-iso-step";
 
 class FrameWaiter : public SurfaceTexture::FrameAvailableListener {
 public:
