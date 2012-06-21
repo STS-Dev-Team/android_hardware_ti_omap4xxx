@@ -345,7 +345,9 @@ int wb_capture_layer(hwc_layer_t *wb_layer)
     wb_layer->sourceCrop = config.sourceCrop;
 
     // constant settings for WB layer, may use/change these later
+#ifdef OMAP_ENHANCEMENT
     wb_layer->buf_layout = HWC_BUFFERS_LAYOUT_PROGRESSIVE;
+#endif
     wb_layer->blending = HWC_BLENDING_NONE;
     wb_layer->compositionType = HWC_OVERLAY;
     wb_layer->hints = 0;
