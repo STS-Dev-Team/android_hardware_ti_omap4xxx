@@ -174,4 +174,11 @@ IMG_buffer_format_public_t;
 #else
 #error GRALLOC_USAGE_PHYS_CONTIG should only be defined by hal_public.h
 #endif
+
+#ifndef GRALLOC_USAGE_EXCLUSIVE_DISP
+#define GRALLOC_USAGE_EXCLUSIVE_DISP GRALLOC_USAGE_PRIVATE_2
+#else
+#error GRALLOC_USAGE_EXCLUSIVE_DISP should only be defined by hal_public.h
+#endif
+
 #endif /* HAL_PUBLIC_H */
