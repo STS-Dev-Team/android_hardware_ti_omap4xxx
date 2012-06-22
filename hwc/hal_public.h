@@ -163,4 +163,15 @@ typedef struct IMG_buffer_format_public_t
 }
 IMG_buffer_format_public_t;
 
+#ifndef GRALLOC_USAGE_SYSTEM_HEAP
+#define GRALLOC_USAGE_SYSTEM_HEAP GRALLOC_USAGE_PRIVATE_0
+#else
+#error GRALLOC_USAGE_SYSTEM_HEAP should only be defined by hal_public.h
+#endif
+
+#ifndef GRALLOC_USAGE_PHYS_CONTIG
+#define GRALLOC_USAGE_PHYS_CONTIG GRALLOC_USAGE_PRIVATE_1
+#else
+#error GRALLOC_USAGE_PHYS_CONTIG should only be defined by hal_public.h
+#endif
 #endif /* HAL_PUBLIC_H */
