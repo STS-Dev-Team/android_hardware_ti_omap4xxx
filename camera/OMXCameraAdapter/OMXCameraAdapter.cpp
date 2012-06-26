@@ -4593,8 +4593,6 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
     // Parse first all sensors in mono mode then continue with stereo mode
     for (bool stereo_mode = false; (starting_camera + supportedCameras) < max_camera; stereo_mode = true) {
         bool stereo_mode_found = false;
-        status_t err = NO_ERROR;
-
         // Go through all sensor indexes
         for (int sensorId = 0; sensorId <= OMX_TI_StereoSensor && (starting_camera + supportedCameras) < max_camera; ) {
             CapabilitiesHandler handler;
@@ -4611,7 +4609,7 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
             }
 
             CameraProperties::Properties * properties = properties_array + starting_camera + supportedCameras;
-            err = handler.fetchCapabilitiesForSensor(sensorId, properties, stereo_mode);
+            const status_t err = handler.fetchCapabilitiesForSensor(sensorId, properties, stereo_mode);
 
             // clean up
             if (handler.component()) {
@@ -4628,24 +4626,13 @@ extern "C" status_t OMXCameraAdapter_Capabilities(
                 if (stereo_mode) {
                     stereo_mode_found = true;
                 }
-            } else {
-                //Exit if we receive error from fetchCapabilitiesForSensor().
-                //This case may hit when we don't have any sensor connected  OR
-                //  some fault in communication with the sensor.
-                //If the first sensor (primary camera) is not detected, then
-                //  don't allow the sensor detection for other sensors.
-                //Assigning any detected sensor, other than sensorId=0, as primary camera
-                //  is not yet supported.
-                CAMHAL_LOGD("!!!!!! Error received from fetchCapabilitiesForSensor() for sensorId=%d !!!!!!!.", sensorId);
-                break;
             }
-
             // if stereo sensor already found skip parsing OMX_TI_StereoSensor
             if (++sensorId == OMX_TI_StereoSensor && (!stereo_mode || stereo_mode_found)) {
                 break;
             }
         }
-        if (stereo_mode || (err != NO_ERROR) ) {
+        if (stereo_mode) {
             break;
         }
     }
