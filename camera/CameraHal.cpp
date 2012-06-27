@@ -2934,12 +2934,11 @@ status_t CameraHal::__takePicture(const char *params)
 
         mCameraAdapter->setParameters(mParameters);
     } else
-#else
+#endif
     {
         // TODO(XXX): Should probably reset burst and bracketing params
         // when we remove legacy TI parameters implementation
     }
-#endif
 
     // if we are already in the middle of a capture...then we just need
     // setParameters and start image capture to queue more shots
