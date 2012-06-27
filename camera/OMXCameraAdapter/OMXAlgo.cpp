@@ -71,12 +71,13 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
             mCapabilitiesOpMode = MODE_HIGH_QUALITY;
         }
 
-            if (mIsStereo) {
-                mCapabilitiesOpMode = MODE_STEREO;
-            }
     } else {
         capMode = OMXCameraAdapter::HIGH_QUALITY;
         mCapabilitiesOpMode = MODE_HIGH_QUALITY;
+    }
+
+    if (mIsStereo) {
+        mCapabilitiesOpMode = MODE_STEREO;
     }
 
     if ( mCapMode != capMode )
