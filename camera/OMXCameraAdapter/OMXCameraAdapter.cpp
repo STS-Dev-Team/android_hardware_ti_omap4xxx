@@ -54,6 +54,8 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     LOG_FUNCTION_NAME;
 
     char value[PROPERTY_VALUE_MAX];
+    const char *mountOrientationString = NULL;
+
     property_get("debug.camera.showfps", value, "0");
     mDebugFps = atoi(value);
     property_get("debug.camera.framecounts", value, "0");
@@ -244,6 +246,14 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mEXIFData.mGPSData.mTimeStampValid = false;
     mEXIFData.mModelValid = false;
     mEXIFData.mMakeValid = false;
+
+    //update the mDeviceOrientation with the sensor mount orientation.
+    //So that the face detect will work before onOrientationEvent()
+    //get triggered.
+    CAMHAL_ASSERT(mCapabilities);
+    mountOrientationString = mCapabilities->get(CameraProperties::ORIENTATION_INDEX);
+    CAMHAL_ASSERT(mountOrientationString);
+    mDeviceOrientation = atoi(mountOrientationString);
 
     if (mSensorIndex != 2) {
         mCapabilities->setMode(MODE_HIGH_SPEED);
