@@ -70,8 +70,6 @@ int tempBracketIdx = 0;
 int measurementIdx = 0;
 int expBracketIdx = BRACKETING_IDX_DEFAULT;
 int AutoConvergenceModeIDX = 0;
-int ManualConvergenceValues = 0;
-int ManualConvergenceDefaultValue = 0;
 int gbceIDX = 0;
 int glbceIDX = 0;
 int rotation = 0;
@@ -281,6 +279,19 @@ const char *caf [] = { "Off", "On" };
 
 int numCamera = 0;
 bool stereoMode = false;
+
+int manualExp = 0;
+int manualExpMin = 0;
+int manualExpMax = 0;
+int manualExpStep = 0;
+int manualGain = 0;
+int manualGainMin = 0;
+int manualGainMax = 0;
+int manualGainStep = 0;
+int manualConv = 0;
+int manualConvMin = 0;
+int manualConvMax = 0;
+int manualConvStep = 0;
 
 param_Array previewSize [] = {
   { 0,   0,  "NULL"},
@@ -1478,6 +1489,60 @@ int getParametersFromCapabilities() {
         printf("Video Snapshot is not supported\n");
     }
 
+    if (params.get(KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN) != NULL) {
+        manualConvMin = params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN);
+    } else {
+        printf("no supported parameteters for manual convergence min\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX) != NULL) {
+        manualConvMax = params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX);
+    } else {
+        printf("no supported parameteters for manual convergence max\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP) != NULL) {
+        manualConvStep = params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP);
+    } else {
+        printf("no supported parameteters for manual convergence step\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_EXPOSURE_MIN) != NULL) {
+        manualExpMin = params.getInt(KEY_SUPPORTED_MANUAL_EXPOSURE_MIN);
+    } else {
+        printf("no supported parameteters for manual exposure min\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_EXPOSURE_MAX) != NULL) {
+        manualExpMax = params.getInt(KEY_SUPPORTED_MANUAL_EXPOSURE_MAX);
+    } else {
+        printf("no supported parameteters for manual exposure max\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_EXPOSURE_STEP) != NULL) {
+        manualExpStep = params.getInt(KEY_SUPPORTED_MANUAL_EXPOSURE_STEP);
+    } else {
+        printf("no supported parameteters for manual exposure step\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN) != NULL) {
+        manualGainMin = params.getInt(KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN);
+    } else {
+        printf("no supported parameteters for manual gain min\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX) != NULL) {
+        manualGainMax = params.getInt(KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX);
+    } else {
+        printf("no supported parameteters for manual gain max\n\t");
+    }
+
+    if (params.get(KEY_SUPPORTED_MANUAL_GAIN_ISO_STEP) != NULL) {
+        manualGainStep = params.getInt(KEY_SUPPORTED_MANUAL_GAIN_ISO_STEP);
+    } else {
+        printf("no supported parameteters for manual gain step\n\t");
+    }
+
     return 0;
 }
 
@@ -2018,6 +2083,9 @@ void initDefaults() {
     pictureFormat = getDefaultParameter("jpeg", numpictureFormat, pictureFormatArray);
     stereoCapLayoutIDX = 0;
     stereoLayoutIDX = 1;
+    manualConv = 0;
+    manualExp = manualExpMin;
+    manualGain = manualGainMin;
 
     algoFixedGammaIDX = 1;
     algoNSF1IDX = 1;
@@ -2058,8 +2126,11 @@ void initDefaults() {
     params.set(KEY_METERING_MODE, metering[meter_mode]);
     params.set(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH, thumbnail_Array[thumbSizeIDX]->width);
     params.set(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT, thumbnail_Array[thumbSizeIDX]->height);
-    ManualConvergenceValues = ManualConvergenceDefaultValue;
-    params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
+    params.set(KEY_MANUAL_CONVERGENCE, manualConv);
+    params.set(KEY_MANUAL_EXPOSURE, manualExp);
+    params.set(KEY_MANUAL_GAIN_ISO, manualGain);
+    params.set(KEY_MANUAL_EXPOSURE_RIGHT, manualExp);
+    params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manualGain);
     params.set(KEY_S3D2D_PREVIEW_MODE, "off");
     params.set(KEY_EXIF_MODEL, MODEL);
     params.set(KEY_EXIF_MAKE, MAKE);
@@ -2252,7 +2323,6 @@ int menu_gps() {
 
             break;
 
-        case 'Q':
         case 'q':
             return -1;
 
@@ -2406,7 +2476,7 @@ int functional_menu() {
         snprintf(area1[j++], MAX_SYMBOLS, "&. Dump a preview frame");
         if (stereoMode) {
             snprintf(area1[j++], MAX_SYMBOLS, "_. Auto Convergence mode: %s", autoconvergencemode[AutoConvergenceModeIDX]);
-            snprintf(area1[j++], MAX_SYMBOLS, "^. Manual Convergence Value: %d\n", ManualConvergenceValues);
+            snprintf(area1[j++], MAX_SYMBOLS, "^. Manual Convergence Value: %d\n", manualConv);
             snprintf(area1[j++], MAX_SYMBOLS, "L. Stereo Preview Layout: %s\n", stereoLayout[stereoLayoutIDX]);
             snprintf(area1[j++], MAX_SYMBOLS, ".  Stereo Capture Layout: %s\n", stereoCapLayout[stereoCapLayoutIDX]);
         }
@@ -2424,6 +2494,7 @@ int functional_menu() {
         snprintf(area1[j++], MAX_SYMBOLS, "V. Preview Rotation:       %3d degree", previewRotation );
         snprintf(area1[j++], MAX_SYMBOLS, "5. Picture size:   %4d x %4d - %s",capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height,              capture_Array[captureSizeIDX]->name);
         snprintf(area1[j++], MAX_SYMBOLS, "i. ISO mode:       %s", isoMode[iso_mode]);
+        snprintf(area1[j++], MAX_SYMBOLS, ",  Manual gain iso value  = %d\n", manualGain);
         snprintf(area1[j++], MAX_SYMBOLS, "u. Capture Mode:   %s", modevalues[capture_mode]);
         snprintf(area1[j++], MAX_SYMBOLS, "k. IPP Mode:       %s", ipp_mode[ippIDX]);
         snprintf(area1[j++], MAX_SYMBOLS, "K. GBCE: %s", gbce[gbceIDX]);
@@ -2464,6 +2535,7 @@ int functional_menu() {
         snprintf(area2[k++], MAX_SYMBOLS, "z. Zoom            %s", zoom[zoomIDX].zoom_description);
         snprintf(area2[k++], MAX_SYMBOLS, "Z. Smooth Zoom     %s", zoom[zoomIDX].zoom_description);
         snprintf(area2[k++], MAX_SYMBOLS, "j. Exposure        %s", exposureMode[exposure_mode]);
+        snprintf(area2[k++], MAX_SYMBOLS, "Q. manual exposure value  =  %d\n", manualExp);
         snprintf(area2[k++], MAX_SYMBOLS, "e. Effect:         %s", effectss[effects_mode]);
         snprintf(area2[k++], MAX_SYMBOLS, "w. Scene:          %s", scene[scene_mode]);
         snprintf(area2[k++], MAX_SYMBOLS, "s. Saturation:     %d", saturation);
@@ -2497,24 +2569,24 @@ int functional_menu() {
         AutoConvergenceModeIDX %= numAutoConvergence;
         params.set(KEY_AUTOCONVERGENCE, autoconvergencemode[AutoConvergenceModeIDX]);
         if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], "manual") == 0) {
-            params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
+            params.set(KEY_MANUAL_CONVERGENCE, manualConv);
         } else {
             if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], "touch") == 0) {
                 params.set(CameraParameters::KEY_METERING_AREAS, MeteringAreas);
             }
-            ManualConvergenceValues = ManualConvergenceDefaultValue;
-            params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
+            manualConv = 0;
+            params.set(KEY_MANUAL_CONVERGENCE, manualConv);
         }
         camera->setParameters(params.flatten());
 
         break;
     case '^':
         if ( strcmp (autoconvergencemode[AutoConvergenceModeIDX], "manual") == 0) {
-            ManualConvergenceValues = ManualConvergenceValues + params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_STEP);
-            if( ManualConvergenceValues > params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX)) {
-               ManualConvergenceValues = params.getInt(KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX);
+            manualConv += manualConvStep;
+            if( manualConv > manualConvMax) {
+               manualConv = manualConvMin;
             }
-            params.set(KEY_MANUAL_CONVERGENCE, ManualConvergenceValues);
+            params.set(KEY_MANUAL_CONVERGENCE, manualConv);
             camera->setParameters(params.flatten());
         }
         break;
@@ -2857,14 +2929,13 @@ int functional_menu() {
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
             break;
+
         case 'm':
-        {
             meter_mode = (meter_mode + 1)%ARRAY_SIZE(metering);
             params.set(KEY_METERING_MODE, metering[meter_mode]);
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
             break;
-        }
 
         case 'k':
             ippIDX += 1;
@@ -3044,10 +3115,10 @@ int functional_menu() {
             iso_mode++;
             iso_mode %= numisoMode;
             params.set(KEY_ISO, isoMode[iso_mode]);
-
             if ( hardwareActive )
                 camera->setParameters(params.flatten());
             break;
+
 
         case 'h':
 #ifdef TARGET_OMAP4
@@ -3104,11 +3175,50 @@ int functional_menu() {
             exposure_mode++;
             exposure_mode %= numExposureMode;
             params.set(KEY_EXPOSURE, exposureMode[exposure_mode]);
+            if ( strcmp (exposureMode[exposure_mode], "manual") == 0) {
+                params.set(KEY_MANUAL_EXPOSURE, manualExp);
+                params.set(KEY_MANUAL_GAIN_ISO, manualGain);
+                params.set(KEY_MANUAL_EXPOSURE_RIGHT, manualExp);
+                params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manualGain);
+            }
+            else
+            {
+                manualExp = manualExpMin;
+                params.set(KEY_MANUAL_EXPOSURE, manualExp);
+                params.set(KEY_MANUAL_EXPOSURE_RIGHT, manualExp);
+                manualGain = manualGainMin;
+                params.set(KEY_MANUAL_GAIN_ISO, manualGain);
+                params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manualGain);
+            }
 
             if ( hardwareActive ) {
                 camera->setParameters(params.flatten());
             }
 
+            break;
+
+        case 'Q':
+            if ( strcmp (exposureMode[exposure_mode], "manual") == 0) {
+                manualExp += manualExpStep;
+                if( manualExp > manualExpMax) {
+                    manualExp = manualExpMin;
+                }
+                params.set(KEY_MANUAL_EXPOSURE, manualExp);
+                params.set(KEY_MANUAL_EXPOSURE_RIGHT, manualExp);
+                camera->setParameters(params.flatten());
+            }
+            break;
+
+        case ',':
+            if ( strcmp (exposureMode[exposure_mode], "manual") == 0) {
+                manualGain += manualGainStep;
+                if( manualGain > manualGainMax) {
+                   manualGain = manualGainMin;
+                }
+                params.set(KEY_MANUAL_GAIN_ISO, manualGain);
+                params.set(KEY_MANUAL_GAIN_ISO_RIGHT, manualGain);
+                camera->setParameters(params.flatten());
+            }
             break;
 
         case 'c':
