@@ -76,16 +76,15 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         mCapabilitiesOpMode = MODE_HIGH_QUALITY;
     }
 
-    if (mIsStereo) {
-        mCapabilitiesOpMode = MODE_STEREO;
+    if ( mSensorIndex == 2 ) {
+       mCapabilitiesOpMode = MODE_STEREO;
     }
 
-    if ( mCapMode != capMode )
-        {
+    if ( mCapMode != capMode ) {
         mCapMode = capMode;
         mOMXStateSwitch = true;
         mPendingPreviewSettings |= SetCapMode;
-        }
+    }
 
     CAMHAL_LOGDB("Capture Mode set %d", mCapMode);
 
@@ -636,7 +635,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
         {
 
         OMX_INIT_STRUCT_PTR (&camMode, OMX_CONFIG_CAMOPERATINGMODETYPE);
-        if (mIsStereo)
+        if ( mSensorIndex == OMX_TI_StereoSensor )
             {
             if ( OMXCameraAdapter::VIDEO_MODE == mode ) {
                 CAMHAL_LOGDA("Camera mode: STEREO VIDEO");
