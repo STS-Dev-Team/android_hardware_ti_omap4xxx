@@ -171,7 +171,6 @@ struct omap4_hwc_device {
     int force_sgx;
     omap4_hwc_ext_t ext;        /* external mirroring data */
     int idle;
-    int ovls_blending;
 
     buffer_handle_t *buffers;
     int use_sgx;
@@ -1436,7 +1435,6 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
 
     /* set up if DSS layers */
     unsigned int mem_used = 0;
-    hwc_dev->ovls_blending = 0;
     for (i = 0; list && i < list->numHwLayers && !blit_all; i++) {
         hwc_layer_t *layer = &list->hwLayers[i];
         IMG_native_handle_t *handle = (IMG_native_handle_t *)layer->handle;
@@ -1465,9 +1463,6 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
             /* clear FB above all opaque layers if rendering via SGX */
             if (hwc_dev->use_sgx && !is_BLENDED(layer))
                 layer->hints |= HWC_HINT_CLEAR_FB;
-            /* see if any of the (non-backmost) overlays are doing blending */
-            else if (is_BLENDED(layer) && i > 0)
-                hwc_dev->ovls_blending = 1;
 
             hwc_dev->buffers[dsscomp->num_ovls] = layer->handle;
             //ALOGI("dss buffers[%d] = %p", dsscomp->num_ovls, hwc_dev->buffers[dsscomp->num_ovls]);
@@ -2090,7 +2085,7 @@ static void *omap4_hwc_hdmi_thread(void *data)
             if (hwc_dev->idle) {
                 if (hwc_dev->procs && hwc_dev->procs->invalidate) {
                     pthread_mutex_lock(&hwc_dev->lock);
-                    invalidate = !hwc_dev->force_sgx && hwc_dev->ovls_blending;
+                    invalidate = !hwc_dev->force_sgx;
                     if (invalidate) {
                         hwc_dev->force_sgx = 2;
                     }
