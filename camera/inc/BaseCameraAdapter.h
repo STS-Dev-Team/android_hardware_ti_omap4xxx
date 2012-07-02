@@ -23,10 +23,10 @@
 
 namespace android {
 
-struct LUT{
-        const char * userDefinition;
-        int           halDefinition;
-    };
+struct LUT {
+    const char * userDefinition;
+    int           halDefinition;
+};
 
 struct LUTtypeHAL{
     int size;

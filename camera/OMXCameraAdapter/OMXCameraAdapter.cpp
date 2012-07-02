@@ -3711,6 +3711,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             CAMHAL_LOGEA("Frame received for non-(preview/capture/measure) port. This is yet to be supported");
             goto EXIT;
         }
+
     if ( NO_ERROR != stat )
         {
         CameraBuffer *camera_buffer;

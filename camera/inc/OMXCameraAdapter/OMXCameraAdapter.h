@@ -777,6 +777,10 @@ private:
     FILE * fopenCameraDCC(const char *dccFolderPath);
     FILE * parseDCCsubDir(DIR *pDir, char *path);
 
+#ifdef CAMERAHAL_OMX_PROFILING
+    status_t storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader);
+#endif
+
     // Internal buffers
     status_t initInternalBuffers (OMX_U32);
     status_t deinitInternalBuffers (OMX_U32);
@@ -788,12 +792,6 @@ private:
     status_t disableReprocess();
     status_t stopReprocess();
     status_t UseBuffersReprocess(CameraBuffer *bufArr, int num);
-
-#ifdef CAMERAHAL_OMX_PROFILING
-
-    status_t storeProfilingData(OMX_BUFFERHEADERTYPE* pBuffHeader);
-
-#endif
 
     class CommandHandler : public Thread {
         public:

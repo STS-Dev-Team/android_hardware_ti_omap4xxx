@@ -686,7 +686,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
  fail:
     // need to cancel buffers if any were dequeued
     for (int start = 0; start < i && i > 0; start++) {
-        int err = mANativeWindow->cancel_buffer(mANativeWindow,
+        status_t err = mANativeWindow->cancel_buffer(mANativeWindow,
                 (buffer_handle_t *) mBuffers[start].opaque);
         if ( NO_ERROR != err ) {
           CAMHAL_LOGE("Surface::cancelBuffer failed w/ error 0x%08x", err);
@@ -795,7 +795,7 @@ status_t ANativeWindowDisplayAdapter::minUndequeueableBuffers(int& undequeueable
 status_t ANativeWindowDisplayAdapter::maxQueueableBuffers(unsigned int& queueable)
 {
     LOG_FUNCTION_NAME;
-    int ret = NO_ERROR;
+    status_t ret = NO_ERROR;
     int undequeued = 0;
 
     if(mBufferCount == 0)

@@ -741,6 +741,7 @@ int CameraHal::setParameters(const CameraParameters& params)
             }
         }
 
+        CAMHAL_LOGD("wb: %s", params.get(CameraParameters::KEY_WHITE_BALANCE));
         if ((valstr = params.get(CameraParameters::KEY_WHITE_BALANCE)) != NULL) {
            if ( isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_WHITE_BALANCE))) {
                CAMHAL_LOGDB("White balance set %s", valstr);

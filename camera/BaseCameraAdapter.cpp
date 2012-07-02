@@ -53,8 +53,7 @@ const LUT cameraCommandsUserToHAL[] = {
 #endif
 };
 
-const LUTtypeHAL CamCommandsLUT =
-{
+const LUTtypeHAL CamCommandsLUT = {
     sizeof(cameraCommandsUserToHAL)/sizeof(cameraCommandsUserToHAL[0]),
     cameraCommandsUserToHAL
 };
@@ -1849,8 +1848,7 @@ status_t BaseCameraAdapter::switchToExecuting()
   return ret;
 }
 
-const char* BaseCameraAdapter::getLUTvalue_translateHAL(int Value, LUTtypeHAL LUT)
-{
+const char* BaseCameraAdapter::getLUTvalue_translateHAL(int Value, LUTtypeHAL LUT) {
     int LUTsize = LUT.size;
     for(int i = 0; i < LUTsize; i++)
         if( LUT.Table[i].halDefinition == Value )
