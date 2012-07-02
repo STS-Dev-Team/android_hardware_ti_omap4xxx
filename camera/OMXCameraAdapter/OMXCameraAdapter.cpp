@@ -203,7 +203,6 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mReprocConfigured = false;
     mRecording = false;
     mWaitingForSnapshot = false;
-    mSnapshotCount = 0;
     mPictureFormatFromClient = NULL;
 
     mCapabilitiesOpMode = MODE_MAX;
@@ -3477,9 +3476,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
 
         if( mWaitingForSnapshot )
           {
-            mSnapshotCount++;
-
-            if ( (mSnapshotCount == 1) &&
+            if (!mBracketingEnabled &&
                  ((HIGH_SPEED == mCapMode) || (VIDEO_MODE == mCapMode)) )
               {
                 notifyShutterSubscribers();
