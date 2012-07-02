@@ -1088,7 +1088,6 @@ private:
     CameraProperties::Properties* mCapabilities;
     unsigned int mPictureRotation;
     bool mWaitingForSnapshot;
-    int mSnapshotCount;
     bool mCaptureConfigured;
     unsigned int mPendingCaptureSettings;
     unsigned int mPendingPreviewSettings;

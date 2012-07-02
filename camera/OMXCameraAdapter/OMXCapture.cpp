@@ -1369,7 +1369,6 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     //Disable the callback first
     mWaitingForSnapshot = false;
-    mSnapshotCount = 0;
 
     // OMX shutter callback events are only available in hq mode
     if ((HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode)) {
