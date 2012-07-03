@@ -546,7 +546,7 @@ public:
     }
 
     void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
-    void showMetadata(const String8&);
+    void showMetadata(sp<IMemory> data);
 
 private:
     SurfaceTextureBase *mSurfaceTextureBase;

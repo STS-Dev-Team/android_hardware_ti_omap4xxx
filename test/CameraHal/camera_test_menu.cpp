@@ -29,6 +29,10 @@
 #include <system/audio.h>
 #include <system/camera.h>
 
+#include <binder/IMemory.h>
+#include <binder/MemoryBase.h>
+#include <binder/MemoryHeapBase.h>
+
 #include <cutils/memory.h>
 #include <utils/Log.h>
 

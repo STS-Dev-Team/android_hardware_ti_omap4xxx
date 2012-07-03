@@ -550,38 +550,62 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     mCamera->setBufferSource(surface_texture, NULL);
 }
 
-void BufferSourceThread::showMetadata(const String8& metadata) {
+void BufferSourceThread::showMetadata(sp<IMemory> data) {
     static nsecs_t prevTime = 0;
     nsecs_t currTime = 0;
 
-    CameraMetadata meta(metadata);
+    ssize_t offset;
+    size_t size;
 
-    printf("         frame nmber: %d\n", meta.getInt(CameraMetadata::KEY_FRAME_NUMBER));
-    printf("         shot number: %d\n", meta.getInt(CameraMetadata::KEY_SHOT_NUMBER));
+    if ( NULL == data.get() ) {
+        printf("No Metadata!");
+        return;
+    }
+
+    sp<IMemoryHeap> heap = data->getMemory(&offset, &size);
+    camera_metadata_t * meta = static_cast<camera_metadata_t *> (heap->base());
+
+    printf("         frame nmber: %d\n", meta->frame_number);
+    printf("         shot number: %d\n", meta->shot_number);
     printf("         analog gain: %d req: %d range: %d~%d dev: %d err: %d\n",
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_REQ),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MIN),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MAX),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_DEV),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_ERROR));
+           meta->analog_gain,
+           meta->analog_gain_req,
+           meta->analog_gain_min,
+           meta->analog_gain_max,
+           meta->analog_gain_dev,
+           meta->analog_gain_error);
     printf("       exposure time: %d req: %d range: %d~%d dev: %d err: %d\n",
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME));
+           meta->exposure_time,
+           meta->exposure_time_req,
+           meta->exposure_time_min,
+           meta->exposure_time_max,
+           meta->exposure_time_dev,
+           meta->exposure_time_error);
     printf("     EV compensation: req: %d dev: %d\n",
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_DEV));
-    printf("            awb gain: %s\n", meta.get(CameraMetadata::KEY_AWB_GAINS));
-    printf("         awb offsets: %s\n", meta.get(CameraMetadata::KEY_AWB_OFFSETS));
-    printf("     awb temperature: %d\n", meta.getInt(CameraMetadata::KEY_AWB_TEMP));
-    printf("   LSC table applied: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE_APPLIED));
-    printf("      LSC table data: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE));
+           meta->exposure_compensation_req,
+           meta->exposure_dev);
+    printf("            awb gain: %d\n", meta->analog_gain);
+    printf("         awb offsets: %d\n", meta->offset_b);
+    printf("     awb temperature: %d\n", meta->awb_temp);
 
-    currTime = meta.getTime(CameraMetadata::KEY_TIMESTAMP);
+    printf("   LSC table applied: %d\n", meta->lsc_table_applied);
+    if ( meta->lsc_table_applied ) {
+        uint8_t *lscTable = (uint8_t *)meta + meta->lsc_table_offset;
+        printf("LSC Table Size:%d Data[0:7]: %d:%d:%d:%d:%d:%d:%d:%d\n",
+                meta->lsc_table_size,
+                lscTable[0],
+                lscTable[1],
+                lscTable[2],
+                lscTable[3],
+                lscTable[4],
+                lscTable[5],
+                lscTable[6],
+                lscTable[7]);
+    }
+
+    printf("    Faces detected: %d\n", meta->number_of_faces);
+
+    currTime = meta->timestamp;
     printf("      timestamp (ns): %llu\n", currTime);
     if (prevTime) printf("inter-shot time (ms): %llu\n", (currTime - prevTime) / 1000000l);
     prevTime = currTime;
