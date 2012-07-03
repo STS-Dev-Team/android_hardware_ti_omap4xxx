@@ -367,10 +367,14 @@ class CameraFrame
     mFd(0),
     mLength(0),
     mFrameMask(0),
-    mQuirks(0) {
-
+    mQuirks(0)
+    {
       mYuv[0] = NULL;
       mYuv[1] = NULL;
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        mMetaData = 0;
+#endif
     }
 
     void *mCookie;
@@ -387,7 +391,7 @@ class CameraFrame
     unsigned int mQuirks;
     unsigned int mYuv[2];
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    android::CameraMetadata mMetaData;
+    camera_memory_t *mMetaData;
 #endif
     ///@todo add other member vars like  stride etc
 };
@@ -949,6 +953,8 @@ public:
     virtual status_t getState(AdapterState &state) = 0;
     // Retrieves the next Adapter state - for internal use (not locked)
     virtual status_t getNextState(AdapterState &state) = 0;
+
+    virtual status_t setSharedAllocator(camera_request_memory shmem_alloc) = 0;
 
 protected:
     //The first two methods will try to switch the adapter state.

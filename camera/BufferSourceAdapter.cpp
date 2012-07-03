@@ -696,10 +696,14 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         return;
     }
 
-    frame->mMetaData.setTime(android::CameraMetadata::KEY_TIMESTAMP, frame->mTimestamp);
-    ret = mBufferSource->set_metadata(mBufferSource, frame->mMetaData.flatten().string());
-    if (ret != 0) {
-        CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+    if ( NULL != frame->mMetaData ) {
+        camera_metadata_t *metaData = static_cast<camera_metadata_t *> (frame->mMetaData->data);
+        metaData->timestamp = frame->mTimestamp;
+        ret = mBufferSource->set_metadata(mBufferSource, frame->mMetaData);
+        if (ret != 0) {
+            CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+        }
+        frame->mMetaData->release(frame->mMetaData);
     }
 
     // unlock buffer before enqueueing

@@ -126,6 +126,10 @@ void CameraHal::setCallbacks(camera_notify_callback notify_cb,
                                                 user);
     }
 
+    if ( NULL != mCameraAdapter ) {
+        mCameraAdapter->setSharedAllocator(get_memory);
+    }
+
     LOG_FUNCTION_NAME_EXIT;
 }
 
