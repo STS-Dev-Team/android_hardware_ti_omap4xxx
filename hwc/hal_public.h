@@ -164,4 +164,12 @@ typedef struct IMG_buffer_format_public_t
 }
 IMG_buffer_format_public_t;
 
+/*
+ * These are vendor specific pixel formats, by (informal) convention IMGTec
+ * formats start from the top of the range, TI formats start from the bottom
+ */
+#define HAL_PIXEL_FORMAT_BGRX_8888      0x1FF
+#define HAL_PIXEL_FORMAT_TI_NV12        0x100
+
 #endif /* HAL_PUBLIC_H */
+

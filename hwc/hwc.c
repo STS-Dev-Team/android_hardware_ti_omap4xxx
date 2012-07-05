@@ -60,8 +60,6 @@
 
 #define MAX_HW_OVERLAYS 4
 #define NUM_NONSCALING_OVERLAYS 1
-#define HAL_PIXEL_FORMAT_BGRX_8888      0x1FF
-#define HAL_PIXEL_FORMAT_TI_NV12        0x100
 #define MAX_TILER_SLOT (16 << 20)
 
 struct ext_transform_t {
