@@ -786,6 +786,12 @@ int execute_functional_script(char *script) {
 
                 break;
 
+            case 'H':
+
+                setDefaultExpGainPreset(shotParams, atoi(cmd + 1));
+                break;
+
+
             case 'n':
 
             switch (*(cmd + 1)) {
