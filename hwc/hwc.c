@@ -196,6 +196,7 @@ struct omap4_hwc_device {
 typedef struct omap4_hwc_device omap4_hwc_device_t;
 
 #define HAL_FMT(f) ((f) == HAL_PIXEL_FORMAT_TI_NV12 ? "NV12" : \
+                    (f) == HAL_PIXEL_FORMAT_TI_NV12_1D ? "NV12" : \
                     (f) == HAL_PIXEL_FORMAT_YV12 ? "YV12" : \
                     (f) == HAL_PIXEL_FORMAT_BGRX_8888 ? "xRGB32" : \
                     (f) == HAL_PIXEL_FORMAT_RGBX_8888 ? "xBGR32" : \
@@ -382,6 +383,7 @@ static int omap4_hwc_is_valid_format(int format)
     case HAL_PIXEL_FORMAT_BGRA_8888:
     case HAL_PIXEL_FORMAT_BGRX_8888:
     case HAL_PIXEL_FORMAT_TI_NV12:
+    case HAL_PIXEL_FORMAT_TI_NV12_1D:
         return 1;
 
     default:
@@ -443,6 +445,7 @@ static int is_NV12(IMG_native_handle_t *handle)
     switch(handle->iFormat)
     {
     case HAL_PIXEL_FORMAT_TI_NV12:
+    case HAL_PIXEL_FORMAT_TI_NV12_1D:
         return 1;
     default:
         return 0;
@@ -516,6 +519,7 @@ omap4_hwc_setup_layer_base(struct dss2_ovl_cfg *oc, int index, int format, int b
         break;
 
     case HAL_PIXEL_FORMAT_TI_NV12:
+    case HAL_PIXEL_FORMAT_TI_NV12_1D:
         oc->color_mode = OMAP_DSS_COLOR_NV12;
         bits_per_pixel = 8;
         oc->cconv = ctbl_bt601_5;
