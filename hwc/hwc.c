@@ -1371,6 +1371,7 @@ static int blit_layers(omap4_hwc_device_t *hwc_dev, hwc_layer_list_t *list, int 
         if (list->hwLayers[i].compositionType != HWC_OVERLAY) {
             list->hwLayers[i].compositionType = HWC_OVERLAY;
             //ALOGI("blitting layer %d", i);
+            list->hwLayers[i].hints &= ~HWC_HINT_TRIPLE_BUFFER;
         }
         list->hwLayers[i].hints &= ~HWC_HINT_CLEAR_FB;
     }
@@ -1474,6 +1475,12 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
             /* render via DSS overlay */
             mem_used += mem1d(handle);
             layer->compositionType = HWC_OVERLAY;
+            /*
+             * This hint will not be used in vanilla ICS, but maybe in
+             * JellyBean, it is useful to distinguish between blts and true
+             * overlays
+             */
+            layer->hints |= HWC_HINT_TRIPLE_BUFFER;
 
             /* clear FB above all opaque layers if rendering via SGX */
             if (hwc_dev->use_sgx && !is_BLENDED(layer))
