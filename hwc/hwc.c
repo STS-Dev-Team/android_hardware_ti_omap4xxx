@@ -34,6 +34,7 @@
 #include <EGL/egl.h>
 #include <hardware_legacy/uevent.h>
 #include <png.h>
+#include <utils/Timers.h>
 
 #include <system/graphics.h>
 #include <linux/bltsville.h>
@@ -213,9 +214,32 @@ typedef struct omap4_hwc_device omap4_hwc_device_t;
 static int debug = 0;
 static int debugpost2 = 0;
 static int debugblt = 0;
-static int gshowfps;
 static rgz_t grgz;
 static struct bvsurfgeom gscrngeom;
+
+static void showfps(void)
+{
+    static int framecount = 0;
+    static int lastframecount = 0;
+    static nsecs_t lastfpstime = 0;
+    static float fps = 0;
+    char value[PROPERTY_VALUE_MAX];
+
+    property_get("debug.hwc.showfps", value, "0");
+    if (!atoi(value)) {
+        return;
+    }
+
+    framecount++;
+    if (!(framecount & 0x7)) {
+        nsecs_t now = systemTime(SYSTEM_TIME_MONOTONIC);
+        nsecs_t diff = now - lastfpstime;
+        fps = ((framecount - lastframecount) * (float)(s2ns(1))) / diff;
+        lastfpstime = now;
+        lastframecount = framecount;
+        ALOGI("%d Frames, %f FPS", framecount, fps);
+    }
+}
 
 static void dump_layer(hwc_layer_t const* l)
 {
@@ -1727,6 +1751,7 @@ static int omap4_hwc_set(struct hwc_composer_device *dev, hwc_display_t dpy,
                                  hwc_dev->buffers,
                                  nbufs,
                                  dsscomp, omaplfb_comp_data_sz);
+        showfps();
     }
     hwc_dev->last_ext_ovls = hwc_dev->ext_ovls;
     hwc_dev->last_int_ovls = hwc_dev->post2_layers;
@@ -2366,6 +2391,7 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         ALOGW("Invalid upscaled_nv12_limit (%s), setting to 2.", value);
         hwc_dev->upscaled_nv12_limit = 2.;
     }
+
 done:
     if (err && hwc_dev) {
         if (hwc_dev->dsscomp_fd >= 0)
