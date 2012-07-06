@@ -60,7 +60,6 @@
 
 #define MAX_HW_OVERLAYS 4
 #define NUM_NONSCALING_OVERLAYS 1
-#define MAX_TILER_SLOT (16 << 20)
 
 struct ext_transform_t {
     __u8 rotation : 3;          /* 90-degree clockwise rotations */
@@ -790,32 +789,10 @@ omap4_hwc_adjust_ext_layer(omap4_hwc_ext_t *ext, struct dss2_ovl_info *ovl)
         oc->mirror = !oc->mirror;
 }
 
-static struct dsscomp_dispc_limitations {
-    __u8 max_xdecim_2d;
-    __u8 max_ydecim_2d;
-    __u8 max_xdecim_1d;
-    __u8 max_ydecim_1d;
-    __u32 fclk;
-    __u8 max_downscale;
-    __u8 min_width;
-    __u16 integer_scale_ratio_limit;
-    __u16 max_width;
-    __u16 max_height;
-} limits = {
-    .max_xdecim_1d = 16,
-    .max_xdecim_2d = 16,
-    .max_ydecim_1d = 16,
-    .max_ydecim_2d = 2,
-    .fclk = 170666666,
-    .max_downscale = 4,
-    .min_width = 2,
-    .integer_scale_ratio_limit = 2048,
-    .max_width = 2048,
-    .max_height = 2048,
-};
+static struct dsscomp_platform_info limits;
 
 static int omap4_hwc_can_scale(__u32 src_w, __u32 src_h, __u32 dst_w, __u32 dst_h, int is_2d,
-                               struct dsscomp_display_info *dis, struct dsscomp_dispc_limitations *limits,
+                               struct dsscomp_display_info *dis, struct dsscomp_platform_info *limits,
                                __u32 pclk)
 {
     __u32 fclk = limits->fclk / 1000;
@@ -889,7 +866,7 @@ static int omap4_hwc_is_valid_layer(omap4_hwc_device_t *hwc_dev,
     if (!is_NV12(handle)) {
         if (layer->transform)
             return 0;
-        if (mem1d(handle) > MAX_TILER_SLOT)
+        if (mem1d(handle) > limits.tiler1d_slot_size)
             return 0;
     }
 
@@ -1157,7 +1134,7 @@ static int can_dss_render_all(omap4_hwc_device_t *hwc_dev, struct counts *num)
             num->scaled_layers <= num->max_scaling_overlays &&
             num->NV12 <= num->max_scaling_overlays &&
             /* fits into TILER slot */
-            num->mem <= MAX_TILER_SLOT &&
+            num->mem <= limits.tiler1d_slot_size &&
             /* we cannot clone non-NV12 transformed layers */
             (!tform || (num->NV12 == num->possible_overlay_layers) ||
             (num->NV12 && ext->current.docking)) &&
@@ -1471,7 +1448,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
              is_protected(layer) ||
              is_upscaled_NV12(hwc_dev, layer) ||
              (hwc_dev->ext.current.docking && hwc_dev->ext.current.enabled && dockable(layer))) &&
-            mem_used + mem1d(handle) < MAX_TILER_SLOT &&
+            mem_used + mem1d(handle) < limits.tiler1d_slot_size &&
             /* can't have a transparent overlay in the middle of the framebuffer stack */
             !(is_BLENDED(layer) && fb_z >= 0)) {
 
@@ -2263,6 +2240,13 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         goto done;
     }
 
+    int ret = ioctl(hwc_dev->dsscomp_fd, DSSCIOC_QUERY_PLATFORM, &limits);
+    if (ret) {
+        ALOGE("failed to get platform limits (%d): %m", errno);
+        err = -errno;
+        goto done;
+    }
+
     hwc_dev->fb_fd = open("/dev/graphics/fb0", O_RDWR);
     if (hwc_dev->fb_fd < 0) {
         ALOGE("failed to open fb (%d)", errno);
@@ -2292,7 +2276,7 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         goto done;
     }
 
-    int ret = ioctl(hwc_dev->dsscomp_fd, DSSCIOC_QUERY_DISPLAY, &hwc_dev->fb_dis);
+    ret = ioctl(hwc_dev->dsscomp_fd, DSSCIOC_QUERY_DISPLAY, &hwc_dev->fb_dis);
     if (ret) {
         ALOGE("failed to get display info (%d): %m", errno);
         err = -errno;
