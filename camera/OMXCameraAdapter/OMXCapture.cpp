@@ -390,7 +390,7 @@ status_t OMXCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t buffe
             frame.mHeight = imgCaptureData->mHeight;
             frame.mAlignment = imgCaptureData->mStride;
             CAMHAL_LOGDB("getPictureBufferSize: width:%u height:%u alignment:%u length:%u",
-                         frame->mWidth, frame->mHeight, frame->mAlignment, frame->mLength);
+                         frame.mWidth, frame.mHeight, frame.mAlignment, frame.mLength);
             }
         else
             {
