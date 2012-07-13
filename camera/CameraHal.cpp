@@ -2438,17 +2438,22 @@ bool CameraHal::setVideoModeParameters(const android::CameraParameters& params)
         mParameters.set(TICameraParameters::KEY_VNF, valstrRemote);
     }
 
-    // For VSTAB alone for 1080p resolution, padded width goes > 2048, which cannot be rendered by GPU.
-    // In such case, there is support in Ducati for combination of VSTAB & VNF requiring padded width < 2048.
-    // So we are forcefully enabling VNF, if VSTAB is enabled for 1080p resolution.
-    int w, h;
-    params.getPreviewSize(&w, &h);
-    valstr = mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION);
-    if (valstr && (strcmp(valstr, android::CameraParameters::TRUE) == 0) && (w == 1920)) {
-        CAMHAL_LOGDA("Force Enable VNF for 1080p");
-        mParameters.set(TICameraParameters::KEY_VNF, android::CameraParameters::TRUE);
-        restartPreviewRequired = true;
-    }
+#if !defined(OMAP_ENHANCEMENT) && !defined(ENHANCED_DOMX)
+        // For VSTAB alone for 1080p resolution, padded width goes > 2048, which cannot be rendered by GPU.
+        // In such case, there is support in Ducati for combination of VSTAB & VNF requiring padded width < 2048.
+        // So we are forcefully enabling VNF, if VSTAB is enabled for 1080p resolution.
+        int w, h;
+        params.getPreviewSize(&w, &h);
+        valstr = mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION);
+        if (valstr && (strcmp(valstr, android::CameraParameters::TRUE) == 0) && (w == 1920)) {
+            CAMHAL_LOGDA("Force Enable VNF for 1080p");
+            const char *valKeyVnf = mParameters.get(TICameraParameters::KEY_VNF);
+            if(!valKeyVnf || (strcmp(valKeyVnf, android::CameraParameters::TRUE) != 0)) {
+                mParameters.set(TICameraParameters::KEY_VNF, android::CameraParameters::TRUE);
+                restartPreviewRequired = true;
+            }
+        }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
