@@ -573,7 +573,7 @@ static int rgz_in_valid_hwc_layer(hwc_layer_t *layer)
         return 0;
 
     if (is_NV12(handle->iFormat))
-        return (handle->iFormat == HAL_PIXEL_FORMAT_TI_NV12);
+        return (!layer->transform && handle->iFormat == HAL_PIXEL_FORMAT_TI_NV12);
 
     /* FIXME: The following must be removed when GC supports vertical/horizontal
      * buffer flips, please note having a FLIP_H and FLIP_V means 180 rotation
