@@ -346,13 +346,29 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
     rgz_blts_init(&blts);
     rgz_out_clrdst(params, NULL);
 
-    unsigned int i;
+    unsigned int i, j;
 
     /* Begin from index 1 to remove the background layer from the output */
-    for (i = 1; i < rgz->rgz_layerno; i++) {
-        hwc_layer_t *l = rgz->rgz_layers[i].hwc_layer;
+    for (i = 1, j = 0; i < rgz->rgz_layerno; i++) {
+        rgz_layer_t *rgz_layer = &rgz->rgz_layers[i];
+        hwc_layer_t *l = rgz_layer->hwc_layer;
 
         //OUTP("blitting meminfo %d", rgz->rgz_layers[i].buffidx);
+
+        /*
+         * See if it is needed to put transparent pixels where this layer
+         * is located in the screen
+         */
+        if (rgz_layer->buffidx == -1) {
+            struct bvsurfgeom *scrgeom = params->data.bvc.dstgeom;
+            blit_rect_t srcregion;
+            srcregion.left = max(0, l->displayFrame.left);
+            srcregion.top = max(0, l->displayFrame.top);
+            srcregion.bottom = min(scrgeom->height, l->displayFrame.bottom);
+            srcregion.right = min(scrgeom->width, l->displayFrame.right);
+            rgz_out_clrdst(params, &srcregion);
+            continue;
+        }
 
         rv = rgz_hwc_layer_blit(l, params, rgz->rgz_layers[i].buffidx);
         if (rv) {
@@ -361,7 +377,7 @@ static int rgz_out_bvcmd_paint(rgz_t *rgz, rgz_out_params_t *params)
             rgz_blts_free(&blts);
             return rv;
         }
-        params->data.bvc.out_hndls[i-1] = l->handle;
+        params->data.bvc.out_hndls[j++] = l->handle;
         params->data.bvc.out_nhndls++;
     }
 
@@ -606,6 +622,23 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                      if (rgz_layer->dirty_count == 0)
                          rgz->screen_isdirty = 0; /* Just update dirty regions from now on */
                 }
+                possible_blit++;
+            }
+            continue;
+        }
+
+        if (layers[l].hints & HWC_HINT_CLEAR_FB) {
+            candidates++;
+            if (possible_blit < RGZ_INPUT_MAXLAYERS) {
+                /*
+                 * Use only the layer rectangle as an input to regionize when the clear
+                 * fb hint is present, mark this layer to identify it.
+                 */
+                rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
+                rgz_layer->buffidx = -1;
+                rgz_layer->dirty_count = 0;
+                rgz_layer->dirty_hndl = NULL;
+                rgz_layer->hwc_layer = &layers[l];
                 possible_blit++;
             }
         }
@@ -1189,6 +1222,20 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
         }
     }
 
+    /*
+     * See if the depth most layer needs to be ignored. If this layer is the
+     * only operation, we need to clear this subregion.
+     */
+    if (hregion->rgz_layers[lix]->buffidx == -1) {
+        ldepth--;
+        if (!ldepth) {
+            if (screen_isdirty)
+                rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
+            return 0;
+        }
+        lix = get_layer_ops_next(hregion, sidx, lix);
+    }
+
     /* Determine if this region is dirty */
     int dirty = 0, dirtylix = lix;
     while (dirtylix != -1) {
@@ -1367,9 +1414,13 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
         unsigned int j;
         params->data.bvc.out_nhndls = 0;
         /* Begin from index 1 to remove the background layer from the output */
-        for (j = 1; j < rgz->rgz_layerno; j++) {
-            hwc_layer_t *layer = rgz->rgz_layers[j].hwc_layer;
-            params->data.bvc.out_hndls[j-1] = layer->handle;
+        for (j = 1, i = 0; j < rgz->rgz_layerno; j++) {
+            rgz_layer_t *rgz_layer = &rgz->rgz_layers[j];
+            /* We don't need the handles for layers marked as -1 */
+            if (rgz_layer->buffidx == -1)
+                continue;
+            hwc_layer_t *layer = rgz_layer->hwc_layer;
+            params->data.bvc.out_hndls[i++] = layer->handle;
             params->data.bvc.out_nhndls++;
         }
 
@@ -1469,6 +1520,7 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
         return -EINVAL;
     }
 
+    bzero(&bg_layer, sizeof(bg_layer));
     bg_layer.displayFrame.left = bg_layer.displayFrame.top = 0;
     bg_layer.displayFrame.right = fb_varinfo.xres;
     bg_layer.displayFrame.bottom = fb_varinfo.yres;
