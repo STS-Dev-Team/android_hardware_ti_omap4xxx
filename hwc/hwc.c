@@ -2215,6 +2215,13 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
 
     hwc_dev->base.common.tag = HARDWARE_DEVICE_TAG;
     hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_3;
+
+    char value[PROPERTY_VALUE_MAX];
+    property_get("ro.product.board", value, "");
+    if (strncmp("blaze", value, PROPERTY_VALUE_MAX) == 0) {
+        ALOGI("Revert to legacy HWC API for fake vsync");
+        hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_2;
+    }
     hwc_dev->base.common.module = (hw_module_t *)module;
     hwc_dev->base.common.close = omap4_hwc_device_close;
     hwc_dev->base.prepare = omap4_hwc_prepare;
@@ -2312,7 +2319,6 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
     /* get debug properties */
 
     /* see if hwc is enabled at all */
-    char value[PROPERTY_VALUE_MAX];
     property_get("debug.hwc.rgb_order", value, "1");
     hwc_dev->flags_rgb_order = atoi(value);
     property_get("debug.hwc.nv12_only", value, "0");
