@@ -33,6 +33,7 @@ PRODUCT_PACKAGES := \
 	camera.omap4 \
 	libomxcameraadapter \
 	hwcomposer.omap4 \
+	hwcomposer.omap5 \
 	smc_pa_ctrl \
 	tf_daemon \
 	libtf_crypto_sst
