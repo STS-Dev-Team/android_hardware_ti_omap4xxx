@@ -2222,6 +2222,11 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
         ALOGI("Revert to legacy HWC API for fake vsync");
         hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_2;
     }
+
+    if (strncmp("panda5", value, PROPERTY_VALUE_MAX) == 0) {
+        ALOGI("Revert to legacy HWC API for fake vsync");
+        hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_2;
+    }
     hwc_dev->base.common.module = (hw_module_t *)module;
     hwc_dev->base.common.close = omap4_hwc_device_close;
     hwc_dev->base.prepare = omap4_hwc_prepare;
