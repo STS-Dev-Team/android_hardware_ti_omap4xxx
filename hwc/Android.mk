@@ -1,4 +1,3 @@
-# HWC under heavy development and should not be included in builds for now
 LOCAL_PATH := $(call my-dir)
 
 # HAL module implementation, not prelinked and stored in
