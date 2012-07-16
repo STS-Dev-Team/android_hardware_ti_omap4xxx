@@ -689,10 +689,12 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
+#if 0
     /* If there is already region data avoid parsing it again */
     if (rgz->state & RGZ_REGION_DATA) {
         return 0;
     }
+#endif
 
     int layerno = rgz->rgz_layerno;
 
@@ -1622,11 +1624,23 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     return 0;
 }
 
+/* Reset the values needed for every frame, except the dirty region handles */
+static void rgz_reset(rgz_t *rgz){
+    if (!rgz)
+        return;
+    if (rgz->hregions)
+        free(rgz->hregions);
+    rgz->hregions = NULL;
+    rgz->nhregions = 0;
+    rgz->state = 0;
+}
+
 int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
 {
     int rv = -1;
     switch (p->op) {
     case RGZ_IN_HWC:
+        rgz_reset(rgz);
         rv = rgz_in_hwccheck(p, rgz);
         if (rv == RGZ_ALL)
             rv = rgz_in_hwc(p, rgz) ? 0 : RGZ_ALL;
