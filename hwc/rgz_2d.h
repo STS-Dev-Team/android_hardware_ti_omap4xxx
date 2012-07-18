@@ -285,7 +285,6 @@ struct rgz {
     int state;
     unsigned int rgz_layerno;
     rgz_layer_t rgz_layers[RGZ_MAXLAYERS];
-    int screen_isdirty;
 };
 
 #endif /* __RGZ_2D__ */
