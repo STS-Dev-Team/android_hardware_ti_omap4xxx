@@ -324,7 +324,11 @@ void ExifElementsTable::insertExifToJpeg(unsigned char* jpeg, size_t jpeg_size) 
     ResetJpgfile();
     if (ReadJpegSectionsFromBuffer(jpeg, jpeg_size, read_mode)) {
         jpeg_opened = true;
+#ifdef ANDROID_API_JB_OR_LATER
+        create_EXIF(table, exif_tag_count, gps_tag_count, has_datetime_tag);
+#else
         create_EXIF(table, exif_tag_count, gps_tag_count);
+#endif
     }
 }
 
@@ -390,11 +394,15 @@ status_t ExifElementsTable::insertElement(const char* tag, const char* value) {
         table[position].Tag = TagNameToValue(tag);
         exif_tag_count++;
 
-        // jhead isn't taking datetime tag...this is a WA
         if (strcmp(tag, TAG_DATETIME) == 0) {
+#ifdef ANDROID_API_JB_OR_LATER
+            has_datetime_tag = true;
+#else
+            // jhead isn't taking datetime tag...this is a WA
             ImageInfo.numDateTimeTags = 1;
             memcpy(ImageInfo.DateTime, value,
                    MIN(ARRAY_SIZE(ImageInfo.DateTime), value_length + 1));
+#endif
         }
     }
 

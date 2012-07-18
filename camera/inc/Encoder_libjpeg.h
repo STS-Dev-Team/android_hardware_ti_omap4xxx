@@ -95,7 +95,12 @@ class ExifElementsTable {
     public:
         ExifElementsTable() :
            gps_tag_count(0), exif_tag_count(0), position(0),
-           jpeg_opened(false) { }
+           jpeg_opened(false)
+        {
+#ifdef ANDROID_API_JB_OR_LATER
+            has_datetime_tag = false;
+#endif
+        }
         ~ExifElementsTable();
 
         status_t insertElement(const char* tag, const char* value);
@@ -111,6 +116,9 @@ class ExifElementsTable {
         unsigned int exif_tag_count;
         unsigned int position;
         bool jpeg_opened;
+#ifdef ANDROID_API_JB_OR_LATER
+        bool has_datetime_tag;
+#endif
 };
 
 class Encoder_libjpeg : public android::Thread {
