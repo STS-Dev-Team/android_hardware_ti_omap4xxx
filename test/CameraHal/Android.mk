@@ -36,7 +36,7 @@ LOCAL_C_INCLUDES += \
 LOCAL_MODULE:= camera_test
 LOCAL_MODULE_TAGS:= tests
 
-LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___
+LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___ $(ANDROID_API_CFLAGS)
 
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
     LOCAL_CFLAGS += -DTARGET_OMAP4
@@ -74,7 +74,7 @@ LOCAL_C_INCLUDES += \
 LOCAL_MODULE:= surfacetexture_test
 LOCAL_MODULE_TAGS:= tests
 
-LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___
+LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___ $(ANDROID_API_CFLAGS)
 
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
     LOCAL_CFLAGS += -DTARGET_OMAP4

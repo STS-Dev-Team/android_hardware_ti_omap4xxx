@@ -7,6 +7,8 @@ LOCAL_PATH:= $(call my-dir)
 #OMAP4_CAMERA_HAL_USES:= USB
 OMAP4_CAMERA_HAL_USES:= ALL
 
+CAMERAHAL_CFLAGS += $(ANDROID_API_CFLAGS)
+
 ifdef TI_CAMERAHAL_DEBUG_ENABLED
     # Enable CameraHAL debug logs
     CAMERAHAL_CFLAGS += -DCAMERAHAL_DEBUG
@@ -47,9 +49,15 @@ TI_CAMERAHAL_COMMON_INCLUDES := \
     $(LOCAL_PATH)/../libtiutils \
     $(LOCAL_PATH)/inc
 
+ifdef ANDROID_API_JB_OR_LATER
+TI_CAMERAHAL_COMMON_INCLUDES += \
+    frameworks/native/include/media/hardware \
+    system/core/include
+else
 TI_CAMERAHAL_COMMON_INCLUDES += \
     frameworks/base/include/media/stagefright \
     hardware/ti/omap4xxx/include
+endif
 
 TI_CAMERAHAL_COMMON_SRC := \
     CameraHal_Module.cpp \

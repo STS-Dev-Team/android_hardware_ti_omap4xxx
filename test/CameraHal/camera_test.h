@@ -1,12 +1,31 @@
 #ifndef CAMERA_TEST_H
 #define CAMERA_TEST_H
 
-#define CAMHAL_LOGV LOGV
-#define CAMHAL_LOGE LOGE
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
+#include <gui/SurfaceComposerClient.h>
+#else
+#include <surfaceflinger/Surface.h>
+#include <surfaceflinger/ISurface.h>
+#include <surfaceflinger/ISurfaceComposer.h>
+#include <surfaceflinger/ISurfaceComposerClient.h>
+#include <surfaceflinger/SurfaceComposerClient.h>
+#endif
 
-#define PRINTOVER(arg...)     LOGD(#arg)
-#define LOG_FUNCTION_NAME         LOGD("%d: %s() ENTER", __LINE__, __FUNCTION__);
-#define LOG_FUNCTION_NAME_EXIT    LOGD("%d: %s() EXIT", __LINE__, __FUNCTION__);
+#ifdef ANDROID_API_JB_OR_LATER
+#   define CAMHAL_LOGV            ALOGV
+#   define CAMHAL_LOGE            ALOGE
+#   define PRINTOVER(arg...)      ALOGD(#arg)
+#   define LOG_FUNCTION_NAME      ALOGD("%d: %s() ENTER", __LINE__, __FUNCTION__);
+#   define LOG_FUNCTION_NAME_EXIT ALOGD("%d: %s() EXIT", __LINE__, __FUNCTION__);
+#else
+#   define CAMHAL_LOGV            LOGV
+#   define CAMHAL_LOGE            LOGE
+#   define PRINTOVER(arg...)      LOGD(#arg)
+#   define LOG_FUNCTION_NAME      LOGD("%d: %s() ENTER", __LINE__, __FUNCTION__);
+#   define LOG_FUNCTION_NAME_EXIT LOGD("%d: %s() EXIT", __LINE__, __FUNCTION__);
+#endif
+
 #define KEY_GBCE            "gbce"
 #define KEY_GLBCE           "glbce"
 #define KEY_CAMERA          "camera-index"

@@ -60,6 +60,6 @@ LOCAL_C_INCLUDES += \
 	$(JNI_H_INCLUDE)
 
 # No specia compiler flags.
-LOCAL_CFLAGS +=
+LOCAL_CFLAGS += $(ANDROID_API_CFLAGS)
 
 include $(BUILD_SHARED_LIBRARY)

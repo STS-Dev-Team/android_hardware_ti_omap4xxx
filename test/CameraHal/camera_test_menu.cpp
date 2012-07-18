@@ -10,11 +10,6 @@
 #include <assert.h>
 #include <climits>
 
-#include <surfaceflinger/Surface.h>
-#include <surfaceflinger/ISurface.h>
-#include <surfaceflinger/ISurfaceComposer.h>
-#include <surfaceflinger/ISurfaceComposerClient.h>
-#include <surfaceflinger/SurfaceComposerClient.h>
 #include <ui/DisplayInfo.h>
 
 #include <gui/SurfaceTexture.h>

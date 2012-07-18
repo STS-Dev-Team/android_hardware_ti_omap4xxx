@@ -19,15 +19,20 @@ LOCAL_SHARED_LIBRARIES:= \
     libutils \
     libcutils
 
+ifdef ANDROID_API_JB_OR_LATER
+LOCAL_C_INCLUDES += \
+    frameworks/native/include
+else
 LOCAL_C_INCLUDES += \
     frameworks/base/include
+endif
 
 LOCAL_C_INCLUDES += \
     bionic/libc/include \
     $(DOMX_PATH)/omx_core/inc \
     $(DOMX_PATH)/mm_osal/inc
 
-LOCAL_CFLAGS += -fno-short-enums
+LOCAL_CFLAGS += -fno-short-enums $(ANDROID_API_CFLAGS)
 
 ifdef TI_UTILS_MESSAGE_QUEUE_DEBUG_ENABLED
     # Enable debug logs

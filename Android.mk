@@ -1,6 +1,9 @@
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 
 LOCAL_PATH:= $(call my-dir)
+
+include $(LOCAL_PATH)/android-api.mk
+
 HARDWARE_TI_OMAP4_BASE:= $(LOCAL_PATH)
 OMAP4_DEBUG_MEMLEAK:= false
 
@@ -34,4 +37,7 @@ include $(call first-makefiles-under,$(LOCAL_PATH))
 else
 LOCAL_PATH:= $(call my-dir)
 include $(LOCAL_PATH)/cpcam/Android.mk
+
+$(clear-android-api-vars)
+
 endif

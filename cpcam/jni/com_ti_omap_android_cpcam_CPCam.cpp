@@ -45,8 +45,13 @@
 #include <camera/Camera.h>
 #include <binder/IMemory.h>
 
-#define CAMHAL_LOGV LOGV
-#define CAMHAL_LOGE LOGE
+#ifdef ANDROID_API_JB_OR_LATER
+#   define CAMHAL_LOGV ALOGV
+#   define CAMHAL_LOGE ALOGE
+#else
+#   define CAMHAL_LOGV LOGV
+#   define CAMHAL_LOGE LOGE
+#endif
 
 using namespace android;
 
