@@ -147,9 +147,10 @@ void CameraHal::enableMsgType(int32_t msgType)
 
     // ignoring enable focus message from camera service
     // we will enable internally in autoFocus call
-    if (msgType & CAMERA_MSG_FOCUS) {
-        msgType &= ~CAMERA_MSG_FOCUS;
-    }
+    msgType &= ~CAMERA_MSG_FOCUS;
+#ifdef ANDROID_API_JB_OR_LATER
+    msgType &= ~CAMERA_MSG_FOCUS_MOVE;
+#endif
 
     {
     android::AutoMutex lock(mLock);
@@ -3296,12 +3297,18 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
 
     LOG_FUNCTION_NAME;
 
-
     if ( ( NO_ERROR == ret ) && ( NULL == mCameraAdapter ) )
         {
         CAMHAL_LOGEA("No CameraAdapter instance");
         return -EINVAL;
         }
+
+#ifdef ANDROID_API_JB_OR_LATER
+    switch (cmd) {
+    case CAMERA_CMD_ENABLE_FOCUS_MOVE_MSG:
+        return OK;
+    }
+#endif
 
     if ( ( NO_ERROR == ret ) && ( !previewEnabled() )
 #ifdef OMAP_ENHANCEMENT_VTC
