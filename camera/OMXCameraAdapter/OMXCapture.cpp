@@ -252,6 +252,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
 
     CAMHAL_LOGVB("Sensor Orientation  set : %d", mSensorOrientation);
 
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
     if ( params.getInt(TICameraParameters::KEY_BURST)  >= 1 )
         {
         if (params.getInt(TICameraParameters::KEY_BURST) != (int) mBurstFrames) {
@@ -266,6 +267,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         }
 
     CAMHAL_LOGVB("Burst Frames set %d", mBurstFrames);
+#endif
 
     if ( ( params.getInt(android::CameraParameters::KEY_JPEG_QUALITY)  >= MIN_JPEG_QUALITY ) &&
          ( params.getInt(android::CameraParameters::KEY_JPEG_QUALITY)  <= MAX_JPEG_QUALITY ) )

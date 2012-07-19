@@ -127,7 +127,7 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
     {
         android::AutoMutex lock(mBurstLock);
 
-#if defined(OMAP_ENHANCEMENT)
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
         if ( mBurst )
         {
             mDataCb(CAMERA_MSG_COMPRESSED_BURST_IMAGE, picture, 0, NULL, mCallbackCookie);
@@ -1018,7 +1018,7 @@ void AppCallbackNotifier::notifyFrame()
 #ifdef COPY_IMAGE_BUFFER
                     {
                         android::AutoMutex lock(mBurstLock);
-#if defined(OMAP_ENHANCEMENT)
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
                         if ( mBurst )
                         {
                             copyAndSendPictureFrame(frame, CAMERA_MSG_COMPRESSED_BURST_IMAGE);

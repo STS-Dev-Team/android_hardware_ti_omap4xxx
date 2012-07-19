@@ -569,6 +569,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             }
         }
 
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
         if ((valstr = params.get(TICameraParameters::KEY_BURST)) != NULL) {
             if (params.getInt(TICameraParameters::KEY_BURST) >=0) {
                 CAMHAL_LOGDB("Burst set %s", params.get(TICameraParameters::KEY_BURST));
@@ -578,6 +579,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 return BAD_VALUE;
             }
         }
+#endif
 
         // Variable framerate ranges have higher priority over
         // deprecated constant FPS. "KEY_PREVIEW_FPS_RANGE" should

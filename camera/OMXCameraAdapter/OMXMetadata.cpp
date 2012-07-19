@@ -126,7 +126,7 @@ status_t OMXCameraAdapter::setMetaData(android::CameraMetadata &meta_data, const
 
 void OMXCameraAdapter::encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt)
 {
-#ifdef OMAP_ENHANCEMENT
+#ifdef OMAP_ENHANCEMENT_CPCAM
     OMX_OTHER_EXTRADATATYPE *extraData = NULL;
 
     extraData = getExtradata(plat_pvt, (OMX_EXTRADATATYPE) OMX_TI_VectShotInfo);
