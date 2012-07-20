@@ -624,10 +624,18 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
     }
 
     int possible_blit = 0, candidates = 0;
-    rgz->screen_isdirty = 1;
 
-    /* Insert the background layer at the beginning of the list */
-    rgz->rgz_layers[0].hwc_layer = &bg_layer;
+    /*
+     * Insert the background layer at the beginning of the list, maintain a
+     * state for dirty region handling
+     */
+    rgz_layer_t *rgz_layer = &rgz->rgz_layers[0];
+    rgz_layer->hwc_layer = &bg_layer;
+    if (!rgz_layer->dirty_hndl) {
+        rgz_layer->dirty_hndl = (void*)0x1;
+        rgz_layer->dirty_count = RGZ_NUM_FB;
+    } else
+        rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
 
     for (l = 0; l < layerno; l++) {
         if (layers[l].compositionType == HWC_FRAMEBUFFER) {
@@ -640,11 +648,9 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                 if (rgz_layer->hwc_layer->handle != rgz_layer->dirty_hndl) {
                     rgz_layer->dirty_count = RGZ_NUM_FB;
                     rgz_layer->dirty_hndl = (void*)rgz_layer->hwc_layer->handle;
-                } else {
+                } else
                      rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
-                     if (rgz_layer->dirty_count == 0)
-                         rgz->screen_isdirty = 0; /* Just update dirty regions from now on */
-                }
+
                 possible_blit++;
             }
             continue;
@@ -659,9 +665,16 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                  */
                 rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
                 rgz_layer->buffidx = -1;
-                rgz_layer->dirty_count = 0;
-                rgz_layer->dirty_hndl = NULL;
                 rgz_layer->hwc_layer = &layers[l];
+                /*
+                 * We don't care about the handle but we want to maintain a layer state for
+                 * dirty region handling
+                 */
+                if (!rgz_layer->dirty_hndl) {
+                    rgz_layer->dirty_hndl = (void*)0x1;
+                    rgz_layer->dirty_count = RGZ_NUM_FB;
+                } else
+                    rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
                 possible_blit++;
             }
         }
@@ -1263,7 +1276,7 @@ static void rgz_batch_entry(struct rgz_blt_entry* e, unsigned int flag, unsigned
     e->bp.batchflags |= set;
 }
 
-static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params, int screen_isdirty)
+static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_params_t *params)
 {
     static int loaded = 0;
     if (!loaded)
@@ -1293,12 +1306,26 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
         return -1;
     }
 
+    /* Determine if this region is dirty */
+    int dirty = 0, dirtylix = lix;
+    while (dirtylix != -1) {
+        rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
+        if (rgz_layer->dirty_count){
+            /* One of the layers is dirty, we need to generate blits for this subregion */
+            dirty = 1;
+            break;
+        }
+        dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
+    }
+
+    if (!dirty)
+        return 0;
+
     /* Check if the bottom layer is the background */
     if (hregion->rgz_layers[lix]->hwc_layer == &bg_layer) {
         if (ldepth == 1) {
             /* Background layer is the only operation, clear subregion */
-            if (screen_isdirty)
-                rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
+            rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
             return 0;
         } else {
             /* No need to generate blits with background layer if there is
@@ -1316,27 +1343,11 @@ static int rgz_hwc_subregion_blit(blit_hregion_t *hregion, int sidx, rgz_out_par
     if (hregion->rgz_layers[lix]->buffidx == -1) {
         ldepth--;
         if (!ldepth) {
-            if (screen_isdirty)
-                rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
+            rgz_out_clrdst(params, &hregion->blitrects[lix][sidx]);
             return 0;
         }
         lix = get_layer_ops_next(hregion, sidx, lix);
     }
-
-    /* Determine if this region is dirty */
-    int dirty = 0, dirtylix = lix;
-    while (dirtylix != -1) {
-        rgz_layer_t *rgz_layer = hregion->rgz_layers[dirtylix];
-        if (rgz_layer->dirty_count){
-            /* One of the layers is dirty, we need to generate blits for this subregion */
-            dirty = 1;
-            break;
-        }
-        dirtylix = get_layer_ops_next(hregion, sidx, dirtylix);
-    }
-
-    if (!dirty)
-        return 0;
 
     if (!noblend && ldepth > 1) { /* BLEND */
         blit_rect_t *rect = &hregion->blitrects[lix][sidx];
@@ -1489,7 +1500,7 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
         }
         for (s = 0; s < hregion->nsubregions; s++) {
             ALOGD_IF(debug, "h[%d] -> [%d]", i, s);
-            rgz_hwc_subregion_blit(hregion, s, params, rgz->screen_isdirty);
+            rgz_hwc_subregion_blit(hregion, s, params);
         }
     }
 
