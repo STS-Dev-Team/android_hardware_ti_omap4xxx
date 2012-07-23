@@ -2395,12 +2395,6 @@ static int omap4_hwc_device_open(const hw_module_t* module, const char* name,
     if (hwc_dev->fb_dis.channel == OMAP_DSS_CHANNEL_DIGIT) {
         ALOGI("Primary display is HDMI");
         hwc_dev->on_tv = 1;
-        /*
-         * For the moment use s/w vsync until kernel supports
-         * vsync for HDMI
-         */
-        ALOGI("Revert to legacy HWC API for fake vsync");
-        hwc_dev->base.common.version = HWC_DEVICE_API_VERSION_0_2;
     } else {
         hwc_dev->hdmi_fb_fd = open("/dev/graphics/fb1", O_RDWR);
         if (hwc_dev->hdmi_fb_fd < 0) {
