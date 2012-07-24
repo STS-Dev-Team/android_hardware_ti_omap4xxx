@@ -93,6 +93,77 @@ static CK_RV static_checkPreConditionsAndUpdateHandles(
    return CKR_OK;
 }
 
+/* Add up the sizes of the items and values in an attribute template.
+ */
+static CK_RV static_analyzeTemplate(
+   uint32_t *const pDataOffset,
+   uint32_t *const pBufferSize,
+   const CK_ATTRIBUTE *const pTemplate,
+   CK_ULONG const ulCount)
+{
+   CK_ULONG i;
+   uint32_t nItemsSize;
+   uint32_t nValuesSize = 0;
+
+   nItemsSize = sizeof(uint32_t); /* for the number of attributes */
+   if (ulCount == 0)
+   {
+      /* There are zero attributes, so the buffer will only contain the size word. */
+      *pDataOffset += nItemsSize;
+      *pBufferSize += nItemsSize;
+      return CKR_OK;
+   }
+   nItemsSize += sizeof(INPUT_TEMPLATE_ITEM) * ulCount; /*for the attribute items*/
+
+   /* Add up the attribute value sizes, taking the 4-byte alignment into account. */
+   for (i = 0; i < ulCount; i++)
+   {
+      if (*pBufferSize + nValuesSize > 0x40000000)
+      {
+         /* Offsets above 0x40000000 aren't supported. */
+         return CKR_DEVICE_ERROR;
+      }
+      nValuesSize += PKCS11_GET_SIZE_WITH_ALIGNMENT(pTemplate[i].ulValueLen);
+   }
+
+   *pDataOffset += nItemsSize;
+   *pBufferSize += nItemsSize + nValuesSize;
+   return CKR_OK;
+}
+
+static void static_copyTemplate(
+   uint8_t *const pBuffer,
+   uint32_t const nParamIndex,
+   uint8_t **const ppAttributeCursor,
+   uint8_t **const ppDataCursor,
+   const CK_ATTRIBUTE *const pTemplate,
+   CK_ULONG const ulCount)
+{
+   INPUT_TEMPLATE_ITEM  sItem;
+   CK_ULONG i;
+   *(uint32_t*)(*ppAttributeCursor) = ulCount;
+   *ppAttributeCursor += sizeof(uint32_t);
+   for (i = 0; i < ulCount; i++)
+   {
+      sItem.attributeType     = pTemplate[i].type;
+      /* dataOffset = 0 means NULL buffer */
+      sItem.dataOffset        = ((pTemplate[i].pValue == NULL) ? 0 :
+                                 *ppDataCursor - pBuffer);
+      sItem.dataParamIndex    = nParamIndex; /* The parameter where we store the data (0 to 3) */
+      sItem.dataValueLen      = pTemplate[i].ulValueLen;
+      /* Copy the item */
+      memcpy(*ppAttributeCursor, &sItem, sizeof(INPUT_TEMPLATE_ITEM));
+      *ppAttributeCursor += sizeof(INPUT_TEMPLATE_ITEM);
+      if (pTemplate[i].pValue != NULL)
+      {
+         /* Copy the data */
+         memcpy(*ppDataCursor, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+         /* Next data will be stored just after the previous one but aligned on 4 bytes */
+         *ppDataCursor += PKCS11_GET_SIZE_WITH_ALIGNMENT(pTemplate[i].ulValueLen);
+      }
+   }
+}
+
 /******************************************/
 /* The buffer must be freed by the caller */
 /******************************************/
@@ -100,141 +171,39 @@ static CK_RV static_encodeTwoTemplates(
    uint8_t**         ppBuffer,
    uint32_t *        pBufferSize,
    const uint32_t    nParamIndex,
-   CK_ATTRIBUTE*     pTemplate1,
+   const CK_ATTRIBUTE* pTemplate1,
    CK_ULONG          ulCount1,
-   CK_ATTRIBUTE*     pTemplate2,
+   const CK_ATTRIBUTE* pTemplate2,
    CK_ULONG          ulCount2)
 {
-   INPUT_TEMPLATE_ITEM  sItem;
-
-   uint32_t i;
-   uint32_t nDataOffset    = 0;
-   uint32_t nBufferIndex   = 0;
-   uint32_t nBufferSize    = 0;
    uint8_t* pBuffer = NULL;
-   CK_RV    nErrorCode = CKR_OK;
+   uint32_t nBufferSize = 0;
+   uint32_t nDataOffset = 0;
+   uint8_t *pAttributeCursor;
+   uint8_t *pDataCursor;
+   CK_RV nErrorCode;
 
-   if (ulCount1 == 0)
-   {
-      /* Nothing to do */
-      return CKR_OK;
-   }
-   if (pTemplate1 == NULL)
-   {
-      /* Nothing to do */
-      return CKR_OK;
-   }
+   nErrorCode = static_analyzeTemplate(&nDataOffset, &nBufferSize, pTemplate1, ulCount1);
+   if (nErrorCode != CKR_OK) return nErrorCode;
+   nErrorCode = static_analyzeTemplate(&nDataOffset, &nBufferSize, pTemplate2, ulCount2);
+   if (nErrorCode != CKR_OK) return nErrorCode;
 
-   /* First compute the total required buffer size that
-    * will contain the full templates (for the template 1 AND 2)
-    */
-   nBufferSize =  4 +                                    /* Nb Attributes */
-                  sizeof(INPUT_TEMPLATE_ITEM)*ulCount1;  /* The attributes items */
-   if (pTemplate2 != NULL)
-   {
-      nBufferSize += 4 +                                    /* Nb Attributes */
-                     sizeof(INPUT_TEMPLATE_ITEM)*ulCount2;  /* The attributes items */
-   }
-
-   /* First data (attribute values) on either template 1 or 2 will just be after the last item */
-   nDataOffset = nBufferSize;
-
-   for (i = 0; i < ulCount1; i++)
-   {
-      /* Each value will be aligned on 4 bytes.
-         This computation includes the spare bytes. */
-      nBufferSize += PKCS11_GET_SIZE_WITH_ALIGNMENT(pTemplate1[i].ulValueLen);
-   }
-   if (pTemplate2 != NULL)
-   {
-      for (i = 0; i < ulCount2; i++)
-      {
-         /* Each value will be aligned on 4 bytes.
-            This computation includes the spare bytes. */
-         nBufferSize += PKCS11_GET_SIZE_WITH_ALIGNMENT(pTemplate2[i].ulValueLen);
-      }
-   }
-
-   pBuffer = (uint8_t*)malloc(nBufferSize);
-   if (pBuffer == NULL)
-   {
-      /* Not enough memory */
-      return CKR_DEVICE_MEMORY;
-   }
-
+   pBuffer = malloc(nBufferSize);
+   if (pBuffer == NULL) return CKR_DEVICE_MEMORY;
    memset(pBuffer, 0, nBufferSize);
 
-   /*
-    * First template
-    */
-   *(uint32_t*)(pBuffer + nBufferIndex) = ulCount1;
-   nBufferIndex += 4;
-   for (i = 0; i < ulCount1; i++)
-   {
-      sItem.attributeType     = (uint32_t)pTemplate1[i].type;
-      /* dataOffset = 0 means NULL buffer */
-      sItem.dataOffset        = ((pTemplate1[i].pValue == NULL) ? 0 : nDataOffset);
-      sItem.dataParamIndex    = nParamIndex; /* The parameter where we store the data (0 to 3) */
-      sItem.dataValueLen      = (uint32_t)pTemplate1[i].ulValueLen;
-      /* Copy the item */
-      memcpy(pBuffer + nBufferIndex, &sItem, sizeof(INPUT_TEMPLATE_ITEM));
-      nBufferIndex += sizeof(INPUT_TEMPLATE_ITEM);
-      if (pTemplate1[i].pValue != NULL)
-      {
-         /* Copy the data */
-         memcpy(pBuffer + nDataOffset, (uint8_t*)pTemplate1[i].pValue, (uint32_t)pTemplate1[i].ulValueLen);
-         /* Next data will be stored just after the previous one but aligned on 4 bytes */
-         nDataOffset += PKCS11_GET_SIZE_WITH_ALIGNMENT(pTemplate1[i].ulValueLen);
-         if ((nDataOffset & 0xC0000000) != 0)
-         {
-            /* We whould never go in this case, that means the dataOffset will not be able to store the offset correctly */
-            nErrorCode = CKR_DEVICE_ERROR;
-            goto error;
-         }
-      }
-   }
-
-   /*
-    * Second template
-    */
-   if (pTemplate2 != NULL)
-   {
-      *(uint32_t*)(pBuffer + nBufferIndex) = ulCount2;
-      nBufferIndex += 4;
-      for (i = 0; i < ulCount2; i++)
-      {
-         sItem.attributeType     = (uint32_t)pTemplate2[i].type;
-         /* dataOffset = 0 means NULL buffer */
-         sItem.dataOffset        = ((pTemplate2[i].pValue == NULL) ? 0 : nDataOffset);
-         sItem.dataParamIndex    = nParamIndex; /* The parameter where we store the data (0..3) */
-         sItem.dataValueLen      = (uint32_t)pTemplate2[i].ulValueLen;
-         /* Copy the item */
-         memcpy(pBuffer + nBufferIndex, &sItem, sizeof(INPUT_TEMPLATE_ITEM));
-         nBufferIndex += sizeof(INPUT_TEMPLATE_ITEM);
-         if (pTemplate2[i].pValue != NULL)
-         {
-            /* Copy the data */
-            memcpy(pBuffer + nDataOffset, (uint8_t*)pTemplate2[i].pValue, (uint32_t)pTemplate2[i].ulValueLen);
-            /* Next data will be stored just after the previous one but aligned on 4 bytes */
-            nDataOffset += PKCS11_GET_SIZE_WITH_ALIGNMENT(pTemplate2[i].ulValueLen);
-            if ((nDataOffset & 0xC0000000) != 0)
-            {
-               /* We whould never go in this case, that means the dataOffset will not be able to store the offset correctly */
-               nErrorCode = CKR_DEVICE_ERROR;
-               goto error;
-            }
-         }
-      }
-   }
+   pAttributeCursor = pBuffer;
+   pDataCursor = pBuffer + nDataOffset;
+   static_copyTemplate(pBuffer, nParamIndex,
+                       &pAttributeCursor, &pDataCursor,
+                       pTemplate1, ulCount1);
+   static_copyTemplate(pBuffer, nParamIndex,
+                       &pAttributeCursor, &pDataCursor,
+                       pTemplate2, ulCount2);
 
    *ppBuffer      = pBuffer;
    *pBufferSize   = nBufferSize;
-
    return CKR_OK;
-
-error:
-   free(pBuffer);
-   return nErrorCode;
 }
 
 /******************************************/
@@ -247,7 +216,35 @@ static CK_RV static_encodeTemplate(
    CK_ATTRIBUTE*     pTemplate,
    CK_ULONG          ulCount)
 {
-   return static_encodeTwoTemplates(ppBuffer, pBufferSize, nParamIndex, pTemplate, ulCount, NULL, 0);
+   uint8_t* pBuffer = NULL;
+   uint32_t nBufferSize = 0;
+   uint32_t nDataOffset = 0;
+   uint8_t *pAttributeCursor;
+   uint8_t *pDataCursor;
+   CK_RV nErrorCode;
+
+   if (pTemplate == NULL || ulCount == 0)
+   {
+      *ppBuffer = NULL;
+      *pBufferSize = 0;
+      return CKR_OK;
+   }
+
+   nErrorCode = static_analyzeTemplate(&nDataOffset, &nBufferSize, pTemplate, ulCount);
+   if (nErrorCode != CKR_OK) return nErrorCode;
+
+   pBuffer = malloc(nBufferSize);
+   if (pBuffer == NULL) return CKR_DEVICE_MEMORY;
+
+   pAttributeCursor = pBuffer;
+   pDataCursor = pBuffer + nDataOffset;
+   static_copyTemplate(pBuffer, nParamIndex,
+                       &pAttributeCursor, &pDataCursor,
+                       pTemplate, ulCount);
+
+   *ppBuffer      = pBuffer;
+   *pBufferSize   = nBufferSize;
+   return CKR_OK;
 }
 /* ----------------------------------------------------------------------- */
 
@@ -1268,7 +1265,7 @@ CK_RV PKCS11_EXPORT C_GenerateKeyPair(
    PPKCS11_PRIMARY_SESSION_CONTEXT pSession;
 
    if (  (pMechanism == NULL) ||
-         (pPublicKeyTemplate == NULL) || (pPrivateKeyTemplate == NULL) ||
+         (pPublicKeyTemplate == NULL) ||
          (phPublicKey== NULL) || (phPrivateKey== NULL))
    {
       return CKR_ARGUMENTS_BAD;
@@ -1280,7 +1277,7 @@ CK_RV PKCS11_EXPORT C_GenerateKeyPair(
       return nErrorCode;
    }
 
-   nErrorCode = static_encodeTwoTemplates(&pBuffer, &nBufferSize, 2, (CK_ATTRIBUTE*)pPublicKeyTemplate, ulPublicKeyAttributeCount, (CK_ATTRIBUTE*)pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+   nErrorCode = static_encodeTwoTemplates(&pBuffer, &nBufferSize, 2, pPublicKeyTemplate, ulPublicKeyAttributeCount, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
    if (nErrorCode != CKR_OK)
    {
       return nErrorCode;
