@@ -16,11 +16,22 @@
 # all OMAP4 devices.
 
 PRODUCT_PACKAGES += \
-    camera.omap4 \
-    hwcomposer.omap4 \
-    hwcomposer.omap5
-
-PRODUCT_VENDOR_KERNEL_HEADERS := hardware/ti/omap4xxx/kernel-headers
-
-$(call inherit-product, hardware/ti/omap4xxx/common.mk)
+    libdomx \
+    libOMX_Core \
+    libOMX.TI.DUCATI1.VIDEO.H264E \
+    libOMX.TI.DUCATI1.VIDEO.MPEG4E \
+    libOMX.TI.DUCATI1.VIDEO.DECODER \
+    libOMX.TI.DUCATI1.VIDEO.DECODER.secure \
+    libOMX.TI.DUCATI1.VIDEO.CAMERA \
+    libOMX.TI.DUCATI1.MISC.SAMPLE \
+    libdrmdecrypt \
+    libstagefrighthw \
+    libI420colorconvert \
+    libtiutils \
+    libcamera \
+    libion \
+    libomxcameraadapter \
+    smc_pa_ctrl \
+    tf_daemon \
+    libtf_crypto_sst
 
