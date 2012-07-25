@@ -2295,6 +2295,14 @@ status_t OMXCameraAdapter::destroyTunnel()
     mCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
     measurementData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mMeasurementPortIndex];
 
+    if (mAdapterState == LOADED_PREVIEW_STATE) {
+        // Something happened in CameraHal between UseBuffers and startPreview
+        // this means that state switch is still locked..so we need to unlock else
+        // deadlock will occur on the next start preview
+        mStateSwitchLock.unlock();
+        return ALREADY_EXISTS;
+    }
+
     if ( mComponentState != OMX_StateExecuting )
         {
         CAMHAL_LOGEA("Calling StopPreview() when not in EXECUTING state");
@@ -2394,6 +2402,10 @@ status_t OMXCameraAdapter::stopPreview() {
 
     if (mTunnelDestroyed == false){
         ret = destroyTunnel();
+        if (ret == ALREADY_EXISTS) {
+            // Special case to handle invalid stopping preview in LOADED_PREVIEW_STATE
+            return NO_ERROR;
+        }
         if (ret != NO_ERROR) {
             CAMHAL_LOGEB(" destroyTunnel returned error ");
             return ret;
