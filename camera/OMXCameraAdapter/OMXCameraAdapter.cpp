@@ -228,6 +228,11 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mSensorOverclock = false;
     mAutoConv = OMX_TI_AutoConvergenceModeMax;
     mManualConv = 0;
+
+#ifdef CAMERAHAL_TUNA
+    mIternalRecordingHint = false;
+#endif
+
     mDeviceOrientation = 0;
     mCapabilities = caps;
     mZoomUpdating = false;
@@ -643,6 +648,15 @@ status_t OMXCameraAdapter::setParameters(const android::CameraParameters &params
         {
         mOMXStateSwitch = true;
         }
+
+#ifdef CAMERAHAL_TUNA
+    valstr = params.get(TICameraParameters::KEY_RECORDING_HINT);
+    if (!valstr || (valstr && (strcmp(valstr, android::CameraParameters::FALSE)))) {
+        mIternalRecordingHint = false;
+    } else {
+        mIternalRecordingHint = true;
+    }
+#endif
 
 #ifdef OMAP_ENHANCEMENT
     if ( (valstr = params.get(TICameraParameters::KEY_MEASUREMENT_ENABLE)) != NULL )
