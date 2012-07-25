@@ -21,8 +21,6 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
 #include <utils/threads.h>
 
 #include "CameraHal.h"
@@ -30,8 +28,18 @@
 #include "TICameraParameters.h"
 
 
-static android::CameraProperties gCameraProperties;
-static android::CameraHal* gCameraHals[MAX_CAMERAS_SUPPORTED];
+#ifdef CAMERAHAL_DEBUG_VERBOSE
+#   define CAMHAL_LOG_MODULE_FUNCTION_NAME LOG_FUNCTION_NAME
+#else
+#   define CAMHAL_LOG_MODULE_FUNCTION_NAME
+#endif
+
+
+namespace Ti {
+namespace Camera {
+
+static CameraProperties gCameraProperties;
+static CameraHal* gCameraHals[MAX_CAMERAS_SUPPORTED];
 static unsigned int gCamerasOpen = 0;
 static android::Mutex gCameraHalDeviceLock;
 
@@ -45,6 +53,10 @@ static struct hw_module_methods_t camera_module_methods = {
         open: camera_device_open
 };
 
+} // namespace Camera
+} // namespace Ti
+
+
 camera_module_t HAL_MODULE_INFO_SYM = {
     common: {
          tag: HARDWARE_MODULE_TAG,
@@ -53,13 +65,17 @@ camera_module_t HAL_MODULE_INFO_SYM = {
          id: CAMERA_HARDWARE_MODULE_ID,
          name: "TI OMAP CameraHal Module",
          author: "TI",
-         methods: &camera_module_methods,
+         methods: &Ti::Camera::camera_module_methods,
          dso: NULL, /* remove compilation warnings */
          reserved: {0}, /* remove compilation warnings */
     },
-    get_number_of_cameras: camera_get_number_of_cameras,
-    get_camera_info: camera_get_camera_info,
+    get_number_of_cameras: Ti::Camera::camera_get_number_of_cameras,
+    get_camera_info: Ti::Camera::camera_get_camera_info,
 };
+
+
+namespace Ti {
+namespace Camera {
 
 typedef struct ti_camera_device {
     camera_device_t base;
@@ -75,10 +91,10 @@ typedef struct ti_camera_device {
 int camera_set_preview_window(struct camera_device * device,
         struct preview_stream_ops *window)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -90,6 +106,27 @@ int camera_set_preview_window(struct camera_device * device,
     return rv;
 }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+int camera_set_buffer_source(struct camera_device * device,
+        struct preview_stream_ops *tapin,
+        struct preview_stream_ops *tapout)
+{
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->setBufferSource(tapin, tapout);
+
+    return rv;
+}
+#endif
+
 void camera_set_callbacks(struct camera_device * device,
         camera_notify_callback notify_cb,
         camera_data_callback data_cb,
@@ -97,9 +134,9 @@ void camera_set_callbacks(struct camera_device * device,
         camera_request_memory get_memory,
         void *user)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -111,9 +148,9 @@ void camera_set_callbacks(struct camera_device * device,
 
 void camera_enable_msg_type(struct camera_device * device, int32_t msg_type)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -125,9 +162,9 @@ void camera_enable_msg_type(struct camera_device * device, int32_t msg_type)
 
 void camera_disable_msg_type(struct camera_device * device, int32_t msg_type)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -139,9 +176,9 @@ void camera_disable_msg_type(struct camera_device * device, int32_t msg_type)
 
 int camera_msg_type_enabled(struct camera_device * device, int32_t msg_type)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return 0;
@@ -153,10 +190,10 @@ int camera_msg_type_enabled(struct camera_device * device, int32_t msg_type)
 
 int camera_start_preview(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -170,9 +207,9 @@ int camera_start_preview(struct camera_device * device)
 
 void camera_stop_preview(struct camera_device * device)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -184,10 +221,10 @@ void camera_stop_preview(struct camera_device * device)
 
 int camera_preview_enabled(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -200,10 +237,10 @@ int camera_preview_enabled(struct camera_device * device)
 
 int camera_store_meta_data_in_buffers(struct camera_device * device, int enable)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -218,10 +255,10 @@ int camera_store_meta_data_in_buffers(struct camera_device * device, int enable)
 
 int camera_start_recording(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -234,9 +271,9 @@ int camera_start_recording(struct camera_device * device)
 
 void camera_stop_recording(struct camera_device * device)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -248,10 +285,10 @@ void camera_stop_recording(struct camera_device * device)
 
 int camera_recording_enabled(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -265,9 +302,9 @@ int camera_recording_enabled(struct camera_device * device)
 void camera_release_recording_frame(struct camera_device * device,
                 const void *opaque)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -279,10 +316,10 @@ void camera_release_recording_frame(struct camera_device * device,
 
 int camera_auto_focus(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -295,10 +332,10 @@ int camera_auto_focus(struct camera_device * device)
 
 int camera_cancel_auto_focus(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -309,28 +346,35 @@ int camera_cancel_auto_focus(struct camera_device * device)
     return rv;
 }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+int camera_take_picture(struct camera_device * device, const char *params)
+#else
 int camera_take_picture(struct camera_device * device)
+#endif
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
+#ifndef OMAP_ENHANCEMENT_CPCAM
+    const char* params = NULL;
+#endif
 
     if(!device)
         return rv;
 
     ti_dev = (ti_camera_device_t*) device;
 
-    rv = gCameraHals[ti_dev->cameraid]->takePicture();
+    rv = gCameraHals[ti_dev->cameraid]->takePicture(params);
     return rv;
 }
 
 int camera_cancel_picture(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -341,12 +385,46 @@ int camera_cancel_picture(struct camera_device * device)
     return rv;
 }
 
-int camera_set_parameters(struct camera_device * device, const char *params)
+#ifdef OMAP_ENHANCEMENT_CPCAM
+int camera_reprocess(struct camera_device * device, const char *params)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
 
-    ALOGV("%s", __FUNCTION__);
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->reprocess(params);
+    return rv;
+}
+
+int camera_cancel_reprocess(struct camera_device * device)
+{
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->cancel_reprocess();
+    return rv;
+}
+#endif
+
+int camera_set_parameters(struct camera_device * device, const char *params)
+{
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return rv;
@@ -359,10 +437,10 @@ int camera_set_parameters(struct camera_device * device, const char *params)
 
 char* camera_get_parameters(struct camera_device * device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     char* param = NULL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return NULL;
@@ -376,9 +454,9 @@ char* camera_get_parameters(struct camera_device * device)
 
 static void camera_put_parameters(struct camera_device *device, char *parms)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -391,10 +469,10 @@ static void camera_put_parameters(struct camera_device *device, char *parms)
 int camera_send_command(struct camera_device * device,
             int32_t cmd, int32_t arg1, int32_t arg2)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-
-    ALOGV("%s", __FUNCTION__);
 
     if(!device)
         return rv;
@@ -407,9 +485,9 @@ int camera_send_command(struct camera_device * device,
 
 void camera_release(struct camera_device * device)
 {
-    ti_camera_device_t* ti_dev = NULL;
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
-    ALOGV("%s", __FUNCTION__);
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return;
@@ -421,6 +499,8 @@ void camera_release(struct camera_device * device)
 
 int camera_dump(struct camera_device * device, int fd)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
 
@@ -437,12 +517,12 @@ extern "C" void heaptracker_free_leaked_memory(void);
 
 int camera_device_close(hw_device_t* device)
 {
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
     int ret = 0;
     ti_camera_device_t* ti_dev = NULL;
 
-    ALOGV("%s", __FUNCTION__);
-
-    android::Mutex::Autolock lock(gCameraHalDeviceLock);
+    android::AutoMutex lock(gCameraHalDeviceLock);
 
     if (!device) {
         ret = -EINVAL;
@@ -488,10 +568,10 @@ int camera_device_open(const hw_module_t* module, const char* name,
     int cameraid;
     ti_camera_device_t* camera_device = NULL;
     camera_device_ops_t* camera_ops = NULL;
-    android::CameraHal* camera = NULL;
-    android::CameraProperties::Properties* properties = NULL;
+    CameraHal* camera = NULL;
+    CameraProperties::Properties* properties = NULL;
 
-    android::Mutex::Autolock lock(gCameraHalDeviceLock);
+    android::AutoMutex lock(gCameraHalDeviceLock);
 
     CAMHAL_LOGI("camera_device open");
 
@@ -501,7 +581,7 @@ int camera_device_open(const hw_module_t* module, const char* name,
 
         if(cameraid > num_cameras)
         {
-            ALOGE("camera service provided cameraid out of bounds, "
+            CAMHAL_LOGE("camera service provided cameraid out of bounds, "
                     "cameraid = %d, num supported = %d",
                     cameraid, num_cameras);
             rv = -EINVAL;
@@ -510,7 +590,7 @@ int camera_device_open(const hw_module_t* module, const char* name,
 
         if(gCamerasOpen >= MAX_SIMUL_CAMERAS_SUPPORTED)
         {
-            ALOGE("maximum number of cameras already open");
+            CAMHAL_LOGE("maximum number of cameras already open");
             rv = -ENOMEM;
             goto fail;
         }
@@ -518,7 +598,7 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_device = (ti_camera_device_t*)malloc(sizeof(*camera_device));
         if(!camera_device)
         {
-            ALOGE("camera_device allocation fail");
+            CAMHAL_LOGE("camera_device allocation fail");
             rv = -ENOMEM;
             goto fail;
         }
@@ -526,7 +606,7 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_ops = (camera_device_ops_t*)malloc(sizeof(*camera_ops));
         if(!camera_ops)
         {
-            ALOGE("camera_ops allocation fail");
+            CAMHAL_LOGE("camera_ops allocation fail");
             rv = -ENOMEM;
             goto fail;
         }
@@ -541,6 +621,9 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_device->base.ops = camera_ops;
 
         camera_ops->set_preview_window = camera_set_preview_window;
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        camera_ops->set_buffer_source = camera_set_buffer_source;
+#endif
         camera_ops->set_callbacks = camera_set_callbacks;
         camera_ops->enable_msg_type = camera_enable_msg_type;
         camera_ops->disable_msg_type = camera_disable_msg_type;
@@ -563,6 +646,10 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_ops->send_command = camera_send_command;
         camera_ops->release = camera_release;
         camera_ops->dump = camera_dump;
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        camera_ops->reprocess = camera_reprocess;
+        camera_ops->cancel_reprocess = camera_cancel_reprocess;
+#endif
 
         *device = &camera_device->base.common;
 
@@ -572,23 +659,23 @@ int camera_device_open(const hw_module_t* module, const char* name,
 
         if(gCameraProperties.getProperties(cameraid, &properties) < 0)
         {
-            ALOGE("Couldn't get camera properties");
+            CAMHAL_LOGE("Couldn't get camera properties");
             rv = -ENOMEM;
             goto fail;
         }
 
-        camera = new android::CameraHal(cameraid);
+        camera = new CameraHal(cameraid);
 
         if(!camera)
         {
-            ALOGE("Couldn't create instance of CameraHal class");
+            CAMHAL_LOGE("Couldn't create instance of CameraHal class");
             rv = -ENOMEM;
             goto fail;
         }
 
-        if(properties && (camera->initialize(properties) != android::NO_ERROR))
+        if(properties && (camera->initialize(properties) != NO_ERROR))
         {
-            ALOGE("Couldn't initialize camera instance");
+            CAMHAL_LOGE("Couldn't initialize camera instance");
             rv = -ENODEV;
             goto fail;
         }
@@ -620,19 +707,15 @@ int camera_get_number_of_cameras(void)
 {
     int num_cameras = MAX_CAMERAS_SUPPORTED;
 
-    // TODO(XXX): Ducati is not loaded yet when camera service gets here
-    //  Lets revisit this later to see if we can somehow get this working
-#if 0
     // this going to be the first call from camera service
     // initialize camera properties here...
-    if(gCameraProperties.initialize() != android::NO_ERROR)
+    if(gCameraProperties.initialize() != NO_ERROR)
     {
         CAMHAL_LOGEA("Unable to create or initialize CameraProperties");
         return NULL;
     }
 
     num_cameras = gCameraProperties.camerasSupported();
-#endif
 
     return num_cameras;
 }
@@ -643,40 +726,41 @@ int camera_get_camera_info(int camera_id, struct camera_info *info)
     int face_value = CAMERA_FACING_BACK;
     int orientation = 0;
     const char *valstr = NULL;
-    android::CameraProperties::Properties* properties = NULL;
+    CameraProperties::Properties* properties = NULL;
 
     // this going to be the first call from camera service
     // initialize camera properties here...
-    if(gCameraProperties.initialize() != android::NO_ERROR)
+    if(gCameraProperties.initialize() != NO_ERROR)
     {
         CAMHAL_LOGEA("Unable to create or initialize CameraProperties");
-        return NULL;
+        rv = -EINVAL;
+        goto end;
     }
 
     //Get camera properties for camera index
     if(gCameraProperties.getProperties(camera_id, &properties) < 0)
     {
-        ALOGE("Couldn't get camera properties");
+        CAMHAL_LOGE("Couldn't get camera properties");
         rv = -EINVAL;
         goto end;
     }
 
     if(properties)
     {
-        valstr = properties->get(android::CameraProperties::FACING_INDEX);
+        valstr = properties->get(CameraProperties::FACING_INDEX);
         if(valstr != NULL)
         {
-            if (strcmp(valstr, (const char *) android::TICameraParameters::FACING_FRONT) == 0)
+            if (strcmp(valstr, TICameraParameters::FACING_FRONT) == 0)
             {
                 face_value = CAMERA_FACING_FRONT;
             }
-            else if (strcmp(valstr, (const char *) android::TICameraParameters::FACING_BACK) == 0)
+            else if (strcmp(valstr, TICameraParameters::FACING_BACK) == 0)
             {
                 face_value = CAMERA_FACING_BACK;
             }
          }
 
-         valstr = properties->get(android::CameraProperties::ORIENTATION_INDEX);
+         valstr = properties->get(CameraProperties::ORIENTATION_INDEX);
          if(valstr != NULL)
          {
              orientation = atoi(valstr);
@@ -695,6 +779,5 @@ end:
 }
 
 
-
-
-
+} // namespace Camera
+} // namespace Ti
