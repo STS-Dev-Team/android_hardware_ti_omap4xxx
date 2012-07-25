@@ -442,8 +442,7 @@ audio_Codecs audioCodecs[] = {
   { AUDIO_ENCODER_AMR_NB, "AMR_NB" },
   { AUDIO_ENCODER_AMR_WB, "AMR_WB" },
   { AUDIO_ENCODER_AAC, "AAC" },
-  { AUDIO_ENCODER_AAC_PLUS, "AAC+" },
-  { AUDIO_ENCODER_EAAC_PLUS, "EAAC+" },
+  { AUDIO_ENCODER_HE_AAC, "AAC+" },
   { AUDIO_ENCODER_LIST_END, "disabled"},
 };
 
@@ -4139,4 +4138,3 @@ int main(int argc, char *argv[]) {
 
     return res;
 }
-
