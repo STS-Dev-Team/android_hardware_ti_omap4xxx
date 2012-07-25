@@ -644,6 +644,7 @@ status_t OMXCameraAdapter::setParameters(const android::CameraParameters &params
         mOMXStateSwitch = true;
         }
 
+#ifdef OMAP_ENHANCEMENT
     if ( (valstr = params.get(TICameraParameters::KEY_MEASUREMENT_ENABLE)) != NULL )
         {
         if (strcmp(valstr, android::CameraParameters::TRUE) == 0)
@@ -664,9 +665,12 @@ status_t OMXCameraAdapter::setParameters(const android::CameraParameters &params
         //Disable measurement data by default
         mMeasurementEnabled = false;
         }
+#endif
 
+#ifdef OMAP_ENHANCEMENT_S3D
     setParamS3D(mCameraAdapterParameters.mPrevPortIndex,
                params.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT));
+#endif
 
     ret |= setParametersCapture(params, state);
 
@@ -819,6 +823,7 @@ void OMXCameraAdapter::getParameters(android::CameraParameters& params)
                    mParameters.get(android::CameraParameters::KEY_FOCUS_DISTANCES));
         }
 
+#ifdef OMAP_ENHANCEMENT
     OMX_INIT_STRUCT_PTR (&exp, OMX_CONFIG_EXPOSUREVALUETYPE);
     exp.nPortIndex = OMX_ALL;
 
@@ -833,6 +838,7 @@ void OMXCameraAdapter::getParameters(android::CameraParameters& params)
         {
         CAMHAL_LOGEB("OMX error 0x%x, while retrieving current ISO value", eError);
         }
+#endif
 
     {
     android::AutoMutex lock(mZoomLock);

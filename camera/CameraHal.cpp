@@ -274,11 +274,12 @@ int CameraHal::setParameters(const android::CameraParameters& params)
     int framerate;
     int maxFPS, minFPS;
     const char *valstr = NULL;
+    int varint = 0;
     status_t ret = NO_ERROR;
     // Needed for KEY_RECORDING_HINT
     bool restartPreviewRequired = false;
     bool updateRequired = false;
-    android::CameraParameters oldParams(mParameters.flatten());
+    android::CameraParameters oldParams = mParameters;
 
 #ifdef V4L_CAMERA_ADAPTER
     if (strcmp (V4L_CAMERA_NAME_USB, mCameraProperties->get(CameraProperties::CAMERA_NAME)) == 0 ) {
@@ -306,10 +307,8 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             if ((valstr = params.get(TICameraParameters::KEY_VNF)) != NULL) {
                 if (strcmp(mCameraProperties->get(CameraProperties::VNF_SUPPORTED),
                            android::CameraParameters::TRUE) == 0) {
-                    CAMHAL_LOGDB("VNF %s",
-                                  params.get(TICameraParameters::KEY_VNF));
-                    mParameters.set(TICameraParameters::KEY_VNF,
-                                    params.get(TICameraParameters::KEY_VNF));
+                    CAMHAL_LOGDB("VNF %s", valstr);
+                    mParameters.set(TICameraParameters::KEY_VNF, valstr);
                 } else if (strcmp(valstr, android::CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGEB("ERROR: Invalid VNF: %s", valstr);
                     return BAD_VALUE;
@@ -324,10 +323,8 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 // vstab then return an error
                 if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
                            android::CameraParameters::TRUE) == 0) {
-                    CAMHAL_LOGDB("VSTAB %s",
-                                  params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION));
-                    mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION,
-                                    params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION));
+                    CAMHAL_LOGDB("VSTAB %s", valstr);
+                    mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION, valstr);
                 } else if (strcmp(valstr, android::CameraParameters::TRUE) == 0) {
                     CAMHAL_LOGEB("ERROR: Invalid VSTAB: %s", valstr);
                     return BAD_VALUE;
@@ -364,7 +361,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
             if ((valstr = params.get(TICameraParameters::KEY_IPP)) != NULL) {
                 if (isParameterValid(valstr,mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES))) {
-                    CAMHAL_LOGDB("IPP mode set %s", params.get(TICameraParameters::KEY_IPP));
+                    CAMHAL_LOGDB("IPP mode set %s", valstr);
                     mParameters.set(TICameraParameters::KEY_IPP, valstr);
                 } else {
                     CAMHAL_LOGEB("ERROR: Invalid IPP mode: %s", valstr);
@@ -405,6 +402,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 }
             }
 
+#ifdef OMAP_ENHANCEMENT
         int orientation =0;
         if((valstr = params.get(TICameraParameters::KEY_SENSOR_ORIENTATION)) != NULL)
             {
@@ -421,6 +419,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             CAMHAL_LOGD("Sensor Orientation is set to %d", orientation);
             mParameters.set(TICameraParameters::KEY_SENSOR_ORIENTATION, valstr);
             }
+#endif
 
         params.getPreviewSize(&w, &h);
         if (w == -1 && h == -1) {
@@ -462,7 +461,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             else
                 {
                 CAMHAL_LOGEA("Invalid RECORDING_HINT");
-                return -EINVAL;
+                return BAD_VALUE;
                 }
             }
         else
@@ -513,16 +512,6 @@ int CameraHal::setParameters(const android::CameraParameters& params)
              }
         }
 
-        ///Below parameters can be changed when the preview is running
-        if ( (valstr = params.getPictureFormat()) != NULL ) {
-            if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS))) {
-                mParameters.setPictureFormat(valstr);
-            } else {
-                CAMHAL_LOGEB("ERROR: Invalid picture format: %s",valstr);
-                return BAD_VALUE;
-            }
-        }
-
         mRawCapture = false;
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
@@ -553,7 +542,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
         CAMHAL_LOGDB("Picture Size by App %d x %d", w, h);
 
         if ( (valstr = params.getPictureFormat()) != NULL ) {
-            if (isParameterValid(params.getPictureFormat(),mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS))) {
+            if (isParameterValid(valstr,mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS))) {
                 if ((strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) &&
                     mCameraProperties->get(CameraProperties::MAX_PICTURE_WIDTH) &&
                     mCameraProperties->get(CameraProperties::MAX_PICTURE_HEIGHT)) {
@@ -566,14 +555,14 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 mParameters.setPictureFormat(valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid picture format: %s",valstr);
-                ret = -EINVAL;
+                ret = BAD_VALUE;
             }
         }
 
 #ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
         if ((valstr = params.get(TICameraParameters::KEY_BURST)) != NULL) {
             if (params.getInt(TICameraParameters::KEY_BURST) >=0) {
-                CAMHAL_LOGDB("Burst set %s", params.get(TICameraParameters::KEY_BURST));
+                CAMHAL_LOGDB("Burst set %s", valstr);
                 mParameters.set(TICameraParameters::KEY_BURST, valstr);
             } else {
                 CAMHAL_LOGEB("ERROR: Invalid Burst value: %s",valstr);
@@ -663,6 +652,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             mParameters.set(TICameraParameters::KEY_GLBCE, android::CameraParameters::FALSE);
         }
 
+#ifdef OMAP_ENHANCEMENT_S3D
         ///Update the current parameter set
         if ( (valstr = params.get(TICameraParameters::KEY_AUTOCONVERGENCE_MODE)) != NULL ) {
             CAMHAL_LOGDB("AutoConvergence mode set = %s", valstr);
@@ -748,6 +738,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 return BAD_VALUE;
             }
         }
+#endif
 
         if ((valstr = params.get(android::CameraParameters::KEY_WHITE_BALANCE)) != NULL) {
            if ( isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_WHITE_BALANCE))) {
@@ -759,6 +750,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             }
         }
 
+#ifdef OMAP_ENHANCEMENT
         if ((valstr = params.get(TICameraParameters::KEY_CONTRAST)) != NULL) {
             if (params.getInt(TICameraParameters::KEY_CONTRAST) >= 0 ) {
                 CAMHAL_LOGDB("Contrast set %s", valstr);
@@ -798,6 +790,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 return BAD_VALUE;
             }
          }
+#endif
 
         if ((valstr = params.get(android::CameraParameters::KEY_ANTIBANDING)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_ANTIBANDING))) {
@@ -809,6 +802,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
              }
          }
 
+#ifdef OMAP_ENHANCEMENT
         if ((valstr = params.get(TICameraParameters::KEY_ISO)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_ISO_VALUES))) {
                 CAMHAL_LOGDB("ISO set %s", valstr);
@@ -818,6 +812,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 return BAD_VALUE;
             }
         }
+#endif
 
         if( (valstr = params.get(android::CameraParameters::KEY_FOCUS_AREAS)) != NULL )
             {
@@ -825,6 +820,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             mParameters.set(android::CameraParameters::KEY_FOCUS_AREAS, valstr);
             }
 
+#ifdef OMAP_ENHANCEMENT
         if( (valstr = params.get(TICameraParameters::KEY_MEASUREMENT_ENABLE)) != NULL )
             {
             CAMHAL_LOGDB("Measurements set to %s", valstr);
@@ -844,6 +840,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 }
 
             }
+#endif
 
         if( (valstr = params.get(android::CameraParameters::KEY_EXPOSURE_COMPENSATION)) != NULL)
             {
@@ -884,40 +881,35 @@ int CameraHal::setParameters(const android::CameraParameters& params)
              }
         }
 
-        if(( (valstr = params.get(android::CameraParameters::KEY_ROTATION)) != NULL)
-            && (params.getInt(android::CameraParameters::KEY_ROTATION) >=0))
-            {
-            CAMHAL_LOGDB("Rotation set %s", params.get(android::CameraParameters::KEY_ROTATION));
-            mParameters.set(android::CameraParameters::KEY_ROTATION, valstr);
-            }
+        varint = params.getInt(android::CameraParameters::KEY_ROTATION);
+        if ( varint >= 0 ) {
+            CAMHAL_LOGDB("Rotation set %d", varint);
+            mParameters.set(android::CameraParameters::KEY_ROTATION, varint);
+        }
 
-        if(( (valstr = params.get(android::CameraParameters::KEY_JPEG_QUALITY)) != NULL)
-            && (params.getInt(android::CameraParameters::KEY_JPEG_QUALITY) >=0))
-            {
-            CAMHAL_LOGDB("Jpeg quality set %s", params.get(android::CameraParameters::KEY_JPEG_QUALITY));
-            mParameters.set(android::CameraParameters::KEY_JPEG_QUALITY, valstr);
-            }
+        varint = params.getInt(android::CameraParameters::KEY_JPEG_QUALITY);
+        if ( varint >= 0 ) {
+            CAMHAL_LOGDB("Jpeg quality set %d", varint);
+            mParameters.set(android::CameraParameters::KEY_JPEG_QUALITY, varint);
+        }
 
-        if(( (valstr = params.get(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH)) != NULL)
-            && (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH) >=0))
-            {
-            CAMHAL_LOGDB("Thumbnail width set %s", params.get(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH));
-            mParameters.set(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH, valstr);
-            }
+        varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
+        if ( varint >= 0 ) {
+            CAMHAL_LOGDB("Thumbnail width set %d", varint);
+            mParameters.set(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH, varint);
+        }
 
-        if(( (valstr = params.get(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT)) != NULL)
-            && (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT) >=0))
-            {
-            CAMHAL_LOGDB("Thumbnail width set %s", params.get(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT));
-            mParameters.set(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT, valstr);
-            }
+        varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+        if ( varint >= 0 ) {
+            CAMHAL_LOGDB("Thumbnail width set %d", varint);
+            mParameters.set(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT, varint);
+        }
 
-        if(( (valstr = params.get(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)) != NULL )
-            && (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY) >=0))
-            {
-            CAMHAL_LOGDB("Thumbnail quality set %s", params.get(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY));
-            mParameters.set(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY, valstr);
-            }
+        varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
+        if ( varint >= 0 ) {
+            CAMHAL_LOGDB("Thumbnail quality set %d", varint);
+            mParameters.set(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY, varint);
+        }
 
         if( (valstr = params.get(android::CameraParameters::KEY_GPS_LATITUDE)) != NULL )
             {
@@ -953,7 +945,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if( (valstr = params.get(TICameraParameters::KEY_GPS_DATESTAMP)) != NULL )
             {
-            CAMHAL_LOGDB("GPS datestamp set %s", params.get(TICameraParameters::KEY_GPS_DATESTAMP));
+            CAMHAL_LOGDB("GPS datestamp set %s", valstr);
             mParameters.set(TICameraParameters::KEY_GPS_DATESTAMP, valstr);
             }else{
                 mParameters.remove(TICameraParameters::KEY_GPS_DATESTAMP);
@@ -969,7 +961,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if( (valstr = params.get(TICameraParameters::KEY_GPS_MAPDATUM )) != NULL )
             {
-            CAMHAL_LOGDB("GPS MAPDATUM set %s", params.get(TICameraParameters::KEY_GPS_MAPDATUM));
+            CAMHAL_LOGDB("GPS MAPDATUM set %s", valstr);
             mParameters.set(TICameraParameters::KEY_GPS_MAPDATUM, valstr);
             }else{
                 mParameters.remove(TICameraParameters::KEY_GPS_MAPDATUM);
@@ -977,7 +969,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if( (valstr = params.get(TICameraParameters::KEY_GPS_VERSION)) != NULL )
             {
-            CAMHAL_LOGDB("GPS MAPDATUM set %s", params.get(TICameraParameters::KEY_GPS_VERSION));
+            CAMHAL_LOGDB("GPS MAPDATUM set %s", valstr);
             mParameters.set(TICameraParameters::KEY_GPS_VERSION, valstr);
             }else{
                 mParameters.remove(TICameraParameters::KEY_GPS_VERSION);
@@ -985,16 +977,17 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if( (valstr = params.get(TICameraParameters::KEY_EXIF_MODEL)) != NULL )
             {
-            CAMHAL_LOGDB("EXIF Model set %s", params.get(TICameraParameters::KEY_EXIF_MODEL));
+            CAMHAL_LOGDB("EXIF Model set %s", valstr);
             mParameters.set(TICameraParameters::KEY_EXIF_MODEL, valstr);
             }
 
         if( (valstr = params.get(TICameraParameters::KEY_EXIF_MAKE)) != NULL )
             {
-            CAMHAL_LOGDB("EXIF Make set %s", params.get(TICameraParameters::KEY_EXIF_MAKE));
+            CAMHAL_LOGDB("EXIF Make set %s", valstr);
             mParameters.set(TICameraParameters::KEY_EXIF_MAKE, valstr);
             }
 
+#ifdef OMAP_ENHANCEMENT
         if( (valstr = params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE)) != NULL )
             {
             CAMHAL_LOGDB("Exposure Bracketing set %s", params.get(TICameraParameters::KEY_EXP_BRACKETING_RANGE));
@@ -1016,11 +1009,12 @@ int CameraHal::setParameters(const android::CameraParameters& params)
         } else {
             mParameters.remove(TICameraParameters::KEY_ZOOM_BRACKETING_RANGE);
         }
+#endif
 
         if ((valstr = params.get(android::CameraParameters::KEY_ZOOM)) != NULL ) {
-            if ((params.getInt(android::CameraParameters::KEY_ZOOM) >= 0 ) &&
-                (params.getInt(android::CameraParameters::KEY_ZOOM) <= mMaxZoomSupported )) {
-                CAMHAL_LOGDB("Zoom set %s", valstr);
+            varint = atoi(valstr);
+            if ( varint >= 0 && varint <= mMaxZoomSupported ) {
+                CAMHAL_LOGDB("Zoom set %d", varint);
                 doesSetParameterNeedUpdate(valstr,
                                            mParameters.get(android::CameraParameters::KEY_ZOOM),
                                            updateRequired);
@@ -1033,7 +1027,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if( (valstr = params.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK)) != NULL )
           {
-            CAMHAL_LOGDB("Auto Exposure Lock set %s", params.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK));
+            CAMHAL_LOGDB("Auto Exposure Lock set %s", valstr);
             doesSetParameterNeedUpdate(valstr,
                                        mParameters.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK),
                                        updateRequired);
@@ -1042,7 +1036,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         if( (valstr = params.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK)) != NULL )
           {
-            CAMHAL_LOGDB("Auto WhiteBalance Lock set %s", params.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK));
+            CAMHAL_LOGDB("Auto WhiteBalance Lock set %s", valstr);
             doesSetParameterNeedUpdate(valstr,
                                        mParameters.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK),
                                        updateRequired);
@@ -1103,6 +1097,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         android::CameraParameters adapterParams = mParameters;
 
+#ifdef OMAP_ENHANCEMENT
         if( NULL != params.get(TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS) )
             {
             int posBracketRange = params.getInt(TICameraParameters::KEY_TEMP_BRACKETING_RANGE_POS);
@@ -1149,6 +1144,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             adapterParams.remove(TICameraParameters::KEY_TEMP_BRACKETING);
             mParameters.remove(TICameraParameters::KEY_TEMP_BRACKETING);
         }
+#endif
 
 #ifdef OMAP_ENHANCEMENT_VTC
         if (mVTCUseCase && !mTunnelSetup && (mCameraAdapter != NULL) &&
@@ -1173,6 +1169,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             ret |= mCameraAdapter->setParameters(adapterParams);
         }
 
+#ifdef OMAP_ENHANCEMENT
         if( ( (valstr = params.get(TICameraParameters::KEY_SHUTTER_ENABLE)) != NULL ) &&
             ( strcmp(valstr, android::CameraParameters::TRUE) == 0 ))
             {
@@ -1191,12 +1188,12 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             mMsgEnabled &= ~CAMERA_MSG_SHUTTER;
             mParameters.set(TICameraParameters::KEY_SHUTTER_ENABLE, valstr);
             }
-
+#endif
     }
 
     //On fail restore old parameters
     if ( NO_ERROR != ret ) {
-        mParameters.unflatten(oldParams.flatten());
+        mParameters = oldParams;
     }
 
     // Restart Preview if needed by KEY_RECODING_HINT only if preview is already running.
@@ -2331,6 +2328,7 @@ status_t CameraHal::startRecording( )
 bool CameraHal::setVideoModeParameters(const android::CameraParameters& params)
 {
     const char *valstr = NULL;
+    const char *valstrRemote = NULL;
     bool restartPreviewRequired = false;
 
     LOG_FUNCTION_NAME;
@@ -2345,19 +2343,19 @@ bool CameraHal::setVideoModeParameters(const android::CameraParameters& params)
         restartPreviewRequired = true;
         }
 
-   // set VSTAB. restart is required if vstab value has changed
-   if (params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION) != NULL) {
+    // set VSTAB. restart is required if vstab value has changed
+    if ( (valstrRemote = params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) != NULL ) {
         // make sure we support vstab
         if (strcmp(mCameraProperties->get(CameraProperties::VSTAB_SUPPORTED),
                    android::CameraParameters::TRUE) == 0) {
             valstr = mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION);
             // vstab value has changed
             if ((valstr != NULL) &&
-                 strcmp(valstr, params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) != 0) {
+                 strcmp(valstr, valstrRemote) != 0) {
                 restartPreviewRequired = true;
             }
             mParameters.set(android::CameraParameters::KEY_VIDEO_STABILIZATION,
-                            params.get(android::CameraParameters::KEY_VIDEO_STABILIZATION));
+                            valstrRemote);
         }
     } else if (mParameters.get(android::CameraParameters::KEY_VIDEO_STABILIZATION)) {
         // vstab was configured but now unset
@@ -2366,16 +2364,16 @@ bool CameraHal::setVideoModeParameters(const android::CameraParameters& params)
     }
 
     // Set VNF
-    if (params.get(TICameraParameters::KEY_VNF) == NULL) {
+    if ((valstrRemote = params.get(TICameraParameters::KEY_VNF)) == NULL) {
         CAMHAL_LOGDA("Enable VNF");
         mParameters.set(TICameraParameters::KEY_VNF, android::CameraParameters::TRUE);
         restartPreviewRequired = true;
     } else {
         valstr = mParameters.get(TICameraParameters::KEY_VNF);
-        if (valstr && strcmp(valstr, params.get(TICameraParameters::KEY_VNF)) != 0) {
+        if (valstr && strcmp(valstr, valstrRemote) != 0) {
             restartPreviewRequired = true;
         }
-        mParameters.set(TICameraParameters::KEY_VNF, params.get(TICameraParameters::KEY_VNF));
+        mParameters.set(TICameraParameters::KEY_VNF, valstrRemote);
     }
 
     // For VSTAB alone for 1080p resolution, padded width goes > 2048, which cannot be rendered by GPU.

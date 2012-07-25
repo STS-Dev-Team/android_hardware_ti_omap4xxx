@@ -220,6 +220,8 @@ status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &pa
         mOMXStateSwitch = true;
         }
 
+#ifdef OMAP_ENHANCEMENT
+
     //Set Auto Convergence Mode
     valstr = params.get((const char *) TICameraParameters::KEY_AUTOCONVERGENCE_MODE);
     valManualStr = params.get(TICameraParameters::KEY_MANUAL_CONVERGENCE);
@@ -244,6 +246,8 @@ status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &pa
             CAMHAL_LOGDB("Mechanical Misalignment Correction %s", valstr);
         }
     }
+
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 

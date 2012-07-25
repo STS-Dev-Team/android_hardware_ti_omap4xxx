@@ -38,6 +38,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
     OMX_COLOR_FORMATTYPE pixFormat;
     CodingMode codingMode = mCodingMode;
     const char *valstr = NULL;
+    int varint = 0;
     OMX_TI_STEREOFRAMELAYOUTTYPE capFrmLayout;
     bool inCaptureState = false;
 
@@ -145,6 +146,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         mCodingMode = codingMode;
     }
 
+#ifdef OMAP_ENHANCEMENT
     str = params.get(TICameraParameters::KEY_TEMP_BRACKETING);
     if ( ( str != NULL ) &&
          ( strcmp(str, android::CameraParameters::TRUE) == 0 ) ) {
@@ -203,6 +205,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         }
         mZoomBracketingEnabled = false;
     }
+#endif
 
     // Flush config queue
     // If TRUE: Flush queue and abort processing before enqueing
@@ -233,11 +236,12 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
 
     CAMHAL_LOGVB("Picture Rotation set %d", mPictureRotation);
 
+#ifdef OMAP_ENHANCEMENT
     // Read Sensor Orientation and set it based on perating mode
-
-    if ( params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION) != -1 )
+    varint = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
+    if ( varint != -1 )
         {
-        mSensorOrientation = params.getInt(TICameraParameters::KEY_SENSOR_ORIENTATION);
+        mSensorOrientation = varint;
         if (mSensorOrientation == 270 ||mSensorOrientation==90)
             {
             CAMHAL_LOGEA(" Orientation is 270/90. So setting counter rotation to Ducati");
@@ -251,14 +255,16 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
         }
 
     CAMHAL_LOGVB("Sensor Orientation  set : %d", mSensorOrientation);
+#endif
 
 #ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
-    if ( params.getInt(TICameraParameters::KEY_BURST)  >= 1 )
+    varint = params.getInt(TICameraParameters::KEY_BURST);
+    if ( varint >= 1 )
         {
-        if (params.getInt(TICameraParameters::KEY_BURST) != (int) mBurstFrames) {
+        if (varint != (int) mBurstFrames) {
             mPendingCaptureSettings |= SetBurst;
         }
-        mBurstFrames = params.getInt(TICameraParameters::KEY_BURST);
+        mBurstFrames = varint;
         }
     else
         {
@@ -269,67 +275,63 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
     CAMHAL_LOGVB("Burst Frames set %d", mBurstFrames);
 #endif
 
-    if ( ( params.getInt(android::CameraParameters::KEY_JPEG_QUALITY)  >= MIN_JPEG_QUALITY ) &&
-         ( params.getInt(android::CameraParameters::KEY_JPEG_QUALITY)  <= MAX_JPEG_QUALITY ) )
-        {
-        if (params.getInt(android::CameraParameters::KEY_JPEG_QUALITY) != (int) mPictureQuality) {
+    varint = params.getInt(android::CameraParameters::KEY_JPEG_QUALITY);
+    if ( varint >= MIN_JPEG_QUALITY && varint <= MAX_JPEG_QUALITY ) {
+        if (varint != mPictureQuality) {
             mPendingCaptureSettings |= SetQuality;
+            mPictureQuality = varint;
         }
-        mPictureQuality = params.getInt(android::CameraParameters::KEY_JPEG_QUALITY);
+    } else {
+        if (mPictureQuality != MAX_JPEG_QUALITY) {
+            mPendingCaptureSettings |= SetQuality;
+            mPictureQuality = MAX_JPEG_QUALITY;
         }
-    else
-        {
-        if (mPictureQuality != MAX_JPEG_QUALITY) mPendingCaptureSettings |= SetQuality;
-        mPictureQuality = MAX_JPEG_QUALITY;
-        }
+    }
 
     CAMHAL_LOGVB("Picture Quality set %d", mPictureQuality);
 
-    if ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH)  >= 0 )
-        {
-        if (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH) != (int) mThumbWidth) {
+    varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
+    if ( varint >= 0 ) {
+        if (varint != mThumbWidth) {
             mPendingCaptureSettings |= SetThumb;
+            mThumbWidth = varint;
         }
-        mThumbWidth = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
+    } else {
+        if (mThumbWidth != DEFAULT_THUMB_WIDTH) {
+            mPendingCaptureSettings |= SetThumb;
+            mThumbWidth = DEFAULT_THUMB_WIDTH;
         }
-    else
-        {
-        if (mThumbWidth != DEFAULT_THUMB_WIDTH) mPendingCaptureSettings |= SetThumb;
-        mThumbWidth = DEFAULT_THUMB_WIDTH;
-        }
-
+    }
 
     CAMHAL_LOGVB("Picture Thumb width set %d", mThumbWidth);
 
-    if ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT)  >= 0 )
-        {
-        if (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT) != (int) mThumbHeight) {
+    varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+    if ( varint >= 0 ) {
+        if (varint != mThumbHeight) {
             mPendingCaptureSettings |= SetThumb;
+            mThumbHeight = varint;
         }
-        mThumbHeight = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+    } else {
+        if (mThumbHeight != DEFAULT_THUMB_HEIGHT) {
+            mPendingCaptureSettings |= SetThumb;
+            mThumbHeight = DEFAULT_THUMB_HEIGHT;
         }
-    else
-        {
-        if (mThumbHeight != DEFAULT_THUMB_HEIGHT) mPendingCaptureSettings |= SetThumb;
-        mThumbHeight = DEFAULT_THUMB_HEIGHT;
-        }
-
+    }
 
     CAMHAL_LOGVB("Picture Thumb height set %d", mThumbHeight);
 
-    if ( ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  >= MIN_JPEG_QUALITY ) &&
-         ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  <= MAX_JPEG_QUALITY ) )
-        {
-        if (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY) != (int) mThumbQuality) {
+    varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
+    if ( varint >= MIN_JPEG_QUALITY && varint <= MAX_JPEG_QUALITY ) {
+        if (varint != mThumbQuality) {
             mPendingCaptureSettings |= SetThumb;
+            mThumbQuality = varint;
         }
-        mThumbQuality = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
+    } else {
+        if (mThumbQuality != MAX_JPEG_QUALITY) {
+            mPendingCaptureSettings |= SetThumb;
+            mThumbQuality = MAX_JPEG_QUALITY;
         }
-    else
-        {
-        if (mThumbQuality != MAX_JPEG_QUALITY) mPendingCaptureSettings |= SetThumb;
-        mThumbQuality = MAX_JPEG_QUALITY;
-        }
+    }
 
     CAMHAL_LOGDB("Thumbnail Quality set %d", mThumbQuality);
 

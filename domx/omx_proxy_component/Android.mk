@@ -104,7 +104,6 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	frameworks/base/include/media/stagefright \
-	frameworks/native/include/media/hardware
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \
@@ -140,7 +139,6 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../hwc \
 	$(HARDWARE_TI_OMAP4_BASE)/camera/inc \
 	frameworks/base/include/media/stagefright \
-	frameworks/native/include/media/hardware
 
 LOCAL_SHARED_LIBRARIES := \
 	libmm_osal \

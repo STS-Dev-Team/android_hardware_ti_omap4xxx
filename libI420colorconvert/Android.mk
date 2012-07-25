@@ -7,8 +7,8 @@ LOCAL_SRC_FILES := \
     ColorConvert.cpp
 
 LOCAL_C_INCLUDES:= \
-        $(TOP)/frameworks/native/include/media/openmax \
-        $(TOP)/frameworks/native/include/media/editor
+        $(TOP)/frameworks/base/include/media/stagefright/openmax \
+        $(TOP)/frameworks/media/libvideoeditor/include
 
 LOCAL_SHARED_LIBRARIES :=       \
 
