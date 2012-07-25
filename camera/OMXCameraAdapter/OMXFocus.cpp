@@ -235,7 +235,6 @@ status_t OMXCameraAdapter::doAutoFocus()
 
 status_t OMXCameraAdapter::stopAutoFocus()
 {
-    status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE focusControl;
 
@@ -267,10 +266,20 @@ status_t OMXCameraAdapter::stopAutoFocus()
         CAMHAL_LOGEB("Error while stopping focus 0x%x", eError);
         return Utils::ErrorUtils::omxToAndroidError(eError);
     }
+#ifdef CAMERAHAL_TUNA
+    else {
+        // This is a WA. Usually the OMX Camera component should
+        // generate AF status change OMX event fairly quickly
+        // ( after one preview frame ) and this notification should
+        // actually come from 'handleFocusCallback()'.
+        android::AutoMutex lock(mDoAFMutex);
+        mDoAFCond.broadcast();
+    }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ret;
+    return NO_ERROR;
 }
 
 status_t OMXCameraAdapter::getFocusMode(OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE &focusMode)
