@@ -3120,6 +3120,7 @@ OMX_ERRORTYPE OMXCameraAdapter::SignalEvent(OMX_IN OMX_HANDLETYPE hComponent,
                     //Signal the semaphore provided
                     sem->Signal();
                     free(msg);
+                    eventSignalled = true;
                     break;
                     }
                 }

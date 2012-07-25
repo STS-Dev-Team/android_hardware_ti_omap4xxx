@@ -3303,14 +3303,27 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
         return -EINVAL;
         }
 
-#ifdef ANDROID_API_JB_OR_LATER
-    switch (cmd) {
-    case CAMERA_CMD_ENABLE_FOCUS_MOVE_MSG:
-        return OK;
-    }
-#endif
+    ///////////////////////////////////////////////////////
+    // Following commands do NOT need preview to be started
+    ///////////////////////////////////////////////////////
 
-    if ( ( NO_ERROR == ret ) && ( !previewEnabled() )
+    switch ( cmd ) {
+#ifdef ANDROID_API_JB_OR_LATER
+    case CAMERA_CMD_ENABLE_FOCUS_MOVE_MSG:
+    {
+        const bool enable = static_cast<bool>(arg1);
+        android::AutoMutex lock(mLock);
+        if ( enable ) {
+            mMsgEnabled |= CAMERA_MSG_FOCUS_MOVE;
+        } else {
+            mMsgEnabled &= ~CAMERA_MSG_FOCUS_MOVE;
+        }
+    }
+        return OK;
+#endif
+    }
+
+    if ( ret == OK && !previewEnabled()
 #ifdef OMAP_ENHANCEMENT_VTC
             && (cmd != CAMERA_CMD_PREVIEW_INITIALIZATION)
 #endif
@@ -3318,6 +3331,10 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
         CAMHAL_LOGEA("Preview is not running");
         ret = -EINVAL;
     }
+
+    ///////////////////////////////////////////////////////
+    // Following commands NEED preview to be started
+    ///////////////////////////////////////////////////////
 
     if ( NO_ERROR == ret )
         {

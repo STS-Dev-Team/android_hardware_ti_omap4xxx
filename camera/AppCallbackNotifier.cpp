@@ -367,20 +367,38 @@ void AppCallbackNotifier::notifyEvent()
 
                 case CameraHalEvent::EVENT_FOCUS_LOCKED:
                 case CameraHalEvent::EVENT_FOCUS_ERROR:
+                    if ( mCameraHal && mNotifyCb ) {
+                        focusEvtData = &evt->mEventData->focusEvent;
 
-                    focusEvtData = &evt->mEventData->focusEvent;
-                    if ( ( focusEvtData->focusStatus == CameraHalEvent::FOCUS_STATUS_SUCCESS ) &&
-                            ( NULL != mCameraHal ) &&
-                            ( NULL != mNotifyCb ) &&
-                            ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) ) {
-                         mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
-                         mNotifyCb(CAMERA_MSG_FOCUS, true, 0, mCallbackCookie);
-                    } else if ( ( focusEvtData->focusStatus == CameraHalEvent::FOCUS_STATUS_FAIL ) &&
-                             ( NULL != mCameraHal ) &&
-                             ( NULL != mNotifyCb ) &&
-                             ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) ) {
-                         mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
-                         mNotifyCb(CAMERA_MSG_FOCUS, false, 0, mCallbackCookie);
+                        switch ( focusEvtData->focusStatus ) {
+                        case CameraHalEvent::FOCUS_STATUS_SUCCESS:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) {
+                                mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
+                                mNotifyCb(CAMERA_MSG_FOCUS, true, 0, mCallbackCookie);
+                            }
+                            break;
+
+                        case CameraHalEvent::FOCUS_STATUS_FAIL:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) {
+                                mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
+                                mNotifyCb(CAMERA_MSG_FOCUS, false, 0, mCallbackCookie);
+                            }
+                            break;
+
+#ifdef ANDROID_API_JB_OR_LATER
+                        case CameraHalEvent::FOCUS_STATUS_PENDING:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS_MOVE) ) {
+                                mNotifyCb(CAMERA_MSG_FOCUS_MOVE, true, 0, mCallbackCookie);
+                            }
+                            break;
+
+                        case CameraHalEvent::FOCUS_STATUS_DONE:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS_MOVE) ) {
+                                mNotifyCb(CAMERA_MSG_FOCUS_MOVE, false, 0, mCallbackCookie);
+                            }
+                            break;
+#endif
+                        }
                     }
 
                     break;
