@@ -136,7 +136,7 @@ static void svgout_rect(blit_rect_t *r, char *color, char *text)
 
 static int empty_rect(blit_rect_t *r)
 {
-    return !((((r->left == r->top) == r->right) == r->bottom) == 0);
+    return !r->left && !r->top && !r->right && !r->bottom;
 }
 
 static int get_top_rect(blit_hregion_t *hregion, int subregion, blit_rect_t **routp)
@@ -1500,7 +1500,8 @@ static int rgz_out_region(rgz_t *rgz, rgz_out_params_t *params)
         }
         for (s = 0; s < hregion->nsubregions; s++) {
             ALOGD_IF(debug, "h[%d] -> [%d]", i, s);
-            rgz_hwc_subregion_blit(hregion, s, params);
+            if (rgz_hwc_subregion_blit(hregion, s, params))
+                return -1;
         }
     }
 
