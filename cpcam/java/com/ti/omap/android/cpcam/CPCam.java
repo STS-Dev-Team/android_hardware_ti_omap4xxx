@@ -51,7 +51,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.StringTokenizer;
-
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * The CPCam class is essentially a copycat of the standard Camera class, extended with specific cpcam methods:
@@ -83,8 +83,9 @@ public class CPCam {
     private static final int CAMERA_MSG_PREVIEW_METADATA = 0x400;
     private static final int CAMERA_MSG_ALL_MSGS         = 0x4FF;
 
-    private static final int CAMERA_MSG_COMPRESSED_BURST_IMAGE = 0x0800; // dataCallback
-    private static final int CAMERA_MSG_RAW_BURST = 0x1000;        // dataCallback
+    private static final int CAMERA_MSG_FOCUS_MOVE       = 0x800;
+    private static final int CAMERA_MSG_COMPRESSED_BURST_IMAGE = 0x1000; // dataCallback
+    private static final int CAMERA_MSG_RAW_BURST = 0x2000;        // dataCallback
 
     private int mNativeContext; // accessed by native methods
     private EventHandler mEventHandler;
@@ -94,6 +95,7 @@ public class CPCam {
     private PreviewCallback mPreviewCallback;
     private PictureCallback mPostviewCallback;
     private AutoFocusCallback mAutoFocusCallback;
+    private AutoFocusMoveCallback mAutoFocusMoveCallback;
     private OnZoomChangeListener mZoomListener;
     private FaceDetectionListener mFaceListener;
     private MetadataListener mMetadataListener;
@@ -101,6 +103,7 @@ public class CPCam {
     private boolean mOneShot;
     private boolean mWithBuffer;
     private boolean mFaceDetectionRunning = false;
+    private Object mAutoFocusCallbackLock = new Object();
 
     /**
      * Broadcast Action:  A new picture is taken by the camera, and the entry of
@@ -181,7 +184,9 @@ public class CPCam {
     };
 
     /**
-     * Creates a new Camera object to access a particular hardware camera.
+     * Creates a new Camera object to access a particular hardware camera. If
+     * the same camera is opened by other applications, this will throw a
+     * RuntimeException.
      *
      * <p>You must call {@link #release()} when you are done using the camera,
      * otherwise it will remain locked and be unavailable to other applications.
@@ -202,9 +207,9 @@ public class CPCam {
      * @param cameraId the hardware camera to access, between 0 and
      *     {@link #getNumberOfCameras()}-1.
      * @return a new Camera object, connected, locked and ready for use.
-     * @throws RuntimeException if connection to the camera service fails (for
-     *     example, if the camera is in use by another process or device policy
-     *     manager has disabled the camera).
+     * @throws RuntimeException if opening the camera fails (for example, if the
+     *     camera is in use by another process or device policy manager has
+     *     disabled the camera).
      * @see android.app.admin.DevicePolicyManager#getCameraDisabled(android.content.ComponentName)
      */
     public static CPCam open(int cameraId) {
@@ -247,6 +252,12 @@ public class CPCam {
         }
 
         native_setup(new WeakReference<CPCam>(this), cameraId);
+    }
+
+    /**
+     * An empty Camera for testing purpose.
+     */
+    CPCam() {
     }
 
     protected void finalize() {
@@ -378,6 +389,13 @@ public class CPCam {
      * instances of the same camera, or across multiple runs of the same
      * program.
      *
+     * <p>If you are using the preview data to create video or still images,
+     * strongly consider using {@link android.media.MediaActionSound} to
+     * properly indicate image capture or recording start/stop to the user.</p>
+     *
+     * @see android.media.MediaActionSound
+     * @see android.graphics.SurfaceTexture
+     * @see android.view.TextureView
      * @param surfaceTexture the {@link SurfaceTexture} to which the preview
      *     images are to be sent or null to remove the current preview surface
      *     texture
@@ -430,6 +448,11 @@ public class CPCam {
          * Called as preview frames are displayed.  This callback is invoked
          * on the event thread {@link #open(int)} was called from.
          *
+         * <p>If using the {@link android.graphics.ImageFormat#YV12} format,
+         * refer to the equations in {@link Camera.Parameters#setPreviewFormat}
+         * for the arrangement of the pixel data in the preview callback
+         * buffers.
+         *
          * @param data the contents of the preview frame in the format defined
          *  by {@link android.graphics.ImageFormat}, which can be queried
          *  with {@link android.hardware.Camera.Parameters#getPreviewFormat()}.
@@ -467,7 +490,10 @@ public class CPCam {
         mRawImageCallback = null;
         mPostviewCallback = null;
         mJpegCallback = null;
-        mAutoFocusCallback = null;
+        synchronized (mAutoFocusCallbackLock) {
+            mAutoFocusCallback = null;
+        }
+        mAutoFocusMoveCallback = null;
     }
 
     private native final void _stopPreview();
@@ -481,13 +507,19 @@ public class CPCam {
     public native final boolean previewEnabled();
 
     /**
-     * Installs a callback to be invoked for every preview frame in addition
+     * <p>Installs a callback to be invoked for every preview frame in addition
      * to displaying them on the screen.  The callback will be repeatedly called
      * for as long as preview is active.  This method can be called at any time,
-     * even while preview is live.  Any other preview callbacks are overridden.
+     * even while preview is live.  Any other preview callbacks are
+     * overridden.</p>
+     *
+     * <p>If you are using the preview data to create video or still images,
+     * strongly consider using {@link android.media.MediaActionSound} to
+     * properly indicate image capture or recording start/stop to the user.</p>
      *
      * @param cb a callback object that receives a copy of each preview frame,
      *     or null to stop receiving callbacks.
+     * @see android.media.MediaActionSound
      */
     public final void setPreviewCallback(PreviewCallback cb) {
         mPreviewCallback = cb;
@@ -499,13 +531,18 @@ public class CPCam {
     }
 
     /**
-     * Installs a callback to be invoked for the next preview frame in addition
-     * to displaying it on the screen.  After one invocation, the callback is
-     * cleared. This method can be called any time, even when preview is live.
-     * Any other preview callbacks are overridden.
+     * <p>Installs a callback to be invoked for the next preview frame in
+     * addition to displaying it on the screen.  After one invocation, the
+     * callback is cleared. This method can be called any time, even when
+     * preview is live.  Any other preview callbacks are overridden.</p>
+     *
+     * <p>If you are using the preview data to create video or still images,
+     * strongly consider using {@link android.media.MediaActionSound} to
+     * properly indicate image capture or recording start/stop to the user.</p>
      *
      * @param cb a callback object that receives a copy of the next preview frame,
      *     or null to stop receiving callbacks.
+     * @see android.media.MediaActionSound
      */
     public final void setOneShotPreviewCallback(PreviewCallback cb) {
         mPreviewCallback = cb;
@@ -517,24 +554,30 @@ public class CPCam {
     private native final void setHasPreviewCallback(boolean installed, boolean manualBuffer);
 
     /**
-     * Installs a callback to be invoked for every preview frame, using buffers
-     * supplied with {@link #addCallbackBuffer(byte[])}, in addition to
+     * <p>Installs a callback to be invoked for every preview frame, using
+     * buffers supplied with {@link #addCallbackBuffer(byte[])}, in addition to
      * displaying them on the screen.  The callback will be repeatedly called
-     * for as long as preview is active and buffers are available.
-     * Any other preview callbacks are overridden.
+     * for as long as preview is active and buffers are available.  Any other
+     * preview callbacks are overridden.</p>
      *
      * <p>The purpose of this method is to improve preview efficiency and frame
      * rate by allowing preview frame memory reuse.  You must call
      * {@link #addCallbackBuffer(byte[])} at some point -- before or after
-     * calling this method -- or no callbacks will received.
+     * calling this method -- or no callbacks will received.</p>
      *
-     * The buffer queue will be cleared if this method is called with a null
+     * <p>The buffer queue will be cleared if this method is called with a null
      * callback, {@link #setPreviewCallback(Camera.PreviewCallback)} is called,
-     * or {@link #setOneShotPreviewCallback(Camera.PreviewCallback)} is called.
+     * or {@link #setOneShotPreviewCallback(Camera.PreviewCallback)} is
+     * called.</p>
+     *
+     * <p>If you are using the preview data to create video or still images,
+     * strongly consider using {@link android.media.MediaActionSound} to
+     * properly indicate image capture or recording start/stop to the user.</p>
      *
      * @param cb a callback object that receives a copy of the preview frame,
      *     or null to stop receiving callbacks and clear the buffer queue.
      * @see #addCallbackBuffer(byte[])
+     * @see android.media.MediaActionSound
      */
     public final void setPreviewCallbackWithBuffer(PreviewCallback cb) {
         mPreviewCallback = cb;
@@ -552,12 +595,17 @@ public class CPCam {
      * the frame is discarded. Applications should add buffers back when they
      * finish processing the data in them.
      *
-     * <p>The size of the buffer is determined by multiplying the preview
-     * image width, height, and bytes per pixel. The width and height can be
-     * read from {@link Camera.Parameters#getPreviewSize()}. Bytes per pixel
-     * can be computed from
-     * {@link android.graphics.ImageFormat#getBitsPerPixel(int)} / 8,
-     * using the image format from {@link Camera.Parameters#getPreviewFormat()}.
+     * <p>For formats besides YV12, the size of the buffer is determined by
+     * multiplying the preview image width, height, and bytes per pixel. The
+     * width and height can be read from
+     * {@link Camera.Parameters#getPreviewSize()}. Bytes per pixel can be
+     * computed from {@link android.graphics.ImageFormat#getBitsPerPixel(int)} /
+     * 8, using the image format from
+     * {@link Camera.Parameters#getPreviewFormat()}.
+     *
+     * <p>If using the {@link android.graphics.ImageFormat#YV12} format, the
+     * size can be calculated using the equations listed in
+     * {@link Camera.Parameters#setPreviewFormat}.
      *
      * <p>This method is only necessary when
      * {@link #setPreviewCallbackWithBuffer(PreviewCallback)} is used. When
@@ -567,8 +615,8 @@ public class CPCam {
      * hold the preview frame data, preview callback will return null and
      * the buffer will be removed from the buffer queue.
      *
-     * @param callbackBuffer the buffer to add to the queue.
-     *     The size should be width * height * bits_per_pixel / 8.
+     * @param callbackBuffer the buffer to add to the queue. The size of the
+     *   buffer must match the values described above.
      * @see #setPreviewCallbackWithBuffer(PreviewCallback)
      */
     public final void addCallbackBuffer(byte[] callbackBuffer)
@@ -665,8 +713,8 @@ public class CPCam {
                 return;
 
             case CAMERA_MSG_PREVIEW_FRAME:
-                if (mPreviewCallback != null) {
-                    PreviewCallback cb = mPreviewCallback;
+                PreviewCallback pCb = mPreviewCallback;
+                if (pCb != null) {
                     if (mOneShot) {
                         // Clear the callback variable before the callback
                         // in case the app calls setPreviewCallback from
@@ -678,7 +726,7 @@ public class CPCam {
                         // Set to oneshot mode again.
                         setHasPreviewCallback(true, false);
                     }
-                    cb.onPreviewFrame((byte[])msg.obj, mCamera);
+                    pCb.onPreviewFrame((byte[])msg.obj, mCamera);
                 }
                 return;
 
@@ -689,8 +737,13 @@ public class CPCam {
                 return;
 
             case CAMERA_MSG_FOCUS:
-                if (mAutoFocusCallback != null) {
-                    mAutoFocusCallback.onAutoFocus(msg.arg1 == 0 ? false : true, mCamera);
+                AutoFocusCallback cb = null;
+                synchronized (mAutoFocusCallbackLock) {
+                    cb = mAutoFocusCallback;
+                }
+                if (cb != null) {
+                    boolean success = msg.arg1 == 0 ? false : true;
+                    cb.onAutoFocus(success, mCamera);
                 }
                 return;
 
@@ -714,6 +767,12 @@ public class CPCam {
                 Log.e(TAG, "Error " + msg.arg1);
                 if (mErrorCallback != null) {
                     mErrorCallback.onError(msg.arg1, mCamera);
+                }
+                return;
+
+            case CAMERA_MSG_FOCUS_MOVE:
+                if (mAutoFocusMoveCallback != null) {
+                    mAutoFocusMoveCallback.onAutoFocusMoving(msg.arg1 == 0 ? false : true, mCamera);
                 }
                 return;
 
@@ -801,14 +860,21 @@ public class CPCam {
      * the focus position. Applications must call cancelAutoFocus to reset the
      * focus.</p>
      *
+     * <p>If autofocus is successful, consider using
+     * {@link android.media.MediaActionSound} to properly play back an autofocus
+     * success sound to the user.</p>
+     *
      * @param cb the callback to run
      * @see #cancelAutoFocus()
      * @see android.hardware.Camera.Parameters#setAutoExposureLock(boolean)
      * @see android.hardware.Camera.Parameters#setAutoWhiteBalanceLock(boolean)
+     * @see android.media.MediaActionSound
      */
     public final void autoFocus(AutoFocusCallback cb)
     {
-        mAutoFocusCallback = cb;
+        synchronized (mAutoFocusCallbackLock) {
+            mAutoFocusCallback = cb;
+        }
         native_autoFocus();
     }
     private native final void native_autoFocus();
@@ -823,10 +889,59 @@ public class CPCam {
      */
     public final void cancelAutoFocus()
     {
-        mAutoFocusCallback = null;
+        synchronized (mAutoFocusCallbackLock) {
+            mAutoFocusCallback = null;
+        }
         native_cancelAutoFocus();
+        // CAMERA_MSG_FOCUS should be removed here because the following
+        // scenario can happen:
+        // - An application uses the same thread for autoFocus, cancelAutoFocus
+        //   and looper thread.
+        // - The application calls autoFocus.
+        // - HAL sends CAMERA_MSG_FOCUS, which enters the looper message queue.
+        //   Before event handler's handleMessage() is invoked, the application
+        //   calls cancelAutoFocus and autoFocus.
+        // - The application gets the old CAMERA_MSG_FOCUS and thinks autofocus
+        //   has been completed. But in fact it is not.
+        //
+        // As documented in the beginning of the file, apps should not use
+        // multiple threads to call autoFocus and cancelAutoFocus at the same
+        // time. It is HAL's responsibility not to send a CAMERA_MSG_FOCUS
+        // message after native_cancelAutoFocus is called.
+        mEventHandler.removeMessages(CAMERA_MSG_FOCUS);
     }
     private native final void native_cancelAutoFocus();
+
+    /**
+     * Callback interface used to notify on auto focus start and stop.
+     *
+     * <p>This is only supported in continuous autofocus modes -- {@link
+     * Parameters#FOCUS_MODE_CONTINUOUS_VIDEO} and {@link
+     * Parameters#FOCUS_MODE_CONTINUOUS_PICTURE}. Applications can show
+     * autofocus animation based on this.</p>
+     */
+    public interface AutoFocusMoveCallback
+    {
+        /**
+         * Called when the camera auto focus starts or stops.
+         *
+         * @param start true if focus starts to move, false if focus stops to move
+         * @param camera the Camera service object
+         */
+        void onAutoFocusMoving(boolean start, CPCam camera);
+    }
+
+    /**
+     * Sets camera auto-focus move callback.
+     *
+     * @param cb the callback to run
+     */
+    public void setAutoFocusMoveCallback(AutoFocusMoveCallback cb) {
+        mAutoFocusMoveCallback = cb;
+        enableFocusMoveCallback((mAutoFocusMoveCallback != null) ? 1 : 0);
+    }
+
+    private native void enableFocusMoveCallback(int enable);
 
     /**
      * Callback interface used to signal the moment of actual image capture.
@@ -940,6 +1055,7 @@ public class CPCam {
         }
 
         native_takePicture(msgType, param_str);
+        mFaceDetectionRunning = false;
     }
 
     /**
@@ -1367,6 +1483,18 @@ public class CPCam {
         String s = native_getParameters();
         p.unflatten(s);
         return p;
+    }
+
+    /**
+     * Returns an empty {@link Parameters} for testing purpose.
+     *
+     * @return a Parameter object.
+     *
+     * @hide
+     */
+    public static Parameters getEmptyParameters() {
+        CPCam camera = new CPCam();
+        return camera.new Parameters();
     }
 
     /**
@@ -1909,12 +2037,12 @@ public class CPCam {
          * @param value the String value of the parameter
          */
         public void set(String key, String value) {
-            if (key.indexOf('=') != -1 || key.indexOf(';') != -1) {
-                Log.e(TAG, "Key \"" + key + "\" contains invalid character (= or ;)");
+            if (key.indexOf('=') != -1 || key.indexOf(';') != -1 || key.indexOf(0) != -1) {
+                Log.e(TAG, "Key \"" + key + "\" contains invalid character (= or ; or \\0)");
                 return;
             }
-            if (value.indexOf('=') != -1 || value.indexOf(';') != -1) {
-                Log.e(TAG, "Value \"" + value + "\" contains invalid character (= or ;)");
+            if (value.indexOf('=') != -1 || value.indexOf(';') != -1 || value.indexOf(0) != -1) {
+                Log.e(TAG, "Value \"" + value + "\" contains invalid character (= or ; or \\0)");
                 return;
             }
 
@@ -2243,12 +2371,44 @@ public class CPCam {
          * {@link android.graphics.ImageFormat#NV21}, which
          * uses the NV21 encoding format.</p>
          *
-         * @param pixel_format the desired preview picture format, defined
-         *   by one of the {@link android.graphics.ImageFormat} constants.
-         *   (E.g., <var>ImageFormat.NV21</var> (default),
-         *                      <var>ImageFormat.RGB_565</var>, or
-         *                      <var>ImageFormat.JPEG</var>)
+         * <p>Use {@link Parameters#getSupportedPreviewFormats} to get a list of
+         * the available preview formats.
+         *
+         * <p>It is strongly recommended that either
+         * {@link android.graphics.ImageFormat#NV21} or
+         * {@link android.graphics.ImageFormat#YV12} is used, since
+         * they are supported by all camera devices.</p>
+         *
+         * <p>For YV12, the image buffer that is received is not necessarily
+         * tightly packed, as there may be padding at the end of each row of
+         * pixel data, as described in
+         * {@link android.graphics.ImageFormat#YV12}. For camera callback data,
+         * it can be assumed that the stride of the Y and UV data is the
+         * smallest possible that meets the alignment requirements. That is, if
+         * the preview size is <var>width x height</var>, then the following
+         * equations describe the buffer index for the beginning of row
+         * <var>y</var> for the Y plane and row <var>c</var> for the U and V
+         * planes:
+         *
+         * {@code
+         * <pre>
+         * yStride   = (int) ceil(width / 16.0) * 16;
+         * uvStride  = (int) ceil( (yStride / 2) / 16.0) * 16;
+         * ySize     = yStride * height;
+         * uvSize    = uvStride * height / 2;
+         * yRowIndex = yStride * y;
+         * uRowIndex = ySize + uvSize + uvStride * c;
+         * vRowIndex = ySize + uvStride * c;
+         * size      = ySize + uvSize * 2;</pre>
+         * }
+         *
+         * @param pixel_format the desired preview picture format, defined by
+         *   one of the {@link android.graphics.ImageFormat} constants.  (E.g.,
+         *   <var>ImageFormat.NV21</var> (default), or
+         *   <var>ImageFormat.YV12</var>)
+         *
          * @see android.graphics.ImageFormat
+         * @see android.hardware.Camera.Parameters#getSupportedPreviewFormats
          */
         public void setPreviewFormat(int pixel_format) {
             String s = cameraFormatForPixelFormat(pixel_format);
@@ -2266,6 +2426,7 @@ public class CPCam {
          *
          * @return the preview format.
          * @see android.graphics.ImageFormat
+         * @see #setPreviewFormat
          */
         public int getPreviewFormat() {
             return pixelFormatForCameraFormat(get(KEY_PREVIEW_FORMAT));
@@ -2279,6 +2440,7 @@ public class CPCam {
          * @return a list of supported preview formats. This method will always
          *         return a list with at least one element.
          * @see android.graphics.ImageFormat
+         * @see #setPreviewFormat
          */
         public List<Integer> getSupportedPreviewFormats() {
             String str = get(KEY_PREVIEW_FORMAT + SUPPORTED_VALUES_SUFFIX);
@@ -2415,13 +2577,13 @@ public class CPCam {
         }
 
         /**
-         * Sets the rotation angle in degrees relative to the orientation of
-         * the camera. This affects the pictures returned from JPEG {@link
-         * PictureCallback}. The camera driver may set orientation in the
-         * EXIF header without rotating the picture. Or the driver may rotate
-         * the picture and the EXIF thumbnail. If the Jpeg picture is rotated,
-         * the orientation in the EXIF header will be missing or 1 (row #0 is
-         * top and column #0 is left side).
+         * Sets the clockwise rotation angle in degrees relative to the
+         * orientation of the camera. This affects the pictures returned from
+         * JPEG {@link PictureCallback}. The camera driver may set orientation
+         * in the EXIF header without rotating the picture. Or the driver may
+         * rotate the picture and the EXIF thumbnail. If the Jpeg picture is
+         * rotated, the orientation in the EXIF header will be missing or 1
+         * (row #0 is top and column #0 is left side).
          *
          * <p>If applications want to rotate the picture to match the orientation
          * of what users see, apps should use {@link
@@ -3129,7 +3291,7 @@ public class CPCam {
         public void getFocusDistances(float[] output) {
             if (output == null || output.length != 3) {
                 throw new IllegalArgumentException(
-                        "output must be an float array with three elements.");
+                        "output must be a float array with three elements.");
             }
             splitFloat(get(KEY_FOCUS_DISTANCES), output);
         }

@@ -50,7 +50,9 @@ LOCAL_SHARED_LIBRARIES := \
 	libcamera_client \
 	libnativehelper \
 	libcutils \
-	libutils
+	libutils \
+	libui \
+	libgui
 
 # No static libraries.
 LOCAL_STATIC_LIBRARIES :=
