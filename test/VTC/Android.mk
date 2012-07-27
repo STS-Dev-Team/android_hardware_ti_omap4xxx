@@ -6,6 +6,17 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := VTCTestApp.cpp
 
+LOCAL_C_INCLUDES += \
+    $(DOMX_PATH)/omx_core/inc
+
+ifdef ANDROID_API_JB_OR_LATER
+LOCAL_C_INCLUDES += \
+    $(TOP)/frameworks/native/include
+else
+LOCAL_C_INCLUDES += \
+    $(TOP)/frameworks/base/include
+endif
+
 LOCAL_SHARED_LIBRARIES := \
     libcamera_client \
     libstagefright \
@@ -14,18 +25,14 @@ LOCAL_SHARED_LIBRARIES := \
     libcutils \
     libutils \
     liblog \
-    libgui \
+    libgui
 
-LOCAL_C_INCLUDES += \
-    $(TOP)/frameworks/base/include/ui \
-    $(TOP)/frameworks/base/include/surfaceflinger \
-    $(TOP)/frameworks/base/include/camera \
-    $(TOP)/frameworks/base/include/media \
-    $(TOP)/frameworks/base/include/media/stagefright \
-    $(TOP)/frameworks/base/include/media/stagefright/openmax \
-    $(DOMX_PATH)/omx_core/inc \
+ifdef ANDROID_API_JB_OR_LATER
+LOCAL_SHARED_LIBRARIES += \
+    libstagefright_foundation
+endif
 
-LOCAL_CFLAGS +=-Wall -fno-short-enums -O0 -g -D___ANDROID___
+LOCAL_CFLAGS +=-Wall -fno-short-enums -O0 -g -D___ANDROID___ $(ANDROID_API_CFLAGS)
 
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS:= optional
@@ -38,6 +45,18 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := VTCLoopback.cpp IOMXEncoder.cpp IOMXDecoder.cpp
 
+LOCAL_C_INCLUDES += \
+    $(DOMX_PATH)/omx_core/inc \
+    $(TOP)/hardware/ti/omap4xxx/libtiutils
+
+ifdef ANDROID_API_JB_OR_LATER
+LOCAL_C_INCLUDES += \
+    $(TOP)/frameworks/native/include
+else
+LOCAL_C_INCLUDES += \
+    $(TOP)/frameworks/base/include
+endif
+
 LOCAL_SHARED_LIBRARIES := \
     libcamera_client \
     libstagefright \
@@ -48,18 +67,14 @@ LOCAL_SHARED_LIBRARIES := \
     libutils \
     liblog \
     libgui \
-    libui \
+    libui
 
-LOCAL_C_INCLUDES += \
-    $(TOP)/frameworks/base/include/ui \
-    $(TOP)/frameworks/base/include/surfaceflinger \
-    $(TOP)/frameworks/base/include/camera \
-    $(TOP)/frameworks/base/include/media \
-    $(TOP)/frameworks/base/include/media/stagefright \
-    $(TOP)/hardware/ti/domx/omx_core/inc \
-    $(TOP)/hardware/ti/omap4xxx/libtiutils
+ifdef ANDROID_API_JB_OR_LATER
+LOCAL_SHARED_LIBRARIES += \
+    libstagefright_foundation
+endif
 
-LOCAL_CFLAGS +=-Wall -fno-short-enums -O0 -g
+LOCAL_CFLAGS +=-Wall -fno-short-enums -O0 -g $(ANDROID_API_CFLAGS)
 
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_TAGS:= optional
@@ -71,6 +86,15 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES:= CameraHardwareInterfaceTest.cpp
+
+ifdef ANDROID_API_JB_OR_LATER
+LOCAL_C_INCLUDES += \
+    $(TOP)/frameworks/av/services/camera/libcameraservice
+else
+LOCAL_C_INCLUDES += \
+    $(TOP)/frameworks/base/include \
+    $(TOP)/frameworks/base/services/camera/libcameraservice
+endif
 
 LOCAL_SHARED_LIBRARIES:= \
     libdl \
@@ -84,18 +108,10 @@ LOCAL_SHARED_LIBRARIES:= \
     libcamera_client \
     libhardware
 
-LOCAL_C_INCLUDES += \
-    frameworks/base/include/ui \
-    frameworks/base/include/surfaceflinger \
-    frameworks/base/include/camera \
-    frameworks/base/include/media \
-    frameworks/base/services/camera/libcameraservice \
-    $(PV_INCLUDES)
-
 LOCAL_MODULE:= CameraHardwareInterfaceTest
 LOCAL_MODULE_TAGS:= tests
 
-LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___
+LOCAL_CFLAGS += -Wall -fno-short-enums -O0 -g -D___ANDROID___ $(ANDROID_API_CFLAGS)
 
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
     LOCAL_CFLAGS += -DTARGET_OMAP4

@@ -50,21 +50,35 @@
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/OMXCodec.h>
 #include <media/stagefright/MediaDefs.h>
+#ifdef ANDROID_API_JB_OR_LATER
+#include <media/stagefright/foundation/ADebug.h>
+#else
 #include <media/stagefright/MediaDebug.h>
+#endif
 #include <media/stagefright/MPEG4Writer.h>
 #include <media/stagefright/CameraSource.h>
 #include <media/stagefright/MetaData.h>
 
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
+#include <gui/ISurface.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/ISurfaceComposerClient.h>
+#include <gui/SurfaceComposerClient.h>
+#else
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
 #include <surfaceflinger/ISurfaceComposer.h>
 #include <surfaceflinger/ISurfaceComposerClient.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#endif
 
 #include <cutils/properties.h>
 
 #include "OMX_TI_Index.h"
 #include "OMX_TI_Video.h"
+
+#include "VtcCommon.h"
 
 #define SLEEP_AFTER_STARTING_PREVIEW 3
 #define SLEEP_AFTER_STARTING_PLAYBACK 5
@@ -164,10 +178,10 @@ pt2TestFunction TestFunctions[10] = {
 class MyCameraListener: public CameraListener {
     public:
         virtual void notify(int32_t msgType, int32_t ext1, int32_t /* ext2 */) {
-                        LOGD("\n\n\n notifynotifynotifynotifynotifynotifynotifyCamera reported an error!!!\n\n\n");
+                        VTC_LOGD("\n\n\n notifynotifynotifynotifynotifynotifynotifyCamera reported an error!!!\n\n\n");
 
             if ( msgType & CAMERA_MSG_ERROR && (ext1 == 1)) {
-                LOGD("\n\n\n Camera reported an error!!!\n\n\n");
+                VTC_LOGD("\n\n\n Camera reported an error!!!\n\n\n");
                 mCameraThrewError = true;
                 pthread_cond_signal(&mCond);
             }
@@ -185,24 +199,24 @@ class PlayerListener: public MediaPlayerListener {
 public:
     virtual void notify(int msg, int ext1, int ext2, const Parcel * /* obj */)
     {
-        LOGD("Notify cb: %d %d %d\n", msg, ext1, ext2);
+        VTC_LOGD("Notify cb: %d %d %d\n", msg, ext1, ext2);
 
         if ( msg == MEDIA_PREPARED ){
-            LOGD("MEDIA_PREPARED!");
+            VTC_LOGD("MEDIA_PREPARED!");
             player->start();
         }
 
         if ( msg == MEDIA_SET_VIDEO_SIZE ){
-            LOGD("MEDIA_SET_VIDEO_SIZE!");
+            VTC_LOGD("MEDIA_SET_VIDEO_SIZE!");
         }
 
         if ( msg == MEDIA_PLAYBACK_COMPLETE ){
-            LOGD("MEDIA_PLAYBACK_COMPLETE!");
+            VTC_LOGD("MEDIA_PLAYBACK_COMPLETE!");
             pthread_cond_signal(&mCond);
         }
 
         if ( msg == MEDIA_ERROR ){
-            LOGD("PLAYER REPORTED MEDIA_ERROR!");
+            VTC_LOGD("PLAYER REPORTED MEDIA_ERROR!");
             mMediaPlayerThrewError = true;
             pthread_cond_signal(&mCond);
         }
@@ -218,7 +232,7 @@ int getMediaserverInfo(int *PID, int *VSIZE){
     /* Open the command for reading. */
     fp = popen("ps mediaserver", "r");
     if (fp == NULL) {
-        LOGE("Failed to get mediaserver pid !!!" );
+        VTC_LOGE("Failed to get mediaserver pid !!!" );
         return -1;
     }
 
@@ -282,7 +296,7 @@ int startPlayback() {
 
 int stopPlayback() {
 
-    LOGD("%d: %s", __LINE__, __FUNCTION__);
+    VTC_LOGD("%d: %s", __LINE__, __FUNCTION__);
     player->stop();
     player->setListener(0);
     player->disconnect();
@@ -307,13 +321,13 @@ int stopPlayback() {
 }
 
 int verfiyByPlayback() {
-    LOGD(" ============= verfiyByPlayback ============= ");
+    VTC_LOGD(" ============= verfiyByPlayback ============= ");
     playbackComposerClient = new SurfaceComposerClient();
     CHECK_EQ(playbackComposerClient->initCheck(), (status_t)OK);
 
     playbackSurfaceWidth = playbackComposerClient->getDisplayWidth(0);
     playbackSurfaceHeight = playbackComposerClient->getDisplayHeight(0);
-    LOGD("Panel WxH = %d x %d", playbackSurfaceWidth, playbackSurfaceHeight);
+    VTC_LOGD("Panel WxH = %d x %d", playbackSurfaceWidth, playbackSurfaceHeight);
 
     startPlayback();
     pthread_mutex_lock(&mMutex);
@@ -378,94 +392,94 @@ int startRecording() {
     recorder = new MediaRecorder();
 
     if ( NULL == recorder.get() ) {
-        LOGD("Error while creating MediaRecorder\n");
+        VTC_LOGD("Error while creating MediaRecorder\n");
         return -1;
     }
 
     camera->unlock();
 
     if ( recorder->setCamera(camera->remote(), camera->getRecordingProxy()) < 0 ) {
-        LOGD("error while setting the camera\n");
+        VTC_LOGD("error while setting the camera\n");
         return -1;
     }
 
     if ( recorder->setVideoSource(1 /*VIDEO_SOURCE_CAMERA*/) < 0 ) {
-        LOGD("error while configuring camera video source\n");
+        VTC_LOGD("error while configuring camera video source\n");
         return -1;
     }
 
     if ( recorder->setAudioSource(AUDIO_SOURCE_DEFAULT) < 0 ) {
-        LOGD("error while configuring camera audio source\n");
+        VTC_LOGD("error while configuring camera audio source\n");
         return -1;
     }
 
     if ( recorder->setOutputFormat(OUTPUT_FORMAT_THREE_GPP) < 0 ) {
-        LOGD("error while configuring output format\n");
+        VTC_LOGD("error while configuring output format\n");
         return -1;
     }
 
     if(mkdir("/mnt/sdcard/vtc_videos",0777) == -1)
-         LOGD("\n Directory \'vtc_videos\' was not created or maybe it was already created \n");
+         VTC_LOGD("\n Directory \'vtc_videos\' was not created or maybe it was already created \n");
 
     mOutputFd = open(mRecordFileName, O_CREAT | O_RDWR);
 
     if(mOutputFd < 0){
-        LOGD("Error while creating video filename\n");
+        VTC_LOGD("Error while creating video filename\n");
         return -1;
     }
 
     if ( recorder->setOutputFile(mOutputFd, 0, 0) < 0 ) {
-        LOGD("error while configuring video filename\n");
+        VTC_LOGD("error while configuring video filename\n");
 
         return -1;
     }
 
     if ( recorder->setVideoFrameRate(mVideoFrameRate) < 0 ) {
-        LOGD("error while configuring video framerate\n");
+        VTC_LOGD("error while configuring video framerate\n");
         return -1;
     }
 
     if ( recorder->setVideoSize(mPreviewWidth, mPreviewHeight) < 0 ) {
-        LOGD("error while configuring video size\n");
+        VTC_LOGD("error while configuring video size\n");
         return -1;
     }
 
     if ( recorder->setVideoEncoder(VIDEO_ENCODER_H264) < 0 ) {
-        LOGD("error while configuring video codec\n");
+        VTC_LOGD("error while configuring video codec\n");
         return -1;
     }
 
     if ( recorder->setAudioEncoder(AUDIO_ENCODER_AMR_NB) < 0 ) {
-        LOGD("error while configuring audio codec\n");
+        VTC_LOGD("error while configuring audio codec\n");
         return -1;
     }
 
     if ( recorder->setPreviewSurface(previewSurface) < 0 ) {
-        LOGD("error while configuring preview surface\n");
+        VTC_LOGD("error while configuring preview surface\n");
         return -1;
     }
 
     sprintf(mParamValue,"video-param-encoding-bitrate=%u", mVideoBitRate);
     String8 bit_rate(mParamValue);
     if ( recorder->setParameters(bit_rate) < 0 ) {
-        LOGD("error while configuring bit rate\n");
+        VTC_LOGD("error while configuring bit rate\n");
         return -1;
     }
 
     sprintf(mParamValue,"video-param-i-frames-interval=%u", mIFramesIntervalSec);
     String8 interval(mParamValue);
     if ( recorder->setParameters(interval) < 0 ) {
-        LOGD("error while configuring i-frame interval\n");
+        VTC_LOGD("error while configuring i-frame interval\n");
         return -1;
     }
 
     if ( recorder->prepare() < 0 ) {
-        LOGD("recorder prepare failed\n");
+        VTC_LOGD("recorder prepare failed\n");
         return -1;
     }
 
     if ( recorder->start() < 0 ) {
-        LOGD("recorder start failed\n");
+        VTC_LOGD("recorder start failed\n");
         return -1;
     }
 
@@ -475,16 +489,16 @@ int startRecording() {
 
 int stopRecording() {
 
-    LOGD("stopRecording()");
+    VTC_LOGD("stopRecording()");
     if (camera.get() == NULL) return -1;
 
     if ( NULL == recorder.get() ) {
-        LOGD("invalid recorder reference\n");
+        VTC_LOGD("invalid recorder reference\n");
         return -1;
     }
 
     if ( recorder->stop() < 0 ) {
-        LOGD("recorder failed to stop\n");
+        VTC_LOGD("recorder failed to stop\n");
         return -1;
     }
 
@@ -509,11 +523,11 @@ int startPreview() {
     createPreviewSurface();
     camera = Camera::connect(camera_index);
     if (camera.get() == NULL){
-        LOGE("camera.get() =================== NULL");
+        VTC_LOGE("camera.get() =================== NULL");
         return -1;
     }
 
-    LOGD("\n\n mPreviewWidth = %d, mPreviewHeight = %d, mVideoFrameRate = %d, mVideoBitRate = %d \n\n\n",
+    VTC_LOGD("\n\n mPreviewWidth = %d, mPreviewHeight = %d, mVideoFrameRate = %d, mVideoBitRate = %d \n\n\n",
         mPreviewWidth, mPreviewHeight, mVideoFrameRate, mVideoBitRate);
 
     params.unflatten(camera->getParameters());
@@ -524,7 +538,7 @@ int startPreview() {
     params.set("preview-fps-range", mParamValue);
 
     if(disable_VTAB_and_VNF){
-        LOGI("\n\n\nDisabling VSTAB & VNF (noise reduction)\n\n");
+        VTC_LOGI("\n\n\nDisabling VSTAB & VNF (noise reduction)\n\n");
         params.set("vstab" , 0);
         params.set("vnf", 0);
     }
@@ -534,10 +548,10 @@ int startPreview() {
     mCameraListener = new MyCameraListener();
     camera->setListener(mCameraListener);
 
-    LOGV("get(preview-fps-range) = %s", params.get("preview-fps-range"));
-    LOGV("get(preview-fps-range-values) = %s", params.get("preview-fps-range-values"));
-    LOGV("get(preview-size-values) = %s\n", params.get("preview-size-values"));
-    LOGV("get(preview-frame-rate-values) = %s", params.get("preview-frame-rate-values"));
+    VTC_LOGV("get(preview-fps-range) = %s", params.get("preview-fps-range"));
+    VTC_LOGV("get(preview-fps-range-values) = %s", params.get("preview-fps-range-values"));
+    VTC_LOGV("get(preview-size-values) = %s\n", params.get("preview-size-values"));
+    VTC_LOGV("get(preview-frame-rate-values) = %s", params.get("preview-frame-rate-values"));
 
     camera->startPreview();
     sleep(SLEEP_AFTER_STARTING_PREVIEW);
@@ -577,7 +591,7 @@ int test_InsertIDRFrames() {
         String8 param(mParamValue);
         err = recorder->setParameters(param);
         if (err != OK) return -1;
-        LOGI("\n Inserted an IDR Frame. \n");
+        VTC_LOGI("\n Inserted an IDR Frame. \n");
     };
 
     stopRecording();
@@ -621,13 +635,13 @@ int test_MaxNALSize() {
         String8 param(mParamValue);
         err = recorder->setParameters(param);
         if (err != OK) return -1;
-        LOGI("\n Set the Slice Size in bytes.\n");
+        VTC_LOGI("\n Set the Slice Size in bytes.\n");
     } else {
         sprintf(mParamValue,"video-param-nalsize-macroblocks=%u", mSliceSizeMB);
         String8 param(mParamValue);
         err = recorder->setParameters(param);
         if (err != OK) return -1;
-        LOGI("\n Set the Slice Size in MB\n");
+        VTC_LOGI("\n Set the Slice Size in MB\n");
     }
 
     // Change won't take effect until next IFrame. So, force an IFrame.
@@ -636,7 +650,7 @@ int test_MaxNALSize() {
     String8 paramI(mParamValue);
     err = recorder->setParameters(paramI);
     if (err != OK) return -1;
-    LOGI("\n Inserted an IDR Frame. \n");
+    VTC_LOGI("\n Inserted an IDR Frame. \n");
 
     sleep(mDuration);
     stopRecording();
@@ -655,7 +669,7 @@ int test_ChangeBitRate() {
     String8 param(mParamValue);
     status_t err = recorder->setParameters(param);
     if (err != OK) return -1;
-    LOGI("\n\nSet new bitrate. \n\n");
+    VTC_LOGI("\n\nSet new bitrate. \n\n");
 
     sleep(mDuration/2);
     stopRecording();
@@ -671,10 +685,10 @@ int test_ChangeFrameRate() {
 
     // Changing the framerate in camera.
     params.unflatten(camera->getParameters());
-    LOGD("Setting new framerate: %d", mNewVideoFrameRate);
+    VTC_LOGD("Setting new framerate: %d", mNewVideoFrameRate);
     sprintf(mParamValue,"%u,%u", mNewVideoFrameRate*1000, mNewVideoFrameRate*1000);
     params.set("preview-fps-range", mParamValue);
-    LOGD("get(preview-fps-range) = %s", params.get("preview-fps-range"));
+    VTC_LOGD("get(preview-fps-range) = %s", params.get("preview-fps-range"));
     camera->setParameters(params.flatten());
 
     // Changing the framerate in encoder.
@@ -682,7 +696,7 @@ int test_ChangeFrameRate() {
     String8 param(mParamValue);
     status_t err = recorder->setParameters(param);
     if (err != OK) return -1;
-    LOGI("\n\nSet new framerate. \n\n");
+    VTC_LOGI("\n\nSet new framerate. \n\n");
 
     sleep(mDuration/2);
     stopRecording();
@@ -696,9 +710,9 @@ int test_PlaybackAndRecord_sidebyside() {
 
     int panelwidth = playbackComposerClient->getDisplayWidth(0);
     int panelheight = playbackComposerClient->getDisplayHeight(0);
-    LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
+    VTC_LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
     if (panelwidth < panelheight) {//Portrait Phone
-        LOGD("\nPortrait Device\n");
+        VTC_LOGD("\nPortrait Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight/2;
         playerWinX = 0;
@@ -709,7 +723,7 @@ int test_PlaybackAndRecord_sidebyside() {
         cameraSurfaceWidth = panelwidth;
         cameraSurfaceHeight = panelheight/2;
     } else {// Landscape
-        LOGD("\n Landscape Device\n");
+        VTC_LOGD("\n Landscape Device\n");
         playbackSurfaceWidth = panelwidth/2;
         playbackSurfaceHeight = panelheight;
         playerWinX = 0;
@@ -750,9 +764,9 @@ int test_PlaybackAndRecord_PIP() {
 
     uint32_t panelwidth = playbackComposerClient->getDisplayWidth(0);
     uint32_t panelheight = playbackComposerClient->getDisplayHeight(0);
-    LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
+    VTC_LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
     if (panelwidth < panelheight) {//Portrait Phone
-        LOGD("\nPortrait Device\n");
+        VTC_LOGD("\nPortrait Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight;
         playerWinX = 0;
@@ -763,7 +777,7 @@ int test_PlaybackAndRecord_PIP() {
         cameraWinX = (panelwidth - cameraSurfaceWidth) / 2;
         cameraWinY = 0;
     } else { // Landscape
-        LOGD("\n Landscape Device\n");
+        VTC_LOGD("\n Landscape Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight;
         playerWinX = 0;
@@ -826,9 +840,9 @@ int test_PlaybackOnly()
 
     int panelwidth = playbackComposerClient->getDisplayWidth(0);
     int panelheight = playbackComposerClient->getDisplayHeight(0);
-    LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
+    VTC_LOGD("Panel WxH = %d x %d", panelwidth, panelheight);
     if (panelwidth < panelheight) {//Portrait Phone
-        LOGD("\nPortrait Device\n");
+        VTC_LOGD("\nPortrait Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight/2;
         playerWinX = 0;
@@ -839,7 +853,7 @@ int test_PlaybackOnly()
         cameraSurfaceWidth = panelwidth;
         cameraSurfaceHeight = panelheight/2;
     } else {// Landscape
-        LOGD("\n Landscape Device\n");
+        VTC_LOGD("\n Landscape Device\n");
         playbackSurfaceWidth = panelwidth;
         playbackSurfaceHeight = panelheight;
         playerWinX = 0;
@@ -870,7 +884,7 @@ void updatePassRate(int test_status, bool verifyRecordedClip) {
     }
 
     // Wait for 10 seconds to make sure the memory settle.
-    LOGD("%d: %s: Evaluating test results. Looking for memory leak. Waiting for memory to settle down ....", __LINE__, __FUNCTION__);
+    VTC_LOGD("%d: %s: Evaluating test results. Looking for memory leak. Waiting for memory to settle down ....", __LINE__, __FUNCTION__);
     sleep(10);
 
     int currentMediaServerPID;
@@ -880,7 +894,7 @@ void updatePassRate(int test_status, bool verifyRecordedClip) {
     if (memDiff < 0) {
         memDiff = 0;
     }
-    LOGD("\n\n======================= Memory Leak [in bytes] = %d =======================\n\n", memDiff);sleep(1);
+    VTC_LOGD("\n\n======================= Memory Leak [in bytes] = %d =======================\n\n", memDiff);sleep(1);
 
     int old_mFailCount = mFailCount;
     if (mMediaPlayerThrewError) mFailCount++;
@@ -891,7 +905,7 @@ void updatePassRate(int test_status, bool verifyRecordedClip) {
     else if (mMediaServerPID != currentMediaServerPID) mFailCount++; //implies mediaserver crashed. So, increment failure count.
     else if (memDiff > 10000) mFailCount++; //implies memory leak. So, increment failure count.
 
-    LOGD("\n\nTest Results:\n\nNo. of Tests Executed = %d\nPASS = %d\nFAIL = %d\n\n", mTestCount, (mTestCount-mFailCount), (mFailCount*-1));
+    VTC_LOGD("\n\nTest Results:\n\nNo. of Tests Executed = %d\nPASS = %d\nFAIL = %d\n\n", mTestCount, (mTestCount-mFailCount), (mFailCount*-1));
 
     mResultsFP = fopen("/sdcard/VTC_TEST_RESULTS.TXT", "a");
     if (mResultsFP != NULL) {
@@ -913,7 +927,7 @@ int test_Robust() {
     if (mRobustnessTestType != -1){
         if ((mRobustnessTestType >= 1) || (mRobustnessTestType <= 8)) {
             for ( cyclesCompleted = 0; cyclesCompleted < mCycles; cyclesCompleted++){
-                LOGD("\n\n\n############################ Iteration: %d. Goal: %d ############################\n\n\n", cyclesCompleted, mCycles);
+                VTC_LOGD("\n\n\n############################ Iteration: %d. Goal: %d ############################\n\n\n", cyclesCompleted, mCycles);
                 status = TestFunctions[mRobustnessTestType]();
                 updatePassRate(status, false);
             }
@@ -922,12 +936,12 @@ int test_Robust() {
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_0039_Robustness_last_recorded.3gp");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
 
     // Each cycle will play a selected number of different resolution scenarios
     // Starting from low to high resolution
     for ( cyclesCompleted = 0; cyclesCompleted < mCycles; cyclesCompleted++){
-        LOGD("\n\n\n############################ Iteration: %d. Goal: %d ############################\n\n\n", cyclesCompleted, mCycles);
+        VTC_LOGD("\n\n\n############################ Iteration: %d. Goal: %d ############################\n\n\n", cyclesCompleted, mCycles);
         mVideoBitRate = 3000000;
         mVideoFrameRate = 30;
 
@@ -951,7 +965,7 @@ int test_Robust() {
 int test_ALL()
 {
     // Automated Unit Test suite
-    LOGD("\n\nExecuting %s \n\n", __FUNCTION__);
+    VTC_LOGD("\n\nExecuting %s \n\n", __FUNCTION__);
     int status = 0;
     char value[PROPERTY_VALUE_MAX];
     getMediaserverInfo(&mMediaServerPID, &mStartMemory);
@@ -962,12 +976,12 @@ int test_ALL()
     property_get("disable.1080p.testing", value, "0");
     mDisable1080pTesting = atoi(value);
     if(mDisable1080pTesting){
-        LOGD("\n\n\n\n########  1080p Testing as been disable  #######\n\n\n");
+        VTC_LOGD("\n\n\n\n########  1080p Testing as been disable  #######\n\n\n");
     }
 
   if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_i-frame-2sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mIFramesIntervalSec = 2;
@@ -975,7 +989,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_i-frame-10sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mIFramesIntervalSec = 10;
@@ -984,7 +998,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_i-frame-0sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mIFramesIntervalSec = 0;
@@ -993,7 +1007,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_i-frame-3sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mIFramesIntervalSec = 3;
@@ -1001,7 +1015,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_i-frame-8sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mIFramesIntervalSec = 8;
@@ -1009,7 +1023,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_i-frame-0sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mIFramesIntervalSec = 0;
@@ -1017,7 +1031,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_1Mbps_i-frame-1sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mIFramesIntervalSec = 1;
@@ -1025,7 +1039,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_1Mbps_i-frame-15sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mIFramesIntervalSec = 15;
@@ -1034,7 +1048,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_1Mbps_i-frame-0sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mIFramesIntervalSec = 0;
@@ -1043,7 +1057,7 @@ int test_ALL()
 
   if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_1Mbps_30fps-15fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mVideoFrameRate = 30;
@@ -1052,7 +1066,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_1Mbps_15fps-30fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mVideoFrameRate = 15;
@@ -1061,7 +1075,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_1Mbps_30fps-24fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mVideoFrameRate = 30;
@@ -1071,7 +1085,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_1Mbps_30fps-15fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mVideoFrameRate = 30;
@@ -1080,7 +1094,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_1Mbps_15fps-30fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mVideoFrameRate = 30;
@@ -1089,7 +1103,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_1Mbps_24fps-30fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mVideoFrameRate = 15;
@@ -1098,7 +1112,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_1Mbps_30fps-15fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mVideoFrameRate = 30;
@@ -1107,7 +1121,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_1Mbps_15fps-30fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mVideoFrameRate = 30;
@@ -1116,7 +1130,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_1Mbps_24fps-30fps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mVideoFrameRate = 24;
@@ -1126,7 +1140,7 @@ int test_ALL()
 
   if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_max-1000MB.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mVideoFrameRate = 30;
@@ -1137,7 +1151,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_max-300MB.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mIsSizeInBytes = false;
@@ -1146,7 +1160,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGAp_30fps_1Mbps_max-8MB.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mIsSizeInBytes = false;
@@ -1156,7 +1170,7 @@ int test_ALL()
 
   if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_i-frames_every-2sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     InsertIDRFrameEveryXSecs = 2;
@@ -1165,7 +1179,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_i-frames_every-5sec.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     InsertIDRFrameEveryXSecs = 5;
@@ -1173,7 +1187,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_1Mbps_i-frames_every-8.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     InsertIDRFrameEveryXSecs = 8;
@@ -1183,7 +1197,7 @@ int test_ALL()
 
     if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_max-1000bytes.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mIsSizeInBytes = true;
@@ -1195,7 +1209,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_max-500bytes.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mIsSizeInBytes = true;
@@ -1206,7 +1220,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_1Mbps_max-256bytes.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mIsSizeInBytes = true;
@@ -1219,8 +1233,8 @@ int test_ALL()
     //PIP TC
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_D1PAL_30fps_1Mbps_simultaneous.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/AV_000795_H264_D1PAL_25fps_4Mbps_NB_AMR_8Khz_12.2Kbps.mp4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 720;
     mPreviewHeight = 576;
     mVideoBitRate = 1000000;
@@ -1230,8 +1244,8 @@ int test_ALL()
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_D1PAL_30fps_1Mbps_PIP.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/AV_000795_H264_D1PAL_25fps_4Mbps_NB_AMR_8Khz_12.2Kbps.mp4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 720;
     mPreviewHeight = 576;
     mVideoBitRate = 1000000;
@@ -1242,8 +1256,8 @@ int test_ALL()
     //Simultaneous playback/record
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_1Mbps_simultaneous.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/AV_000249_H264_VGA_1Mbps_eAACplus_48khz_64kbps.mp4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mVideoBitRate = 1000000;
@@ -1253,8 +1267,8 @@ int test_ALL()
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_24fps_1Mbps_simultaneous.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/FinalFantasy13_720p_mono_3.8Mbps_27fps.MP4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mVideoBitRate = 1000000;
@@ -1264,8 +1278,8 @@ int test_ALL()
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_1Mbps_simultaneous.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/AV-720p-JamesBond.MP4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mVideoBitRate = 1000000;
@@ -1276,8 +1290,8 @@ int test_ALL()
     if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_24fps_1Mbps_simultaneous.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/AV_001181_Toy_Story3Official_Trailer_in_FullHD1080p_h264_BP_L4.0_1920x1080_24fps_1Mbps_eAACplus_44100Hz.mp4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mVideoBitRate = 1000000;
@@ -1287,8 +1301,8 @@ int test_ALL()
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_1080p_30fps_1Mbps_simultaneous.3gp", mTestCount);
     sprintf(mPlaybackFileName,  "/mnt/ext_sdcard/vtc_playback/AV_000858_FinalFantasy13_1080p_h264_bp_30fps_8mbps_aac_lc.mp4");
-    LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
-    LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
+    VTC_LOGD("\n\n################################## Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n################################## Playing. Filename: %s\n\n", mPlaybackFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mVideoBitRate = 1000000;
@@ -1298,7 +1312,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_QQVGA_15fps_bps_i-frames_every-8.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 160;
     mPreviewHeight = 120;
     mDuration = 10;
@@ -1312,7 +1326,7 @@ int test_ALL()
 
   if(!mDisable1080pTesting){
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d1_1080p_30fps_from-5Mbps-to-100kbps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1920;
     mPreviewHeight = 1080;
     mNewVideoBitRate = 100000;
@@ -1322,7 +1336,7 @@ int test_ALL()
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_720p_30fps_from-5Mbps-to-100kbps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 1280;
     mPreviewHeight = 720;
     mNewVideoBitRate = 100000;
@@ -1331,7 +1345,7 @@ int test_ALL()
     updatePassRate(status, true);
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/UTR_%03d_VGA_30fps_from-5Mbps-to-100kbps.3gp", mTestCount);
-    LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
+    VTC_LOGD("\n\n###################################################### Recording. Filename: %s\n\n", mRecordFileName);
     mPreviewWidth = 640;
     mPreviewHeight = 480;
     mNewVideoBitRate = 50000;
@@ -1344,11 +1358,11 @@ int test_ALL()
 
     /////////////////////////////     END   of  Unit Test     /////////////////////////////////////////
 
-    LOGD("\n\nTest Results:\n\nNo. of Tests = %d\nPASS = %d\nFAIL = %d\n\n", mTestCount, (mTestCount-mFailCount), (mFailCount*-1));
+    VTC_LOGD("\n\nTest Results:\n\nNo. of Tests = %d\nPASS = %d\nFAIL = %d\n\n", mTestCount, (mTestCount-mFailCount), (mFailCount*-1));
     char results[256];
     mResultsFP = fopen("/sdcard/VTC_TEST_RESULTS.TXT", "r");
     if (mResultsFP != NULL) {
-        while( fgets(results, sizeof(results), mResultsFP) != NULL ) LOGD("%s", results);
+        while( fgets(results, sizeof(results), mResultsFP) != NULL ) VTC_LOGD("%s", results);
         fclose(mResultsFP);
     }
     return 0;
@@ -1465,7 +1479,7 @@ int main (int argc, char* argv[]) {
                 break;
             case 'p':
                 strcpy(mPlaybackFileName, optarg);
-                LOGD("Playback clip %s", mPlaybackFileName);
+                VTC_LOGD("Playback clip %s", mPlaybackFileName);
                 break;
             case 'M':
                 mSliceSizeMB = atoi(optarg);
@@ -1481,16 +1495,16 @@ int main (int argc, char* argv[]) {
                 mRobustnessTestType = atoi(optarg);
                 break;
             case ':':
-                LOGE("\nError - Option `%c' needs a value\n\n", optopt);
+                VTC_LOGE("\nError - Option `%c' needs a value\n\n", optopt);
                 return -1;
             case '?':
-                LOGE("\nError - No such option: `%c'\n\n", optopt);
+                VTC_LOGE("\nError - No such option: `%c'\n\n", optopt);
                 return -1;
         }
     }
 
     sprintf(mRecordFileName,  "/mnt/sdcard/vtc_videos/video_%d.3gp", filename);
-    LOGI("\n\nRecorded Output is stored in %s\n\n", mRecordFileName);
+    VTC_LOGI("\n\nRecorded Output is stored in %s\n\n", mRecordFileName);
     system("echo VTCTestApp > /sys/power/wake_lock");
     TestFunctions[testcase]();
     system("echo VTCTestApp > /sys/power/wake_unlock");

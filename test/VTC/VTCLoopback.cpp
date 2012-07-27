@@ -25,8 +25,6 @@
 #define LOG_NDEBUG 0
 #define LOG_TAG "VTC"
 
-#define MY_LOGV(x, ...) LOGV(x, ##__VA_ARGS__)
-
 using namespace android;
 
 
@@ -94,7 +92,7 @@ static void PrintCameraFPS() {
         mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
-        LOGD("Camera: %d Frames, %f FPS", mFrameCount, mFps);
+        VTC_LOGD("Camera: %d Frames, %f FPS", mFrameCount, mFps);
     }
     // XXX: mFPS has the value we want
 }
@@ -102,23 +100,23 @@ static void PrintCameraFPS() {
 void dump_video_port_values(OMX_PARAM_PORTDEFINITIONTYPE& def) {
   OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &def.format.video;
 
-  LOGD("--------------------------------------------------------------------------------");
-  LOGD("nPortIndex:%d eDir:%s\n",(int)def.nPortIndex,(def.eDir == OMX_DirInput)?"OMX_DirInput":"OMX_DirOutput");
-  LOGD("BufferCountActual:%d BufferCountMin:%d nBufferSize:%d\n", (int)def.nBufferCountActual, (int)def.nBufferCountMin, (int)def.nBufferSize);
-  LOGD("bEnabled:%s bPopulated:%s eDomain:%s BuffersContiguous:%s BufferAlignment:%d",
+  VTC_LOGD("--------------------------------------------------------------------------------");
+  VTC_LOGD("nPortIndex:%d eDir:%s\n",(int)def.nPortIndex,(def.eDir == OMX_DirInput)?"OMX_DirInput":"OMX_DirOutput");
+  VTC_LOGD("BufferCountActual:%d BufferCountMin:%d nBufferSize:%d\n", (int)def.nBufferCountActual, (int)def.nBufferCountMin, (int)def.nBufferSize);
+  VTC_LOGD("bEnabled:%s bPopulated:%s eDomain:%s BuffersContiguous:%s BufferAlignment:%d",
        (def.bEnabled)?"TRUE":"FALSE",(def.bPopulated)?"TRUE":"FALSE",
        (def.eDomain == OMX_PortDomainVideo)?"Video":"Not Video",
        (def.bBuffersContiguous)?"TRUE":"FALSE",(int)def.nBufferAlignment);
 
-  LOGD("cMIMEType:%s pNativeRender:%p\n",(def.format.video.cMIMEType)?(def.format.video.cMIMEType):"NULL",def.format.video.pNativeRender);
-  LOGD("nFrameWidth:%d nFrameHeight:%d nStride:%d nSliceHeight:%d",
+  VTC_LOGD("cMIMEType:%s pNativeRender:%p\n",(def.format.video.cMIMEType)?(def.format.video.cMIMEType):"NULL",def.format.video.pNativeRender);
+  VTC_LOGD("nFrameWidth:%d nFrameHeight:%d nStride:%d nSliceHeight:%d",
        (int)def.format.video.nFrameWidth, (int)def.format.video.nFrameHeight, (int)def.format.video.nStride, (int)def.format.video.nSliceHeight);
-  LOGD("nBitrate:%d xFramerate:%d bFlagErrorConcealment:%s",
+  VTC_LOGD("nBitrate:%d xFramerate:%d bFlagErrorConcealment:%s",
        (int)def.format.video.nBitrate, (int)def.format.video.xFramerate, (def.format.video.bFlagErrorConcealment)?"TRUE":"FALSE");
-  LOGD("eCompressionFormat:0x%x eColorFormat:0x%x pNativeWindow:%p",
+  VTC_LOGD("eCompressionFormat:0x%x eColorFormat:0x%x pNativeWindow:%p",
        (def.format.video.eCompressionFormat),
        (def.format.video.eColorFormat), def.format.video.pNativeWindow);
-  LOGD("--------------------------------------------------------------------------------");
+  VTC_LOGD("--------------------------------------------------------------------------------");
 }
 
 #define NAME(n) case n: return #n
@@ -143,7 +141,7 @@ MyCameraClient::MyCameraClient() {
 }
 
 void MyCameraClient::dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, const sp<IMemory>& data) {
-    //MY_LOGV("=============================================dataCallbackTimestamp");
+    //VTC_LOGV("=============================================dataCallbackTimestamp");
     CHECK(data != NULL && data->size() > 0);
     if (msgType == CAMERA_MSG_VIDEO_FRAME) {
         if ((gSliceHeight == 0) && (encoder_is_ready)) { // non tunnel mode
@@ -151,7 +149,7 @@ void MyCameraClient::dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, c
         } else {
             if (mReleaser != NULL) {
                 mReleaser->releaseRecordingFrame(data);
-                //MY_LOGV("CAMERA_MSG_VIDEO_FRAME %p released",data->pointer());
+                //VTC_LOGV("CAMERA_MSG_VIDEO_FRAME %p released",data->pointer());
             }
         }
     }
@@ -159,7 +157,7 @@ void MyCameraClient::dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, c
 
 void MyCameraClient::putCameraPayload(sp<IMemory> payload, int64_t frameTime) {
     if (gDebugFlags & FPS_CAMERA) PrintCameraFPS();
-    if (gDebugFlags & DEBUG_DUMP_CAMERA_TIMESTAMP) LOGD("CAM TS: %lld", frameTime);
+    if (gDebugFlags & DEBUG_DUMP_CAMERA_TIMESTAMP) VTC_LOGD("CAM TS: %lld", frameTime);
 
     Mutex::Autolock autoLock(cameraPayloadQueueMutex);
     cameraPayloadQueue.push_back(payload);
@@ -173,7 +171,7 @@ void MyCameraClient::putCameraPayload(sp<IMemory> payload, int64_t frameTime) {
 sp<IMemory> MyCameraClient::getCameraPayload(int64_t& frameTime) {
     if (!encoder_is_ready) {
         frameTime = 0;
-        LOGE("getCameraPayload --- returning null");
+        VTC_LOGE("getCameraPayload --- returning null");
         return NULL;
     }
 
@@ -184,7 +182,7 @@ sp<IMemory> MyCameraClient::getCameraPayload(int64_t& frameTime) {
             cameraPayloadWaitFlag = 1;
             retval = cameraPayloadWait.waitRelative(cameraPayloadQueueMutex, TWO_SECOND);
             if (retval || !encoder_is_ready) {
-                LOGD("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ getCameraPayload timed out or we are stopping $$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                VTC_LOGD("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ getCameraPayload timed out or we are stopping $$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                 frameTime = 0;
                 return NULL;
             }
@@ -211,7 +209,7 @@ sp<IMemory> MyCameraClient::getCameraPayload(int64_t& frameTime) {
     }
 
     frameTime = time;
-    //MY_LOGV("%s: pointer[%p], size[%d]", __FUNCTION__, payload->pointer(), payload->size());
+    //VTC_LOGV("%s: pointer[%p], size[%d]", __FUNCTION__, payload->pointer(), payload->size());
     return payload;
 }
 
@@ -280,14 +278,14 @@ int configureCamera() {
     do {
         gICamera = gCameraService->connect(gCameraClient, gCameraIndex);
         if (gICamera.get() != NULL) break;
-        LOGD("\n\n\n========= Camera Busy. So relax and retry. ===========\n\n\n");
+        VTC_LOGD("\n\n\n========= Camera Busy. So relax and retry. ===========\n\n\n");
         sleep(1);
         i++;
     } while (i < 10);
 
     if (gICamera == NULL) return -1;
 
-    LOGD("Acquired Camera");
+    VTC_LOGD("Acquired Camera");
     gICamera->setPreviewDisplay(gPreviewSurface);
     gCameraClient->setReleaser(gICamera.get());
 
@@ -299,10 +297,10 @@ int configureCamera() {
     params.set("internal-vtc-hint", CameraParameters::TRUE);
 
     if (gEnableAlgo & 1) { //VNF Enabled based on cmd line
-        LOGD("VNF is enabled!!! \n");
+        VTC_LOGD("VNF is enabled!!! \n");
         params.set("vnf", CameraParameters::TRUE);
     } else {
-        LOGD("VNF is disabled!!! \n");
+        VTC_LOGD("VNF is disabled!!! \n");
         params.set("vnf", CameraParameters::FALSE);
     }
 
@@ -311,11 +309,11 @@ int configureCamera() {
     params.set("mode","video-mode");
 
     if ((!gSliceHeight) && (gEnableAlgo & 2)) { // VSTAB not supported for Slice Mode
-        LOGD("VSTAB is enabled!!! \n");
+        VTC_LOGD("VSTAB is enabled!!! \n");
         params.set("vstab",CameraParameters::TRUE);
         params.set("video-stabilization",CameraParameters::TRUE);
     } else {
-        LOGD("VSTAB is disabled!!! \n");
+        VTC_LOGD("VSTAB is disabled!!! \n");
         params.set("vstab",CameraParameters::FALSE);
         params.set("video-stabilization",CameraParameters::FALSE);
     }
@@ -339,7 +337,7 @@ void encodedBufferCallback(void* pBuffer, OMX_U32 nFilledLen, OMX_TICKS nTimeSta
     if (mOMXDecoder.get()) {
         mOMXDecoder->AcceptEncodedBuffer(pBuffer, nFilledLen, nTimeStamp);
     } else {
-        LOGE("\n\nDECODER IS NULL !!!!!!! \n\n");
+        VTC_LOGE("\n\nDECODER IS NULL !!!!!!! \n\n");
     }
 }
 
@@ -350,7 +348,7 @@ void setFrameRate(sp<OMXEncoder> pOMXEncoder) {
     // Changing the framerate in camera.
     String8 param_str = gICamera->getParameters();
     CameraParameters params(param_str);
-    LOGD("Setting new framerate: %d", gNewCameraFrameRate);
+    VTC_LOGD("Setting new framerate: %d", gNewCameraFrameRate);
     params.setPreviewFrameRate(gNewCameraFrameRate);
     sprintf(mParamValue,"%u,%u", gNewCameraFrameRate*1000, gNewCameraFrameRate*1000);
     params.set("preview-fps-range", mParamValue);
@@ -432,11 +430,11 @@ int test_DEFAULT_Frame() {
     sp<OMXEncoderObserver> observer = new OMXEncoderObserver();
     err = omx->allocateNode("OMX.TI.DUCATI1.VIDEO.H264E", observer, &node);
     if (err != OK) {
-        LOGD("Failed to allocate OMX node!!");
+        VTC_LOGD("Failed to allocate OMX node!!");
         return -1;
     }
 
-    sp<OMXEncoder> pOMXEncoder = new OMXEncoder(omx, node, gCameraClient, 
+    sp<OMXEncoder> pOMXEncoder = new OMXEncoder(omx, node, gCameraClient,
             gPreviewWidth, gPreviewHeight, gCameraFrameRate, gEncoderBitRate, gRecordFileName, 0 /*SliceHeight*/);
     observer->setCodec(pOMXEncoder);
     pOMXEncoder->mDebugFlags = gDebugFlags;
@@ -511,7 +509,7 @@ int test_DEFAULT_Slice() {
     sp<OMXEncoderObserver> observer = new OMXEncoderObserver();
     err = omx->allocateNode("OMX.TI.DUCATI1.VIDEO.H264E", observer, &node);
     if (err != OK) {
-        LOGD("Failed to allocate OMX node!!");
+        VTC_LOGD("Failed to allocate OMX node!!");
         return -1;
     }
 
@@ -526,7 +524,7 @@ int test_DEFAULT_Slice() {
     INIT_OMX_STRUCT(&compHandle, OMX_TI_COMPONENT_HANDLE);
     err = omx->getParameter(node, (OMX_INDEXTYPE)OMX_TI_IndexComponentHandle, &compHandle, sizeof(compHandle));
     if (err != OK) {
-        LOGD("get OMX_TI_IndexComponentHandle failed : %d", err);
+        VTC_LOGD("get OMX_TI_IndexComponentHandle failed : %d", err);
         return -1;
     }
 
@@ -549,7 +547,7 @@ int test_DEFAULT_Slice() {
         //Setting the Encoder output slice mode
         err = pOMXEncoder->setEncoderOutputSlice(gPreviewHeight, gPreviewWidth, gEncoderOutputSliceSizeBytes, gEncoderOutputSliceSizeMB);
         if (err != 0) {
-            LOGD("pOMXEncoder->setEncoderOutputSlice error \n");
+            VTC_LOGD("pOMXEncoder->setEncoderOutputSlice error \n");
             return -1;
         }
     }
@@ -611,7 +609,7 @@ int test_Robustness() {
     sp<OMXEncoderObserver> observer = new OMXEncoderObserver();
     err = omx->allocateNode("OMX.TI.DUCATI1.VIDEO.H264E", observer, &node);
     if (err != OK) {
-        LOGD("Failed to allocate OMX node!!");
+        VTC_LOGD("Failed to allocate OMX node!!");
         return -1;
     }
 
@@ -646,8 +644,8 @@ int test_Robustness() {
         pOMXEncoder->deinit();
 
         loopCnt++;
-        LOGD("#######################################################################");
-        LOGD("#######################################################################");
+        VTC_LOGD("#######################################################################");
+        VTC_LOGD("#######################################################################");
     }
 
     stopPreview();
@@ -667,9 +665,9 @@ int test_Frame_Robustness() {
     for (int i = 0, j = 0; i < 4000; i++) {
         gPreviewWidth = configdata[j].width;
         gPreviewHeight = configdata[j].height;
-        LOGD("##################################################################");
-        LOGD("#####################  ITERATION %d : %d x %d ###################", i, gPreviewWidth, gPreviewHeight);
-        LOGD("##################################################################");
+        VTC_LOGD("##################################################################");
+        VTC_LOGD("#####################  ITERATION %d : %d x %d ###################", i, gPreviewWidth, gPreviewHeight);
+        VTC_LOGD("##################################################################");
         sleep(1);
 
         test_DEFAULT_Frame();
@@ -691,9 +689,9 @@ int test_Slice_Robustness() {
     for (int i = 0, j = 0; i < 4000; i++) {
         gPreviewWidth = configdata[j].width;
         gPreviewHeight = configdata[j].height;
-        LOGD("##################################################################");
-        LOGD("#####################  ITERATION %d : %d x %d ###################", i, gPreviewWidth, gPreviewHeight);
-        LOGD("##################################################################");
+        VTC_LOGD("##################################################################");
+        VTC_LOGD("#####################  ITERATION %d : %d x %d ###################", i, gPreviewWidth, gPreviewHeight);
+        VTC_LOGD("##################################################################");
         sleep(1);
 
         test_DEFAULT_Slice();
@@ -861,10 +859,10 @@ int main (int argc, char* argv[]) {
                 gEnableAlgo = atoi(optarg);
                 break;
             case ':':
-                LOGE("\nError - Option `%c' needs a value\n\n", optopt);
+                VTC_LOGE("\nError - Option `%c' needs a value\n\n", optopt);
                 return -1;
             case '?':
-                LOGE("\nError - No such option: `%c'\n\n", optopt);
+                VTC_LOGE("\nError - No such option: `%c'\n\n", optopt);
                 return -1;
         }
     }
@@ -873,7 +871,7 @@ int main (int argc, char* argv[]) {
     if (gVaryFrameRate) gCameraFrameRate = 30; // Framerate must be initialized to 30.
 
     sprintf(gRecordFileName,  "/mnt/sdcard/video_%d.264", gFilename);
-    LOGI("\n\nRecorded Output is stored in %s\n\n", gRecordFileName);
+    VTC_LOGI("\n\nRecorded Output is stored in %s\n\n", gRecordFileName);
 
     system("setprop debug.vfr.enable 0");
 

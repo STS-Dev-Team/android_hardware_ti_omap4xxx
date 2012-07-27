@@ -47,17 +47,27 @@
 #include <media/stagefright/CameraSource.h>
 #include <media/stagefright/MetaData.h>
 
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
+#include <gui/ISurface.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/ISurfaceComposerClient.h>
+#include <gui/SurfaceComposerClient.h>
+#else
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
 #include <surfaceflinger/ISurfaceComposer.h>
 #include <surfaceflinger/ISurfaceComposerClient.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#endif
 
 #include <cutils/properties.h>
 
 #include <hardware/camera.h>
 #include <hardware/hardware.h>
 #include "CameraHardwareInterface.h"
+
+#include "VtcCommon.h"
 
 using namespace android;
 
@@ -81,15 +91,15 @@ static pthread_mutex_t mMutex;
 
 
 void my_notifyCallback(int32_t msgType, int32_t ext1, int32_t ext2, void* user) {
-    LOGD("\n\nnotifyCallback(%d)\n\n", msgType);
+    VTC_LOGD("\n\nnotifyCallback(%d)\n\n", msgType);
 }
 
 void my_dataCallback(int32_t msgType, const sp<IMemory>& dataPtr, camera_frame_metadata_t *metadata, void* user) {
-    LOGD("\n\ndataCallback(%d)\n\n", msgType);
+    VTC_LOGD("\n\ndataCallback(%d)\n\n", msgType);
 }
 
 void my_dataCallbackTimestamp(nsecs_t timestamp, int32_t msgType, const sp<IMemory>& dataPtr, void* user) {
-    LOGD("\n\ndataCallbackTimestamp(%d)\n\n", msgType);
+    VTC_LOGD("\n\ndataCallbackTimestamp(%d)\n\n", msgType);
 }
 
 void surfaceInit() {
@@ -99,7 +109,7 @@ void surfaceInit() {
 
     retval = mComposerClient->initCheck();
     if (retval != NO_ERROR) {
-        LOGE("mCOmposerClient->initCheck failed");
+        VTC_LOGE("mCOmposerClient->initCheck failed");
         return;
     }
 
@@ -108,14 +118,14 @@ void surfaceInit() {
             PIXEL_FORMAT_OPAQUE, ISurfaceComposer::eFXSurfaceNormal);
 
     if (mSurfaceControl == NULL) {
-        LOGE("mComposerClient->createSurface failed");
+        VTC_LOGE("mComposerClient->createSurface failed");
         return;
     }
 
     if (mSurfaceControl->isValid()) {
-        LOGE("mSurfaceControl is valid");
+        VTC_LOGE("mSurfaceControl is valid");
     } else {
-        LOGE("mSurfaceControl is not valid");
+        VTC_LOGE("mSurfaceControl is not valid");
         return;
     }
 
@@ -123,32 +133,32 @@ void surfaceInit() {
 
     retval =  mSurfaceControl->setPosition(100,100);
     if (retval != NO_ERROR) {
-        LOGE("mCOmposerClient->setPosition failed");
+        VTC_LOGE("mCOmposerClient->setPosition failed");
         return;
     }
 
     retval =  mSurfaceControl->setSize(400,400);
     if (retval != NO_ERROR) {
-        LOGE("mCOmposerClient->setPosition failed");
+        VTC_LOGE("mCOmposerClient->setPosition failed");
         return;
     }
 
     retval =  mSurfaceControl->setLayer(999990);
     if (retval != NO_ERROR) {
-        LOGE("mCOmposerClient->setLayer 999990 failed");
+        VTC_LOGE("mCOmposerClient->setLayer 999990 failed");
         return;
     }
 
     retval = mSurfaceControl->show();
     if (retval != NO_ERROR) {
-        LOGE("mCOmposerClient->show failed");
+        VTC_LOGE("mCOmposerClient->show failed");
         return;
     }
     SurfaceComposerClient::closeGlobalTransaction();
 
     mSurface = mSurfaceControl->getSurface();
     if (mSurface == NULL) {
-        LOGE("mSurfaceControl->getSurface failed");
+        VTC_LOGE("mSurfaceControl->getSurface failed");
         return;
     }
 
@@ -174,17 +184,17 @@ int main (int argc, char* argv[]) {
 
     if (hw_get_module(CAMERA_HARDWARE_MODULE_ID,
             (const hw_module_t **)&mModule) < 0) {
-        LOGE("Could not load camera HAL module");
+        VTC_LOGE("Could not load camera HAL module");
         return -1;
     }
-    LOGD("\nLoaded the camera module\n");
+    VTC_LOGD("\nLoaded the camera module\n");
 
 
     if (mModule->get_camera_info(cameraId, &info) != OK) {
-        LOGE("Invalid camera id %d", cameraId);
+        VTC_LOGE("Invalid camera id %d", cameraId);
         return -1;
     }
-    LOGD("\nLoaded the camera properties\n");
+    VTC_LOGD("\nLoaded the camera properties\n");
 
     if (startPreviewNow == 0) return -1;
 
@@ -192,10 +202,10 @@ int main (int argc, char* argv[]) {
     mHardware = new CameraHardwareInterface(camera_device_name);
     if (mHardware->initialize(&mModule->common) != OK) {
         mHardware.clear();
-        LOGE("mHardware->initialize FAILED");
+        VTC_LOGE("mHardware->initialize FAILED");
         return -1;
     }
-    LOGD("\nInitialized the camera hardware\n");
+    VTC_LOGD("\nInitialized the camera hardware\n");
 
     mHardware->setCallbacks(my_notifyCallback,
             my_dataCallback,
@@ -213,19 +223,19 @@ int main (int argc, char* argv[]) {
 
     surfaceInit();
     if (surface_setup_complete == 0) {
-        LOGE("\n\nsurfaceInit failed! \n\n");
+        VTC_LOGE("\n\nsurfaceInit failed! \n\n");
         goto EXIT;
     }
 
     mWindow = mSurface;
     if (mWindow == 0) {
-        LOGE("\n\nWhy is mWindow == 0?? \n\n");
+        VTC_LOGE("\n\nWhy is mWindow == 0?? \n\n");
         goto EXIT;
     }
 
     result = native_window_api_connect(mWindow.get(), NATIVE_WINDOW_API_CAMERA);
     if (result != NO_ERROR) {
-        LOGE("native_window_api_connect failed: %s (%d)", strerror(-result),
+        VTC_LOGE("native_window_api_connect failed: %s (%d)", strerror(-result),
                 result);
         goto EXIT;
     }
@@ -235,7 +245,7 @@ int main (int argc, char* argv[]) {
 
     result = mHardware->setPreviewWindow(mWindow);
     if (result != NO_ERROR) {
-        LOGE("mHardware->setPreviewWindow");
+        VTC_LOGE("mHardware->setPreviewWindow");
         goto EXIT;
     }
 
@@ -260,7 +270,7 @@ int main (int argc, char* argv[]) {
         }
     }
 #endif
-    LOGD("\n\n STOPPING PREVIEW \n\n");
+    VTC_LOGD("\n\n STOPPING PREVIEW \n\n");
     mHardware->stopPreview();
 
 
@@ -271,7 +281,7 @@ EXIT:
         if (mWindow != 0) {
             result = native_window_api_disconnect(mWindow.get(), NATIVE_WINDOW_API_CAMERA);
             if (result != NO_ERROR) {
-                LOGW("native_window_api_disconnect failed: %s (%d)", strerror(-result), result);
+                VTC_LOGW("native_window_api_disconnect failed: %s (%d)", strerror(-result), result);
             }
             mWindow = 0;
         }
@@ -297,7 +307,7 @@ EXIT:
     pthread_cond_destroy(&mCond);
 #endif
 
-    LOGD("\n\n SUCCESS \n\n");
+    VTC_LOGD("\n\n SUCCESS \n\n");
 
     return 0;
 }

@@ -44,17 +44,31 @@
 #include <OMX_Component.h>
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/MediaDefs.h>
+#ifdef ANDROID_API_JB_OR_LATER
+#include <media/stagefright/foundation/ADebug.h>
+#else
 #include <media/stagefright/MediaDebug.h>
+#endif
 
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
+#include <gui/ISurface.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/ISurfaceComposerClient.h>
+#include <gui/SurfaceComposerClient.h>
+#else
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
 #include <surfaceflinger/ISurfaceComposer.h>
 #include <surfaceflinger/ISurfaceComposerClient.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#endif
 #include <android/native_window.h>
 #include <ui/GraphicBuffer.h>
 
 #include "MessageQueue.h"
+
+#include "VtcCommon.h"
 
 
 using namespace android;

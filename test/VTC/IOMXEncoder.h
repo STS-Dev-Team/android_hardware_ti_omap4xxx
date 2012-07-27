@@ -50,10 +50,16 @@
 #include <media/mediarecorder.h>
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/MediaDefs.h>
+#ifdef ANDROID_API_JB_OR_LATER
+#include <media/stagefright/foundation/ADebug.h>
+#else
 #include <media/stagefright/MediaDebug.h>
+#endif
 #include <media/stagefright/MPEG4Writer.h>
 #include <media/stagefright/CameraSource.h>
 #include <media/stagefright/MetaData.h>
+
+#include "VtcCommon.h"
 
 
 using namespace android;

@@ -50,22 +50,37 @@
 #include <media/mediarecorder.h>
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/MediaDefs.h>
+#ifdef ANDROID_API_JB_OR_LATER
+#include <media/stagefright/foundation/ADebug.h>
+#else
 #include <media/stagefright/MediaDebug.h>
+#endif
 #include <media/stagefright/MPEG4Writer.h>
 #include <media/stagefright/CameraSource.h>
 #include <media/stagefright/MetaData.h>
 
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
+#include <gui/ISurface.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/ISurfaceComposerClient.h>
+#include <gui/SurfaceComposerClient.h>
+#else
 #include <surfaceflinger/Surface.h>
 #include <surfaceflinger/ISurface.h>
 #include <surfaceflinger/ISurfaceComposer.h>
 #include <surfaceflinger/ISurfaceComposerClient.h>
 #include <surfaceflinger/SurfaceComposerClient.h>
+#endif
 
-#include "../../../domx/omx_core/inc/OMX_TI_Index.h"   // for OMX_TI_VIDEO_PARAM_FRAMEDATACONTENTTYPE
-#include "../../../domx/omx_core/inc/OMX_TI_Video.h"   // for OMX_VIDEO_PARAM_DATASYNCMODETYPE
-#include "../../../domx/omx_core/inc/OMX_TI_Common.h"  // for OMX_TI_COMPONENT_HANDLE
-#include "../../../domx/omx_core/inc/OMX_TI_IVCommon.h"// for OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
+#include "OMX_TI_Index.h"   // for OMX_TI_VIDEO_PARAM_FRAMEDATACONTENTTYPE
+#include "OMX_TI_Video.h"   // for OMX_VIDEO_PARAM_DATASYNCMODETYPE
+#include "OMX_TI_Common.h"  // for OMX_TI_COMPONENT_HANDLE
+#include "OMX_TI_IVCommon.h"// for OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
+
 #include "MessageQueue.h"
+
+#include "VtcCommon.h"
 
 
 #define SLEEP_AFTER_STARTING_PREVIEW 2
@@ -90,9 +105,6 @@
 
 #define ENCODER_MAX_BUFFER_COUNT 10
 #define NUM_PORTS 2
-
-#define LOG_FUNCTION_NAME_ENTRY LOGV("\n ENTER %s \n", __FUNCTION__);
-#define LOG_FUNCTION_NAME_EXIT LOGV("\n EXIT %s \n", __FUNCTION__);
 
 #define INIT_OMX_STRUCT(_s_, _name_)   \
     memset((_s_), 0x0, sizeof(_name_));         \
