@@ -28,9 +28,17 @@ LOCAL_C_INCLUDES += \
 endif
 
 LOCAL_C_INCLUDES += \
-    bionic/libc/include \
+    bionic/libc/include 
+
+ifdef ENHANCED_DOMX
+LOCAL_C_INCLUDES += \
     $(DOMX_PATH)/omx_core/inc \
     $(DOMX_PATH)/mm_osal/inc
+else
+LOCAL_C_INCLUDES += \
+    hardware/ti/omap4xxx/domx/omx_core/inc \
+    hardware/ti/omap4xxx/domx/mm_osal/inc
+endif
 
 LOCAL_CFLAGS += -fno-short-enums $(ANDROID_API_CFLAGS)
 
