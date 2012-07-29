@@ -1,4 +1,4 @@
-ifeq ($(TARGET_BOARD_PLATFORM),omap4)
+ifeq ($(findstring omap, $(TARGET_BOARD_PLATFORM)),omap)
 ifeq ($(TI_OMAP4_CAMERAHAL_VARIANT),)
 
 LOCAL_PATH:= $(call my-dir)
