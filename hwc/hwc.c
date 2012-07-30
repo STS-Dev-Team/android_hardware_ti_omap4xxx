@@ -1510,7 +1510,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
     int ix_docking = -1;
 
     int blit_all = 0;
-    blit_reset(hwc_dev, list->flags);
+    blit_reset(hwc_dev, list ? list->flags : 0);
 
     /* If the SGX is used or we are going to blit something we need a framebuffer
      * and a DSS pipe
