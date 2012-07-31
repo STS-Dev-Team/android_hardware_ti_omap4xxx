@@ -27,8 +27,12 @@ public class CPCamMetadata {
     protected CPCamMetadata() {
     }
 
-    public static CPCamMetadata getMetadata(SurfaceTexture st) {
-        return nativeRetrieveMetadata(st);
+    public static CPCamMetadata getMetadata(CPCamBufferQueue st) {
+        return nativeRetrieveMetadata(st, 0);
+    }
+
+    public static CPCamMetadata getMetadata(CPCamBufferQueue st, int slot) {
+        return nativeRetrieveMetadata(st, slot);
     }
 
     public static class BSCPosition {
@@ -438,7 +442,7 @@ public class CPCamMetadata {
      */
     public ByteBuffer aewbPaxelStatistics;
 
-    private static native CPCamMetadata nativeRetrieveMetadata(SurfaceTexture st);
+    private static native CPCamMetadata nativeRetrieveMetadata(CPCamBufferQueue st, int slot);
 
     /*
      * We use a class initializer to allow the native code to cache some

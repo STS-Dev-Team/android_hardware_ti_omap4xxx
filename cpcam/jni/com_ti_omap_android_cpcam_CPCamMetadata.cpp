@@ -20,10 +20,25 @@
 #include "android_runtime/AndroidRuntime.h"
 
 #include <gui/SurfaceTexture.h>
+#include <camera/CameraMetadata.h>
 
 #include <binder/IMemory.h>
 #include <binder/MemoryBase.h>
 #include <binder/MemoryHeapBase.h>
+
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/BufferQueue.h>
+#   define CAMHAL_LOGV ALOGV
+#   define CAMHAL_LOGE ALOGE
+#   define METADATA_ACCESS_TYPE BufferQueue
+#else
+#   define CAMHAL_LOGV LOGV
+#   define CAMHAL_LOGE LOGE
+#   define METADATA_ACCESS_TYPE SurfaceTexture
+#endif
+
+const char* const kMetadataAccessClassPathName = "com/ti/omap/android/cpcam/CPCamBufferQueue";
+const char* const kMetadataAccessJNIID = "mBufferQueue";
 
 using namespace android;
 
@@ -108,411 +123,416 @@ static void Metadata_Init(JNIEnv* env, jclass clazz)
 
     jclass metaDataClazz = env->FindClass("com/ti/omap/android/cpcam/CPCamMetadata");
     if ( NULL == metaDataClazz ) {
-        LOGE("Couldn't find CPCamMetadata class");
+        CAMHAL_LOGE("Couldn't find CPCamMetadata class");
     }
 
     fields.metadataInit = env->GetMethodID(metaDataClazz, "<init>", "()V");
     if ( NULL == fields.metadataInit ) {
-        LOGE("Couldn't find Metadata constructor");
+        CAMHAL_LOGE("Couldn't find Metadata constructor");
     }
 
     jclass rectClazz = env->FindClass("android/graphics/Rect");
     if ( NULL == rectClazz ) {
-        LOGE("Couldn't find Rect class");
+        CAMHAL_LOGE("Couldn't find Rect class");
     }
 
     fields.rectInit = env->GetMethodID(rectClazz, "<init>", "(IIII)V");
     if ( NULL == fields.rectInit ) {
-        LOGE("Couldn't find Rect constructor");
+        CAMHAL_LOGE("Couldn't find Rect constructor");
     }
 
     fields.frameNumber = env->GetFieldID(metaDataClazz, "frameNumber", "I");
     if ( NULL == fields.frameNumber ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.shotNumber = env->GetFieldID(metaDataClazz, "shotNumber", "I");
     if ( NULL == fields.shotNumber ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.analogGain = env->GetFieldID(metaDataClazz, "analogGain", "I");
     if ( NULL == fields.analogGain ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.analogGainReq = env->GetFieldID(metaDataClazz, "analogGainReq", "I");
     if ( NULL == fields.analogGainReq ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.analogGainMin = env->GetFieldID(metaDataClazz, "analogGainMin", "I");
     if ( NULL == fields.analogGainMin ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.analogGainMax = env->GetFieldID(metaDataClazz, "analogGainMax", "I");
     if ( NULL == fields.analogGainMax ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.analogGainDev = env->GetFieldID(metaDataClazz, "analogGainDev", "I");
     if ( NULL == fields.analogGainDev ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.analogGainError = env->GetFieldID(metaDataClazz, "analogGainError", "I");
     if ( NULL == fields.analogGainError ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureTime = env->GetFieldID(metaDataClazz, "exposureTime", "I");
     if ( NULL == fields.exposureTime ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureTimeReq = env->GetFieldID(metaDataClazz, "exposureTimeReq", "I");
     if ( NULL == fields.exposureTimeReq ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureTimeMin = env->GetFieldID(metaDataClazz, "exposureTimeMin", "I");
     if ( NULL == fields.exposureTimeMin ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureTimeMax = env->GetFieldID(metaDataClazz, "exposureTimeMax", "I");
     if ( NULL == fields.exposureTimeMax ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureTimeDev = env->GetFieldID(metaDataClazz, "exposureTimeDev", "I");
     if ( NULL == fields.exposureTimeDev ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureTimeError = env->GetFieldID(metaDataClazz, "exposureTimeError", "I");
     if ( NULL == fields.exposureTimeError ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureCompensationReq = env->GetFieldID(metaDataClazz, "exposureCompensationReq", "I");
     if ( NULL == fields.exposureCompensationReq ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.exposureDev = env->GetFieldID(metaDataClazz, "exposureDev", "I");
     if ( NULL == fields.exposureDev ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.timestamp = env->GetFieldID(metaDataClazz, "timestamp", "J");
     if ( NULL == fields.timestamp ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.awbTemp = env->GetFieldID(metaDataClazz, "awbTemp", "I");
     if ( NULL == fields.awbTemp ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.gainR = env->GetFieldID(metaDataClazz, "gainR", "I");
     if ( NULL == fields.gainR ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.gainGR = env->GetFieldID(metaDataClazz, "gainGR", "I");
     if ( NULL == fields.gainGR ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.gainGB = env->GetFieldID(metaDataClazz, "gainGB", "I");
     if ( NULL == fields.gainGB ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.gainB = env->GetFieldID(metaDataClazz, "gainB", "I");
     if ( NULL == fields.gainB ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.offsetR = env->GetFieldID(metaDataClazz, "offsetR", "I");
     if ( NULL == fields.offsetR ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.offsetGR = env->GetFieldID(metaDataClazz, "offsetGR", "I");
     if ( NULL == fields.offsetGR ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.offsetGB = env->GetFieldID(metaDataClazz, "offsetGB", "I");
     if ( NULL == fields.offsetGB ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.offsetB = env->GetFieldID(metaDataClazz, "offsetB", "I");
     if ( NULL == fields.offsetB ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.lscTableApplied = env->GetFieldID(metaDataClazz, "lscTableApplied", "I");
     if ( NULL == fields.lscTableApplied ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.faces = env->GetFieldID(metaDataClazz, "faces", "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.faces ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.numberOfFaces = env->GetFieldID(metaDataClazz, "numberOfFaces", "I");
     if ( NULL == fields.numberOfFaces ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.auxImageWidth = env->GetFieldID(metaDataClazz, "auxImageWidth", "I");
     if ( NULL == fields.auxImageWidth ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.auxImageHeight = env->GetFieldID(metaDataClazz, "auxImageHeight", "I");
     if ( NULL == fields.auxImageHeight ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.bscColorElement = env->GetFieldID(metaDataClazz, "bscColorElement", "I");
     if ( NULL == fields.bscColorElement ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     jclass bscPositionClazz = env->FindClass("com/ti/omap/android/cpcam/CPCamMetadata$BSCPosition");
     if ( NULL == bscPositionClazz ) {
-        LOGE("Couldn't find BSCPosition class");
+        CAMHAL_LOGE("Couldn't find BSCPosition class");
     }
 
     fields.bscPositionInit = env->GetMethodID(bscPositionClazz, "<init>", "()V");
     if ( NULL == fields.bscPositionInit ) {
-        LOGE("Couldn't find BSCPosition constructor");
+        CAMHAL_LOGE("Couldn't find BSCPosition constructor");
     }
 
     fields.bscPositionVectors = env->GetFieldID(bscPositionClazz, "vectors", "I");
     if ( NULL == fields.bscPositionVectors ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionShift = env->GetFieldID(bscPositionClazz, "shift", "I");
     if ( NULL == fields.bscPositionShift ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionVerticalPosition = env->GetFieldID(bscPositionClazz,
                                                          "verticalPosition",
                                                          "I");
     if ( NULL == fields.bscPositionVerticalPosition ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionHorizontalPosition = env->GetFieldID(bscPositionClazz,
                                                            "horizontalPosition",
                                                            "I");
     if ( NULL == fields.bscPositionHorizontalPosition ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionVerticalNumber = env->GetFieldID(bscPositionClazz,
                                                        "verticalNumber",
                                                        "I");
     if ( NULL == fields.bscPositionVerticalNumber ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionHorizontalNumber = env->GetFieldID(bscPositionClazz,
                                                          "horizontalNumber",
                                                          "I");
     if ( NULL == fields.bscPositionHorizontalNumber ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionVerticalSkip = env->GetFieldID(bscPositionClazz,
                                                      "verticalSkip",
                                                      "I");
     if ( NULL == fields.bscPositionVerticalSkip ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscPositionHorizontalSkip = env->GetFieldID(bscPositionClazz,
                                                        "horizontalSkip",
                                                        "I");
     if ( NULL == fields.bscPositionHorizontalSkip ) {
-        LOGE("Couldn't allocate BSCPosition field");
+        CAMHAL_LOGE("Couldn't allocate BSCPosition field");
     }
 
     fields.bscRowPosition = env->GetFieldID(metaDataClazz,
                                             "bscRowPosition",
                                             "Lcom/ti/omap/android/cpcam/CPCamMetadata$BSCPosition;");
     if ( NULL == fields.bscRowPosition ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.bscColPosition = env->GetFieldID(metaDataClazz,
                                             "bscColPosition",
                                             "Lcom/ti/omap/android/cpcam/CPCamMetadata$BSCPosition;");
     if ( NULL == fields.bscColPosition ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.afBayeRGBPosition = env->GetFieldID(metaDataClazz, "afBayeRGBPosition", "I");
     if ( NULL == fields.afBayeRGBPosition ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.afEnableAFPeakMode = env->GetFieldID(metaDataClazz, "afEnableAFPeakMode", "I");
     if ( NULL == fields.afEnableAFPeakMode ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.afEnableAFVertical = env->GetFieldID(metaDataClazz, "afEnableAFVertical", "I");
     if ( NULL == fields.afEnableAFVertical ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.afPaxelWindow = env->GetFieldID(metaDataClazz,
                                                 "afPaxelWindow",
                                                 "Lcom/ti/omap/android/cpcam/CPCamMetadata$H3AConfig;");
     if ( NULL == fields.afPaxelWindow ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     jclass h3aConfigClazz = env->FindClass("com/ti/omap/android/cpcam/CPCamMetadata$H3AConfig");
     if ( NULL == h3aConfigClazz ) {
-        LOGE("Couldn't find H3AConfig class");
+        CAMHAL_LOGE("Couldn't find H3AConfig class");
     }
 
     fields.h3aVerticalPosition = env->GetFieldID(h3aConfigClazz, "verticalPosition", "I");
     if ( NULL == fields.h3aVerticalPosition ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aVerticalSize = env->GetFieldID(h3aConfigClazz, "verticalSize", "I");
     if ( NULL == fields.h3aVerticalSize ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aHorizontalPosition = env->GetFieldID(h3aConfigClazz, "horizontalPosition", "I");
     if ( NULL == fields.h3aHorizontalPosition ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aHorizontalSize = env->GetFieldID(h3aConfigClazz, "horizontalSize", "I");
     if ( NULL == fields.h3aHorizontalSize ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aVerticalCount = env->GetFieldID(h3aConfigClazz, "verticalCount", "I");
     if ( NULL == fields.h3aVerticalCount ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aVeticalIncrement = env->GetFieldID(h3aConfigClazz, "veticalIncrement", "I");
     if ( NULL == fields.h3aVeticalIncrement ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aHorizontalCount = env->GetFieldID(h3aConfigClazz, "horizontalCount", "I");
     if ( NULL == fields.h3aHorizontalCount ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aHorizontalIncrement = env->GetFieldID(h3aConfigClazz, "horizontalIncrement", "I");
     if ( NULL == fields.h3aHorizontalIncrement ) {
-        LOGE("Couldn't allocate H3AConfig field");
+        CAMHAL_LOGE("Couldn't allocate H3AConfig field");
     }
 
     fields.h3aInit = env->GetMethodID(h3aConfigClazz, "<init>", "()V");
     if ( NULL == fields.h3aInit ) {
-        LOGE("Couldn't find H3AConfig constructor");
+        CAMHAL_LOGE("Couldn't find H3AConfig constructor");
     }
 
     fields.aewbMode = env->GetFieldID(metaDataClazz, "aewbMode", "I");
     if ( NULL == fields.aewbMode ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.aewbThresholdPixelValue = env->GetFieldID(metaDataClazz, "aewbThresholdPixelValue", "I");
     if ( NULL == fields.aewbThresholdPixelValue ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.aewbAccumulationShift = env->GetFieldID(metaDataClazz, "aewbAccumulationShift", "I");
     if ( NULL == fields.aewbAccumulationShift ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.aewbPaxelWindow = env->GetFieldID(metaDataClazz,
                                              "aewbPaxelWindow",
                                              "Lcom/ti/omap/android/cpcam/CPCamMetadata$H3AConfig;");
     if ( NULL == fields.aewbPaxelWindow ) {
-        LOGE("Couldn't allocate Metadata field");
+        CAMHAL_LOGE("Couldn't allocate Metadata field");
     }
 
     fields.lscTable = env->GetFieldID(metaDataClazz, "lscTable", "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.lscTable ) {
-        LOGE("Couldn't find Metadata field");
+        CAMHAL_LOGE("Couldn't find Metadata field");
     }
 
     fields.auxImage = env->GetFieldID(metaDataClazz, "auxImage", "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.auxImage ) {
-        LOGE("Couldn't find Metadata field");
+        CAMHAL_LOGE("Couldn't find Metadata field");
     }
 
     fields.bscRowSum = env->GetFieldID(metaDataClazz, "bscRowSum", "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.bscRowSum ) {
-        LOGE("Couldn't find Metadata field");
+        CAMHAL_LOGE("Couldn't find Metadata field");
     }
 
     fields.bscColSum = env->GetFieldID(metaDataClazz, "bscColSum", "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.bscColSum ) {
-        LOGE("Couldn't find Metadata field");
+        CAMHAL_LOGE("Couldn't find Metadata field");
     }
 
     fields.afPaxelStatistics = env->GetFieldID(metaDataClazz,
                                                "afPaxelStatistics",
                                                "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.afPaxelStatistics ) {
-        LOGE("Couldn't find Metadata field");
+        CAMHAL_LOGE("Couldn't find Metadata field");
     }
 
     fields.aewbPaxelStatistics = env->GetFieldID(metaDataClazz,
                                                "aewbPaxelStatistics",
                                                "Ljava/nio/ByteBuffer;");
     if ( NULL == fields.aewbPaxelStatistics ) {
-        LOGE("Couldn't find Metadata field");
+        CAMHAL_LOGE("Couldn't find Metadata field");
     }
 
 }
 
-static jobject Metadata_retrieveMetadata(JNIEnv* env, jclass clazz, jobject st)
+static jobject Metadata_retrieveMetadata(JNIEnv* env, jclass clazz, jobject st, jint slot)
 {
 
-    jclass stClazz = env->FindClass("android/graphics/SurfaceTexture");
+    jclass stClazz = env->FindClass(kMetadataAccessClassPathName);
     if (stClazz == NULL) {
         return NULL;
     }
 
-    jfieldID context = env->GetFieldID(stClazz,
-                                       ANDROID_GRAPHICS_SURFACETEXTURE_JNI_ID,
-                                       "I");
+    jfieldID context = env->GetFieldID(stClazz, kMetadataAccessJNIID, "I");
     if ( context == NULL ) {
         return NULL;
     }
 
-    sp<SurfaceTexture> surfaceTexture = NULL;
+    sp<METADATA_ACCESS_TYPE> access = NULL;
     if ( st != NULL ) {
-        surfaceTexture = reinterpret_cast<SurfaceTexture*>(env->GetIntField(st, context));
+        access = reinterpret_cast<METADATA_ACCESS_TYPE *>(env->GetIntField(st, context));
     }
 
-    sp<IMemory> data = surfaceTexture->getMetadata();
+#ifdef ANDROID_API_JB_OR_LATER
+    BufferQueue::BufferItem item;
+    access->getBuffer(slot, &item);
+    sp<IMemory> data = item.mMetadata;
+#else
+    sp<IMemory> data = access->getMetadata();
+#endif
+
     ssize_t offset;
     size_t size;
 
@@ -525,20 +545,20 @@ static jobject Metadata_retrieveMetadata(JNIEnv* env, jclass clazz, jobject st)
 
     jclass h3aConfigClazz = env->FindClass("com/ti/omap/android/cpcam/CPCamMetadata$H3AConfig");
     if ( NULL == h3aConfigClazz ) {
-        LOGE("Couldn't find H3AConfig class");
+        CAMHAL_LOGE("Couldn't find H3AConfig class");
         return NULL;
     }
 
     jclass metaDataClazz = env->FindClass(kMetadataClassPathName);
     if ( NULL == metaDataClazz ) {
-        LOGE("Couldn't find Metadata class");
+        CAMHAL_LOGE("Couldn't find Metadata class");
         return NULL;
     }
 
     jobject objMeta = (jobject) env->NewObject(metaDataClazz,
                                                fields.metadataInit);
     if ( NULL == objMeta ) {
-        LOGE("Couldn't allocate Metadata object");
+        CAMHAL_LOGE("Couldn't allocate Metadata object");
         return NULL;
     }
 
@@ -546,7 +566,7 @@ static jobject Metadata_retrieveMetadata(JNIEnv* env, jclass clazz, jobject st)
         jobject nioLSCTable = env->NewDirectByteBuffer((uint8_t *)meta + meta->lsc_table_offset,
                                                   meta->lsc_table_size);
         if ( NULL == nioLSCTable ) {
-            LOGE("Couldn't allocate NIO LSC table");
+            CAMHAL_LOGE("Couldn't allocate NIO LSC table");
             return NULL;
         }
         env->SetObjectField(objMeta, fields.lscTable, nioLSCTable);
@@ -557,13 +577,13 @@ static jobject Metadata_retrieveMetadata(JNIEnv* env, jclass clazz, jobject st)
     jobject nioFaces = env->NewDirectByteBuffer((uint8_t *)meta + meta->faces_offset,
                                               meta->number_of_faces * sizeof(camera_metadata_face_t));
     if ( NULL == nioFaces ) {
-        LOGE("Couldn't allocate NIO Face array");
+        CAMHAL_LOGE("Couldn't allocate NIO Face array");
         return NULL;
     }
     env->SetObjectField(objMeta, fields.faces, nioFaces);
     env->DeleteLocalRef(nioFaces);
-
     env->SetIntField(objMeta, fields.numberOfFaces, meta->number_of_faces);
+
     env->SetIntField(objMeta, fields.frameNumber, meta->frame_number);
     env->SetIntField(objMeta, fields.shotNumber, meta->shot_number);
     env->SetIntField(objMeta, fields.analogGain, meta->analog_gain);
@@ -596,7 +616,7 @@ static jobject Metadata_retrieveMetadata(JNIEnv* env, jclass clazz, jobject st)
 
 static JNINativeMethod gMetadataMethods[] = {
     {"nativeClassInit",          "()V", (void*)Metadata_Init },
-    {"nativeRetrieveMetadata",   "(Landroid/graphics/SurfaceTexture;)Lcom/ti/omap/android/cpcam/CPCamMetadata;", (void*)Metadata_retrieveMetadata },
+    {"nativeRetrieveMetadata",   "(Lcom/ti/omap/android/cpcam/CPCamBufferQueue;I)Lcom/ti/omap/android/cpcam/CPCamMetadata;", (void*)Metadata_retrieveMetadata },
 };
 
 int register_com_ti_omap_android_cpcam_CPCamMetadata(JNIEnv* env)

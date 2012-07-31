@@ -1156,7 +1156,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     }
 
     if ( register_com_ti_omap_android_cpcam_CPCamMetadata(env) != 0 ) {
-        LOGE("ERROR: PlatformLibrary native Metadata registration failed\n");
+        CAMHAL_LOGE("ERROR: PlatformLibrary native Metadata registration failed\n");
         goto bail;
     }
 
