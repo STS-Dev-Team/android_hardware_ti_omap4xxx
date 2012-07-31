@@ -59,6 +59,8 @@
 
 using namespace android;
 
+extern int register_com_ti_omap_android_cpcam_CPCamMetadata(JNIEnv* env);
+
 struct fields_t {
     jfieldID    context;
     jfieldID    surface;
@@ -1139,6 +1141,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
     if (registerCPCamMethods(env) != 0) {
         CAMHAL_LOGE("ERROR: PlatformLibrary native registration failed\n");
+        goto bail;
+    }
+
+    if ( register_com_ti_omap_android_cpcam_CPCamMetadata(env) != 0 ) {
+        LOGE("ERROR: PlatformLibrary native Metadata registration failed\n");
         goto bail;
     }
 

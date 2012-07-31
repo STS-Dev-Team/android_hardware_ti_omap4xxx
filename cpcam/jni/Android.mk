@@ -42,7 +42,8 @@ LOCAL_MODULE:= libcpcam_jni
 
 # All of the source files that we will compile.
 LOCAL_SRC_FILES:= \
-	com_ti_omap_android_cpcam_CPCam.cpp
+	com_ti_omap_android_cpcam_CPCam.cpp \
+	com_ti_omap_android_cpcam_CPCamMetadata.cpp
 
 # All of the shared libraries we link against.
 LOCAL_SHARED_LIBRARIES := \
@@ -52,6 +53,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 	libutils \
 	libui \
+	libbinder \
 	libgui
 
 # No static libraries.
