@@ -34,6 +34,7 @@
 #include <sys/wait.h>
 
 #include "camera_test.h"
+#include "camera_test_surfacetexture.h"
 
 #define ASSERT(X) \
     do { \
@@ -454,13 +455,10 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
 }
 
 void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
-    sp<SurfaceTexture> surface_texture;
-    sp<ANativeWindow> window_tapin;
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     void *data = NULL;
     void *input = NULL;
-    static int count = 0;
     int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
 
     int aligned_width, aligned_height;
@@ -471,21 +469,21 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
 
     Rect bounds(bufinfo.width, bufinfo.height);
 
+    if (mWindowTapIn.get() == 0) {
+        return;
+    }
+
     if ( NULL != format ) {
         pixformat = getHalPixFormat(format);
     }
 
-    surface_texture = mSurfaceTexture->getST();
-
-    surface_texture->setDefaultBufferSize(bufinfo.width, bufinfo.height);
-    window_tapin = new SurfaceTextureClient(surface_texture);
-    native_window_set_usage(window_tapin.get(),
+    native_window_set_usage(mWindowTapIn.get(),
                             GRALLOC_USAGE_SW_READ_RARELY |
                             GRALLOC_USAGE_SW_WRITE_NEVER);
-    native_window_set_buffer_count(window_tapin.get(), 1);
-    native_window_set_buffers_geometry(window_tapin.get(),
+    native_window_set_buffer_count(mWindowTapIn.get(), 1);
+    native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
-    window_tapin->dequeueBuffer(window_tapin.get(), &anb);
+    mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
     mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
     // copy buffer to input buffer if available
     if (bufinfo.buf.get()) {
@@ -522,32 +520,8 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
         bufinfo.buf->unlock();
     }
 
-    int fd = -1;
-    char fn[256];
-    fn[0] = 0;
-    sprintf(fn, "/sdcard/img%03d_in.raw", count++);
-    fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
-    if (fd >= 0) {
-        int size = 0;
-        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
-            size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
-        } else {
-            size = calcBufSize(pixformat, aligned_width, aligned_height);
-        }
-
-        if (size != write(fd, data, size)) {
-            printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
-        }
-        printf("%s: buffer=%08X, size=%d stored at %s\n",
-                    __FUNCTION__, (int)data, size, fn);
-        close(fd);
-    } else {
-        printf("error opening or creating %s\n", fn);
-    }
-
     mapper.unlock(anb->handle);
-    window_tapin->queueBuffer(window_tapin.get(), anb);
-    mCamera->setBufferSource(surface_texture, NULL);
+    mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
 }
 
 void BufferSourceThread::showMetadata(sp<IMemory> data) {

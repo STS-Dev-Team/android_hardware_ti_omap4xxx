@@ -39,6 +39,10 @@
 #include <sys/wait.h>
 
 #include "camera_test.h"
+#include "camera_test_surfacetexture.h"
+#ifdef ANDROID_API_JB_OR_LATER
+#include "camera_test_bufferqueue.h"
+#endif
 
 using namespace android;
 
@@ -1209,7 +1213,11 @@ int closeCamera() {
 
 void createBufferOutputSource() {
     if(!bufferSourceOutputThread.get()) {
-        bufferSourceOutputThread = new BufferSourceThread(false, 123, camera);
+#ifdef ANDROID_API_JB_OR_LATER
+        bufferSourceOutputThread = new BQ_BufferSourceThread(123, camera);
+#else
+        bufferSourceOutputThread = new ST_BufferSourceThread(false, 123, camera);
+#endif
         bufferSourceOutputThread->run();
     }
 }
@@ -3428,7 +3436,11 @@ int functional_menu() {
 #endif
             gettimeofday(&picture_start, 0);
             if (!bufferSourceInput.get()) {
-                bufferSourceInput = new BufferSourceInput(false, 1234, camera);
+#ifdef ANDROID_API_JB_OR_LATER
+                bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
+#else
+                bufferSourceInput = new ST_BufferSourceInput(1234, camera);
+#endif
                 bufferSourceInput->init();
             }
 

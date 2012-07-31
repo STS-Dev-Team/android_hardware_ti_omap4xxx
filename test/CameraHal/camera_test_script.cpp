@@ -21,6 +21,10 @@
 #include <sys/wait.h>
 
 #include "camera_test.h"
+#include "camera_test_surfacetexture.h"
+#ifdef ANDROID_API_JB_OR_LATER
+#include "camera_test_bufferqueue.h"
+#endif
 
 using namespace android;
 
@@ -1213,7 +1217,11 @@ int execute_functional_script(char *script) {
 #endif
                 gettimeofday(&picture_start, 0);
                 if (!bufferSourceInput.get()) {
-                    bufferSourceInput = new BufferSourceInput(false, 1234, camera);
+#ifdef ANDROID_API_JB_OR_LATER
+                    bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
+#else
+                    bufferSourceInput = new ST_BufferSourceInput(1234, camera);
+#endif
                     bufferSourceInput->init();
                 }
 
