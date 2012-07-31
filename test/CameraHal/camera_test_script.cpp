@@ -1152,14 +1152,18 @@ int execute_functional_script(char *script) {
                     }
                 } else if(strcmp(modevalues[capture_mode], "video-mode") == 0) {
                     msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                              CAMERA_MSG_RAW_IMAGE |
-                              CAMERA_MSG_RAW_BURST;
+                              CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                    msgType |= CAMERA_MSG_RAW_BURST;
+#endif
                 } else {
                     msgType = CAMERA_MSG_POSTVIEW_FRAME |
                               CAMERA_MSG_RAW_IMAGE_NOTIFY |
                               CAMERA_MSG_COMPRESSED_IMAGE |
-                              CAMERA_MSG_SHUTTER |
-                              CAMERA_MSG_RAW_BURST;
+                              CAMERA_MSG_SHUTTER;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                    msgType |= CAMERA_MSG_RAW_BURST;
+#endif
                 }
 
                 if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
@@ -1203,8 +1207,10 @@ int execute_functional_script(char *script) {
             case 'P':
             {
                 int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                              CAMERA_MSG_RAW_IMAGE |
-                              CAMERA_MSG_RAW_BURST;
+                              CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                msgType |= CAMERA_MSG_RAW_BURST;
+#endif
                 gettimeofday(&picture_start, 0);
                 if (!bufferSourceInput.get()) {
                     bufferSourceInput = new BufferSourceInput(false, 1234, camera);
