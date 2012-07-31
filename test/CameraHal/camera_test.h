@@ -347,15 +347,17 @@ public:
                     mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer, defer.count);
                     defer.graphicBuffer->unlock();
                     mDeferQueue.removeAt(0);
+                    mBST->onHandled(defer.graphicBuffer, defer.slot);
                     return true;
                 }
                 return false;
             }
-            void add(sp<GraphicBuffer> &gbuf, unsigned int count) {
+            void add(sp<GraphicBuffer> &gbuf, unsigned int count, unsigned int slot = 0) {
                 Mutex::Autolock lock(mFrameQueueMutex);
                 DeferContainer defer;
                 defer.graphicBuffer = gbuf;
                 defer.count = count;
+                defer.slot = slot;
                 gbuf->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &defer.mappedBuffer);
                 mDeferQueue.add(defer);
                 mFrameQueueCondition.signal();
@@ -392,6 +394,7 @@ public:
     virtual bool threadLoop() { return false;}
     virtual void requestExit() {};
     virtual void setBuffer() {};
+    virtual void onHandled(sp<GraphicBuffer> &g, unsigned int slot) {};
 
     bool toggleStreamCapture(int expBracketIdx) {
         Mutex::Autolock lock(mToggleStateMutex);

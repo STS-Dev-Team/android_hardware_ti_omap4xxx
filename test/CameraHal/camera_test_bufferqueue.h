@@ -100,6 +100,10 @@ public:
         mCamera->setBufferSource(NULL, mBufferQueue);
     }
 
+    virtual void onHandled(sp<GraphicBuffer> &gbuf, unsigned int slot) {
+        mBufferQueue->releaseBuffer(slot, EGL_NO_DISPLAY, EGL_NO_SYNC_KHR);
+    }
+
 private:
     sp<BufferQueue> mBufferQueue;
     sp<FrameConsumer> mFW;
