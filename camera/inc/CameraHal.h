@@ -969,6 +969,16 @@ protected:
 class DisplayAdapter : public BufferProvider, public virtual android::RefBase
 {
 public:
+    DisplayAdapter();
+
+#ifdef OMAP_ENHANCEMENT
+    preview_stream_extended_ops_t * extendedOps() const {
+        return mExtendedOps;
+    }
+
+    void setExtendedOps(preview_stream_extended_ops_t * extendedOps);
+#endif
+
     ///Initializes the display adapter creates any resources required
     virtual int initialize() = 0;
 
@@ -997,6 +1007,11 @@ public:
 protected:
     virtual const char* getPixFormatConstant(const char* parameters_format) const;
     virtual size_t getBufSize(const char* parameters_format, int width, int height) const;
+
+private:
+#ifdef OMAP_ENHANCEMENT
+    preview_stream_extended_ops_t * mExtendedOps;
+#endif
 };
 
 static void releaseImageBuffers(void *userData);
@@ -1077,6 +1092,8 @@ public:
     int setPreviewWindow(struct preview_stream_ops *window);
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
+    void setExtendedPreviewStreamOps(preview_stream_extended_ops_t *ops);
+
     /**
      * Set a tap-in or tap-out point.
      */
@@ -1328,6 +1345,10 @@ public:
     // when we can have multiple tap-in/tap-out points
     android::sp<DisplayAdapter> mBufferSourceAdapter_In;
     android::sp<DisplayAdapter> mBufferSourceAdapter_Out;
+
+#ifdef OMAP_ENHANCEMENT
+    preview_stream_extended_ops_t * mExtendedPreviewStreamOps;
+#endif
 
     android::sp<android::IMemoryHeap> mPictureHeap;
 
