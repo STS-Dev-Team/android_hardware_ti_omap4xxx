@@ -60,6 +60,7 @@
 using namespace android;
 
 extern int register_com_ti_omap_android_cpcam_CPCamMetadata(JNIEnv* env);
+extern int register_android_graphics_CPCamBufferQueue(JNIEnv* env);
 
 struct fields_t {
     jfieldID    context;
@@ -1146,6 +1147,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
     if ( register_com_ti_omap_android_cpcam_CPCamMetadata(env) != 0 ) {
         LOGE("ERROR: PlatformLibrary native Metadata registration failed\n");
+        goto bail;
+    }
+
+    if (register_android_graphics_CPCamBufferQueue(env) != 0) {
+        CAMHAL_LOGE("ERROR: PlatformLibrary native BufferQueue registration failed\n");
         goto bail;
     }
 
