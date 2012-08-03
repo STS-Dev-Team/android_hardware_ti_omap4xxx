@@ -1181,7 +1181,7 @@ int execute_functional_script(char *script) {
                             printf("Error returned while setting parameters");
                             break;
                         }
-                        ret = camera->takePicture(msgType, shotParams.flatten());
+                        ret = camera->takePictureWithParameters(msgType, shotParams.flatten());
                         if ( ret != NO_ERROR ) {
                             printf("Error returned while taking a picture");
                             break;

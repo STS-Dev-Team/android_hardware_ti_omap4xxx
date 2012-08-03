@@ -3406,7 +3406,7 @@ int functional_menu() {
                 gettimeofday(&picture_start, 0);
                 if ( hardwareActive ) {
                     camera->setParameters(params.flatten());
-                    camera->takePicture(msgType, shotParams.flatten());
+                    camera->takePictureWithParameters(msgType, shotParams.flatten());
                 }
             }
             break;

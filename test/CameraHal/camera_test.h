@@ -427,7 +427,7 @@ protected:
             ShotParameters shotParams;
             calcNextSingleExpGainPreset(mExpBracketIdx, mExp, mGain),
             setSingleExpGainPreset(shotParams, mExpBracketIdx, mExp, mGain);
-            mCamera->takePicture(0, shotParams.flatten());
+            mCamera->takePictureWithParameters(0, shotParams.flatten());
         }
     }
 protected:
