@@ -600,6 +600,17 @@ static int rgz_in_valid_hwc_layer(hwc_layer_t *layer)
     return 1;
 }
 
+/* Reset dirty region data and state */
+static void rgz_delete_region_data(rgz_t *rgz){
+    if (!rgz)
+        return;
+    if (rgz->hregions)
+        free(rgz->hregions);
+    rgz->hregions = NULL;
+    rgz->nhregions = 0;
+    rgz->state &= ~RGZ_REGION_DATA;
+}
+
 static void rgz_handle_dirty_region(rgz_t *rgz, int reset_counters)
 {
     unsigned int i;
@@ -692,6 +703,12 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
 
     unsigned int blit_layers = possible_blit + 1; /* Account for background layer */
     int reset_dirty_counters = rgz->rgz_layerno != blit_layers ? 1 : 0;
+    /*
+     * The layers we are going to blit differ in number from the previous frame,
+     * we can't trust anymore the region data, calculate it again
+     */
+    if (reset_dirty_counters)
+        rgz_delete_region_data(rgz);
 
     rgz->state |= RGZ_STATE_INIT;
     rgz->rgz_layerno = blit_layers;
@@ -713,12 +730,10 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
-#if 0
     /* If there is already region data avoid parsing it again */
     if (rgz->state & RGZ_REGION_DATA) {
         return 0;
     }
-#endif
 
     int layerno = rgz->rgz_layerno;
 
@@ -1647,23 +1662,11 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     return 0;
 }
 
-/* Reset the values needed for every frame, except the dirty region handles */
-static void rgz_reset(rgz_t *rgz){
-    if (!rgz)
-        return;
-    if (rgz->hregions)
-        free(rgz->hregions);
-    rgz->hregions = NULL;
-    rgz->nhregions = 0;
-    rgz->state = 0;
-}
-
 int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
 {
     int rv = -1;
     switch (p->op) {
     case RGZ_IN_HWC:
-        rgz_reset(rgz);
         rv = rgz_in_hwccheck(p, rgz);
         if (rv == RGZ_ALL)
             rv = rgz_in_hwc(p, rgz) ? 0 : RGZ_ALL;
