@@ -799,7 +799,7 @@ static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thi
         }
     }
 
-    if (camera->takePicture(msgType, params8) != NO_ERROR) {
+    if (camera->takePictureWithParameters(msgType, params8) != NO_ERROR) {
         jniThrowRuntimeException(env, "takePicture failed");
         return;
     }
