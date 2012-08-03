@@ -81,6 +81,7 @@ struct fields_t {
     jfieldID    analog_gain;
     jfieldID    faces;
     jmethodID   metadata_constructor;
+    jfieldID    bufferQueue;
 };
 
 static fields_t fields;
@@ -545,6 +546,15 @@ static void com_ti_omap_android_cpcam_CPCam_native_setup(JNIEnv *env, jobject th
 
     // save context in opaque field
     env->SetIntField(thiz, fields.context, (int)context.get());
+
+    // Fill bufferQueue field since CPCamBufferQueue should be loaded by now
+    clazz = env->FindClass("com/ti/omap/android/cpcam/CPCamBufferQueue");
+    fields.bufferQueue = env->GetFieldID(clazz, "mBufferQueue", "I");
+    if (fields.bufferQueue == NULL) {
+        CAMHAL_LOGE("Can't find com/ti/omap/android/cpcam/CPCamBufferQueue.mBufferQueue");
+        jniThrowRuntimeException(env, "Can't find com/ti/omap/android/cpcam/CPCamBufferQueue.mBufferQueue");
+    }
+
 }
 
 // disconnect from camera service
@@ -637,7 +647,7 @@ static void com_ti_omap_android_cpcam_CPCam_setBufferSource(JNIEnv *env,
     sp<PREVIEW_TEXTURE_TYPE> tapOut = NULL;
     if (jTapOut!= NULL) {
         tapOut = reinterpret_cast<PREVIEW_TEXTURE_TYPE *>(env->GetIntField(
-                jTapOut, fields.surfaceTexture));
+                jTapOut, fields.bufferQueue));
         if (tapOut == NULL) {
             jniThrowException(env, "java/lang/IllegalArgumentException",
                     "SurfaceTexture already released in setPreviewTexture");
@@ -648,7 +658,7 @@ static void com_ti_omap_android_cpcam_CPCam_setBufferSource(JNIEnv *env,
     sp<PREVIEW_TEXTURE_TYPE> tapIn = NULL;
     if (jTapIn != NULL) {
         tapIn = reinterpret_cast<PREVIEW_TEXTURE_TYPE *>(env->GetIntField(
-                jTapIn, fields.surfaceTexture));
+                jTapIn, fields.bufferQueue));
         if (tapIn == NULL) {
             jniThrowException(env, "java/lang/IllegalArgumentException",
                     "SurfaceTexture already released in setPreviewTexture");
@@ -962,7 +972,7 @@ static JNINativeMethod cpcamMethods[] = {
     "(Landroid/graphics/SurfaceTexture;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setPreviewTexture },
   { "setBufferSource",
-    "(Landroid/graphics/SurfaceTexture;Landroid/graphics/SurfaceTexture;)V",
+    "(Lcom/ti/omap/android/cpcam/CPCamBufferQueue;Lcom/ti/omap/android/cpcam/CPCamBufferQueue;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setBufferSource },
   { "native_reprocess",
     "(ILjava/lang/String;)V",

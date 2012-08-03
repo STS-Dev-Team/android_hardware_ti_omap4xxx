@@ -413,7 +413,7 @@ public class CPCam {
      * @throws IOException if the method fails (for example, if the surface
      *     texture is unavailable or unsuitable).
      */
-    public native final void setBufferSource(SurfaceTexture tapIn, SurfaceTexture tapOut) throws IOException;
+    public native final void setBufferSource(CPCamBufferQueue tapIn, CPCamBufferQueue tapOut) throws IOException;
 
     /**
      * Sets the {@link SurfaceTexture} to be used for tap-out.
