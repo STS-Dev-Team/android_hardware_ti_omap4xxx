@@ -1,8 +1,4 @@
-# Only applicable for OMAP4 and OMAP5 boards.
-# First eliminate OMAP3 and then ensure that this is not used
-# for customer boards
-ifneq ($(TARGET_BOARD_PLATFORM),omap3)
-ifeq ($(findstring omap, $(TARGET_BOARD_PLATFORM)),omap)
+ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
@@ -22,5 +18,4 @@ LOCAL_MODULE := libI420colorconvert
 
 include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 
-endif
 endif

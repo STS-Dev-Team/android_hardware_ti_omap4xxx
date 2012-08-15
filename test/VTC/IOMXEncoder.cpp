@@ -23,6 +23,7 @@
 #define LOG_TAG "VTC_ENC"
 #define LOG_NDEBUG 0
 //#define NO_MEMCOPY 1
+#define MY_LOGV(x, ...) LOGV(x, ##__VA_ARGS__)
 
 using namespace android;
 
@@ -38,7 +39,7 @@ static void PrintEncoderFPS() {
         mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
         mLastFpsTime = now;
         mLastFrameCount = mFrameCount;
-        VTC_LOGD("Encoder: %d Frames, %f FPS", mFrameCount, mFps);
+        LOGD("Encoder: %d Frames, %f FPS", mFrameCount, mFps);
     }
     // XXX: mFPS has the value we want
 }
@@ -55,7 +56,7 @@ static void PrintEncoderLatency(nsecs_t ts) {
     if (!(mFrameCount & 0x1F)) {
         avg_latency = sum_latency_ms / 32;
         sum_latency_ms = 0;
-        VTC_LOGD("Avg Encoder Latency: %d Frames, %llu ms", mFrameCount, avg_latency);
+        LOGD("Avg Encoder Latency: %d Frames, %llu ms", mFrameCount, avg_latency);
     }
 }
 
@@ -76,8 +77,8 @@ static void PrintEffectiveBitrate(OMX_U32 filledLen) {
     if (delta>2000) {
         int fps=framecount*10000/delta;
         const uint64_t br=bytecount*8*1000/delta;
-        //VTC_LOGI("ENCODER FPS: %d.%d",fps/10,fps-(fps/10)*10);
-        VTC_LOGI("ENCODER EFFECTIVE BITRATE: %llu",br);
+        //LOGI("ENCODER FPS: %d.%d",fps/10,fps-(fps/10)*10);
+        LOGI("ENCODER EFFECTIVE BITRATE: %llu",br);
         framecount=0;
         bytecount=0;
         starttime = wallclock;
@@ -86,7 +87,7 @@ static void PrintEffectiveBitrate(OMX_U32 filledLen) {
 
 
 bool OMXEncoder::OMXCallbackHandler::Handler() {
-    VTC_LOGV("\n OMXCallbackHandler::Handler \n");
+    MY_LOGV("\n OMXCallbackHandler::Handler \n");
     Ti::Utils::Message msg;
     volatile int forever = 1;
 
@@ -105,7 +106,7 @@ bool OMXEncoder::OMXCallbackHandler::Handler() {
                 break;
             }
             case OMXCallbackHandler::COMMAND_EXIT: {
-                VTC_LOGD("Exiting OMX callback handler");
+                LOGD("Exiting OMX callback handler");
                 forever = 0;
                 break;
             }
@@ -126,7 +127,7 @@ OMXEncoder::OMXEncoder(const sp<IOMX> &omx, IOMX::node_id node, sp<MyCameraClien
 OMXEncoder::~OMXEncoder() {
     status_t err = mOMX->freeNode(mNode);
     CHECK_EQ(err, (status_t)OK);
-    VTC_LOGD("OMX_FreeHandle completed");
+    LOGD("OMX_FreeHandle completed");
 }
 
 status_t OMXEncoder::resetParameters(int width, int height, int framerate, int bitrate, char *fname, int sliceHeight) {
@@ -168,15 +169,15 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     status_t err;
     LOG_FUNCTION_NAME_ENTRY
 
-    VTC_LOGV("\n\nPROFILE=%d\nLEVEL=%d\nRefFrames=%d\nWidth=%d\nHeight=%d\nFramerate=%d\nBitrate=%d\nSliceHeight=%d\n\n",
+    MY_LOGV("\n\nPROFILE=%d\nLEVEL=%d\nRefFrames=%d\nWidth=%d\nHeight=%d\nFramerate=%d\nBitrate=%d\nSliceHeight=%d\n\n",
             profile, level, refFrames, mWidth, mHeight, mFrameRate, mBitRate, mSliceHeight);
 
     if ((mCallbackSet == false) && ((mDebugFlags & ENCODER_NO_FILE_WRTIE) == 0)) {
         mOutputFD = fopen("/mnt/sdcard/video_0.264","w");
         if (mOutputFD == NULL) {
-            VTC_LOGE("\n fopen failed\n");
+            LOGE("\n fopen failed\n");
         }
-        VTC_LOGD("\nCallback was NULL. Opened file for writing\n");
+        LOGD("\nCallback was NULL. Opened file for writing\n");
     }
 
     // initialize omx callback handling thread
@@ -185,17 +186,17 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     }
 
     if ( NULL == mOMXCallbackHandler.get() ) {
-        VTC_LOGE("Couldn't create omx callback handler");
+        LOGE("Couldn't create omx callback handler");
         return -1;
     }
 
     err = mOMXCallbackHandler->run("OMXCallbackThread", PRIORITY_URGENT_DISPLAY);
     if ( err != NO_ERROR ) {
         if( err == INVALID_OPERATION) {
-            VTC_LOGE("omx callback handler thread already runnning!!");
+            LOGE("omx callback handler thread already runnning!!");
             err = NO_ERROR;
         } else {
-            VTC_LOGE("Couldn't run omx callback handler thread");
+            LOGE("Couldn't run omx callback handler thread");
             return -1;
         }
     }
@@ -212,7 +213,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
         format.nIndex = index;
         err = mOMX->getParameter(mNode, OMX_IndexParamVideoPortFormat, &format, sizeof(format));
         if (err != OK) {
-            VTC_LOGD( "get OMX_IndexParamVideoPortFormat InPort Error:0x%x. OMX_ErrorUnsupportedIndex=0x%x", err, OMX_ErrorUnsupportedIndex);
+            LOGD( "get OMX_IndexParamVideoPortFormat InPort Error:0x%x. OMX_ErrorUnsupportedIndex=0x%x", err, OMX_ErrorUnsupportedIndex);
             return -1;
         }
 
@@ -225,14 +226,14 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     }
 
     if (!found) {
-        VTC_LOGE("Did not find a match.");
+        LOGE("Did not find a match.");
         return -1;
     }
 
-    VTC_LOGV("found a match.");
+    MY_LOGV("found a match.");
     err = mOMX->setParameter(mNode, OMX_IndexParamVideoPortFormat, &format, sizeof(format));
     if (err != OK) {
-        VTC_LOGD( "set OMX_IndexParamVideoPortFormat InPort Error:%d", err);
+        LOGD( "set OMX_IndexParamVideoPortFormat InPort Error:%d", err);
         return -1;
     }
 
@@ -244,7 +245,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
         format.nIndex = index;
         err = mOMX->getParameter(mNode, OMX_IndexParamVideoPortFormat, &format, sizeof(format));
         if (err != OK) {
-            VTC_LOGD( "get OMX_IndexParamVideoPortFormat OutPort Error:%d", err);
+            LOGD( "get OMX_IndexParamVideoPortFormat OutPort Error:%d", err);
             return -1;
         }
 
@@ -257,14 +258,14 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     }
 
     if (!found) {
-        VTC_LOGE("Did not find a match.");
+        LOGE("Did not find a match.");
         return -1;
     }
 
-    VTC_LOGV("found a match.");
+    MY_LOGV("found a match.");
     err = mOMX->setParameter(mNode, OMX_IndexParamVideoPortFormat, &format, sizeof(format));
     if (err != OK) {
-        VTC_LOGD( "set OMX_IndexParamVideoPortFormat OutPort Error:%d", err);
+        LOGD( "set OMX_IndexParamVideoPortFormat OutPort Error:%d", err);
         return -1;
     }
 
@@ -276,7 +277,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     tInPortDef.nPortIndex = INPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition, &tInPortDef, sizeof(tInPortDef));
     if (err != OK) {
-        VTC_LOGD( "get OMX_IndexParamPortDefinition InPort Error:%d", err);
+        LOGD( "get OMX_IndexParamPortDefinition InPort Error:%d", err);
         return -1;
     }
 
@@ -290,13 +291,13 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     tInPortDef.nBufferSize = (mWidth * mHeight *3)/2;
     err = mOMX->setParameter(mNode, OMX_IndexParamPortDefinition, &tInPortDef, sizeof(tInPortDef));
     if (err != OK) {
-        VTC_LOGD( "set OMX_IndexParamPortDefinition InPort Error:%d", err);
+        LOGD( "set OMX_IndexParamPortDefinition InPort Error:%d", err);
         return -1;
     }
 
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition, &tInPortDef, sizeof(tInPortDef));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamPortDefinition InPort Error:%d", err);
+        LOGD("get OMX_IndexParamPortDefinition InPort Error:%d", err);
         return -1;
     }
 
@@ -307,7 +308,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     tOutPortDef.nPortIndex = OUTPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition,&tOutPortDef, sizeof(tOutPortDef));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
+        LOGD("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
         return -1;
     }
 
@@ -321,13 +322,13 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
 
     err = mOMX->setParameter(mNode, OMX_IndexParamPortDefinition, &tOutPortDef, sizeof(tOutPortDef));
     if (err != OK) {
-        VTC_LOGD( "set OMX_IndexParamPortDefinition OutPort Error:%d", err);
+        LOGD( "set OMX_IndexParamPortDefinition OutPort Error:%d", err);
         return -1;
     }
 
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition,&tOutPortDef, sizeof(tOutPortDef));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
+        LOGD("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
         return -1;
     }
 
@@ -341,7 +342,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
 
     err = mOMX->getParameter(mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamVideoAvc failed : %d", err);
+        LOGD("get OMX_IndexParamVideoAvc failed : %d", err);
         return -1;
     }
 
@@ -372,7 +373,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
 
     err = mOMX->setParameter(mNode, OMX_IndexParamVideoAvc, &h264type, sizeof(h264type));
     if (err != OK) {
-        VTC_LOGD("set OMX_IndexParamVideoAvc failed : %d", err);
+        LOGD("set OMX_IndexParamVideoAvc failed : %d", err);
         return -1;
     }
 
@@ -384,7 +385,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     profileLevel.nPortIndex = OUTPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamVideoProfileLevelCurrent, &profileLevel, sizeof(profileLevel));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamVideoProfileLevelCurrent failed : %d", err);
+        LOGD("get OMX_IndexParamVideoProfileLevelCurrent failed : %d", err);
         return -1;
     }
 
@@ -392,7 +393,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     profileLevel.eLevel = level;
     err = mOMX->setParameter(mNode, OMX_IndexParamVideoProfileLevelCurrent, &profileLevel, sizeof(profileLevel));
     if (err != OK) {
-        VTC_LOGD("set OMX_IndexParamVideoProfileLevelCurrent failed : %d", err);
+        LOGD("set OMX_IndexParamVideoProfileLevelCurrent failed : %d", err);
         return -1;
     }
 
@@ -404,14 +405,14 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     dataContent.nPortIndex = INPUT_PORT;
     err = mOMX->getParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoFrameDataContentSettings, &dataContent, sizeof(dataContent));
     if (err != OK) {
-        VTC_LOGD("get OMX_TI_IndexParamVideoFrameDataContentSettings failed : %d", err);
+        LOGD("get OMX_TI_IndexParamVideoFrameDataContentSettings failed : %d", err);
         return -1;
     }
 
     dataContent.eContentType = OMX_TI_Video_Progressive; //appears to be the default value
     err = mOMX->setParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoFrameDataContentSettings, &dataContent, sizeof(dataContent));
     if (err != OK) {
-        VTC_LOGD("set OMX_TI_IndexParamVideoFrameDataContentSettings failed : %d", err);
+        LOGD("set OMX_TI_IndexParamVideoFrameDataContentSettings failed : %d", err);
         return -1;
     }
 
@@ -423,7 +424,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     bitrateType.nPortIndex = OUTPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamVideoBitrate, &bitrateType, sizeof(bitrateType));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamVideoBitrate failed : %d", err);
+        LOGD("get OMX_IndexParamVideoBitrate failed : %d", err);
         return -1;
     }
 
@@ -431,13 +432,13 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     bitrateType.nTargetBitrate = mBitRate;
     err = mOMX->setParameter(mNode, OMX_IndexParamVideoBitrate, &bitrateType, sizeof(bitrateType));
     if (err != OK) {
-        VTC_LOGD("set OMX_IndexParamVideoBitrate failed : %d", err);
+        LOGD("set OMX_IndexParamVideoBitrate failed : %d", err);
         return -1;
     }
 
     err = mOMX->storeMetaDataInBuffers(mNode, INPUT_PORT, OMX_TRUE);
     if (err != OK) {
-        VTC_LOGE("Storing meta data in video buffers is not supported");
+        LOGE("Storing meta data in video buffers is not supported");
         return -1;
     }
 
@@ -456,14 +457,14 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     syncMode.nPortIndex = INPUT_PORT;
     err = mOMX->getParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoDataSyncMode, &syncMode, sizeof(syncMode));
     if (err != OK) {
-        VTC_LOGD("get OMX_TI_IndexParamVideoDataSyncMode failed : %d", err);
+        LOGD("get OMX_TI_IndexParamVideoDataSyncMode failed : %d", err);
         return -1;
     }
 
     syncMode.eDataMode = OMX_Video_NumMBRows;
     err = mOMX->setParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoDataSyncMode, &syncMode, sizeof(syncMode));
     if (err != OK) {
-        VTC_LOGD("set OMX_TI_IndexParamVideoDataSyncMode failed: %d", err);
+        LOGD("set OMX_TI_IndexParamVideoDataSyncMode failed: %d", err);
         return -1;
     }
 
@@ -474,7 +475,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     syncMode.nPortIndex = OUTPUT_PORT;
     err = mOMX->getParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoDataSyncMode, &syncMode, sizeof(syncMode));
     if (err != OK) {
-        VTC_LOGD("get OMX_TI_IndexParamVideoDataSyncMode failed : %d", err);
+        LOGD("get OMX_TI_IndexParamVideoDataSyncMode failed : %d", err);
         return -1;
     }
 
@@ -482,7 +483,7 @@ status_t OMXEncoder::configure(OMX_VIDEO_AVCPROFILETYPE profile, OMX_VIDEO_AVCLE
     syncMode.nNumDataUnits = 1;
     err = mOMX->setParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexParamVideoDataSyncMode, &syncMode, sizeof(syncMode));
     if (err != OK) {
-        VTC_LOGD("set OMX_TI_IndexParamVideoDataSyncMode failed: %d", err);
+        LOGD("set OMX_TI_IndexParamVideoDataSyncMode failed: %d", err);
         return -1;
     }
 
@@ -503,7 +504,7 @@ status_t OMXEncoder::prepare() {
     tInPortDef.nPortIndex = INPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition, &tInPortDef, sizeof(tInPortDef));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamPortDefinition InPort Error:%d", err);
+        LOGD("get OMX_IndexParamPortDefinition InPort Error:%d", err);
         return -1;
     }
 
@@ -515,18 +516,18 @@ status_t OMXEncoder::prepare() {
             CHECK(mBufferInfo[INPUT_PORT][i].mEncMem.get() != NULL);
             err = mOMX->allocateBufferWithBackup(mNode, INPUT_PORT, mBufferInfo[INPUT_PORT][i].mEncMem, (void**)(&(mBufferInfo[INPUT_PORT][i].mBufferHdr)));
             if (err != OK) {
-                VTC_LOGE("OMX_AllocateBuffer for input port index:%d failed:%d",(int)i,err);
+                LOGE("OMX_AllocateBuffer for input port index:%d failed:%d",(int)i,err);
                 mBufferInfo[INPUT_PORT][i].mBufferHdr = NULL;
             }
         }
-        VTC_LOGD( "Allocated %d Input port Buffers. ", (int)tInPortDef.nBufferCountActual);
+        LOGD( "Allocated %d Input port Buffers. ", (int)tInPortDef.nBufferCountActual);
     }
 
     INIT_OMX_STRUCT(&tOutPortDef, OMX_PARAM_PORTDEFINITIONTYPE);
     tOutPortDef.nPortIndex = OUTPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition, &tOutPortDef, sizeof(tOutPortDef));
     if (err != OK) {
-        VTC_LOGE("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
+        LOGE("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
         return -1;
     }
 
@@ -540,14 +541,14 @@ status_t OMXEncoder::prepare() {
         mBufferInfo[OUTPUT_PORT][i].mEncMem = mDealer[OUTPUT_PORT]->allocate(tOutPortDef.nBufferSize);
         err = mOMX->allocateBufferWithBackup(mNode, OUTPUT_PORT, mBufferInfo[OUTPUT_PORT][i].mEncMem, (void**)(&(mBufferInfo[OUTPUT_PORT][i].mBufferHdr)));
         if (err != OK) {
-            VTC_LOGD("OMX_UseBuffer for output port index:%d failed:%d",(int)i,err);
+            LOGD("OMX_UseBuffer for output port index:%d failed:%d",(int)i,err);
             mBufferInfo[OUTPUT_PORT][i].mBufferHdr = NULL;
             return -1;
         }
     }
 #endif
 
-    VTC_LOGD( "Allocated %d Output port Buffers. ", (int)tOutPortDef.nBufferCountActual);
+    LOGD( "Allocated %d Output port Buffers. ", (int)tOutPortDef.nBufferCountActual);
 
     LOG_FUNCTION_NAME_EXIT
     return 0;
@@ -560,7 +561,7 @@ status_t OMXEncoder::start(MetaData *params) {
 
     // now wait until state becomes idle.
     if (waitForStateSet(OMX_StateIdle)) {
-        VTC_LOGD("state change to IDLE failed");
+        LOGD("state change to IDLE failed");
         return -1;
     }
 
@@ -573,7 +574,7 @@ status_t OMXEncoder::start(MetaData *params) {
     }
 
     if (waitForStateSet(OMX_StateExecuting)) {
-        VTC_LOGD("state change to EXECUTING failed");
+        LOGD("state change to EXECUTING failed");
         return -1;
     }
 
@@ -583,7 +584,7 @@ status_t OMXEncoder::start(MetaData *params) {
     tInPortDef.nPortIndex = INPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition, &tInPortDef, sizeof(tInPortDef));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamPortDefinition InPort Error:%d", err);
+        LOGD("get OMX_IndexParamPortDefinition InPort Error:%d", err);
         return -1;
     }
 
@@ -591,7 +592,7 @@ status_t OMXEncoder::start(MetaData *params) {
     tOutPortDef.nPortIndex = OUTPUT_PORT;
     err = mOMX->getParameter(mNode, OMX_IndexParamPortDefinition, &tOutPortDef, sizeof(tOutPortDef));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
+        LOGD("get OMX_IndexParamPortDefinition OutPort Error:%d", err);
         return -1;
     }
 
@@ -599,9 +600,9 @@ status_t OMXEncoder::start(MetaData *params) {
     for (int i=0; i<(int)tOutPortDef.nBufferCountActual; i++) {
         err = mOMX->fillBuffer(mNode, mBufferInfo[OUTPUT_PORT][i].mBufferHdr);
         if (err != OK) {
-            VTC_LOGD("OMX_FillThisBuffer failed:%d", err);
+            LOGD("OMX_FillThisBuffer failed:%d", err);
         } else {
-            VTC_LOGD("called fillBuffer(%d)",i);
+            LOGD("called fillBuffer(%d)",i);
         }
     }
 
@@ -629,9 +630,9 @@ status_t OMXEncoder::start(MetaData *params) {
         memcpy((uint8_t *)mBufferInfo[INPUT_PORT][i].mEncMem->pointer(),  payload[i]->pointer(), payload[i]->size());
         err = mOMX->emptyBuffer(mNode, mBufferInfo[INPUT_PORT][i].mBufferHdr, 0, payload[i]->size(),  OMX_BUFFERFLAG_ENDOFFRAME, (OMX_TICKS)time);
         if (err != OK) {
-            VTC_LOGD("OMX_EmptyThisBuffer failed:%d", err);
+            LOGD("OMX_EmptyThisBuffer failed:%d", err);
         } else {
-            VTC_LOGD("Called EmptyThisBuffer[%d] ",i);
+            LOGD("Called EmptyThisBuffer[%d] ",i);
         }
     }
 
@@ -657,32 +658,32 @@ status_t OMXEncoder::stop() {
         // flush all the buffers since mAcceptingBuffers off they won't be returned.
         err = mOMX->sendCommand(mNode,OMX_CommandFlush, INPUT_PORT);
         if (err != OK) {
-            VTC_LOGD("OMX_CommandFlush for input port (0) failed:%d", err);
+            LOGD("OMX_CommandFlush for input port (0) failed:%d", err);
         }
     }
 
     err = mOMX->sendCommand(mNode,OMX_CommandFlush, OUTPUT_PORT);
     if (err != OK) {
-        VTC_LOGD("OMX_CommandFlush for output port (1) failed:%d", err);
+        LOGD("OMX_CommandFlush for output port (1) failed:%d", err);
     }
 
     // change state to Idle if not already
     if (mState != OMX_StateIdle && mState != OMX_StateLoaded) {
         if (setCurrentState(OMX_StateIdle)) {
-            VTC_LOGD("OMX_StateIdle failed");
+            LOGD("OMX_StateIdle failed");
         }
 
         if (waitForStateSet(OMX_StateIdle)) {
-            VTC_LOGD("state change to IDLE failed");
+            LOGD("state change to IDLE failed");
         }
     }
 
     // disable ports
     err = mOMX->sendCommand(mNode, OMX_CommandPortDisable, -1);
     if (err != OK) {
-        VTC_LOGD("Error in SendCommand()-OMX_CommandPortDisable:");
+        LOGD("Error in SendCommand()-OMX_CommandPortDisable:");
     } else {
-        VTC_LOGD("OMX_CommandPortDisable done");
+        LOGD("OMX_CommandPortDisable done");
     }
 
     return 0;
@@ -699,7 +700,7 @@ status_t OMXEncoder::deinit() {
             if (mBufferInfo[INPUT_PORT][i].mBufferHdr) {
                 err = mOMX->freeBuffer(mNode, INPUT_PORT, mBufferInfo[INPUT_PORT][i].mBufferHdr);
                 if( (err != OK)) {
-                    VTC_LOGD("Free Buffer for Input Port buffer:%d failed:%d",i,err);
+                    LOGD("Free Buffer for Input Port buffer:%d failed:%d",i,err);
                 }
             }
         }
@@ -710,7 +711,7 @@ status_t OMXEncoder::deinit() {
         if (mBufferInfo[OUTPUT_PORT][i].mBufferHdr) {
             err = mOMX->freeBuffer(mNode,OUTPUT_PORT,mBufferInfo[OUTPUT_PORT][i].mBufferHdr);
             if( (err != OK)) {
-                VTC_LOGD("Free Buffer for Output Port buffer:%d failed:%d",i,err);
+                LOGD("Free Buffer for Output Port buffer:%d failed:%d",i,err);
             }
         }
     }
@@ -718,13 +719,13 @@ status_t OMXEncoder::deinit() {
     // change state to Loaded
     if (mState != OMX_StateLoaded) {
         if (setCurrentState(OMX_StateLoaded)) {
-            VTC_LOGD("OMX_StateLoaded failed");
+            LOGD("OMX_StateLoaded failed");
         }
         if (waitForStateSet(OMX_StateLoaded)) {
-            VTC_LOGD("state change to LOADED failed");
+            LOGD("state change to LOADED failed");
         }
     } else {
-        VTC_LOGD("It was already OMX_StateLoaded???");
+        LOGD("It was already OMX_StateLoaded???");
     }
 
     usleep(5000);
@@ -756,19 +757,19 @@ status_t OMXEncoder::read(MediaBuffer **buffer, const ReadOptions *options) {
 
 OMX_ERRORTYPE OMXEncoder::EventHandler(OMX_EVENTTYPE eEvent, OMX_U32 nData1,OMX_U32 nData2) {
     OMX_ERRORTYPE errorType;
-    VTC_LOGV("########## EventHandler: eEvent:0x%x, nData1:%d, nData2:%d, pid=%d", (int)eEvent, (int)nData1, (int)nData2, getpid());
+    MY_LOGV("########## EventHandler: eEvent:0x%x, nData1:%d, nData2:%d, pid=%d", (int)eEvent, (int)nData1, (int)nData2, getpid());
 
     switch (eEvent) {
         case OMX_EventCmdComplete:
             if (nData1 == OMX_CommandPortDisable) {
                 if (nData2 == OMX_DirInput) {
-                    VTC_LOGD( "Component OMX_EventCmdComplete OMX_CommandPortDisable OMX_DirInput");
+                    LOGD( "Component OMX_EventCmdComplete OMX_CommandPortDisable OMX_DirInput");
                 }
                 if (nData2 == OMX_DirOutput) {
-                    VTC_LOGD( "Component OMX_EventCmdComplete OMX_CommandPortDisable OMX_DirOutput");
+                    LOGD( "Component OMX_EventCmdComplete OMX_CommandPortDisable OMX_DirOutput");
                 }
             } else if (nData1 == OMX_CommandStateSet) {
-                VTC_LOGD( "Component OMX_EventCmdComplete OMX_CommandStateSet new State:%s",OMXStateName((OMX_STATETYPE)nData2));
+                LOGD( "Component OMX_EventCmdComplete OMX_CommandStateSet new State:%s",OMXStateName((OMX_STATETYPE)nData2));
                 {
                     Mutex::Autolock autoLock(mLock);
                     mState = (OMX_STATETYPE)nData2;
@@ -776,20 +777,20 @@ OMX_ERRORTYPE OMXEncoder::EventHandler(OMX_EVENTTYPE eEvent, OMX_U32 nData1,OMX_
                 mAsyncCompletion.signal();
 
             } else if (nData1 == OMX_CommandFlush) {
-                VTC_LOGD( "Component OMX_EventCmdComplete OMX_CommandFlush port:%d",(int)nData2);
+                LOGD( "Component OMX_EventCmdComplete OMX_CommandFlush port:%d",(int)nData2);
             } else {
-                VTC_LOGD( "Component OMX_EventCmdComplete command:%d",(int)nData1);
+                LOGD( "Component OMX_EventCmdComplete command:%d",(int)nData1);
             }
             break;
 
         case OMX_EventError:
             errorType = (OMX_ERRORTYPE) nData1;
-            VTC_LOGD( "\n\n\nComponent OMX_EventError error:%x\n\n\n",errorType);
+            LOGD( "\n\n\nComponent OMX_EventError error:%x\n\n\n",errorType);
             break;
         default:
             break;
     }
-    VTC_LOGV("EXIT EventHandler");
+    MY_LOGV("EXIT EventHandler");
     return errorType;
 }
 
@@ -799,7 +800,7 @@ status_t OMXEncoder::FillBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr, OMX_U32 nO
 
     // not mAcceptingBuffers, just return, eventually, decoder will stop
     if (mAcceptingBuffers == 0) {
-        VTC_LOGV( " in non mAcceptingBuffers mode");
+        MY_LOGV( " in non mAcceptingBuffers mode");
         return OMX_ErrorNone;
     }
 
@@ -809,12 +810,12 @@ status_t OMXEncoder::FillBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr, OMX_U32 nO
         }
     }
     if (i == tOutPortDef.nBufferCountActual) {
-        VTC_LOGE("FillBufferDone returned unknown buffer header! i=%d",(int)i);
+        LOGE("FillBufferDone returned unknown buffer header! i=%d",(int)i);
         return -1;
     }
-    //VTC_LOGD( "----- %d ----- ", (int)i);
+    //LOGD( "----- %d ----- ", (int)i);
 
-    if (mDebugFlags & DEBUG_DUMP_ENCODER_TIMESTAMP) VTC_LOGD("FBD TS: %lld", nTimeStamp);
+    if (mDebugFlags & DEBUG_DUMP_ENCODER_TIMESTAMP) LOGD("FBD TS: %lld", nTimeStamp);
 
     if (mDebugFlags & FPS_ENCODER) PrintEncoderFPS();
 
@@ -828,7 +829,7 @@ status_t OMXEncoder::FillBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr, OMX_U32 nO
         if (mOutputFD != NULL) {
             i = fwrite((unsigned char *)(mBufferInfo[OUTPUT_PORT][i].mEncMem->pointer() + nOffset), 1, nFilledLen, mOutputFD);
             if (i != nFilledLen) {
-                VTC_LOGD("fwrite failed:%d should have been:%d\n", i, nFilledLen);
+                LOGD("fwrite failed:%d should have been:%d\n", i, nFilledLen);
                 return -1;
             }
             fflush(mOutputFD);
@@ -837,11 +838,11 @@ status_t OMXEncoder::FillBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr, OMX_U32 nO
 
     err = mOMX->fillBuffer(mNode, pBufferHdr);
     if (err != OK) {
-        VTC_LOGE("OMX_FillThisBuffer failed:%d", err);
+        LOGE("OMX_FillThisBuffer failed:%d", err);
     }
 
     mBufferCount++;
-    VTC_LOGV("EXIT FillBufferDone: nOffset: %d, nFilledLen=%d, mBufferCount=%d", nOffset, nFilledLen, mBufferCount);
+    MY_LOGV("EXIT FillBufferDone: nOffset: %d, nFilledLen=%d, mBufferCount=%d", nOffset, nFilledLen, mBufferCount);
     return OMX_ErrorNone;
 }
 
@@ -849,11 +850,11 @@ status_t OMXEncoder::EmptyBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr)
 {
     status_t err;
     OMX_U32 i=0;
-    //VTC_LOGV("ENTER EmptyBufferDone");
+    //MY_LOGV("ENTER EmptyBufferDone");
 
     // not mAcceptingBuffers, just return, eventually, decoder will stop
     if (mAcceptingBuffers == 0) {
-        VTC_LOGV( " in non mAcceptingBuffers mode");
+        MY_LOGV( " in non mAcceptingBuffers mode");
         return OMX_ErrorNone;
     }
 
@@ -862,7 +863,7 @@ status_t OMXEncoder::EmptyBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr)
     }
 
     if (i == tInPortDef.nBufferCountActual) {
-        VTC_LOGE("EmptyBufferDone returned unknown buffer header! i=%d",(int)i);
+        LOGE("EmptyBufferDone returned unknown buffer header! i=%d",(int)i);
         return -1;
     }
 
@@ -881,21 +882,21 @@ status_t OMXEncoder::EmptyBufferDone(OMX_BUFFERHEADERTYPE* pBufferHdr)
             memcpy((uint8_t *)mBufferInfo[INPUT_PORT][i].mEncMem->pointer(),  payload->pointer(), payload->size());
             err = mOMX->emptyBuffer(mNode, mBufferInfo[INPUT_PORT][i].mBufferHdr, 0, payload->size(),  OMX_BUFFERFLAG_ENDOFFRAME, time);
             if (err != OK) {
-                VTC_LOGE("OMX_EmptyThisBuffer failed:%d", err);
+                LOGE("OMX_EmptyThisBuffer failed:%d", err);
             }
         }
     }
 
-    //VTC_LOGV("EXIT EmptyBufferDone");
+    //MY_LOGV("EXIT EmptyBufferDone");
     return err;
 }
 
 status_t OMXEncoder::setCurrentState(OMX_STATETYPE newState) {
-    VTC_LOGV("Attempting to set state to %s.", OMXStateName(newState));
+    MY_LOGV("Attempting to set state to %s.", OMXStateName(newState));
 
     status_t err = mOMX->sendCommand(mNode, OMX_CommandStateSet, newState);
     if (err != OK) {
-        VTC_LOGD("setCurrentState: Error:%d", err);
+        LOGD("setCurrentState: Error:%d", err);
         return -1;
     }
 
@@ -904,24 +905,24 @@ status_t OMXEncoder::setCurrentState(OMX_STATETYPE newState) {
 }
 
 status_t OMXEncoder::waitForStateSet(OMX_STATETYPE newState) {
-    VTC_LOGV("waitForStateSet: Waiting to move to state %s .....", OMXStateName(newState));
+    MY_LOGV("waitForStateSet: Waiting to move to state %s .....", OMXStateName(newState));
 
     if (newState == mState) {
-        VTC_LOGD("New State [%s] already set!", OMXStateName(newState));
+        LOGD("New State [%s] already set!", OMXStateName(newState));
         return 0;
     }
 
     status_t retval = mAsyncCompletion.waitRelative(mLock, TWO_SECOND);
     if (retval) {
         if (errno == ETIMEDOUT) {
-            VTC_LOGD("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Waiting for State change timed out $$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+            LOGD("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Waiting for State change timed out $$$$$$$$$$$$$$$$$$$$$$$$$$$$");
         } else {
-            VTC_LOGD("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Waiting for State errno :%d, retval:%d \n", errno, retval);
+            LOGD("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Waiting for State errno :%d, retval:%d \n", errno, retval);
         }
     }
 
     if (newState == mState) {
-        VTC_LOGD("State [%s] Set !!!!!!!!!!!!!!!!!", OMXStateName(newState));
+        LOGD("State [%s] Set !!!!!!!!!!!!!!!!!", OMXStateName(newState));
         return 0;
     }
 
@@ -933,7 +934,7 @@ status_t OMXEncoder::waitForStateSet(OMX_STATETYPE newState) {
 status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_U32 sizeBytes, OMX_U32 sizeMB) {
     status_t err = 0;
 
-    VTC_LOGV("Setting Video Output Slice Mode Size in Bytes:%d, Size in MB:%d\n",sizeBytes, sizeMB);
+    MY_LOGV("Setting Video Output Slice Mode Size in Bytes:%d, Size in MB:%d\n",sizeBytes, sizeMB);
 
     if ((!sizeBytes) && (!sizeMB)) {
         //Enc o/p slice not set
@@ -943,12 +944,12 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
     if (sizeBytes) {
 
         if (nWidth <= 320) {
-            VTC_LOGD ("Setting the Video Encoder output slice mode NOT supported for given Resolution(width should be > 320)\n");
+            LOGD ("Setting the Video Encoder output slice mode NOT supported for given Resolution(width should be > 320)\n");
             return err;
         }
 
         if (sizeBytes < 256) {
-            VTC_LOGD ("Slice size provided for Video Encoder output port too small, should be atleast 256 bytes\n");
+            LOGD ("Slice size provided for Video Encoder output port too small, should be atleast 256 bytes\n");
             return err;
         }
 
@@ -959,7 +960,7 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
         err = mOMX->getConfig(
                 mNode, (OMX_INDEXTYPE)OMX_TI_IndexConfigSliceSettings, &slicetype, sizeof(slicetype));
         if (err != OK) {
-            VTC_LOGD("get OMX_TI_IndexConfigSliceSettings failed : 0x%x", err);
+            LOGD("get OMX_TI_IndexConfigSliceSettings failed : 0x%x", err);
             return -1;
         }
 
@@ -969,14 +970,14 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
         err = mOMX->setConfig(
                 mNode, (OMX_INDEXTYPE)OMX_TI_IndexConfigSliceSettings, &slicetype, sizeof(slicetype));
         if (err != OK) {
-            VTC_LOGD("set OMX_TI_IndexConfigSliceSettings OMX_VIDEO_SLICEMODE_AVCByteSlice failed : 0x%x", err);
+            LOGD("set OMX_TI_IndexConfigSliceSettings OMX_VIDEO_SLICEMODE_AVCByteSlice failed : 0x%x", err);
             return -1;
         }
 
     } else if (sizeMB) {
 
         if (sizeMB <= 6) {
-            VTC_LOGD ("Macro Block set for the Video Encoder output slice mode NOT supported (very low should be > 6) \n");
+            LOGD ("Macro Block set for the Video Encoder output slice mode NOT supported (very low should be > 6) \n");
             return err;
         }
 
@@ -986,7 +987,7 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
            VGA=1200
         */
         if (sizeMB > (((nWidth+15)>> 4) * ((nHeight+15)>> 4))) {
-            VTC_LOGD ("Macro Block set for the Video Encoder output slice mode is too large, should be less then \
+            LOGD ("Macro Block set for the Video Encoder output slice mode is too large, should be less then \
                     (((PreviewWidth+15)>> 4) * ((PreviewHeight+15)>> 4)) \n");
             return err;
         }
@@ -998,7 +999,7 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
         err = mOMX->getConfig(
                 mNode, (OMX_INDEXTYPE)OMX_TI_IndexConfigSliceSettings, &slicetype, sizeof(slicetype));
         if (err != OK) {
-            VTC_LOGD("get OMX_TI_IndexConfigSliceSettings failed : 0x%x", err);
+            LOGD("get OMX_TI_IndexConfigSliceSettings failed : 0x%x", err);
             return -1;
         }
 
@@ -1008,7 +1009,7 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
         err = mOMX->setConfig(
                 mNode, (OMX_INDEXTYPE)OMX_TI_IndexConfigSliceSettings, &slicetype, sizeof(slicetype));
         if (err != OK) {
-            VTC_LOGD("set OMX_TI_IndexConfigSliceSettings OMX_VIDEO_SLICEMODE_AVCMBSlice failed : 0x%x", err);
+            LOGD("set OMX_TI_IndexConfigSliceSettings OMX_VIDEO_SLICEMODE_AVCMBSlice failed : 0x%x", err);
             return -1;
         }
 
@@ -1021,7 +1022,7 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
          you must request an I-frame to the codec after you have set nSlicesize to see your changes take place.
     */
 
-    VTC_LOGV ("Insert IDR frame for the Encoder o/p slice mode setting to get effective \n");
+    MY_LOGV ("Insert IDR frame for the Encoder o/p slice mode setting to get effective \n");
     //Insert IDR frame for the setting to get effective
     OMX_CONFIG_INTRAREFRESHVOPTYPE voptype;
     INIT_OMX_STRUCT(&voptype, OMX_CONFIG_INTRAREFRESHVOPTYPE);
@@ -1030,7 +1031,7 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
     err = mOMX->getConfig(
             mNode, OMX_IndexConfigVideoIntraVOPRefresh, &voptype, sizeof(voptype));
     if (err != OK) {
-        VTC_LOGD("get OMX_IndexConfigVideoIntraVOPRefresh failed : %d", err);
+        LOGD("get OMX_IndexConfigVideoIntraVOPRefresh failed : %d", err);
         return -1;
     }
 
@@ -1038,11 +1039,11 @@ status_t OMXEncoder::setEncoderOutputSlice(OMX_U32 nHeight, OMX_U32 nWidth, OMX_
     err = mOMX->setConfig(
             mNode, OMX_IndexConfigVideoIntraVOPRefresh, &voptype, sizeof(voptype));
     if (err != OK) {
-        VTC_LOGD("set OMX_IndexConfigVideoIntraVOPRefresh failed : %d", err);
+        LOGD("set OMX_IndexConfigVideoIntraVOPRefresh failed : %d", err);
         return -1;
     }
 
-    VTC_LOGV("Insert IDR Frame DONE!!!, Setting Video Output Slice Mode\n");
+    MY_LOGV("Insert IDR Frame DONE!!!, Setting Video Output Slice Mode\n");
     return err;
 }
 
@@ -1054,7 +1055,7 @@ void OMXEncoder::setCallback(EncodedBufferCallback fp) {
 }
 
 status_t OMXEncoder::changeFrameRate(int framerate) {
-    VTC_LOGV("setConfigVideoFrameRate: %d", framerate);
+    LOGV("setConfigVideoFrameRate: %d", frameRate);
     OMX_CONFIG_FRAMERATETYPE framerateType;
     INIT_OMX_STRUCT(&framerateType, OMX_CONFIG_FRAMERATETYPE);
     framerateType.nPortIndex = INPUT_PORT;
@@ -1080,15 +1081,15 @@ status_t OMXEncoder::changeBitRate(int bitrate) {
     bitrateType.nPortIndex = OUTPUT_PORT;
     status_t err = mOMX->getConfig(mNode, OMX_IndexConfigVideoBitrate, &bitrateType, sizeof(bitrateType));
     if (err != OMX_ErrorNone) {
-      VTC_LOGE("get OMX_IndexConfigVideoBitrate failed err:%X", err);
+      LOGE("get OMX_IndexConfigVideoBitrate failed err:%X", err);
       return err;
     }
 
-    VTC_LOGD("\nSet encoder bitrate to %d.\n\n", bitrate);
+    LOGD("\nSet encoder bitrate to %d.\n\n", bitrate);
     bitrateType.nEncodeBitrate = bitrate;
     err = mOMX->setConfig(mNode, OMX_IndexConfigVideoBitrate, &bitrateType, sizeof(bitrateType));
     if (err != OMX_ErrorNone) {
-      VTC_LOGE("set OMX_IndexConfigVideoBitrate failed error:%x", err);
+      LOGE("set OMX_IndexConfigVideoBitrate failed error:%x", err);
       return err;
     }
 
@@ -1101,7 +1102,7 @@ status_t OMXEncoder::allocateOutputBuffer() {
 
     int ion_fd = ion_open();
     if(ion_fd == 0) {
-        VTC_LOGE("ion_open failed!!!");
+        LOGE("ion_open failed!!!");
         return -1;
     }
 
@@ -1113,7 +1114,7 @@ status_t OMXEncoder::allocateOutputBuffer() {
         void *pBuffer;
         err = mOMX->allocateBuffer(mNode, OUTPUT_PORT, tOutPortDef.nBufferSize, &buffer, &pBuffer);
         if (err != OK) {
-            VTC_LOGD("OMX_UseBuffer for output port index:%d failed:%d",(int)i,err);
+            LOGD("OMX_UseBuffer for output port index:%d failed:%d",(int)i,err);
             mBufferInfo[OUTPUT_PORT][i].mBufferHdr = NULL;
         }
 
@@ -1123,27 +1124,27 @@ status_t OMXEncoder::allocateOutputBuffer() {
         shareFDParam.nBufferIndex = i;
         err = mOMX->getParameter(mNode, (OMX_INDEXTYPE)OMX_TI_IndexIONBufferShareHandle, (void*)&shareFDParam, sizeof(shareFDParam));
         if (err != OK) {
-            VTC_LOGD("get OMX_TI_IndexIONBufferShareHandle Error:%d", err);
+            LOGD("get OMX_TI_IndexIONBufferShareHandle Error:%d", err);
             return -1;
         }
-        VTC_LOGD("ENC SHARE FD = %d", shareFDParam.nShareFD);
+        LOGD("ENC SHARE FD = %d", shareFDParam.nShareFD);
 
         OMX_U32 nSize = (tOutPortDef.nBufferSize + LINUX_PAGE_SIZE - 1) & ~(LINUX_PAGE_SIZE - 1);
 
         err = ion_import(ion_fd, shareFDParam.nShareFD, &importedHandle);
         if (err != OK) {
-            VTC_LOGD("ion_import failed. ret = %d", err);
+            LOGD("ion_import failed. ret = %d", err);
             return -1;
         }
-        VTC_LOGD("IMPORT SUCCEEDED");
+        LOGD("IMPORT SUCCEEDED");
 
         int mmap_fd;
         void *pIONBuffer;
         err = ion_map(ion_fd, importedHandle, nSize, PROT_READ | PROT_WRITE, MAP_SHARED, 0, (unsigned char**)&pIONBuffer, &mmap_fd);
         if (err) {
-            VTC_LOGE("\n\n$$$$$$$$$$$$$$$$ Userspace mapping of ION buffers returned error %d\n\n", err);
+            LOGE("\n\n$$$$$$$$$$$$$$$$ Userspace mapping of ION buffers returned error %d\n\n", err);
             err = ion_free(ion_fd, h);
-            if (err) VTC_LOGE("\n ion_free failed err=%d.\n\n%s\n\n", err, strerror(errno));
+            if (err) LOGE("\n ion_free failed err=%d.\n\n%s\n\n", err, strerror(errno));
             return -1;
         }
         // TODO: More work needs to be done here.. This is just a skeleton for the moment.
