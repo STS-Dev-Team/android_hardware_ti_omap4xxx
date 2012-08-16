@@ -226,7 +226,7 @@ int CameraHal::msgTypeEnabled(int32_t msgType)
     android::AutoMutex lock(mLock);
 
     msgEnabled = mMsgEnabled;
-    if (!previewEnabled()) {
+    if (!previewEnabled() && !mPreviewInitializationDone) {
         msgEnabled &= ~(CAMERA_MSG_PREVIEW_FRAME | CAMERA_MSG_PREVIEW_METADATA);
     }
 
@@ -1882,8 +1882,6 @@ status_t CameraHal::cameraPreviewInitialization()
         return ret;
         }
 
-    mAppCallbackNotifier->startPreviewCallbacks(mParameters, mPreviewBuffers, mPreviewOffsets, mPreviewFd, mPreviewLength, required_buffer_count);
-
     ///Start the callback notifier
     ret = mAppCallbackNotifier->start();
 
@@ -1904,6 +1902,9 @@ status_t CameraHal::cameraPreviewInitialization()
         }
 
     if (ret == NO_ERROR) mPreviewInitializationDone = true;
+
+    mAppCallbackNotifier->startPreviewCallbacks(mParameters, mPreviewBuffers, mPreviewOffsets, mPreviewFd, mPreviewLength, required_buffer_count);
+
     return ret;
 
     error:
