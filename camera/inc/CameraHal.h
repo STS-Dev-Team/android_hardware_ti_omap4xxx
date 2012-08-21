@@ -367,10 +367,14 @@ class CameraFrame
     mFd(0),
     mLength(0),
     mFrameMask(0),
-    mQuirks(0) {
-
+    mQuirks(0)
+    {
       mYuv[0] = NULL;
       mYuv[1] = NULL;
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        mMetaData = 0;
+#endif
     }
 
     void *mCookie;
@@ -387,7 +391,7 @@ class CameraFrame
     unsigned int mQuirks;
     unsigned int mYuv[2];
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    android::CameraMetadata mMetaData;
+    camera_memory_t *mMetaData;
 #endif
     ///@todo add other member vars like  stride etc
 };
@@ -950,6 +954,8 @@ public:
     // Retrieves the next Adapter state - for internal use (not locked)
     virtual status_t getNextState(AdapterState &state) = 0;
 
+    virtual status_t setSharedAllocator(camera_request_memory shmem_alloc) = 0;
+
 protected:
     //The first two methods will try to switch the adapter state.
     //Every call to setState() should be followed by a corresponding
@@ -963,6 +969,16 @@ protected:
 class DisplayAdapter : public BufferProvider, public virtual android::RefBase
 {
 public:
+    DisplayAdapter();
+
+#ifdef OMAP_ENHANCEMENT
+    preview_stream_extended_ops_t * extendedOps() const {
+        return mExtendedOps;
+    }
+
+    void setExtendedOps(preview_stream_extended_ops_t * extendedOps);
+#endif
+
     ///Initializes the display adapter creates any resources required
     virtual int initialize() = 0;
 
@@ -991,6 +1007,11 @@ public:
 protected:
     virtual const char* getPixFormatConstant(const char* parameters_format) const;
     virtual size_t getBufSize(const char* parameters_format, int width, int height) const;
+
+private:
+#ifdef OMAP_ENHANCEMENT
+    preview_stream_extended_ops_t * mExtendedOps;
+#endif
 };
 
 static void releaseImageBuffers(void *userData);
@@ -1071,6 +1092,8 @@ public:
     int setPreviewWindow(struct preview_stream_ops *window);
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
+    void setExtendedPreviewStreamOps(preview_stream_extended_ops_t *ops);
+
     /**
      * Set a tap-in or tap-out point.
      */
@@ -1322,6 +1345,10 @@ public:
     // when we can have multiple tap-in/tap-out points
     android::sp<DisplayAdapter> mBufferSourceAdapter_In;
     android::sp<DisplayAdapter> mBufferSourceAdapter_Out;
+
+#ifdef OMAP_ENHANCEMENT
+    preview_stream_extended_ops_t * mExtendedPreviewStreamOps;
+#endif
 
     android::sp<android::IMemoryHeap> mPictureHeap;
 

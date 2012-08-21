@@ -304,99 +304,6 @@ const char KEY_SUPPORTED_MANUAL_GAIN_ISO_MIN[] = "supported-manual-gain-iso-min"
 const char KEY_SUPPORTED_MANUAL_GAIN_ISO_MAX[] = "supported-manual-gain-iso-max";
 const char KEY_SUPPORTED_MANUAL_GAIN_ISO_STEP[] = "supported-manual-gain-iso-step";
 
-class FrameWaiter : public SurfaceTexture::FrameAvailableListener {
-public:
-    FrameWaiter():
-            mPendingFrames(0) {
-    }
-
-    virtual ~FrameWaiter() {
-        onFrameAvailable();
-    }
-
-    void waitForFrame() {
-        Mutex::Autolock lock(mMutex);
-        while (mPendingFrames == 0) {
-            mCondition.wait(mMutex);
-        }
-        mPendingFrames--;
-    }
-
-    virtual void onFrameAvailable() {
-        Mutex::Autolock lock(mMutex);
-        mPendingFrames++;
-        mCondition.signal();
-    }
-
-    int mPendingFrames;
-    Mutex mMutex;
-    Condition mCondition;
-};
-
-class GLSurface {
-public:
-
-    GLSurface():
-            mEglDisplay(EGL_NO_DISPLAY),
-            mEglSurface(EGL_NO_SURFACE),
-            mEglContext(EGL_NO_CONTEXT) {
-    }
-
-    virtual ~GLSurface() {}
-
-    void initialize(int display);
-    void deinit();
-    void loadShader(GLenum shaderType, const char* pSource, GLuint* outShader);
-    void createProgram(const char* pVertexSource, const char* pFragmentSource,
-            GLuint* outPgm);
-
-private:
-    EGLint const* getConfigAttribs();
-    EGLint const* getContextAttribs();
-
-protected:
-    sp<SurfaceComposerClient> mComposerClient;
-    sp<SurfaceControl> mSurfaceControl;
-
-    EGLDisplay mEglDisplay;
-    EGLSurface mEglSurface;
-    EGLContext mEglContext;
-    EGLConfig  mGlConfig;
-};
-
-class SurfaceTextureBase  {
-public:
-    virtual ~SurfaceTextureBase() {}
-
-    void initialize(int tex_id, EGLenum tex_target = EGL_NONE);
-    void deinit();
-
-    virtual sp<SurfaceTexture> getST();
-
-protected:
-    sp<SurfaceTexture> mST;
-    sp<SurfaceTextureClient> mSTC;
-    sp<ANativeWindow> mANW;
-    int mTexId;
-};
-
-class SurfaceTextureGL : public GLSurface, public SurfaceTextureBase {
-public:
-    virtual ~SurfaceTextureGL() {}
-
-    void initialize(int display, int tex_id);
-    void deinit();
-
-    // drawTexture draws the SurfaceTexture over the entire GL viewport.
-    void drawTexture();
-
-private:
-    GLuint mPgm;
-    GLint mPositionHandle;
-    GLint mTexSamplerHandle;
-    GLint mTexMatrixHandle;
-};
-
 class BufferSourceThread : public Thread {
 public:
     class Defer : public Thread {
@@ -405,6 +312,7 @@ public:
                 sp<GraphicBuffer> graphicBuffer;
                 uint8_t *mappedBuffer;
                 unsigned int count;
+                unsigned int slot;
             };
         public:
             Defer(BufferSourceThread* bst) :
@@ -439,15 +347,17 @@ public:
                     mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer, defer.count);
                     defer.graphicBuffer->unlock();
                     mDeferQueue.removeAt(0);
+                    mBST->onHandled(defer.graphicBuffer, defer.slot);
                     return true;
                 }
                 return false;
             }
-            void add(sp<GraphicBuffer> &gbuf, unsigned int count) {
+            void add(sp<GraphicBuffer> &gbuf, unsigned int count, unsigned int slot = 0) {
                 Mutex::Autolock lock(mFrameQueueMutex);
                 DeferContainer defer;
                 defer.graphicBuffer = gbuf;
                 defer.count = count;
+                defer.slot = slot;
                 gbuf->lock(GRALLOC_USAGE_SW_READ_RARELY, (void**) &defer.mappedBuffer);
                 mDeferQueue.add(defer);
                 mFrameQueueCondition.signal();
@@ -460,25 +370,19 @@ public:
             bool mExiting;
     };
 public:
-    BufferSourceThread(bool display, int tex_id, sp<Camera> camera) :
-                 Thread(false), mCounter(0), mDisplayable(display),
-                 mTexId(tex_id), mCamera(camera), kReturnedBuffersMaxCapacity(6),
+    BufferSourceThread(sp<Camera> camera) :
+                 Thread(false), mCamera(camera),
                  mDestroying(false), mRestartCapture(false),
-                 mExpBracketIdx(BRACKETING_IDX_DEFAULT), mExp(0), mGain(0) {
-        mSurfaceTextureBase = new SurfaceTextureBase();
-        mSurfaceTextureBase->initialize(mTexId);
-        mSurfaceTexture = mSurfaceTextureBase->getST();
-        mSurfaceTexture->setSynchronousMode(true);
-        mFW = new FrameWaiter();
-        mSurfaceTexture->setFrameAvailableListener(mFW);
+                 mExpBracketIdx(BRACKETING_IDX_DEFAULT), mExp(0), mGain(0), mCounter(0),
+                 kReturnedBuffersMaxCapacity(6) {
+
         mDeferThread = new Defer(this);
         mDeferThread->run();
     }
+
     virtual ~BufferSourceThread() {
         mDestroying = true;
 
-        mSurfaceTextureBase->deinit();
-        delete mSurfaceTextureBase;
         for (unsigned int i = 0; i < mReturnedBuffers.size(); i++) {
             buffer_info_t info = mReturnedBuffers.itemAt(i);
             mReturnedBuffers.removeAt(i);
@@ -487,39 +391,10 @@ public:
         mDeferThread.clear();
     }
 
-    virtual bool threadLoop() {
-        sp<GraphicBuffer> graphic_buffer;
-
-        mFW->waitForFrame();
-        if (!mDestroying) {
-            mSurfaceTexture->updateTexImage();
-            printf("=== Metadata for buffer %d ===\n", mCounter);
-            showMetadata(mSurfaceTexture->getMetadata());
-            printf("\n");
-            graphic_buffer = mSurfaceTexture->getCurrentBuffer();
-            mDeferThread->add(graphic_buffer, mCounter++);
-            Mutex::Autolock lock(mToggleStateMutex);
-            if (mRestartCapture) {
-                ShotParameters shotParams;
-                calcNextSingleExpGainPreset(mExpBracketIdx, mExp, mGain),
-                setSingleExpGainPreset(shotParams, mExpBracketIdx, mExp, mGain);
-                mCamera->takePicture(0, shotParams.flatten());
-            }
-            return true;
-        }
-        return false;
-    }
-
-    virtual void requestExit() {
-        Thread::requestExit();
-
-        mDestroying = true;
-        mFW->onFrameAvailable();
-    }
-
-    void setBuffer() {
-        mCamera->setBufferSource(NULL, mSurfaceTexture);
-    }
+    virtual bool threadLoop() { return false;}
+    virtual void requestExit() {};
+    virtual void setBuffer() {};
+    virtual void onHandled(sp<GraphicBuffer> &g, unsigned int slot) {};
 
     bool toggleStreamCapture(int expBracketIdx) {
         Mutex::Autolock lock(mToggleStateMutex);
@@ -531,7 +406,6 @@ public:
     buffer_info_t popBuffer() {
         buffer_info_t buffer;
         Mutex::Autolock lock(mReturnedBuffersMutex);
-        printf ("[1]mReturnedBuffers.size() = %d empty() = %d\n", mReturnedBuffers.size(), mReturnedBuffers.isEmpty());
         if (!mReturnedBuffers.isEmpty()) {
             buffer = mReturnedBuffers.itemAt(0);
             mReturnedBuffers.removeAt(0);
@@ -541,57 +415,52 @@ public:
 
     bool hasBuffer() {
         Mutex::Autolock lock(mReturnedBuffersMutex);
-        printf ("[2]mReturnedBuffers.size() = %d empty() = %d\n", mReturnedBuffers.size(), mReturnedBuffers.isEmpty());
         return !mReturnedBuffers.isEmpty();
     }
 
     void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
-    void showMetadata(const String8&);
-
-private:
-    SurfaceTextureBase *mSurfaceTextureBase;
-    sp<SurfaceTexture> mSurfaceTexture;
-    unsigned int mCounter;
-    bool mDisplayable;
-    int mTexId;
+    void showMetadata(sp<IMemory> data);
+protected:
+    void restartCapture() {
+        Mutex::Autolock lock(mToggleStateMutex);
+        if (mRestartCapture) {
+            ShotParameters shotParams;
+            calcNextSingleExpGainPreset(mExpBracketIdx, mExp, mGain),
+            setSingleExpGainPreset(shotParams, mExpBracketIdx, mExp, mGain);
+            mCamera->takePictureWithParameters(0, shotParams.flatten());
+        }
+    }
+protected:
     sp<Camera> mCamera;
-    sp<FrameWaiter> mFW;
-    Vector<buffer_info_t> mReturnedBuffers;
-    Mutex mReturnedBuffersMutex;
-    Mutex mToggleStateMutex;
-    const unsigned int kReturnedBuffersMaxCapacity;
     bool mDestroying;
     bool mRestartCapture;
     int mExpBracketIdx;
     int mExp;
     int mGain;
     sp<Defer> mDeferThread;
+    unsigned int mCounter;
+private:
+    Vector<buffer_info_t> mReturnedBuffers;
+    Mutex mReturnedBuffersMutex;
+    Mutex mToggleStateMutex;
+    const unsigned int kReturnedBuffersMaxCapacity;
 };
+
 
 class BufferSourceInput : public RefBase {
 public:
-    BufferSourceInput(bool display, int tex_id, sp<Camera> camera) :
-                 mDisplayable(display), mTexId(tex_id), mCamera(camera) {
-        mSurfaceTexture = new SurfaceTextureBase();
+    BufferSourceInput(sp<Camera> camera) : mCamera(camera) {
     }
+
     virtual ~BufferSourceInput() {
-        delete mSurfaceTexture;
     }
 
-    void init() {
-        sp<SurfaceTexture> surface_texture;
-        mSurfaceTexture->initialize(mTexId);
-        surface_texture = mSurfaceTexture->getST();
-        surface_texture->setSynchronousMode(true);
-    }
+    virtual void init() = 0;
 
-    void setInput(buffer_info_t, const char *format);
+    virtual void setInput(buffer_info_t, const char *format);
 
-private:
-    SurfaceTextureBase *mSurfaceTexture;
-    bool mDisplayable;
-    int mTexId;
+protected:
+    sp<ANativeWindow> mWindowTapIn;
     sp<Camera> mCamera;
 };
-
 #endif

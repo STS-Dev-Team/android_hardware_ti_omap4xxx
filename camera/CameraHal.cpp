@@ -66,6 +66,52 @@ extern const char * const kYuvImagesOutputDirPath = "/data/misc/camera/YuV_PiCtU
 
 /******************************************************************************/
 
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+static int dummy_update_and_get_buffer(preview_stream_ops_t*, buffer_handle_t**, int*) {
+    return INVALID_OPERATION;
+}
+
+static int dummy_get_buffer_dimension(preview_stream_ops_t*, int*, int*) {
+    return INVALID_OPERATION;
+}
+
+static int dummy_get_buffer_format(preview_stream_ops_t*, int*) {
+    return INVALID_OPERATION;
+}
+
+static int dummy_set_metadata(preview_stream_ops_t*, const camera_memory_t*) {
+    return INVALID_OPERATION;
+}
+#endif
+
+#ifdef OMAP_ENHANCEMENT
+static preview_stream_extended_ops_t dummyPreviewStreamExtendedOps = {
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    dummy_update_and_get_buffer,
+    dummy_get_buffer_dimension,
+    dummy_get_buffer_format,
+    dummy_set_metadata,
+#endif
+};
+#endif
+
+
+DisplayAdapter::DisplayAdapter()
+{
+#ifdef OMAP_ENHANCEMENT
+    mExtendedOps = &dummyPreviewStreamExtendedOps;
+#endif
+}
+
+#ifdef OMAP_ENHANCEMENT
+void DisplayAdapter::setExtendedOps(preview_stream_extended_ops_t * extendedOps) {
+    mExtendedOps = extendedOps ? extendedOps : &dummyPreviewStreamExtendedOps;
+}
+#endif
+
+
+
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
 
 struct timeval CameraHal::mStartPreview;
@@ -124,6 +170,10 @@ void CameraHal::setCallbacks(camera_notify_callback notify_cb,
                                                 data_cb_timestamp,
                                                 get_memory,
                                                 user);
+    }
+
+    if ( NULL != mCameraAdapter ) {
+        mCameraAdapter->setSharedAllocator(get_memory);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1964,6 +2014,9 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
         // Need to create the display adapter since it has not been created
         // Create display adapter
         mDisplayAdapter = new ANativeWindowDisplayAdapter();
+#ifdef OMAP_ENHANCEMENT
+        mDisplayAdapter->setExtendedOps(mExtendedPreviewStreamOps);
+#endif
         ret = NO_ERROR;
         if(!mDisplayAdapter.get() || ((ret=mDisplayAdapter->initialize())!=NO_ERROR))
         {
@@ -2022,6 +2075,11 @@ status_t CameraHal::setPreviewWindow(struct preview_stream_ops *window)
 
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
+void CameraHal::setExtendedPreviewStreamOps(preview_stream_extended_ops_t *ops)
+{
+    mExtendedPreviewStreamOps = ops;
+}
+
 /**
    @brief Sets ANativeWindow object.
 
@@ -2060,6 +2118,7 @@ status_t CameraHal::setBufferSource(struct preview_stream_ops *tapin, struct pre
         ret = NO_ERROR;
     } else if (mBufferSourceAdapter_Out.get() == NULL) {
         mBufferSourceAdapter_Out = new BufferSourceAdapter();
+        mBufferSourceAdapter_Out->setExtendedOps(mExtendedPreviewStreamOps);
         if(!mBufferSourceAdapter_Out.get()) {
             CAMHAL_LOGEA("Couldn't create DisplayAdapter");
             ret = NO_MEMORY;
@@ -2113,6 +2172,7 @@ status_t CameraHal::setBufferSource(struct preview_stream_ops *tapin, struct pre
         ret = NO_ERROR;
     } else if (mBufferSourceAdapter_In.get() == NULL) {
         mBufferSourceAdapter_In = new BufferSourceAdapter();
+        mBufferSourceAdapter_In->setExtendedOps(mExtendedPreviewStreamOps);
         if(!mBufferSourceAdapter_In.get()) {
             CAMHAL_LOGEA("Couldn't create DisplayAdapter");
             ret = NO_MEMORY;
@@ -3502,6 +3562,10 @@ CameraHal::CameraHal(int cameraId)
     mTunnelSetup = false;
 #endif
     mPreviewInitializationDone = false;
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    mExtendedPreviewStreamOps = 0;
+#endif
 
     //These values depends on the sensor characteristics
 

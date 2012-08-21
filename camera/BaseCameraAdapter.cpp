@@ -88,6 +88,8 @@ BaseCameraAdapter::BaseCameraAdapter()
 
     mAdapterState = INTIALIZED_STATE;
 
+    mSharedAllocator = NULL;
+
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
     mStartFocus.tv_sec = 0;
     mStartFocus.tv_usec = 0;

@@ -28,6 +28,11 @@ LOCAL_SHARED_LIBRARIES:= \
 	libEGL \
 	libGLESv2 \
 
+ifdef OMAP_ENHANCEMENT_CPCAM
+LOCAL_STATIC_LIBRARIES += \
+    libcpcamcamera_client
+endif
+
 LOCAL_C_INCLUDES += \
 	frameworks/base/include/ui \
 	frameworks/base/include/surfaceflinger \

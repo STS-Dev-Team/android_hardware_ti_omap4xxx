@@ -762,7 +762,9 @@ private:
 
     // Meta data
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    status_t setMetaData(android::CameraMetadata &meta_data, const OMX_PTR plat_pvt) const;
+    status_t setMetaData(CameraFrame &frame,
+                         const OMX_PTR plat_pvt,
+                         camera_request_memory allocator) const;
 #endif
     void encodePreviewMetadata(camera_frame_metadata_t *meta, const OMX_PTR plat_pvt);
 
