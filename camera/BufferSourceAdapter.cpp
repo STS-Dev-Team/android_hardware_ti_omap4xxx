@@ -469,7 +469,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
         return NULL;
     }
 
-    err = mBufferSource->update_and_get_buffer(mBufferSource, &handle, &mBuffers[0].stride);
+    err = extendedOps()->update_and_get_buffer(mBufferSource, &handle, &mBuffers[0].stride);
     if (err != 0) {
         CAMHAL_LOGEB("update and get buffer failed: %s (%d)", strerror(-err), -err);
         if ( ENODEV == err ) {
@@ -484,8 +484,8 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     mBuffers[0].type = CAMERA_BUFFER_ANW;
     mFramesWithCameraAdapterMap.add(handle, 0);
 
-    err = mBufferSource->get_buffer_dimension(mBufferSource, &mBuffers[0].width, &mBuffers[0].height);
-    err = mBufferSource->get_buffer_format(mBufferSource, &formatSource);
+    err = extendedOps()->get_buffer_dimension(mBufferSource, &mBuffers[0].width, &mBuffers[0].height);
+    err = extendedOps()->get_buffer_format(mBufferSource, &formatSource);
 
     // lock buffer
     {
@@ -696,10 +696,14 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         return;
     }
 
-    frame->mMetaData.setTime(android::CameraMetadata::KEY_TIMESTAMP, frame->mTimestamp);
-    ret = mBufferSource->set_metadata(mBufferSource, frame->mMetaData.flatten().string());
-    if (ret != 0) {
-        CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+    if ( NULL != frame->mMetaData ) {
+        camera_metadata_t *metaData = static_cast<camera_metadata_t *> (frame->mMetaData->data);
+        metaData->timestamp = frame->mTimestamp;
+        ret = extendedOps()->set_metadata(mBufferSource, frame->mMetaData);
+        if (ret != 0) {
+            CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+        }
+        frame->mMetaData->release(frame->mMetaData);
     }
 
     // unlock buffer before enqueueing

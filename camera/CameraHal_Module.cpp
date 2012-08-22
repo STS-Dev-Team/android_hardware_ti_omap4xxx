@@ -107,6 +107,21 @@ int camera_set_preview_window(struct camera_device * device,
 }
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
+int camera_set_extended_preview_ops(struct camera_device * device,
+        preview_stream_extended_ops_t * extendedOps)
+{
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
+    if (!device) {
+        return BAD_VALUE;
+    }
+
+    ti_camera_device_t * const tiDevice = reinterpret_cast<ti_camera_device_t*>(device);
+    gCameraHals[tiDevice->cameraid]->setExtendedPreviewStreamOps(extendedOps);
+
+    return OK;
+}
+
 int camera_set_buffer_source(struct camera_device * device,
         struct preview_stream_ops *tapin,
         struct preview_stream_ops *tapout)
@@ -346,19 +361,29 @@ int camera_cancel_auto_focus(struct camera_device * device)
     return rv;
 }
 
-#ifdef OMAP_ENHANCEMENT_CPCAM
-int camera_take_picture(struct camera_device * device, const char *params)
-#else
 int camera_take_picture(struct camera_device * device)
-#endif
 {
     CAMHAL_LOG_MODULE_FUNCTION_NAME;
 
     int rv = -EINVAL;
     ti_camera_device_t* ti_dev = NULL;
-#ifndef OMAP_ENHANCEMENT_CPCAM
-    const char* params = NULL;
-#endif
+
+    if(!device)
+        return rv;
+
+    ti_dev = (ti_camera_device_t*) device;
+
+    rv = gCameraHals[ti_dev->cameraid]->takePicture(0);
+    return rv;
+}
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+int camera_take_picture_with_parameters(struct camera_device * device, const char *params)
+{
+    CAMHAL_LOG_MODULE_FUNCTION_NAME;
+
+    int rv = -EINVAL;
+    ti_camera_device_t* ti_dev = NULL;
 
     if(!device)
         return rv;
@@ -368,6 +393,7 @@ int camera_take_picture(struct camera_device * device)
     rv = gCameraHals[ti_dev->cameraid]->takePicture(params);
     return rv;
 }
+#endif
 
 int camera_cancel_picture(struct camera_device * device)
 {
@@ -478,6 +504,23 @@ int camera_send_command(struct camera_device * device,
         return rv;
 
     ti_dev = (ti_camera_device_t*) device;
+
+#ifdef OMAP_ENHANCEMENT
+    if ( cmd == CAMERA_CMD_SETUP_EXTENDED_OPERATIONS ) {
+        camera_device_extended_ops_t * const ops = static_cast<camera_device_extended_ops_t*>(
+                camera_cmd_send_command_args_to_pointer(arg1, arg2));
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        ops->set_extended_preview_ops = camera_set_extended_preview_ops;
+        ops->set_buffer_source = camera_set_buffer_source;
+        ops->take_picture_with_parameters = camera_take_picture_with_parameters;
+        ops->reprocess = camera_reprocess;
+        ops->cancel_reprocess = camera_cancel_reprocess;
+#endif
+
+        return OK;
+    }
+#endif
 
     rv = gCameraHals[ti_dev->cameraid]->sendCommand(cmd, arg1, arg2);
     return rv;
@@ -621,9 +664,6 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_device->base.ops = camera_ops;
 
         camera_ops->set_preview_window = camera_set_preview_window;
-#ifdef OMAP_ENHANCEMENT_CPCAM
-        camera_ops->set_buffer_source = camera_set_buffer_source;
-#endif
         camera_ops->set_callbacks = camera_set_callbacks;
         camera_ops->enable_msg_type = camera_enable_msg_type;
         camera_ops->disable_msg_type = camera_disable_msg_type;
@@ -646,10 +686,6 @@ int camera_device_open(const hw_module_t* module, const char* name,
         camera_ops->send_command = camera_send_command;
         camera_ops->release = camera_release;
         camera_ops->dump = camera_dump;
-#ifdef OMAP_ENHANCEMENT_CPCAM
-        camera_ops->reprocess = camera_reprocess;
-        camera_ops->cancel_reprocess = camera_cancel_reprocess;
-#endif
 
         *device = &camera_device->base.common;
 

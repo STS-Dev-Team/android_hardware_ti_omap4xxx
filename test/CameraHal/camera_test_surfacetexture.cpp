@@ -34,6 +34,7 @@
 #include <sys/wait.h>
 
 #include "camera_test.h"
+#include "camera_test_surfacetexture.h"
 
 #define ASSERT(X) \
     do { \
@@ -454,13 +455,10 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
 }
 
 void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
-    sp<SurfaceTexture> surface_texture;
-    sp<ANativeWindow> window_tapin;
     ANativeWindowBuffer* anb;
     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
     void *data = NULL;
     void *input = NULL;
-    static int count = 0;
     int pixformat = HAL_PIXEL_FORMAT_TI_NV12_1D;
 
     int aligned_width, aligned_height;
@@ -471,21 +469,21 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
 
     Rect bounds(bufinfo.width, bufinfo.height);
 
+    if (mWindowTapIn.get() == 0) {
+        return;
+    }
+
     if ( NULL != format ) {
         pixformat = getHalPixFormat(format);
     }
 
-    surface_texture = mSurfaceTexture->getST();
-
-    surface_texture->setDefaultBufferSize(bufinfo.width, bufinfo.height);
-    window_tapin = new SurfaceTextureClient(surface_texture);
-    native_window_set_usage(window_tapin.get(),
+    native_window_set_usage(mWindowTapIn.get(),
                             GRALLOC_USAGE_SW_READ_RARELY |
                             GRALLOC_USAGE_SW_WRITE_NEVER);
-    native_window_set_buffer_count(window_tapin.get(), 1);
-    native_window_set_buffers_geometry(window_tapin.get(),
+    native_window_set_buffer_count(mWindowTapIn.get(), 1);
+    native_window_set_buffers_geometry(mWindowTapIn.get(),
                   aligned_width, aligned_height, bufinfo.format);
-    window_tapin->dequeueBuffer(window_tapin.get(), &anb);
+    mWindowTapIn->dequeueBuffer(mWindowTapIn.get(), &anb);
     mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
     // copy buffer to input buffer if available
     if (bufinfo.buf.get()) {
@@ -522,66 +520,66 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
         bufinfo.buf->unlock();
     }
 
-    int fd = -1;
-    char fn[256];
-    fn[0] = 0;
-    sprintf(fn, "/sdcard/img%03d_in.raw", count++);
-    fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
-    if (fd >= 0) {
-        int size = 0;
-        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
-            size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
-        } else {
-            size = calcBufSize(pixformat, aligned_width, aligned_height);
-        }
-
-        if (size != write(fd, data, size)) {
-            printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
-        }
-        printf("%s: buffer=%08X, size=%d stored at %s\n",
-                    __FUNCTION__, (int)data, size, fn);
-        close(fd);
-    } else {
-        printf("error opening or creating %s\n", fn);
-    }
-
     mapper.unlock(anb->handle);
-    window_tapin->queueBuffer(window_tapin.get(), anb);
-    mCamera->setBufferSource(surface_texture, NULL);
+    mWindowTapIn->queueBuffer(mWindowTapIn.get(), anb);
 }
 
-void BufferSourceThread::showMetadata(const String8& metadata) {
+void BufferSourceThread::showMetadata(sp<IMemory> data) {
     static nsecs_t prevTime = 0;
     nsecs_t currTime = 0;
 
-    CameraMetadata meta(metadata);
+    ssize_t offset;
+    size_t size;
 
-    printf("         frame nmber: %d\n", meta.getInt(CameraMetadata::KEY_FRAME_NUMBER));
-    printf("         shot number: %d\n", meta.getInt(CameraMetadata::KEY_SHOT_NUMBER));
+    if ( NULL == data.get() ) {
+        printf("No Metadata!");
+        return;
+    }
+
+    sp<IMemoryHeap> heap = data->getMemory(&offset, &size);
+    camera_metadata_t * meta = static_cast<camera_metadata_t *> (heap->base());
+
+    printf("         frame nmber: %d\n", meta->frame_number);
+    printf("         shot number: %d\n", meta->shot_number);
     printf("         analog gain: %d req: %d range: %d~%d dev: %d err: %d\n",
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_REQ),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MIN),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MAX),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_DEV),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_ERROR));
+           meta->analog_gain,
+           meta->analog_gain_req,
+           meta->analog_gain_min,
+           meta->analog_gain_max,
+           meta->analog_gain_dev,
+           meta->analog_gain_error);
     printf("       exposure time: %d req: %d range: %d~%d dev: %d err: %d\n",
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME));
+           meta->exposure_time,
+           meta->exposure_time_req,
+           meta->exposure_time_min,
+           meta->exposure_time_max,
+           meta->exposure_time_dev,
+           meta->exposure_time_error);
     printf("     EV compensation: req: %d dev: %d\n",
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_DEV));
-    printf("            awb gain: %s\n", meta.get(CameraMetadata::KEY_AWB_GAINS));
-    printf("         awb offsets: %s\n", meta.get(CameraMetadata::KEY_AWB_OFFSETS));
-    printf("     awb temperature: %d\n", meta.getInt(CameraMetadata::KEY_AWB_TEMP));
-    printf("   LSC table applied: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE_APPLIED));
-    printf("      LSC table data: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE));
+           meta->exposure_compensation_req,
+           meta->exposure_dev);
+    printf("            awb gain: %d\n", meta->analog_gain);
+    printf("         awb offsets: %d\n", meta->offset_b);
+    printf("     awb temperature: %d\n", meta->awb_temp);
 
-    currTime = meta.getTime(CameraMetadata::KEY_TIMESTAMP);
+    printf("   LSC table applied: %d\n", meta->lsc_table_applied);
+    if ( meta->lsc_table_applied ) {
+        uint8_t *lscTable = (uint8_t *)meta + meta->lsc_table_offset;
+        printf("LSC Table Size:%d Data[0:7]: %d:%d:%d:%d:%d:%d:%d:%d\n",
+                meta->lsc_table_size,
+                lscTable[0],
+                lscTable[1],
+                lscTable[2],
+                lscTable[3],
+                lscTable[4],
+                lscTable[5],
+                lscTable[6],
+                lscTable[7]);
+    }
+
+    printf("    Faces detected: %d\n", meta->number_of_faces);
+
+    currTime = meta->timestamp;
     printf("      timestamp (ns): %llu\n", currTime);
     if (prevTime) printf("inter-shot time (ms): %llu\n", (currTime - prevTime) / 1000000l);
     prevTime = currTime;

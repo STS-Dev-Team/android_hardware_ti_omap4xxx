@@ -70,6 +70,8 @@ public:
     //Retrieves the next Adapter state
     virtual AdapterState getNextState();
 
+    virtual status_t setSharedAllocator(camera_request_memory shmem_alloc) { mSharedAllocator = shmem_alloc; return NO_ERROR; };
+
     // Rolls the state machine back to INTIALIZED_STATE from the current state
     virtual status_t rollbackToInitializedState();
 
@@ -282,6 +284,8 @@ protected:
     void *mReleaseData;
     void *mEndCaptureData;
     bool mRecording;
+
+    camera_request_memory mSharedAllocator;
 
     uint32_t mFramesWithDucati;
     uint32_t mFramesWithDisplay;

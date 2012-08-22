@@ -29,12 +29,20 @@
 #include <system/audio.h>
 #include <system/camera.h>
 
+#include <binder/IMemory.h>
+#include <binder/MemoryBase.h>
+#include <binder/MemoryHeapBase.h>
+
 #include <cutils/memory.h>
 #include <utils/Log.h>
 
 #include <sys/wait.h>
 
 #include "camera_test.h"
+#include "camera_test_surfacetexture.h"
+#ifdef ANDROID_API_JB_OR_LATER
+#include "camera_test_bufferqueue.h"
+#endif
 
 using namespace android;
 
@@ -780,12 +788,17 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
 void CameraHandler::postData(int32_t msgType,
                              const sp<IMemory>& dataPtr,
                              camera_frame_metadata_t *metadata) {
+    int32_t msgMask;
     printf("Data cb: %d\n", msgType);
 
     if ( msgType & CAMERA_MSG_PREVIEW_FRAME )
         my_preview_callback(dataPtr);
 
-    if ( msgType & (CAMERA_MSG_RAW_IMAGE | CAMERA_MSG_RAW_BURST)) {
+    msgMask = CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+    msgMask |= CAMERA_MSG_RAW_BURST;
+#endif
+    if ( msgType & msgMask) {
         printf("RAW done in %llu us\n", timeval_delay(&picture_start));
         my_raw_callback(dataPtr);
     }
@@ -825,10 +838,13 @@ void CameraHandler::postDataTimestamp(nsecs_t timestamp, int32_t msgType, const 
 
     uint8_t *ptr = (uint8_t*) dataPtr->pointer();
 
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
     if ( msgType & CAMERA_MSG_RAW_BURST) {
         printf("RAW done timestamp: %llu\n", timestamp);
         my_raw_callback(dataPtr);
-    } else {
+    } else
+#endif
+    {
         printf("Recording cb: %d %lld %p\n", msgType, timestamp, dataPtr.get());
         printf("VID_CB: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7], ptr[8], ptr[9]);
         camera->releaseRecordingFrame(dataPtr);
@@ -1197,7 +1213,11 @@ int closeCamera() {
 
 void createBufferOutputSource() {
     if(!bufferSourceOutputThread.get()) {
-        bufferSourceOutputThread = new BufferSourceThread(false, 123, camera);
+#ifdef ANDROID_API_JB_OR_LATER
+        bufferSourceOutputThread = new BQ_BufferSourceThread(123, camera);
+#else
+        bufferSourceOutputThread = new ST_BufferSourceThread(false, 123, camera);
+#endif
         bufferSourceOutputThread->run();
     }
 }
@@ -3373,8 +3393,10 @@ int functional_menu() {
                 }
             } else {
                 msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE |
-                          CAMERA_MSG_RAW_BURST;
+                          CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                msgType |= CAMERA_MSG_RAW_BURST;
+#endif
             }
 
             if((0 == strcmp(modevalues[capture_mode], "video-mode")) &&
@@ -3384,7 +3406,7 @@ int functional_menu() {
                 gettimeofday(&picture_start, 0);
                 if ( hardwareActive ) {
                     camera->setParameters(params.flatten());
-                    camera->takePicture(msgType, shotParams.flatten());
+                    camera->takePictureWithParameters(msgType, shotParams.flatten());
                 }
             }
             break;
@@ -3408,11 +3430,17 @@ int functional_menu() {
         case 'P':
         {
             int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE |
-                          CAMERA_MSG_RAW_BURST;
+                          CAMERA_MSG_RAW_IMAGE;
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+                msgType |= CAMERA_MSG_RAW_BURST;
+#endif
             gettimeofday(&picture_start, 0);
             if (!bufferSourceInput.get()) {
-                bufferSourceInput = new BufferSourceInput(false, 1234, camera);
+#ifdef ANDROID_API_JB_OR_LATER
+                bufferSourceInput = new BQ_BufferSourceInput(1234, camera);
+#else
+                bufferSourceInput = new ST_BufferSourceInput(1234, camera);
+#endif
                 bufferSourceInput->init();
             }
 

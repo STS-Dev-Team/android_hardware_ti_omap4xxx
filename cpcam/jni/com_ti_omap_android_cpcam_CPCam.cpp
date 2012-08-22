@@ -41,19 +41,26 @@
 #include <utils/Vector.h>
 
 #include <gui/SurfaceTexture.h>
-#include <surfaceflinger/Surface.h>
+
 #include <camera/Camera.h>
 #include <binder/IMemory.h>
 
 #ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
 #   define CAMHAL_LOGV ALOGV
 #   define CAMHAL_LOGE ALOGE
+#   define PREVIEW_TEXTURE_TYPE BufferQueue
 #else
+#include <surfaceflinger/Surface.h>
 #   define CAMHAL_LOGV LOGV
 #   define CAMHAL_LOGE LOGE
+#   define PREVIEW_TEXTURE_TYPE SurfaceTexture
 #endif
 
 using namespace android;
+
+extern int register_com_ti_omap_android_cpcam_CPCamMetadata(JNIEnv* env);
+extern int register_android_graphics_CPCamBufferQueue(JNIEnv* env);
 
 struct fields_t {
     jfieldID    context;
@@ -74,6 +81,7 @@ struct fields_t {
     jfieldID    analog_gain;
     jfieldID    faces;
     jmethodID   metadata_constructor;
+    jfieldID    bufferQueue;
 };
 
 static fields_t fields;
@@ -208,7 +216,7 @@ void JNICPCamContext::notify(int32_t msgType, int32_t ext1, int32_t ext2)
     // VM pointer will be NULL if object is released
     Mutex::Autolock _l(mLock);
     if (mCameraJObjectWeak == NULL) {
-        LOGW("callback on dead camera object");
+        CAMHAL_LOGE("callback on dead camera object");
         return;
     }
     JNIEnv *env = AndroidRuntime::getJNIEnv();
@@ -314,7 +322,7 @@ void JNICPCamContext::postData(int32_t msgType, const sp<IMemory>& dataPtr,
     Mutex::Autolock _l(mLock);
     JNIEnv *env = AndroidRuntime::getJNIEnv();
     if (mCameraJObjectWeak == NULL) {
-        LOGW("callback on dead camera object");
+        CAMHAL_LOGE("callback on dead camera object");
         return;
     }
 
@@ -538,6 +546,15 @@ static void com_ti_omap_android_cpcam_CPCam_native_setup(JNIEnv *env, jobject th
 
     // save context in opaque field
     env->SetIntField(thiz, fields.context, (int)context.get());
+
+    // Fill bufferQueue field since CPCamBufferQueue should be loaded by now
+    clazz = env->FindClass("com/ti/omap/android/cpcam/CPCamBufferQueue");
+    fields.bufferQueue = env->GetFieldID(clazz, "mBufferQueue", "I");
+    if (fields.bufferQueue == NULL) {
+        CAMHAL_LOGE("Can't find com/ti/omap/android/cpcam/CPCamBufferQueue.mBufferQueue");
+        jniThrowRuntimeException(env, "Can't find com/ti/omap/android/cpcam/CPCamBufferQueue.mBufferQueue");
+    }
+
 }
 
 // disconnect from camera service
@@ -597,12 +614,24 @@ static void com_ti_omap_android_cpcam_CPCam_setPreviewTexture(JNIEnv *env,
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
-    sp<SurfaceTexture> surfaceTexture = NULL;
+    sp<PREVIEW_TEXTURE_TYPE> previewTexture = NULL;
+
     if (jSurfaceTexture != NULL) {
-        surfaceTexture = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
+        sp<SurfaceTexture> surfaceTexture = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
                 jSurfaceTexture, fields.surfaceTexture));
+        if (surfaceTexture == NULL) {
+            jniThrowException(env, "java/lang/IllegalArgumentException",
+                    "SurfaceTexture already released in setPreviewTexture");
+            return;
+        }
+#ifdef ANDROID_API_JB_OR_LATER
+        previewTexture = surfaceTexture->getBufferQueue();
+#else
+        previewTexture = surfaceTexture;
+#endif
     }
-    if (camera->setPreviewTexture(surfaceTexture) != NO_ERROR) {
+
+    if (camera->setPreviewTexture(previewTexture) != NO_ERROR) {
         jniThrowException(env, "java/io/IOException",
                 "setPreviewTexture failed");
     }
@@ -615,16 +644,26 @@ static void com_ti_omap_android_cpcam_CPCam_setBufferSource(JNIEnv *env,
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return;
 
-    sp<SurfaceTexture> tapOut = NULL;
+    sp<PREVIEW_TEXTURE_TYPE> tapOut = NULL;
     if (jTapOut!= NULL) {
-        tapOut = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
-                jTapOut, fields.surfaceTexture));
+        tapOut = reinterpret_cast<PREVIEW_TEXTURE_TYPE *>(env->GetIntField(
+                jTapOut, fields.bufferQueue));
+        if (tapOut == NULL) {
+            jniThrowException(env, "java/lang/IllegalArgumentException",
+                    "SurfaceTexture already released in setPreviewTexture");
+            return;
+        }
     }
 
-    sp<SurfaceTexture> tapIn = NULL;
+    sp<PREVIEW_TEXTURE_TYPE> tapIn = NULL;
     if (jTapIn != NULL) {
-        tapIn = reinterpret_cast<SurfaceTexture*>(env->GetIntField(
-                jTapIn, fields.surfaceTexture));
+        tapIn = reinterpret_cast<PREVIEW_TEXTURE_TYPE *>(env->GetIntField(
+                jTapIn, fields.bufferQueue));
+        if (tapIn == NULL) {
+            jniThrowException(env, "java/lang/IllegalArgumentException",
+                    "SurfaceTexture already released in setPreviewTexture");
+            return;
+        }
     }
 
     if (camera->setBufferSource(tapIn, tapOut) != NO_ERROR) { // tapin not enabled yet
@@ -760,7 +799,7 @@ static void com_ti_omap_android_cpcam_CPCam_takePicture(JNIEnv *env, jobject thi
         }
     }
 
-    if (camera->takePicture(msgType, params8) != NO_ERROR) {
+    if (camera->takePictureWithParameters(msgType, params8) != NO_ERROR) {
         jniThrowRuntimeException(env, "takePicture failed");
         return;
     }
@@ -790,7 +829,12 @@ static jstring com_ti_omap_android_cpcam_CPCam_getParameters(JNIEnv *env, jobjec
     sp<Camera> camera = get_native_camera(env, thiz, NULL);
     if (camera == 0) return 0;
 
-    return env->NewStringUTF(camera->getParameters().string());
+    String8 params8 = camera->getParameters();
+    if (params8.isEmpty()) {
+        jniThrowRuntimeException(env, "getParameters failed (empty parameters)");
+        return 0;
+    }
+    return env->NewStringUTF(params8.string());
 }
 
 static void com_ti_omap_android_cpcam_CPCam_reconnect(JNIEnv *env, jobject thiz)
@@ -895,6 +939,17 @@ static void com_ti_omap_android_cpcam_CPCam_stopFaceDetection(JNIEnv *env, jobje
     }
 }
 
+static void com_ti_omap_android_cpcam_CPCam_enableFocusMoveCallback(JNIEnv *env, jobject thiz, jint enable)
+{
+    ALOGV("enableFocusMoveCallback");
+    sp<Camera> camera = get_native_camera(env, thiz, NULL);
+    if (camera == 0) return;
+
+    if (camera->sendCommand(CAMERA_CMD_ENABLE_FOCUS_MOVE_MSG, enable, 0) != NO_ERROR) {
+        jniThrowRuntimeException(env, "enable focus move callback failed");
+    }
+}
+
 //-------------------------------------------------
 
 static JNINativeMethod cpcamMethods[] = {
@@ -917,7 +972,7 @@ static JNINativeMethod cpcamMethods[] = {
     "(Landroid/graphics/SurfaceTexture;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setPreviewTexture },
   { "setBufferSource",
-    "(Landroid/graphics/SurfaceTexture;Landroid/graphics/SurfaceTexture;)V",
+    "(Lcom/ti/omap/android/cpcam/CPCamBufferQueue;Lcom/ti/omap/android/cpcam/CPCamBufferQueue;)V",
     (void *)com_ti_omap_android_cpcam_CPCam_setBufferSource },
   { "native_reprocess",
     "(ILjava/lang/String;)V",
@@ -976,6 +1031,9 @@ static JNINativeMethod cpcamMethods[] = {
   { "_stopFaceDetection",
     "()V",
     (void *)com_ti_omap_android_cpcam_CPCam_stopFaceDetection},
+  { "enableFocusMoveCallback",
+    "(I)V",
+    (void *)com_ti_omap_android_cpcam_CPCam_enableFocusMoveCallback},
 };
 
 struct field {
@@ -1094,6 +1152,16 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
     if (registerCPCamMethods(env) != 0) {
         CAMHAL_LOGE("ERROR: PlatformLibrary native registration failed\n");
+        goto bail;
+    }
+
+    if ( register_com_ti_omap_android_cpcam_CPCamMetadata(env) != 0 ) {
+        CAMHAL_LOGE("ERROR: PlatformLibrary native Metadata registration failed\n");
+        goto bail;
+    }
+
+    if (register_android_graphics_CPCamBufferQueue(env) != 0) {
+        CAMHAL_LOGE("ERROR: PlatformLibrary native BufferQueue registration failed\n");
         goto bail;
     }
 

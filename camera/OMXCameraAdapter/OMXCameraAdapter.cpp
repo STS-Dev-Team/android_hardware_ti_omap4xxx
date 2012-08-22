@@ -3652,7 +3652,9 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             }
 
 #ifdef OMAP_ENHANCEMENT_CPCAM
-        setMetaData(cameraFrame.mMetaData, pBuffHeader->pPlatformPrivate);
+        if ( NULL != mSharedAllocator ) {
+            setMetaData(cameraFrame, pBuffHeader->pPlatformPrivate, mSharedAllocator);
+        }
 #endif
 
         CAMHAL_LOGDB("Captured Frames: %d", mCapturedFrames);

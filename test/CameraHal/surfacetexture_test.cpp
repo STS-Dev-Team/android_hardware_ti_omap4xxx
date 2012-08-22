@@ -41,12 +41,6 @@
 #include <string.h>
 #include <climits>
 
-#include <surfaceflinger/Surface.h>
-#include <surfaceflinger/ISurface.h>
-#include <surfaceflinger/ISurfaceComposer.h>
-#include <surfaceflinger/ISurfaceComposerClient.h>
-#include <surfaceflinger/SurfaceComposerClient.h>
-
 #include <gui/SurfaceTexture.h>
 #include <gui/SurfaceTextureClient.h>
 #include <ui/GraphicBuffer.h>
@@ -71,8 +65,23 @@
 
 #include <sys/wait.h>
 
-#include "ion.h"
 #include <sys/mman.h>
+
+#ifdef ANDROID_API_JB_OR_LATER
+#include <gui/Surface.h>
+#include <gui/ISurface.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/ISurfaceComposerClient.h>
+#include <gui/SurfaceComposerClient.h>
+#include <ion/ion.h>
+#else
+#include <surfaceflinger/Surface.h>
+#include <surfaceflinger/ISurface.h>
+#include <surfaceflinger/ISurfaceComposer.h>
+#include <surfaceflinger/ISurfaceComposerClient.h>
+#include <surfaceflinger/SurfaceComposerClient.h>
+#include "ion.h"
+#endif
 
 #include "camera_test.h"
 
@@ -102,7 +111,7 @@ using namespace android;
 static void
 test_format (int format, int page_mode, int width, int height)
 {
-    SurfaceTexture *st;
+    sp<SurfaceTexture> st;
     SurfaceTextureClient *stc;
     GLint tex_id = 0;
     sp<ANativeWindow> anw;
@@ -159,7 +168,7 @@ test_format (int format, int page_mode, int width, int height)
     }
 
     //delete stc;
-    delete st;
+    st.clear();
 }
 
 void
