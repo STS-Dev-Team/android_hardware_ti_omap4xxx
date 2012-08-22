@@ -1667,6 +1667,20 @@ status_t OMXCameraAdapter::deinitInternalBuffers(OMX_U32 portIndex)
         return -EINVAL;
     }
 
+    OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferalloc;
+    OMX_INIT_STRUCT_PTR (&bufferalloc, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
+    bufferalloc.nPortIndex = portIndex;
+    bufferalloc.eBufType = OMX_TI_BufferTypeDefault;
+    bufferalloc.nAllocWidth = 1;
+    bufferalloc.nAllocLines = 1;
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE) OMX_TI_IndexParamComponentBufferAllocation,
+            &bufferalloc);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+        return -EINVAL;
+    }
+
     return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
