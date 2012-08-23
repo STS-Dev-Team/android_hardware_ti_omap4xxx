@@ -1093,7 +1093,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                  // initial ref count for undeqeueued buffers is 1 since buffer provider
                  // is still holding on to it
                  for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ ) {
-                     mVideoBuffersAvailable.add(&mPreviewBuffers[i], 1);
+                     mVideoBuffersAvailable.add(&mVideoBuffers[i], 1);
                  }
              }
 
@@ -2088,6 +2088,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->BRACKETING_STATE event = %s",
                             printState);
                     mNextState = BRACKETING_STATE;
+                    break;
+
+                case CAMERA_USE_BUFFERS_VIDEO_CAPTURE:
+                    //Hadnle this state for raw capture path.
+                    //Just need to keep the same state.
+                    //The next CAMERA_START_IMAGE_CAPTURE command will assign the mNextState.
+                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->LOADED_CAPTURE_STATE event = %s",
+                            printState);
                     break;
 
                 default:

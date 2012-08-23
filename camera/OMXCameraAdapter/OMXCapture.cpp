@@ -1369,7 +1369,6 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     //Disable the callback first
     mWaitingForSnapshot = false;
-    mSnapshotCount = 0;
 
     // OMX shutter callback events are only available in hq mode
     if ((HIGH_QUALITY == mCapMode) || (HIGH_QUALITY_ZSL== mCapMode)) {
@@ -1663,6 +1662,20 @@ status_t OMXCameraAdapter::deinitInternalBuffers(OMX_U32 portIndex)
     eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
             (OMX_INDEXTYPE) OMX_TI_IndexUseBufferDescriptor,
             &bufferdesc);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+        return -EINVAL;
+    }
+
+    OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferalloc;
+    OMX_INIT_STRUCT_PTR (&bufferalloc, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
+    bufferalloc.nPortIndex = portIndex;
+    bufferalloc.eBufType = OMX_TI_BufferTypeDefault;
+    bufferalloc.nAllocWidth = 1;
+    bufferalloc.nAllocLines = 1;
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE) OMX_TI_IndexParamComponentBufferAllocation,
+            &bufferalloc);
     if (eError!=OMX_ErrorNone) {
         CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
         return -EINVAL;
