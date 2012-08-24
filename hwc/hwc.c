@@ -855,7 +855,7 @@ omap4_hwc_adjust_primary_display_layer(omap4_hwc_device_t *hwc_dev, struct dss2_
 
 static int omap4_hwc_can_scale(__u32 src_w, __u32 src_h, __u32 dst_w, __u32 dst_h, int is_2d,
                                struct dsscomp_display_info *dis, struct dsscomp_platform_info *limits,
-                               __u32 pclk)
+                               __u32 pclk, void *handle)
 {
     __u32 fclk = limits->fclk / 1000;
     __u32 min_src_w = DIV_ROUND_UP(src_w, is_2d ? limits->max_xdecim_2d : limits->max_xdecim_1d);
@@ -910,7 +910,7 @@ static int omap4_hwc_can_scale_layer(omap4_hwc_device_t *hwc_dev, hwc_layer_t *l
     /* NOTE: layers should be able to be scaled externally since
        framebuffer is able to be scaled on selected external resolution */
     return omap4_hwc_can_scale(src_w, src_h, dst_w, dst_h, is_NV12(handle), &hwc_dev->fb_dis, &limits,
-                               hwc_dev->fb_dis.timings.pixel_clock);
+                               hwc_dev->fb_dis.timings.pixel_clock, handle);
 }
 
 static int omap4_hwc_is_valid_layer(omap4_hwc_device_t *hwc_dev,
@@ -1034,7 +1034,7 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
             (d.modedb[i].vmode & ~FB_VMODE_INTERLACED) ||
             !omap4_hwc_can_scale(xres, yres, ext_fb_xres, ext_fb_yres,
                                  1, &d.dis, &limits,
-                                 1000000000 / d.modedb[i].pixclock))
+                                 1000000000 / d.modedb[i].pixclock, NULL))
             continue;
 
         /* prefer CEA modes */
@@ -1077,7 +1077,7 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
         if (!d.dis.timings.pixel_clock ||
             !omap4_hwc_can_scale(xres, yres, ext_fb_xres, ext_fb_yres,
                                  1, &d.dis, &limits,
-                                 d.dis.timings.pixel_clock)) {
+                                 d.dis.timings.pixel_clock, NULL)) {
             ALOGW("DSS scaler cannot support HDMI cloning");
             return -1;
         }
