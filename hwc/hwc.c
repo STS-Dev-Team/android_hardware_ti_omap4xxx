@@ -460,6 +460,21 @@ static int is_RGB(IMG_native_handle_t *handle)
         return 0;
     }
 }
+static int get_rgb_bpp(IMG_native_handle_t *handle)
+{
+    switch(handle->iFormat)
+    {
+    case HAL_PIXEL_FORMAT_BGRA_8888:
+    case HAL_PIXEL_FORMAT_BGRX_8888:
+    case HAL_PIXEL_FORMAT_RGBX_8888:
+    case HAL_PIXEL_FORMAT_RGBA_8888:
+        return 32;
+    case HAL_PIXEL_FORMAT_RGB_565:
+        return 16;
+    default:
+        return 0;
+    }
+}
 
 static int is_BGR_format(int format)
 {
