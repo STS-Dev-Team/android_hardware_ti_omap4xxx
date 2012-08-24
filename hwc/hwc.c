@@ -899,6 +899,10 @@ static int omap4_hwc_can_scale(__u32 src_w, __u32 src_h, __u32 dst_w, __u32 dst_
     if (dst_w * 4 < src_w)
         return 0;
 
+    if (handle)
+        if (get_rgb_bpp(handle) == 32 && src_w > 1280 && dst_w * 3 < src_w)
+            return 0;
+
     /* max horizontal downscale is 4, or the fclk/pixclk */
     if (fclk > pclk * limits->max_downscale)
         fclk = pclk * limits->max_downscale;
