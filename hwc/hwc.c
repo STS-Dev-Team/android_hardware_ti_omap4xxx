@@ -427,6 +427,21 @@ static int is_RGB(IMG_native_handle_t *handle)
         return 0;
     }
 }
+static int get_rgb_bpp(IMG_native_handle_t *handle)
+{
+    switch(handle->iFormat)
+    {
+    case HAL_PIXEL_FORMAT_BGRA_8888:
+    case HAL_PIXEL_FORMAT_BGRX_8888:
+    case HAL_PIXEL_FORMAT_RGBX_8888:
+    case HAL_PIXEL_FORMAT_RGBA_8888:
+        return 32;
+    case HAL_PIXEL_FORMAT_RGB_565:
+        return 16;
+    default:
+        return 0;
+    }
+}
 
 static int is_BGR_format(int format)
 {
@@ -822,7 +837,7 @@ omap4_hwc_adjust_primary_display_layer(omap4_hwc_device_t *hwc_dev, struct dss2_
 
 static int omap4_hwc_can_scale(__u32 src_w, __u32 src_h, __u32 dst_w, __u32 dst_h, int is_2d,
                                struct dsscomp_display_info *dis, struct dsscomp_platform_info *limits,
-                               __u32 pclk)
+                               __u32 pclk, void *handle)
 {
     __u32 fclk = limits->fclk / 1000;
     __u32 min_src_w = DIV_ROUND_UP(src_w, is_2d ? limits->max_xdecim_2d : limits->max_xdecim_1d);
@@ -851,6 +866,10 @@ static int omap4_hwc_can_scale(__u32 src_w, __u32 src_h, __u32 dst_w, __u32 dst_
     if (dst_w * 4 < src_w)
         return 0;
 
+    if (handle)
+        if (get_rgb_bpp(handle) == 32 && src_w > 1280 && dst_w * 3 < src_w)
+            return 0;
+
     /* max horizontal downscale is 4, or the fclk/pixclk */
     if (fclk > pclk * limits->max_downscale)
         fclk = pclk * limits->max_downscale;
@@ -877,7 +896,7 @@ static int omap4_hwc_can_scale_layer(omap4_hwc_device_t *hwc_dev, hwc_layer_t *l
     /* NOTE: layers should be able to be scaled externally since
        framebuffer is able to be scaled on selected external resolution */
     return omap4_hwc_can_scale(src_w, src_h, dst_w, dst_h, is_NV12(handle), &hwc_dev->fb_dis, &limits,
-                               hwc_dev->fb_dis.timings.pixel_clock);
+                               hwc_dev->fb_dis.timings.pixel_clock, handle);
 }
 
 static int omap4_hwc_is_valid_layer(omap4_hwc_device_t *hwc_dev,
@@ -1001,7 +1020,7 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
             (d.modedb[i].vmode & ~FB_VMODE_INTERLACED) ||
             !omap4_hwc_can_scale(xres, yres, ext_fb_xres, ext_fb_yres,
                                  1, &d.dis, &limits,
-                                 1000000000 / d.modedb[i].pixclock))
+                                 1000000000 / d.modedb[i].pixclock, NULL))
             continue;
 
         /* prefer CEA modes */
@@ -1044,7 +1063,7 @@ static int omap4_hwc_set_best_hdmi_mode(omap4_hwc_device_t *hwc_dev, __u32 xres,
         if (!d.dis.timings.pixel_clock ||
             !omap4_hwc_can_scale(xres, yres, ext_fb_xres, ext_fb_yres,
                                  1, &d.dis, &limits,
-                                 d.dis.timings.pixel_clock)) {
+                                 d.dis.timings.pixel_clock, NULL)) {
             ALOGW("DSS scaler cannot support HDMI cloning");
             return -1;
         }
@@ -1482,7 +1501,7 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
              is_protected(layer) ||
              is_upscaled_NV12(hwc_dev, layer) ||
              (hwc_dev->ext.current.docking && hwc_dev->ext.current.enabled && dockable(layer))) &&
-            mem_used + mem1d(handle) < limits.tiler1d_slot_size &&
+            mem_used + mem1d(handle) <= limits.tiler1d_slot_size &&
             /* can't have a transparent overlay in the middle of the framebuffer stack */
             !(is_BLENDED(layer) && fb_z >= 0)) {
 
@@ -1655,6 +1674,14 @@ static int omap4_hwc_prepare(struct hwc_composer_device *dev, hwc_layer_list_t* 
         dsscomp->mgrs[1].ix = 1;
         dsscomp->num_mgrs++;
         hwc_dev->ext_ovls = dsscomp->num_ovls - hwc_dev->post2_layers;
+    }
+
+    /*
+     * Whilst the mode of the display is being changed drop compositions to the
+     * display
+     */
+    if (ext->last_mode == 0 && hwc_dev->on_tv) {
+        dsscomp->num_ovls = 0;
     }
 
     if (debug) {
