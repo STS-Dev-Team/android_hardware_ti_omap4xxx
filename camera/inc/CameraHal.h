@@ -45,18 +45,15 @@
 #include <ui/GraphicBuffer.h>
 
 /* For IMG_native_handle_t */
-#include <ui/egl/android_natives.h>
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-extern "C" {
-#include <ion.h>
-}
+#include <ion/ion.h>
 
+#include "Common.h"
 #include "MessageQueue.h"
 #include "Semaphore.h"
 #include "CameraProperties.h"
-#include "DebugUtils.h"
 #include "SensorListener.h"
 
 //temporarily define format here
@@ -97,48 +94,14 @@ extern "C" {
 #define LOCK_BUFFER_TRIES 5
 #define HAL_PIXEL_FORMAT_NV12 0x100
 
-#define CAMHAL_LOGI LOGI
-
-// logging functions
-#ifdef CAMERAHAL_DEBUG
-#   define CAMHAL_LOGD  DBGUTILS_LOGD
-#   define CAMHAL_LOGDA DBGUTILS_LOGDA
-#   define CAMHAL_LOGDB DBGUTILS_LOGDB
-#   ifdef CAMERAHAL_DEBUG_VERBOSE
-#       define CAMHAL_LOGV  DBGUTILS_LOGV
-#       define CAMHAL_LOGVA DBGUTILS_LOGVA
-#       define CAMHAL_LOGVB DBGUTILS_LOGVB
-#   else
-#       define CAMHAL_LOGV(...)
-#       define CAMHAL_LOGVA(str)
-#       define CAMHAL_LOGVB(str, ...)
-#   endif
-#else
-#   define CAMHAL_LOGD(...)
-#   define CAMHAL_LOGDA(str)
-#   define CAMHAL_LOGDB(str, ...)
-#   define CAMHAL_LOGV(...)
-#   define CAMHAL_LOGVA(str)
-#   define CAMHAL_LOGVB(str, ...)
-#endif
-
-#define CAMHAL_LOGE  DBGUTILS_LOGE
-#define CAMHAL_LOGEA DBGUTILS_LOGEA
-#define CAMHAL_LOGEB DBGUTILS_LOGEB
-#define CAMHAL_LOGF  DBGUTILS_LOGF
-
-#define CAMHAL_ASSERT DBGUTILS_ASSERT
-#define CAMHAL_ASSERT_X DBGUTILS_ASSERT_X
-
-#define CAMHAL_UNUSED(x) (void)x
-
 #define NONNEG_ASSIGN(x,y) \
     if(x > -1) \
         y = x
 
 #define CAMHAL_SIZE_OF_ARRAY(x) static_cast<int>(sizeof(x)/sizeof(x[0]))
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
 extern const char * const kRawImagesOutputDirPath;
@@ -216,7 +179,7 @@ inline int FpsRange::min() const { return mMin; }
 
 inline int FpsRange::max() const { return mMax; }
 
-class CameraArea : public RefBase
+class CameraArea : public android::RefBase
 {
 public:
 
@@ -253,11 +216,11 @@ public:
         return mWeight;
         }
 
-    bool compare(const sp<CameraArea> &area);
+    bool compare(const android::sp<CameraArea> &area);
 
     static status_t parseAreas(const char *area,
                                size_t areaLength,
-                               Vector< sp<CameraArea> > &areas);
+                               android::Vector< android::sp<CameraArea> > &areas);
 
     static status_t checkArea(ssize_t top,
                               ssize_t left,
@@ -265,7 +228,7 @@ public:
                               ssize_t right,
                               ssize_t weight);
 
-    static bool areAreasDifferent(Vector< sp<CameraArea> > &, Vector< sp<CameraArea> > &);
+    static bool areAreasDifferent(android::Vector< android::sp<CameraArea> > &, android::Vector< android::sp<CameraArea> > &);
 
 protected:
     static const ssize_t TOP = -1000;
@@ -282,28 +245,50 @@ protected:
     size_t mWeight;
 };
 
-class CameraMetadataResult : public RefBase
+class CameraMetadataResult : public android::RefBase
 {
 public:
 
-    CameraMetadataResult() : mMetadata(NULL) {};
-    CameraMetadataResult(camera_frame_metadata_t *meta) : mMetadata(meta) {};
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    CameraMetadataResult(camera_memory_t * extMeta) : mExtendedMetadata(extMeta) {
+        mMetadata.faces = NULL;
+        mMetadata.number_of_faces = 0;
+#ifdef OMAP_ENHANCEMENT
+        mMetadata.analog_gain = 0;
+        mMetadata.exposure_time = 0;
+#endif
+    };
+#endif
+
+    CameraMetadataResult() {
+        mMetadata.faces = NULL;
+        mMetadata.number_of_faces = 0;
+#ifdef OMAP_ENHANCEMENT
+        mMetadata.analog_gain = 0;
+        mMetadata.exposure_time = 0;
+#endif
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        mExtendedMetadata = NULL;
+#endif
+   }
 
     virtual ~CameraMetadataResult() {
-        if ( ( NULL != mMetadata ) && ( NULL != mMetadata->faces ) ) {
-            free(mMetadata->faces);
-            free(mMetadata);
-            mMetadata=NULL;
+        if ( NULL != mMetadata.faces ) {
+            free(mMetadata.faces);
         }
-
-        if(( NULL != mMetadata ))
-            {
-            free(mMetadata);
-            mMetadata = NULL;
-            }
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        if ( NULL != mExtendedMetadata ) {
+            mExtendedMetadata->release(mExtendedMetadata);
+        }
+#endif
     }
 
-    camera_frame_metadata_t *getMetadataResult() { return mMetadata; };
+    camera_frame_metadata_t *getMetadataResult() { return &mMetadata; };
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    camera_memory_t *getExtendedMetadata() { return mExtendedMetadata; };
+#endif
 
     static const ssize_t TOP = -1000;
     static const ssize_t LEFT = -1000;
@@ -313,7 +298,10 @@ public:
 
 private:
 
-    camera_frame_metadata_t *mMetadata;
+    camera_frame_metadata_t mMetadata;
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    camera_memory_t *mExtendedMetadata;
+#endif
 };
 
 typedef enum {
@@ -404,7 +392,11 @@ class CameraFrame
     mFd(0),
     mLength(0),
     mFrameMask(0),
-    mQuirks(0) {
+    mQuirks(0),
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    mMetaData(NULL)
+#endif
+    {
 
       mYuv[0] = NULL;
       mYuv[1] = NULL;
@@ -424,7 +416,7 @@ class CameraFrame
     unsigned int mQuirks;
     unsigned int mYuv[2];
 #ifdef OMAP_ENHANCEMENT_CPCAM
-    CameraMetadata mMetaData;
+    android::sp<CameraMetadataResult> mMetaData;
 #endif
     ///@todo add other member vars like  stride etc
 };
@@ -488,9 +480,9 @@ public:
         size_t score;
     } FaceData;
 
-    typedef sp<CameraMetadataResult> MetaEventData;
+    typedef android::sp<CameraMetadataResult> MetaEventData;
 
-    class CameraHalEventData : public RefBase{
+    class CameraHalEventData : public android::RefBase{
 
     public:
 
@@ -513,7 +505,7 @@ public:
 
     void* mCookie;
     CameraHalEventType mEventType;
-    sp<CameraHalEventData> mEventData;
+    android::sp<CameraHalEventData> mEventData;
 
 };
 
@@ -545,7 +537,7 @@ public:
     virtual ~MessageNotifier() {};
 };
 
-class ErrorNotifier : public virtual RefBase
+class ErrorNotifier : public virtual android::RefBase
 {
 public:
     virtual void errorNotify(int error) = 0;
@@ -630,7 +622,7 @@ public:
 /**
   * Class for handling data and notify callbacks to application
   */
-class   AppCallbackNotifier: public ErrorNotifier , public virtual RefBase
+class   AppCallbackNotifier: public ErrorNotifier , public virtual android::RefBase
 {
 
 public:
@@ -672,7 +664,7 @@ public:
     //All sub-components of Camera HAL call this whenever any error happens
     virtual void errorNotify(int error);
 
-    status_t startPreviewCallbacks(CameraParameters &params, CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count);
+    status_t startPreviewCallbacks(android::CameraParameters &params, CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count);
     status_t stopPreviewCallbacks();
 
     status_t enableMsgType(int32_t msgType);
@@ -719,9 +711,9 @@ public:
     void flushEventQueue();
 
     //Internal class definitions
-    class NotificationThread : public Thread {
+    class NotificationThread : public android::Thread {
         AppCallbackNotifier* mAppCallbackNotifier;
-        TIUTILS::MessageQueue mNotificationThreadQ;
+        Utils::MessageQueue mNotificationThreadQ;
     public:
         enum NotificationThreadCommands
         {
@@ -736,7 +728,7 @@ public:
             return mAppCallbackNotifier->notificationThread();
         }
 
-        TIUTILS::MessageQueue &msgQ() { return mNotificationThreadQ;}
+        Utils::MessageQueue &msgQ() { return mNotificationThreadQ;}
     };
 
     //Friend declarations
@@ -754,8 +746,8 @@ private:
     const char* getContstantForPixelFormat(const char *pixelFormat);
 
 private:
-    mutable Mutex mLock;
-    mutable Mutex mBurstLock;
+    mutable android::Mutex mLock;
+    mutable android::Mutex mBurstLock;
     CameraHal* mCameraHal;
     camera_notify_callback mNotifyCb;
     camera_data_callback   mDataCb;
@@ -765,21 +757,21 @@ private:
 
     //Keeps Video MemoryHeaps and Buffers within
     //these objects
-    KeyedVector<unsigned int, unsigned int> mVideoHeaps;
-    KeyedVector<unsigned int, unsigned int> mVideoBuffers;
-    KeyedVector<void *, CameraBuffer *> mVideoMap;
+    android::KeyedVector<unsigned int, unsigned int> mVideoHeaps;
+    android::KeyedVector<unsigned int, unsigned int> mVideoBuffers;
+    android::KeyedVector<void *, CameraBuffer *> mVideoMap;
 
     //Keeps list of Gralloc handles and associated Video Metadata Buffers
-    KeyedVector<void *, camera_memory_t *> mVideoMetadataBufferMemoryMap;
-    KeyedVector<void *, CameraBuffer *> mVideoMetadataBufferReverseMap;
+    android::KeyedVector<void *, camera_memory_t *> mVideoMetadataBufferMemoryMap;
+    android::KeyedVector<void *, CameraBuffer *> mVideoMetadataBufferReverseMap;
 
     bool mBufferReleased;
 
-    sp< NotificationThread> mNotificationThread;
+    android::sp< NotificationThread> mNotificationThread;
     EventProvider *mEventProvider;
     FrameProvider *mFrameProvider;
-    TIUTILS::MessageQueue mEventQ;
-    TIUTILS::MessageQueue mFrameQ;
+    Utils::MessageQueue mEventQ;
+    Utils::MessageQueue mFrameQ;
     NotifierState mNotifierState;
 
     bool mPreviewing;
@@ -790,12 +782,12 @@ private:
     int mPreviewHeight;
     int mPreviewStride;
     const char *mPreviewPixelFormat;
-    KeyedVector<unsigned int, sp<MemoryHeapBase> > mSharedPreviewHeaps;
-    KeyedVector<unsigned int, sp<MemoryBase> > mSharedPreviewBuffers;
+    android::KeyedVector<unsigned int, android::sp<android::MemoryHeapBase> > mSharedPreviewHeaps;
+    android::KeyedVector<unsigned int, android::sp<android::MemoryBase> > mSharedPreviewBuffers;
 
     //Burst mode active
     bool mBurst;
-    mutable Mutex mRecordingLock;
+    mutable android::Mutex mRecordingLock;
     bool mRecording;
     bool mMeasurementEnabled;
 
@@ -813,7 +805,7 @@ private:
 /**
   * Class used for allocating memory for JPEG bit stream buffers, output buffers of camera in no overlay case
   */
-class MemoryManager : public BufferProvider, public virtual RefBase
+class MemoryManager : public BufferProvider, public virtual android::RefBase
 {
 public:
     MemoryManager();
@@ -829,7 +821,7 @@ public:
     virtual int freeBufferList(CameraBuffer * buflist);
 
 private:
-    sp<ErrorNotifier> mErrorNotifier;
+    android::sp<ErrorNotifier> mErrorNotifier;
     int mIonFd;
 };
 
@@ -841,7 +833,7 @@ private:
   * Concrete classes derive from this class and provide implementations based on the specific camera h/w interface
   */
 
-class CameraAdapter: public FrameNotifier, public virtual RefBase
+class CameraAdapter: public FrameNotifier, public virtual android::RefBase
 {
 protected:
     enum AdapterActiveStates {
@@ -956,8 +948,8 @@ public:
     virtual void removeFramePointers() = 0;
 
     //APIs to configure Camera adapter and get the current parameter set
-    virtual int setParameters(const CameraParameters& params) = 0;
-    virtual void getParameters(CameraParameters& params) = 0;
+    virtual int setParameters(const android::CameraParameters& params) = 0;
+    virtual void getParameters(android::CameraParameters& params) = 0;
 
     //Registers callback for returning image buffers back to CameraHAL
     virtual int registerImageReleaseCallback(release_image_buffers_callback callback, void *user_data) = 0;
@@ -987,6 +979,8 @@ public:
     // Retrieves the next Adapter state - for internal use (not locked)
     virtual status_t getNextState(AdapterState &state) = 0;
 
+    virtual status_t setSharedAllocator(camera_request_memory shmem_alloc) = 0;
+
 protected:
     //The first two methods will try to switch the adapter state.
     //Every call to setState() should be followed by a corresponding
@@ -997,7 +991,7 @@ protected:
     virtual status_t rollbackState() = 0;
 };
 
-class DisplayAdapter : public BufferProvider, public virtual RefBase
+class DisplayAdapter : public BufferProvider, public virtual android::RefBase
 {
 public:
     ///Initializes the display adapter creates any resources required
@@ -1025,9 +1019,6 @@ public:
 
     // Get min buffers display needs at any given time
     virtual status_t minUndequeueableBuffers(int& unqueueable) = 0;
-protected:
-    virtual const char* getPixFormatConstant(const char* parameters_format) const;
-    virtual size_t getBufSize(const char* parameters_format, int width, int height) const;
 };
 
 static void releaseImageBuffers(void *userData);
@@ -1174,7 +1165,7 @@ public:
 
     /** Set the camera parameters. */
     int    setParameters(const char* params);
-    int    setParameters(const CameraParameters& params);
+    int    setParameters(const android::CameraParameters& params);
 
     /** Return the camera parameters. */
     char*  getParameters();
@@ -1252,6 +1243,13 @@ public:
     void eventCallback(CameraHalEvent* event);
     void setEventProvider(int32_t eventMask, MessageNotifier * eventProvider);
 
+    static const char* getPixelFormatConstant(const char* parameters_format);
+    static size_t calculateBufferSize(const char* parameters_format, int width, int height);
+    static void getXYFromOffset(unsigned int *x, unsigned int *y,
+                                unsigned int offset, unsigned int stride,
+                                const char* format);
+    static unsigned int getBPP(const char* format);
+
 /*--------------------Internal Member functions - Private---------------------------------*/
 private:
 
@@ -1259,7 +1257,7 @@ private:
     //@{
 
     /**  Set the camera parameters specific to Video Recording. */
-    bool        setVideoModeParameters(const CameraParameters&);
+    bool        setVideoModeParameters(const android::CameraParameters&);
 
     /** Reset the camera parameters specific to Video Recording. */
     bool       resetVideoModeParameters();
@@ -1328,7 +1326,7 @@ private:
     void forceStopPreview();
 
     void getPreferredPreviewRes(int *width, int *height);
-    void resetPreviewRes(CameraParameters *params);
+    void resetPreviewRes(android::CameraParameters *params);
 
     // Internal __takePicture function - used in public takePicture() and reprocess()
     int   __takePicture(const char* params);
@@ -1352,15 +1350,15 @@ public:
     static const char PARAMS_DELIMITER[];
 
     CameraAdapter *mCameraAdapter;
-    sp<AppCallbackNotifier> mAppCallbackNotifier;
-    sp<DisplayAdapter> mDisplayAdapter;
-    sp<MemoryManager> mMemoryManager;
+    android::sp<AppCallbackNotifier> mAppCallbackNotifier;
+    android::sp<DisplayAdapter> mDisplayAdapter;
+    android::sp<MemoryManager> mMemoryManager;
     // TODO(XXX): May need to keep this as a vector in the future
     // when we can have multiple tap-in/tap-out points
-    sp<DisplayAdapter> mBufferSourceAdapter_In;
-    sp<DisplayAdapter> mBufferSourceAdapter_Out;
+    android::sp<DisplayAdapter> mBufferSourceAdapter_In;
+    android::sp<DisplayAdapter> mBufferSourceAdapter_Out;
 
-    sp<IMemoryHeap> mPictureHeap;
+    android::sp<android::IMemoryHeap> mPictureHeap;
 
     int* mGrallocHandles;
     bool mFpsRangeChangedByApp;
@@ -1402,13 +1400,13 @@ private:
     //Index of current camera adapter
     int mCameraIndex;
 
-    mutable Mutex mLock;
+    mutable android::Mutex mLock;
 
-    sp<SensorListener> mSensorListener;
+    android::sp<SensorListener> mSensorListener;
 
     void* mCameraAdapterHandle;
 
-    CameraParameters mParameters;
+    android::CameraParameters mParameters;
     bool mPreviewRunning;
     bool mPreviewStateOld;
     bool mRecordingEnabled;
@@ -1453,9 +1451,10 @@ private:
     int mVideoWidth;
     int mVideoHeight;
 
-    String8 mCapModeBackup;
+    android::String8 mCapModeBackup;
 };
 
-}; // namespace android
+} // namespace Camera
+} // namespace Ti
 
 #endif

@@ -21,16 +21,13 @@
 *
 */
 
-//#include "CameraHal.h"
-#include <utils/threads.h>
-
-#include "DebugUtils.h"
 #include "CameraProperties.h"
 
 #define CAMERA_ROOT         "CameraRoot"
 #define CAMERA_INSTANCE     "CameraInstance"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 // lower entries have higher priority
 static const char* g_camera_adapters[] = {
@@ -71,7 +68,7 @@ status_t CameraProperties::initialize()
 
     status_t ret;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     if(mInitialized)
         return NO_ERROR;
@@ -105,16 +102,16 @@ status_t CameraProperties::loadProperties()
             MAX_CAMERAS_SUPPORTED, mCamerasSupported);
 
     if(err != NO_ERROR) {
-        LOGE("error while getting capabilities");
+        CAMHAL_LOGE("error while getting capabilities");
         ret = UNKNOWN_ERROR;
     } else if (mCamerasSupported == 0) {
-        LOGE("camera busy. properties not loaded. num_cameras = %d", mCamerasSupported);
+        CAMHAL_LOGE("camera busy. properties not loaded. num_cameras = %d", mCamerasSupported);
         ret = UNKNOWN_ERROR;
     } else if (mCamerasSupported > MAX_CAMERAS_SUPPORTED) {
-        LOGE("returned too many adapaters");
+        CAMHAL_LOGE("returned too many adapaters");
         ret = UNKNOWN_ERROR;
     } else {
-        LOGI("num_cameras = %d", mCamerasSupported);
+        CAMHAL_LOGI("num_cameras = %d", mCamerasSupported);
 
         for (int i = 0; i < mCamerasSupported; i++) {
             mCameraProps[i].setSensorIndex(i);
@@ -122,7 +119,7 @@ status_t CameraProperties::loadProperties()
         }
     }
 
-    LOGV("mCamerasSupported = %d", mCamerasSupported);
+    CAMHAL_LOGV("mCamerasSupported = %d", mCamerasSupported);
     LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
@@ -134,4 +131,5 @@ int CameraProperties::camerasSupported()
     return mCamerasSupported;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

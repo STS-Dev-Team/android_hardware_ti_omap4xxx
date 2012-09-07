@@ -53,7 +53,7 @@ Debug::Debug()
 
 void Debug::grow()
 {
-    android::Mutex::Autolock locker(mMutex);
+    android::AutoMutex locker(mMutex);
     (void)locker;
 
     const int size = kDebugThreadInfoGrowSize;

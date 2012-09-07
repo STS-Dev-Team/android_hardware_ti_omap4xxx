@@ -20,7 +20,8 @@
 #include <utils/KeyedVector.h>
 #include <utils/String8.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 ///TI Specific Camera Parameters
 class TICameraParameters
@@ -134,6 +135,7 @@ static const char HIGH_QUALITY_MODE[];
 static const char HIGH_QUALITY_ZSL_MODE[];
 static const char CP_CAM_MODE[];
 static const char VIDEO_MODE[];
+static const char VIDEO_MODE_HQ[];
 static const char EXPOSURE_BRACKETING[];
 static const char ZOOM_BRACKETING[];
 static const char TEMP_BRACKETING[];
@@ -252,6 +254,7 @@ static const char KEY_ALGO_GIC[];
 
 };
 
-};
+} // namespace Camera
+} // namespace Ti
 
 #endif

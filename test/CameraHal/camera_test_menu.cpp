@@ -34,6 +34,10 @@
 #include <system/audio.h>
 #include <system/camera.h>
 
+#include <binder/IMemory.h>
+#include <binder/MemoryBase.h>
+#include <binder/MemoryHeapBase.h>
+
 #include <cutils/memory.h>
 #include <utils/Log.h>
 
@@ -559,8 +563,10 @@ void my_raw_callback(const sp<IMemory>& mem) {
     if (mem == NULL)
         goto out;
 
-    //Start preview after capture.
-    camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam") ) {
+        //Start preview after capture.
+        camera->startPreview();
+    }
 
     fn[0] = 0;
     sprintf(fn, "%s/img%03d.raw", images_dir_path, counter);
@@ -610,19 +616,19 @@ void saveFile(const sp<IMemory>& mem) {
     sprintf(fn, "%s/preview%03d.yuv", images_dir_path, counter);
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
     if(fd < 0) {
-        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
         goto out;
     }
 
     size = mem->size();
     if (size <= 0) {
-        LOGE("IMemory object is of zero size");
+        CAMHAL_LOGE("IMemory object is of zero size");
         goto out;
     }
 
     buff = (unsigned char *)mem->pointer();
     if (!buff) {
-        LOGE("Buffer pointer is invalid");
+        CAMHAL_LOGE("Buffer pointer is invalid");
         goto out;
     }
 
@@ -689,8 +695,10 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
 
     LOG_FUNCTION_NAME;
 
-    //Start preview after capture.
-    camera->startPreview();
+    if( strcmp(modevalues[capture_mode], "cp-cam") ) {
+        //Start preview after capture.
+        camera->startPreview();
+    }
 
     if (mem == NULL)
         goto out;
@@ -700,19 +708,19 @@ void my_jpeg_callback(const sp<IMemory>& mem) {
     fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
 
     if(fd < 0) {
-        LOGE("Unable to open file %s: %s", fn, strerror(fd));
+        CAMHAL_LOGE("Unable to open file %s: %s", fn, strerror(fd));
         goto out;
     }
 
     size = mem->size();
     if (size <= 0) {
-        LOGE("IMemory object is of zero size");
+        CAMHAL_LOGE("IMemory object is of zero size");
         goto out;
     }
 
     buff = (unsigned char *)mem->pointer();
     if (!buff) {
-        LOGE("Buffer pointer is invalid");
+        CAMHAL_LOGE("Buffer pointer is invalid");
         goto out;
     }
 
@@ -758,9 +766,7 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
 
     if ( msgType & CAMERA_MSG_SHUTTER )
         printf("Shutter done in %llu us\n", timeval_delay(&picture_start));
-
-    if ( msgType & CAMERA_MSG_ERROR && (ext1 == 1))
-      {
+    if ( msgType  == 1) {
         printf("Camera Test CAMERA_MSG_ERROR.....\n");
         if (stressTest)
           {
@@ -772,7 +778,7 @@ void CameraHandler::notify(int32_t msgType, int32_t ext1, int32_t ext2) {
             printf("Camera Test Notified of Error Stopping.....\n");
             stopScript =false;
             stopPreview();
-
+            closeCamera();
             if (recordingMode)
               {
                 stopRecording();
@@ -2030,6 +2036,15 @@ void stopPreview() {
 
 void initDefaults() {
 
+    struct CameraInfo cameraInfo;
+
+    camera->getCameraInfo(camera_index, &cameraInfo);
+    if (cameraInfo.facing == CAMERA_FACING_FRONT) {
+        rotation = cameraInfo.orientation;
+    } else {  // back-facing
+        rotation = cameraInfo.orientation;
+    }
+
     antibanding_mode = getDefaultParameter("off", numAntibanding, antiband);
     focus_mode = getDefaultParameter("auto", numfocus, focus);
     fpsRangeIdx = getDefaultParameter("5000,30000", rangeCnt, fps_range_str);
@@ -2055,7 +2070,6 @@ void initDefaults() {
     metaDataToggle = false;
     expBracketIdx = BRACKETING_IDX_DEFAULT;
     flashIdx = getDefaultParameter("off", numflash, flash);
-    rotation = 0;
     previewRotation = 0;
     zoomIDX = 0;
     videoCodecIDX = 0;
@@ -2139,7 +2153,11 @@ void initDefaults() {
 }
 
 void setDefaultExpGainPreset(ShotParameters &params, int idx) {
-    setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
+    if ( ((int)ARRAY_SIZE(expBracketing) > idx) && (0 <= idx) ) {
+        setExpGainPreset(params, expBracketing[idx].value, false, expBracketing[idx].param_type, shotConfigFlush);
+    } else {
+        printf("setDefaultExpGainPreset: Index (%d) is out of range 0 ~ %u\n", idx, ARRAY_SIZE(expBracketing) - 1);
+    }
 }
 
 void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) {
@@ -2152,7 +2170,7 @@ void setSingleExpGainPreset(ShotParameters &params, int idx, int exp, int gain) 
     if (PARAM_EXP_BRACKET_VALUE_REL == expBracketing[idx].value_type) {
         val.appendFormat("%+d", exp);
     } else {
-        val.appendFormat("%u", (unsigned int) abs);
+        val.appendFormat("%u", (unsigned int) exp);
     }
 
     if (PARAM_EXP_BRACKET_PARAM_PAIR == expBracketing[idx].param_type) {
@@ -2476,9 +2494,9 @@ int functional_menu() {
         snprintf(area1[j++], MAX_SYMBOLS, "&. Dump a preview frame");
         if (stereoMode) {
             snprintf(area1[j++], MAX_SYMBOLS, "_. Auto Convergence mode: %s", autoconvergencemode[AutoConvergenceModeIDX]);
-            snprintf(area1[j++], MAX_SYMBOLS, "^. Manual Convergence Value: %d\n", manualConv);
-            snprintf(area1[j++], MAX_SYMBOLS, "L. Stereo Preview Layout: %s\n", stereoLayout[stereoLayoutIDX]);
-            snprintf(area1[j++], MAX_SYMBOLS, ".  Stereo Capture Layout: %s\n", stereoCapLayout[stereoCapLayoutIDX]);
+            snprintf(area1[j++], MAX_SYMBOLS, "^. Manual Convergence Value: %d", manualConv);
+            snprintf(area1[j++], MAX_SYMBOLS, "L. Stereo Preview Layout: %s", stereoLayout[stereoLayoutIDX]);
+            snprintf(area1[j++], MAX_SYMBOLS, ".  Stereo Capture Layout: %s", stereoCapLayout[stereoCapLayoutIDX]);
         }
         snprintf(area1[j++], MAX_SYMBOLS, "{. 2D Preview in 3D Stereo Mode: %s", params.get(KEY_S3D2D_PREVIEW_MODE));
 
@@ -2494,7 +2512,7 @@ int functional_menu() {
         snprintf(area1[j++], MAX_SYMBOLS, "V. Preview Rotation:       %3d degree", previewRotation );
         snprintf(area1[j++], MAX_SYMBOLS, "5. Picture size:   %4d x %4d - %s",capture_Array[captureSizeIDX]->width, capture_Array[captureSizeIDX]->height,              capture_Array[captureSizeIDX]->name);
         snprintf(area1[j++], MAX_SYMBOLS, "i. ISO mode:       %s", isoMode[iso_mode]);
-        snprintf(area1[j++], MAX_SYMBOLS, ",  Manual gain iso value  = %d\n", manualGain);
+        snprintf(area1[j++], MAX_SYMBOLS, ",  Manual gain iso value  = %d", manualGain);
         snprintf(area1[j++], MAX_SYMBOLS, "u. Capture Mode:   %s", modevalues[capture_mode]);
         snprintf(area1[j++], MAX_SYMBOLS, "k. IPP Mode:       %s", ipp_mode[ippIDX]);
         snprintf(area1[j++], MAX_SYMBOLS, "K. GBCE: %s", gbce[gbceIDX]);
@@ -2535,7 +2553,7 @@ int functional_menu() {
         snprintf(area2[k++], MAX_SYMBOLS, "z. Zoom            %s", zoom[zoomIDX].zoom_description);
         snprintf(area2[k++], MAX_SYMBOLS, "Z. Smooth Zoom     %s", zoom[zoomIDX].zoom_description);
         snprintf(area2[k++], MAX_SYMBOLS, "j. Exposure        %s", exposureMode[exposure_mode]);
-        snprintf(area2[k++], MAX_SYMBOLS, "Q. manual exposure value  =  %d\n", manualExp);
+        snprintf(area2[k++], MAX_SYMBOLS, "Q. manual exposure value  =  %d", manualExp);
         snprintf(area2[k++], MAX_SYMBOLS, "e. Effect:         %s", effectss[effects_mode]);
         snprintf(area2[k++], MAX_SYMBOLS, "w. Scene:          %s", scene[scene_mode]);
         snprintf(area2[k++], MAX_SYMBOLS, "s. Saturation:     %d", saturation);
@@ -3046,8 +3064,11 @@ int functional_menu() {
 
             params.set(KEY_MODE, (modevalues[capture_mode]));
 
-            if ( hardwareActive )
+            if ( hardwareActive ) {
                 camera->setParameters(params.flatten());
+                params = camera->getParameters();
+                getSizeParametersFromCapabilities();
+            }
 
             break;
 
@@ -3413,9 +3434,8 @@ int functional_menu() {
 
         case 'P':
         {
-            int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                          CAMERA_MSG_RAW_IMAGE |
-                          CAMERA_MSG_RAW_BURST;
+            int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
+
             gettimeofday(&picture_start, 0);
             if (!bufferSourceInput.get()) {
                 bufferSourceInput = new BufferSourceInput(false, 1234, camera);
@@ -3425,15 +3445,17 @@ int functional_menu() {
             if (bufferSourceOutputThread.get() &&
                 bufferSourceOutputThread->hasBuffer())
             {
-                CameraParameters temp = params;
-                // Set pipeline to capture 2592x1944 JPEG
-                temp.setPictureFormat(CameraParameters::PIXEL_FORMAT_JPEG);
-                temp.setPictureSize(2592, 1944);
-                if (hardwareActive) camera->setParameters(temp.flatten());
+                bool isJPEG = false;
+                if (hardwareActive) camera->setParameters(params.flatten());
+
+                if (params.getPictureFormat()) {
+                    isJPEG = !strcmp(params.getPictureFormat(),
+                                      CameraParameters::PIXEL_FORMAT_JPEG);
+                }
 
                 if (bufferSourceInput.get()) {
                     buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat]);
+                    bufferSourceInput->setInput(info, pictureFormatArray[pictureFormat], !isJPEG);
                     if (hardwareActive) camera->reprocess(msgType, String8());
                 }
             }
@@ -3777,6 +3799,7 @@ int restartCamera() {
 
   printf("+++Restarting Camera After Error+++\n");
   stopPreview();
+  closeCamera();
 
   if (recordingMode) {
     stopRecording();
@@ -3943,6 +3966,11 @@ int setOutputDirPath(cmd_args_t *cmd_args, int restart_count) {
             dir_name[count] = NULL;
 
             strcat(output_dir_path, dir_name);
+            if (camera_index == 1) {
+                strcat(output_dir_path, SECONDARY_SENSOR);
+            }else if (camera_index == 2) {
+                strcat(output_dir_path, S3D_SENSOR);
+            }
         }
     }
 

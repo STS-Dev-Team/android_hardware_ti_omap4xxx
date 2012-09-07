@@ -88,11 +88,11 @@ static void PrintEffectiveBitrate(OMX_U32 filledLen) {
 
 bool OMXEncoder::OMXCallbackHandler::Handler() {
     MY_LOGV("\n OMXCallbackHandler::Handler \n");
-    TIUTILS::Message msg;
+    Ti::Utils::Message msg;
     volatile int forever = 1;
 
     while(forever) {
-        TIUTILS::MessageQueue::waitForMsg(&mCommandMsgQ, NULL, NULL, -1);
+        Ti::Utils::MessageQueue::waitForMsg(&mCommandMsgQ, NULL, NULL, -1);
         {
             Mutex::Autolock lock(mLock);
             mCommandMsgQ.get(&msg);
@@ -565,7 +565,7 @@ status_t OMXEncoder::start(MetaData *params) {
         return -1;
     }
 
-    // If we are going to reuse the node, then port enable is a MUST 
+    // If we are going to reuse the node, then port enable is a MUST
     // since we are disabling the port during stop
 
     // now transition to exec
@@ -733,7 +733,7 @@ status_t OMXEncoder::deinit() {
 
     //Exit and free ref to callback handling thread
     if ( NULL != mOMXCallbackHandler.get() ) {
-        TIUTILS::Message msg;
+        Ti::Utils::Message msg;
         msg.command = OMXCallbackHandler::COMMAND_EXIT;
         //Clear all messages pending first
         mOMXCallbackHandler->clearCommandQ();

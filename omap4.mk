@@ -17,6 +17,7 @@
 
 PRODUCT_PACKAGES += \
 	camera.omap4 \
-	hwcomposer.omap4
+	hwcomposer.omap4 \
+	libbltsville_gc2d
 
 $(call inherit-product, hardware/ti/omap4xxx/common.mk)

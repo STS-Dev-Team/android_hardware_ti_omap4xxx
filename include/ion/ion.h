@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) Texas Instruments - http://www.ti.com/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,4 @@
  * limitations under the License.
  */
 
-package com.ti.omap.android.cpcam;
-
-import android.graphics.SurfaceTexture;
-
-public class CPCamUtils {
-
-    public static String getMetadata(SurfaceTexture st) {
-        return st.getMetadata();
-    }
-
-}
+#include "../../ion/ion.h"

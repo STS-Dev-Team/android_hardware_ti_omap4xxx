@@ -35,9 +35,13 @@ extern "C" {
 
 }
 
+#include "CameraHal.h"
+
 #define CANCEL_TIMEOUT 5000000 // 5 seconds
 
-namespace android {
+namespace Ti {
+namespace Camera {
+
 /**
  * libjpeg encoder class - uses libjpeg to encode yuv
  */
@@ -109,7 +113,7 @@ class ExifElementsTable {
         bool jpeg_opened;
 };
 
-class Encoder_libjpeg : public Thread {
+class Encoder_libjpeg : public android::Thread {
     /* public member types and variables */
     public:
         struct params {
@@ -136,7 +140,7 @@ class Encoder_libjpeg : public Thread {
                         void* cookie1,
                         void* cookie2,
                         void* cookie3, void *cookie4)
-            : Thread(false), mMainInput(main_jpeg), mThumbnailInput(tn_jpeg), mCb(cb),
+            : android::Thread(false), mMainInput(main_jpeg), mThumbnailInput(tn_jpeg), mCb(cb),
               mCancelEncoding(false), mCookie1(cookie1), mCookie2(cookie2), mCookie3(cookie3), mCookie4(cookie4),
               mType(type), mThumb(NULL) {
             this->incStrong(this);
@@ -149,7 +153,6 @@ class Encoder_libjpeg : public Thread {
 
         virtual bool threadLoop() {
             size_t size = 0;
-            sp<Encoder_libjpeg> tn = NULL;
             if (mThumbnailInput) {
                 // start thread to encode thumbnail
                 mThumb = new Encoder_libjpeg(mThumbnailInput, NULL, NULL, mType, NULL, NULL, NULL, NULL);
@@ -203,12 +206,13 @@ class Encoder_libjpeg : public Thread {
         void* mCookie3;
         void* mCookie4;
         CameraFrame::FrameType mType;
-        sp<Encoder_libjpeg> mThumb;
-        Semaphore mCancelSem;
+        android::sp<Encoder_libjpeg> mThumb;
+        Utils::Semaphore mCancelSem;
 
         size_t encode(params*);
 };
 
-}
+} // namespace Camera
+} // namespace Ti
 
 #endif

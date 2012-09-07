@@ -19,15 +19,14 @@
 
 extern "C" {
 
-#include <ion.h>
-
 //#include <timm_osal_interfaces.h>
 //#include <timm_osal_trace.h>
 
 
 };
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 ///@todo Move these constants to a common header file, preferably in tiler.h
 #define STRIDE_8BIT (4 * 1024)
@@ -119,6 +118,7 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
             buffers[i].ion_fd = mIonFd;
             buffers[i].fd = mmap_fd;
             buffers[i].size = size;
+            buffers[i].format = CameraHal::getPixelFormatConstant(format);
 
         }
     }
@@ -129,7 +129,7 @@ CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const cha
 
 error:
 
-    LOGE("Freeing buffers already allocated after error occurred");
+    CAMHAL_LOGE("Freeing buffers already allocated after error occurred");
     if(buffers)
         freeBufferList(buffers);
 
@@ -225,7 +225,8 @@ status_t MemoryManager::setErrorHandler(ErrorNotifier *errorNotifier)
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti
 
 
 /*--------------------MemoryManager Class ENDS here-----------------------------*/

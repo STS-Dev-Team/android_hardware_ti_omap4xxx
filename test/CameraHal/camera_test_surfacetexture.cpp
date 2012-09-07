@@ -459,7 +459,7 @@ void BufferSourceThread::handleBuffer(sp<GraphicBuffer> &graphic_buffer, uint8_t
     }
 }
 
-void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
+void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format, bool useTapOut) {
     sp<SurfaceTexture> surface_texture;
     sp<ANativeWindow> window_tapin;
     ANativeWindowBuffer* anb;
@@ -491,103 +491,138 @@ void BufferSourceInput::setInput(buffer_info_t bufinfo, const char *format) {
     native_window_set_buffer_count(window_tapin.get(), 1);
     native_window_set_buffers_geometry(window_tapin.get(),
                   aligned_width, aligned_height, bufinfo.format);
-    window_tapin->dequeueBuffer(window_tapin.get(), &anb);
-    mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
-    // copy buffer to input buffer if available
-    if (bufinfo.buf.get()) {
-        bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
-    }
-    if (input) {
-        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
-            int size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
-            memcpy(data, input, size);
-        } else {
-            if (bufinfo.width == aligned_width) {
-                memcpy(data, input, bufinfo.size);
+
+    // if buffer dimensions are the same as the aligned dimensions, then we can
+    // queue the buffer directly to tapin surface. if the dimensions are different
+    // then the aligned ones, then we have to copy the buffer into our own buffer
+    // to make sure the stride of the buffer is correct
+    if ((aligned_width != bufinfo.width) || (aligned_height != bufinfo.height)) {
+        window_tapin->dequeueBuffer(window_tapin.get(), &anb);
+        mapper.lock(anb->handle, GRALLOC_USAGE_SW_READ_RARELY, bounds, &data);
+        // copy buffer to input buffer if available
+        if (bufinfo.buf.get()) {
+            bufinfo.buf->lock(GRALLOC_USAGE_SW_READ_RARELY, &input);
+        }
+        if (input) {
+            if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
+                int size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
+                memcpy(data, input, size);
             } else {
-                // need to copy line by line to adjust for stride
-                uint8_t *dst = (uint8_t*) data;
-                uint8_t *src = (uint8_t*) input;
-                // hrmm this copy only works for NV12 and YV12
-                // copy Y first
-                for (int i = 0; i < aligned_height; i++) {
-                    memcpy(dst, src, bufinfo.width);
-                    dst += aligned_width;
-                    src += bufinfo.width;
-                }
-                // copy UV plane
-                for (int i = 0; i < (aligned_height / 2); i++) {
-                    memcpy(dst, src, bufinfo.width);
-                    dst += aligned_width ;
-                    src += bufinfo.width ;
+                if (bufinfo.width == aligned_width) {
+                    memcpy(data, input, bufinfo.size);
+                } else {
+                    // need to copy line by line to adjust for stride
+                    uint8_t *dst = (uint8_t*) data;
+                    uint8_t *src = (uint8_t*) input;
+                    // hrmm this copy only works for NV12 and YV12
+                    // copy Y first
+                    for (int i = 0; i < aligned_height; i++) {
+                        memcpy(dst, src, bufinfo.width);
+                        dst += aligned_width;
+                        src += bufinfo.width;
+                    }
+                    // copy UV plane
+                    for (int i = 0; i < (aligned_height / 2); i++) {
+                        memcpy(dst, src, bufinfo.width);
+                        dst += aligned_width ;
+                        src += bufinfo.width ;
+                    }
                 }
             }
         }
-    }
-    if (bufinfo.buf.get()) {
-        bufinfo.buf->unlock();
-    }
+        if (bufinfo.buf.get()) {
+            bufinfo.buf->unlock();
+        }
 
-    int fd = -1;
-    char fn[256];
-    fn[0] = 0;
-    sprintf(fn, "/sdcard/img%03d_in.raw", count++);
-    fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
-    if (fd >= 0) {
-        int size = 0;
-        if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
-            size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
+        int fd = -1;
+        char fn[256];
+        fn[0] = 0;
+        sprintf(fn, "/sdcard/img%03d_in.raw", count++);
+        fd = open(fn, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+        if (fd >= 0) {
+            int size = 0;
+            if ( HAL_PIXEL_FORMAT_TI_Y16 == pixformat ) {
+                size = calcBufSize(pixformat, bufinfo.width, bufinfo.height);
+            } else {
+                size = calcBufSize(pixformat, aligned_width, aligned_height);
+            }
+
+            if (size != write(fd, data, size)) {
+                printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
+            }
+            printf("%s: buffer=%08X, size=%d stored at %s\n",
+                        __FUNCTION__, (int)data, size, fn);
+            close(fd);
         } else {
-            size = calcBufSize(pixformat, aligned_width, aligned_height);
+            printf("error opening or creating %s\n", fn);
         }
 
-        if (size != write(fd, data, size)) {
-            printf("Bad Write int a %s error (%d)%s\n", fn, errno, strerror(errno));
-        }
-        printf("%s: buffer=%08X, size=%d stored at %s\n",
-                    __FUNCTION__, (int)data, size, fn);
-        close(fd);
+        mapper.unlock(anb->handle);
     } else {
-        printf("error opening or creating %s\n", fn);
+        window_tapin->perform(window_tapin.get(), NATIVE_WINDOW_ADD_BUFFER_SLOT, &bufinfo.buf);
+        anb = bufinfo.buf->getNativeBuffer();
     }
 
-    mapper.unlock(anb->handle);
     window_tapin->queueBuffer(window_tapin.get(), anb);
-    mCamera->setBufferSource(surface_texture, NULL);
+    mCamera->setBufferSource(surface_texture, useTapOut ? mTapOut->getST() : NULL);
 }
 
-void BufferSourceThread::showMetadata(const String8& metadata) {
+void BufferSourceThread::showMetadata(sp<IMemory> data) {
     static nsecs_t prevTime = 0;
     nsecs_t currTime = 0;
 
-    CameraMetadata meta(metadata);
+    ssize_t offset;
+    size_t size;
 
-    printf("         frame nmber: %d\n", meta.getInt(CameraMetadata::KEY_FRAME_NUMBER));
-    printf("         shot number: %d\n", meta.getInt(CameraMetadata::KEY_SHOT_NUMBER));
+    if ( NULL == data.get() ) {
+        printf("No Metadata!");
+        return;
+    }
+
+    sp<IMemoryHeap> heap = data->getMemory(&offset, &size);
+    camera_metadata_t * meta = static_cast<camera_metadata_t *> (heap->base());
+
+    printf("         frame nmber: %d\n", meta->frame_number);
+    printf("         shot number: %d\n", meta->shot_number);
     printf("         analog gain: %d req: %d range: %d~%d dev: %d err: %d\n",
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_REQ),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MIN),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_MAX),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_DEV),
-           meta.getInt(CameraMetadata::KEY_ANALOG_GAIN_ERROR));
+           meta->analog_gain,
+           meta->analog_gain_req,
+           meta->analog_gain_min,
+           meta->analog_gain_max,
+           meta->analog_gain_dev,
+           meta->analog_gain_error);
     printf("       exposure time: %d req: %d range: %d~%d dev: %d err: %d\n",
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_TIME));
+           meta->exposure_time,
+           meta->exposure_time_req,
+           meta->exposure_time_min,
+           meta->exposure_time_max,
+           meta->exposure_time_dev,
+           meta->exposure_time_error);
     printf("     EV compensation: req: %d dev: %d\n",
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_COMPENSATION_REQ),
-           meta.getInt(CameraMetadata::KEY_EXPOSURE_DEV));
-    printf("            awb gain: %s\n", meta.get(CameraMetadata::KEY_AWB_GAINS));
-    printf("         awb offsets: %s\n", meta.get(CameraMetadata::KEY_AWB_OFFSETS));
-    printf("     awb temperature: %d\n", meta.getInt(CameraMetadata::KEY_AWB_TEMP));
-    printf("   LSC table applied: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE_APPLIED));
-    printf("      LSC table data: %s\n", meta.get(CameraMetadata::KEY_LSC_TABLE));
+           meta->exposure_compensation_req,
+           meta->exposure_dev);
+    printf("            awb gain: %d\n", meta->analog_gain);
+    printf("         awb offsets: %d\n", meta->offset_b);
+    printf("     awb temperature: %d\n", meta->awb_temp);
 
-    currTime = meta.getTime(CameraMetadata::KEY_TIMESTAMP);
+    printf("   LSC table applied: %d\n", meta->lsc_table_applied);
+    if ( meta->lsc_table_applied ) {
+        uint8_t *lscTable = (uint8_t *)meta + meta->lsc_table_offset;
+        printf("LSC Table Size:%d Data[0:7]: %d:%d:%d:%d:%d:%d:%d:%d\n",
+                meta->lsc_table_size,
+                lscTable[0],
+                lscTable[1],
+                lscTable[2],
+                lscTable[3],
+                lscTable[4],
+                lscTable[5],
+                lscTable[6],
+                lscTable[7]);
+    }
+
+    printf("    Faces detected: %d\n", meta->number_of_faces);
+
+    currTime = meta->timestamp;
     printf("      timestamp (ns): %llu\n", currTime);
     if (prevTime) printf("inter-shot time (ms): %llu\n", (currTime - prevTime) / 1000000l);
     prevTime = currTime;

@@ -26,9 +26,10 @@
 #include "ErrorUtils.h"
 
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
-status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters &params,
                                                 BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -69,37 +70,37 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     CAMHAL_LOGVB("Image: cap.mHeight = %d", (int)cap->mHeight);
 
     if ((valstr = params.getPictureFormat()) != NULL) {
-        if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        if (strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
             pixFormat = OMX_COLOR_FormatCbYCrY;
-            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_YUV422I;
-        } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+            mPictureFormatFromClient = android::CameraParameters::PIXEL_FORMAT_YUV422I;
+        } else if(strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
-            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_YUV420SP;
-        } else if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+            mPictureFormatFromClient = android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+        } else if(strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             CAMHAL_LOGDA("RGB565 format selected");
             pixFormat = OMX_COLOR_Format16bitRGB565;
-            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_RGB565;
-        } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_JPEG) == 0) {
+            mPictureFormatFromClient = android::CameraParameters::PIXEL_FORMAT_RGB565;
+        } else if (strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_JPEG) == 0) {
             CAMHAL_LOGDA("JPEG format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingJPEG;
-            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_JPEG;
-        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_JPS) == 0) {
+            mPictureFormatFromClient = android::CameraParameters::PIXEL_FORMAT_JPEG;
+        } else if (strcmp(valstr, TICameraParameters::PIXEL_FORMAT_JPS) == 0) {
             CAMHAL_LOGDA("JPS format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingJPS;
             mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_JPS;
-        } else if (strcmp(valstr, (const char *) TICameraParameters::PIXEL_FORMAT_MPO) == 0) {
+        } else if (strcmp(valstr, TICameraParameters::PIXEL_FORMAT_MPO) == 0) {
             CAMHAL_LOGDA("MPO format selected");
             pixFormat = OMX_COLOR_FormatUnused;
             codingMode = CodingMPO;
             mPictureFormatFromClient = TICameraParameters::PIXEL_FORMAT_MPO;
-        } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
+        } else if (strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
-            mPictureFormatFromClient = CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+            mPictureFormatFromClient = android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
         } else {
             CAMHAL_LOGEA("Invalid format, JPEG format selected as default");
             pixFormat = OMX_COLOR_FormatUnused;
@@ -132,7 +133,8 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     // Set capture format to yuv422i...jpeg encode will
     // be done on A9
     valstr = params.get(TICameraParameters::KEY_CAP_MODE);
-    if ( (valstr && !strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE)) &&
+    if ( (valstr && ( strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE) == 0 ||
+                      strcmp(valstr, (const char *) TICameraParameters::VIDEO_MODE_HQ) == 0 ) ) &&
             (pixFormat == OMX_COLOR_FormatUnused) ) {
         CAMHAL_LOGDA("Capturing in video mode...selecting yuv422i");
         pixFormat = OMX_COLOR_FormatCbYCrY;
@@ -146,7 +148,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     str = params.get(TICameraParameters::KEY_TEMP_BRACKETING);
     if ( ( str != NULL ) &&
-         ( strcmp(str, CameraParameters::TRUE) == 0 ) ) {
+         ( strcmp(str, android::CameraParameters::TRUE) == 0 ) ) {
 
         if ( !mBracketingSet ) {
             mPendingCaptureSettings |= SetExpBracket;
@@ -207,9 +209,9 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     // If TRUE: Flush queue and abort processing before enqueing
     valstr = params.get(TICameraParameters::KEY_FLUSH_SHOT_CONFIG_QUEUE);
     if ( NULL != valstr ) {
-        if ( 0 == strcmp(valstr, CameraParameters::TRUE) ) {
+        if ( 0 == strcmp(valstr, android::CameraParameters::TRUE) ) {
             mFlushShotConfigQueue = true;
-        } else if ( 0 == strcmp(valstr, CameraParameters::FALSE) ) {
+        } else if ( 0 == strcmp(valstr, android::CameraParameters::FALSE) ) {
             mFlushShotConfigQueue = false;
         } else {
             CAMHAL_LOGE("Missing flush shot config parameter. Will use current (%s)",
@@ -217,12 +219,12 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
         }
     }
 
-    if ( params.getInt(CameraParameters::KEY_ROTATION) != -1 )
+    if ( params.getInt(android::CameraParameters::KEY_ROTATION) != -1 )
         {
-        if (params.getInt(CameraParameters::KEY_ROTATION) != (int) mPictureRotation) {
+        if (params.getInt(android::CameraParameters::KEY_ROTATION) != (int) mPictureRotation) {
             mPendingCaptureSettings |= SetRotation;
         }
-        mPictureRotation = params.getInt(CameraParameters::KEY_ROTATION);
+        mPictureRotation = params.getInt(android::CameraParameters::KEY_ROTATION);
         }
     else
         {
@@ -266,13 +268,13 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     CAMHAL_LOGVB("Burst Frames set %d", mBurstFrames);
 
-    if ( ( params.getInt(CameraParameters::KEY_JPEG_QUALITY)  >= MIN_JPEG_QUALITY ) &&
-         ( params.getInt(CameraParameters::KEY_JPEG_QUALITY)  <= MAX_JPEG_QUALITY ) )
+    if ( ( params.getInt(android::CameraParameters::KEY_JPEG_QUALITY)  >= MIN_JPEG_QUALITY ) &&
+         ( params.getInt(android::CameraParameters::KEY_JPEG_QUALITY)  <= MAX_JPEG_QUALITY ) )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_QUALITY) != (int) mPictureQuality) {
+        if (params.getInt(android::CameraParameters::KEY_JPEG_QUALITY) != (int) mPictureQuality) {
             mPendingCaptureSettings |= SetQuality;
         }
-        mPictureQuality = params.getInt(CameraParameters::KEY_JPEG_QUALITY);
+        mPictureQuality = params.getInt(android::CameraParameters::KEY_JPEG_QUALITY);
         }
     else
         {
@@ -282,12 +284,12 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     CAMHAL_LOGVB("Picture Quality set %d", mPictureQuality);
 
-    if ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH)  >= 0 )
+    if ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH)  >= 0 )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH) != (int) mThumbWidth) {
+        if (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH) != (int) mThumbWidth) {
             mPendingCaptureSettings |= SetThumb;
         }
-        mThumbWidth = params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
+        mThumbWidth = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
         }
     else
         {
@@ -298,12 +300,12 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     CAMHAL_LOGVB("Picture Thumb width set %d", mThumbWidth);
 
-    if ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT)  >= 0 )
+    if ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT)  >= 0 )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT) != (int) mThumbHeight) {
+        if (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT) != (int) mThumbHeight) {
             mPendingCaptureSettings |= SetThumb;
         }
-        mThumbHeight = params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+        mThumbHeight = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
         }
     else
         {
@@ -314,13 +316,13 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
 
     CAMHAL_LOGVB("Picture Thumb height set %d", mThumbHeight);
 
-    if ( ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  >= MIN_JPEG_QUALITY ) &&
-         ( params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  <= MAX_JPEG_QUALITY ) )
+    if ( ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  >= MIN_JPEG_QUALITY ) &&
+         ( params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY)  <= MAX_JPEG_QUALITY ) )
         {
-        if (params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY) != (int) mThumbQuality) {
+        if (params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY) != (int) mThumbQuality) {
             mPendingCaptureSettings |= SetThumb;
         }
-        mThumbQuality = params.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
+        mThumbQuality = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
         }
     else
         {
@@ -363,7 +365,7 @@ status_t OMXCameraAdapter::setParametersCapture(const CameraParameters &params,
     return ret;
 }
 
-status_t OMXCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCount)
+status_t OMXCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     status_t ret = NO_ERROR;
     OMXCameraPortParameters *imgCaptureData = NULL;
@@ -385,16 +387,18 @@ status_t OMXCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCou
 
         if ( ret == NO_ERROR )
             {
-            length = imgCaptureData->mBufSize;
+            frame.mLength = imgCaptureData->mBufSize;
+            frame.mWidth = imgCaptureData->mWidth;
+            frame.mHeight = imgCaptureData->mHeight;
+            frame.mAlignment = imgCaptureData->mStride;
+            CAMHAL_LOGDB("getPictureBufferSize: width:%u height:%u alignment:%u length:%u",
+                         frame.mWidth, frame.mHeight, frame.mAlignment, frame.mLength);
             }
         else
             {
             CAMHAL_LOGEB("setFormat() failed 0x%x", ret);
-            length = 0;
             }
         }
-
-    CAMHAL_LOGDB("getPictureBufferSize %d", length);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -564,7 +568,7 @@ status_t OMXCameraAdapter::setVectorStop(bool toPreview)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::initVectorShot()
@@ -620,7 +624,7 @@ status_t OMXCameraAdapter::initVectorShot()
  exit:
     LOG_FUNCTION_NAME_EXIT;
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::setVectorShot(int *evValues,
@@ -724,7 +728,7 @@ status_t OMXCameraAdapter::setVectorShot(int *evValues,
  exit:
     LOG_FUNCTION_NAME_EXIT;
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::setExposureBracketing(int *evValues,
@@ -978,7 +982,7 @@ status_t OMXCameraAdapter::startBracketing(int range)
         }
 
         {
-        Mutex::Autolock lock(mBracketingLock);
+        android::AutoMutex lock(mBracketingLock);
 
         if ( mBracketingEnabled )
             {
@@ -997,7 +1001,7 @@ status_t OMXCameraAdapter::startBracketing(int range)
 
     if ( NO_ERROR == ret )
         {
-        Mutex::Autolock lock(mBracketingLock);
+        android::AutoMutex lock(mBracketingLock);
 
         mBracketingRange = range;
         mBracketingBuffersQueued = new bool[imgCaptureData->mNumBufs];
@@ -1027,7 +1031,7 @@ status_t OMXCameraAdapter::startBracketing(int range)
         ret = startImageCapture(true, cap_params);
         delete cap_params;
             {
-            Mutex::Autolock lock(mBracketingLock);
+            android::AutoMutex lock(mBracketingLock);
 
             if ( NO_ERROR == ret )
                 {
@@ -1053,7 +1057,7 @@ status_t OMXCameraAdapter::stopBracketing()
 
     ret = stopImageCapture();
 
-    Mutex::Autolock lock(mBracketingLock);
+    android::AutoMutex lock(mBracketingLock);
 
     if ( NULL != mBracketingBuffersQueued )
     {
@@ -1080,7 +1084,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mImageCaptureLock);
+    android::AutoMutex lock(mImageCaptureLock);
 
     if(!mCaptureConfigured)
         {
@@ -1111,7 +1115,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
     //During bracketing image capture is already active
     {
-    Mutex::Autolock lock(mBracketingLock);
+    android::AutoMutex lock(mBracketingLock);
     if ( mBracketingEnabled )
         {
         //Stop bracketing, activate normal burst for the remaining images
@@ -1202,7 +1206,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
     if ((ret == NO_ERROR) && (mBurstFramesQueued > 0)) {
         int index = 0;
         int queued = 0;
-        Mutex::Autolock lock(mBurstLock);
+        android::AutoMutex lock(mBurstLock);
 
         if (capParams->mFlushShotConfigQueue) {
             // reset shot queue
@@ -1274,7 +1278,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
         // Capturing command is not needed when capturing in video mode
         // Only need to queue buffers on image ports
-        if (mCapMode != VIDEO_MODE) {
+        if ( ( mCapMode != VIDEO_MODE ) && ( mCapMode != VIDEO_MODE_HQ ) ) {
             OMX_INIT_STRUCT_PTR (&bOMX, OMX_CONFIG_BOOLEANTYPE);
             bOMX.bEnabled = OMX_TRUE;
 
@@ -1323,7 +1327,7 @@ status_t OMXCameraAdapter::startImageCapture(bool bracketing, CachedCaptureParam
 
         }
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
@@ -1331,7 +1335,7 @@ EXIT:
     mCaptureSignalled = false;
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::stopImageCapture()
@@ -1343,7 +1347,7 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mImageCaptureLock);
+    android::AutoMutex lock(mImageCaptureLock);
 
     if (!mCaptureConfigured) {
         //Capture is not ongoing, return from here
@@ -1383,10 +1387,6 @@ status_t OMXCameraAdapter::stopImageCapture()
         }
     }
 
-    // After capture, face detection should be disabled
-    // and application needs to restart face detection
-    stopFaceDetection();
-
     //Wait here for the capture to be done, in worst case timeout and proceed with cleanup
     mCaptureSem.WaitTimeout(OMX_CAPTURE_TIMEOUT);
 
@@ -1399,7 +1399,7 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     // Disable image capture
     // Capturing command is not needed when capturing in video mode
-    if (mCapMode != VIDEO_MODE) {
+    if ( ( mCapMode != VIDEO_MODE ) && ( mCapMode != VIDEO_MODE_HQ ) ) {
         OMX_INIT_STRUCT_PTR (&bOMX, OMX_CONFIG_BOOLEANTYPE);
         bOMX.bEnabled = OMX_FALSE;
         imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
@@ -1425,7 +1425,7 @@ status_t OMXCameraAdapter::stopImageCapture()
     mCaptureSignalled = true; //set this to true if we exited because of timeout
 
     {
-        Mutex::Autolock lock(mFrameCountMutex);
+        android::AutoMutex lock(mFrameCountMutex);
         mFrameCount = 0;
         mFirstFrameCondition.broadcast();
     }
@@ -1448,7 +1448,7 @@ status_t OMXCameraAdapter::stopImageCapture()
 
     flushBuffers(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
@@ -1458,14 +1458,14 @@ EXIT:
     }
 
     {
-        Mutex::Autolock lock(mFrameCountMutex);
+        android::AutoMutex lock(mFrameCountMutex);
         mFrameCount = 0;
         mFirstFrameCondition.broadcast();
     }
 
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::disableImagePort(){
@@ -1481,6 +1481,8 @@ status_t OMXCameraAdapter::disableImagePort(){
     mCaptureConfigured = false;
     imgCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
     imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex]; // for RAW capture
+
+    flushBuffers(OMX_CAMERA_PORT_IMAGE_OUT_IMAGE);
 
     ///Register for Image port Disable event
     ret = RegisterForEvent(mCameraAdapterParameters.mHandleComp,
@@ -1568,7 +1570,7 @@ status_t OMXCameraAdapter::disableImagePort(){
 #endif
 
 EXIT:
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::initInternalBuffers(OMX_U32 portIndex)
@@ -1660,7 +1662,21 @@ status_t OMXCameraAdapter::deinitInternalBuffers(OMX_U32 portIndex)
         return -EINVAL;
     }
 
-    return ErrorUtils::omxToAndroidError(eError);
+    OMX_TI_PARAM_COMPONENTBUFALLOCTYPE bufferalloc;
+    OMX_INIT_STRUCT_PTR (&bufferalloc, OMX_TI_PARAM_COMPONENTBUFALLOCTYPE);
+    bufferalloc.nPortIndex = portIndex;
+    bufferalloc.eBufType = OMX_TI_BufferTypeDefault;
+    bufferalloc.nAllocWidth = 1;
+    bufferalloc.nAllocLines = 1;
+    eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+            (OMX_INDEXTYPE) OMX_TI_IndexParamComponentBufferAllocation,
+            &bufferalloc);
+    if (eError!=OMX_ErrorNone) {
+        CAMHAL_LOGEB("OMX_SetParameter - %x", eError);
+        return -EINVAL;
+    }
+
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
@@ -1865,7 +1881,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
                                 &singlePrevMode);
         if ( OMX_ErrorNone != eError ) {
             CAMHAL_LOGEB("Error while configuring single preview mode 0x%x", eError);
-            ret = ErrorUtils::omxToAndroidError(eError);
+            ret = Utils::ErrorUtils::omxToAndroidError(eError);
         } else {
             CAMHAL_LOGDA("single preview mode configured successfully");
         }
@@ -1883,7 +1899,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(CameraBuffer * bufArr, int num)
     }
 #endif
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
@@ -1898,7 +1914,7 @@ EXIT:
     }
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 }
 status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
@@ -1907,7 +1923,7 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
     status_t ret;
     OMX_ERRORTYPE eError;
     OMXCameraPortParameters * imgRawCaptureData = NULL;
-    Semaphore camSem;
+    Utils::Semaphore camSem;
     OMXCameraPortParameters cap;
 
     imgRawCaptureData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
@@ -2025,4 +2041,5 @@ status_t OMXCameraAdapter::UseBuffersRawCapture(CameraBuffer *bufArr, int num)
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

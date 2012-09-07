@@ -21,7 +21,8 @@
 
 #include "CameraHal.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 struct LUT {
     const char * userDefinition;
@@ -54,8 +55,8 @@ public:
     virtual void removeFramePointers();
 
     //APIs to configure Camera adapter and get the current parameter set
-    virtual status_t setParameters(const CameraParameters& params) = 0;
-    virtual void getParameters(CameraParameters& params)  = 0;
+    virtual status_t setParameters(const android::CameraParameters& params) = 0;
+    virtual void getParameters(android::CameraParameters& params)  = 0;
 
     //API to send a command to the camera
     virtual status_t sendCommand(CameraCommands operation, int value1 = 0, int value2 = 0, int value3 = 0, int value4 = 0 );
@@ -68,6 +69,8 @@ public:
     virtual AdapterState getState();
     //Retrieves the next Adapter state
     virtual AdapterState getNextState();
+
+    virtual status_t setSharedAllocator(camera_request_memory shmem_alloc) { mSharedAllocator = shmem_alloc; return NO_ERROR; };
 
     // Rolls the state machine back to INTIALIZED_STATE from the current state
     virtual status_t rollbackToInitializedState();
@@ -138,7 +141,7 @@ protected:
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
 
     //API to get required picture buffers size with the current configuration in CameraParameters
-    virtual status_t getPictureBufferSize(size_t &length, size_t bufferCount);
+    virtual status_t getPictureBufferSize(CameraFrame &frame, size_t bufferCount);
 
     // Should be implemented by deriving classes in order to start face detection
     // ( if supported )
@@ -164,7 +167,7 @@ protected:
     status_t notifyFocusSubscribers(CameraHalEvent::FocusStatus status);
     status_t notifyShutterSubscribers();
     status_t notifyZoomSubscribers(int zoomIdx, bool targetReached);
-    status_t notifyMetadataSubscribers(sp<CameraMetadataResult> &meta);
+    status_t notifyMetadataSubscribers(android::sp<CameraMetadataResult> &meta);
 
     //Send the frame to subscribers
     status_t sendFrameToSubscribers(CameraFrame *frame);
@@ -181,7 +184,7 @@ protected:
 // private member functions
 private:
     status_t __sendFrameToSubscribers(CameraFrame* frame,
-                                      KeyedVector<int, frame_callback> *subscribers,
+                                      android::KeyedVector<int, frame_callback> *subscribers,
                                       CameraFrame::FrameType frameType);
     status_t rollbackToPreviousState();
 
@@ -215,66 +218,66 @@ protected:
 
 #endif
 
-    mutable Mutex mReturnFrameLock;
+    mutable android::Mutex mReturnFrameLock;
 
     //Lock protecting the Adapter state
-    mutable Mutex mLock;
+    mutable android::Mutex mLock;
     AdapterState mAdapterState;
     AdapterState mNextState;
 
     //Different frame subscribers get stored using these
-    KeyedVector<int, frame_callback> mFrameSubscribers;
-    KeyedVector<int, frame_callback> mSnapshotSubscribers;
-    KeyedVector<int, frame_callback> mFrameDataSubscribers;
-    KeyedVector<int, frame_callback> mVideoSubscribers;
-    KeyedVector<int, frame_callback> mVideoInSubscribers;
-    KeyedVector<int, frame_callback> mImageSubscribers;
-    KeyedVector<int, frame_callback> mRawSubscribers;
-    KeyedVector<int, event_callback> mFocusSubscribers;
-    KeyedVector<int, event_callback> mZoomSubscribers;
-    KeyedVector<int, event_callback> mShutterSubscribers;
-    KeyedVector<int, event_callback> mMetadataSubscribers;
+    android::KeyedVector<int, frame_callback> mFrameSubscribers;
+    android::KeyedVector<int, frame_callback> mSnapshotSubscribers;
+    android::KeyedVector<int, frame_callback> mFrameDataSubscribers;
+    android::KeyedVector<int, frame_callback> mVideoSubscribers;
+    android::KeyedVector<int, frame_callback> mVideoInSubscribers;
+    android::KeyedVector<int, frame_callback> mImageSubscribers;
+    android::KeyedVector<int, frame_callback> mRawSubscribers;
+    android::KeyedVector<int, event_callback> mFocusSubscribers;
+    android::KeyedVector<int, event_callback> mZoomSubscribers;
+    android::KeyedVector<int, event_callback> mShutterSubscribers;
+    android::KeyedVector<int, event_callback> mMetadataSubscribers;
 
     //Preview buffer management data
     CameraBuffer *mPreviewBuffers;
     int mPreviewBufferCount;
     size_t mPreviewBuffersLength;
-    KeyedVector<CameraBuffer *, int> mPreviewBuffersAvailable;
-    mutable Mutex mPreviewBufferLock;
+    android::KeyedVector<CameraBuffer *, int> mPreviewBuffersAvailable;
+    mutable android::Mutex mPreviewBufferLock;
 
     //Snapshot buffer management data
-    KeyedVector<int, int> mSnapshotBuffersAvailable;
-    mutable Mutex mSnapshotBufferLock;
+    android::KeyedVector<int, int> mSnapshotBuffersAvailable;
+    mutable android::Mutex mSnapshotBufferLock;
 
     //Video buffer management data
     CameraBuffer *mVideoBuffers;
-    KeyedVector<CameraBuffer *, int> mVideoBuffersAvailable;
+    android::KeyedVector<CameraBuffer *, int> mVideoBuffersAvailable;
     int mVideoBuffersCount;
     size_t mVideoBuffersLength;
-    mutable Mutex mVideoBufferLock;
+    mutable android::Mutex mVideoBufferLock;
 
     //Image buffer management data
     CameraBuffer *mCaptureBuffers;
-    KeyedVector<CameraBuffer *, int> mCaptureBuffersAvailable;
+    android::KeyedVector<CameraBuffer *, int> mCaptureBuffersAvailable;
     int mCaptureBuffersCount;
     size_t mCaptureBuffersLength;
-    mutable Mutex mCaptureBufferLock;
+    mutable android::Mutex mCaptureBufferLock;
 
     //Metadata buffermanagement
     CameraBuffer *mPreviewDataBuffers;
-    KeyedVector<CameraBuffer *, int> mPreviewDataBuffersAvailable;
+    android::KeyedVector<CameraBuffer *, int> mPreviewDataBuffersAvailable;
     int mPreviewDataBuffersCount;
     size_t mPreviewDataBuffersLength;
-    mutable Mutex mPreviewDataBufferLock;
+    mutable android::Mutex mPreviewDataBufferLock;
 
     //Video input buffer management data (used for reproc pipe)
     CameraBuffer *mVideoInBuffers;
-    KeyedVector<CameraBuffer *, int> mVideoInBuffersAvailable;
-    mutable Mutex mVideoInBufferLock;
+    android::KeyedVector<CameraBuffer *, int> mVideoInBuffersAvailable;
+    mutable android::Mutex mVideoInBufferLock;
 
-    TIUTILS::MessageQueue mFrameQ;
-    TIUTILS::MessageQueue mAdapterQ;
-    mutable Mutex mSubscriberLock;
+    Utils::MessageQueue mFrameQ;
+    Utils::MessageQueue mAdapterQ;
+    mutable android::Mutex mSubscriberLock;
     ErrorNotifier *mErrorNotifier;
     release_image_buffers_callback mReleaseImageBuffersCallback;
     end_image_capture_callback mEndImageCaptureCallback;
@@ -282,18 +285,22 @@ protected:
     void *mEndCaptureData;
     bool mRecording;
 
+    camera_request_memory mSharedAllocator;
+
     uint32_t mFramesWithDucati;
     uint32_t mFramesWithDisplay;
     uint32_t mFramesWithEncoder;
 
 #ifdef CAMERAHAL_DEBUG
-    KeyedVector<int, bool> mBuffersWithDucati;
+    android::KeyedVector<int, bool> mBuffersWithDucati;
 #endif
 
-    KeyedVector<void *, CameraFrame *> mFrameQueue;
+    android::KeyedVector<void *, CameraFrame *> mFrameQueue;
 };
 
-}
+} // namespace Camera
+} // namespace Ti
+
 #endif //BASE_CAMERA_ADAPTER_H
 
 

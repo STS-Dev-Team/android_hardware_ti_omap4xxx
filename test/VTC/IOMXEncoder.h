@@ -104,7 +104,7 @@ private:
             return ret;
         }
 
-        status_t put(TIUTILS::Message* msg) {
+        status_t put(Ti::Utils::Message* msg) {
             Mutex::Autolock lock(mLock);
             return mCommandMsgQ.put(msg);
         }
@@ -121,7 +121,7 @@ private:
 
     private:
         bool Handler();
-        TIUTILS::MessageQueue mCommandMsgQ;
+        Ti::Utils::MessageQueue mCommandMsgQ;
         OMXEncoder* mOMXEncoder;
         Mutex mLock;
     };
@@ -166,7 +166,7 @@ struct OMXEncoderObserver : public BnOMXObserver {
 
     // from IOMXObserver
     virtual void onMessage(const omx_message &omx_msg) {
-        TIUTILS::Message msg;
+        Ti::Utils::Message msg;
         omx_message *ptemp_omx_msg;
         // TODO: Check on the memory scope of below allocation
         ptemp_omx_msg = (omx_message *)malloc(sizeof(omx_message));

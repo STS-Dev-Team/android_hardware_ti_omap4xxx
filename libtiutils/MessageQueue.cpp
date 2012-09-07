@@ -20,7 +20,7 @@
 #include <sys/types.h>
 #include <sys/poll.h>
 #include <unistd.h>
-#include <Errors.h>
+#include <utils/Errors.h>
 
 
 
@@ -29,7 +29,8 @@
 
 #include "MessageQueue.h"
 
-namespace TIUTILS {
+namespace Ti {
+namespace Utils {
 
 /**
    @brief Constructor for the message queue class
@@ -414,4 +415,5 @@ android::status_t MessageQueue::waitForMsg(MessageQueue *queue1, MessageQueue *q
     return ret;
     }
 
-};
+} // namespace Utils
+} // namespace Ti

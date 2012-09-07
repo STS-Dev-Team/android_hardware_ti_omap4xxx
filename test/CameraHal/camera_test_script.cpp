@@ -170,6 +170,7 @@ int manC = 0;
 extern int manualConv ;
 extern int manualConvMin ;
 extern int manualConvMax ;
+int iterationCount = 0;
 
 void trim_script_cmd(char *cmd) {
     char *nl, *cr;
@@ -180,6 +181,15 @@ void trim_script_cmd(char *cmd) {
             *c = *(c+1);
         }
     }
+
+    // Iteration Counter
+    while ( NULL != (nl = strchr(cmd, '\n')) || NULL != (nl = strchr(cmd, '\c\r'))) {
+            iterationCount ++;
+            printf("\n==============\n");
+            printf("IterationCount: %d", iterationCount);
+            printf("\n==============\n");
+            break;
+            }
 
     // then remove all single line feed symbols
     while ( NULL != (nl = strchr(cmd, '\n'))) {
@@ -426,6 +436,9 @@ int execute_functional_script(char *script) {
                         resC = strtok(NULL, "x");
                         heightC = atoi(resC);
                         params.setPictureSize(widthC,heightC);
+                    a = checkSupportedParamScriptResol(capture_Array, numcaptureSize,
+                                                       widthC, heightC, &resol_index);
+                    if (a > -1) captureSizeIDX = resol_index;
                     }
 
                     if ( hardwareActive ) {
@@ -754,7 +767,7 @@ int execute_functional_script(char *script) {
             case 'u':
                 // HQ should always be in ldc-nsf
                 // if not HQ, then return the ipp to its previous state
-                if( !strcmp(modevalues[capture_mode], "high-quality") ) {
+                if( !strcmp((cmd + 1), "high-quality") ) {
                     ippIDX_old = ippIDX;
                     ippIDX = 3;
                     params.set(KEY_IPP, ipp_mode[ippIDX]);
@@ -918,11 +931,12 @@ int execute_functional_script(char *script) {
                 break;
 
             case 'i':
-                iso_mode = atoi(cmd + 1);
-                if (iso_mode < numisoMode) {
-                    params.set(KEY_ISO, isoMode[iso_mode]);
+                a = checkSupportedParamScript(isoMode, numisoMode, cmd);
+                if (a > -1) {
+                    params.set(KEY_ISO, (cmd + 1));
                 } else {
-                    printf("\nNot supported parameter %s for iso mode from sensor %d\n\n", cmd + 1, camera_index);
+                    printf("\nNot supported parameter %s for iso from sensor %d\n\n", cmd + 1, camera_index);
+                    return -1;
                 }
 
                 if ( hardwareActive )
@@ -1208,9 +1222,7 @@ int execute_functional_script(char *script) {
 
             case 'P':
             {
-                int msgType = CAMERA_MSG_COMPRESSED_IMAGE |
-                              CAMERA_MSG_RAW_IMAGE |
-                              CAMERA_MSG_RAW_BURST;
+                int msgType = CAMERA_MSG_COMPRESSED_IMAGE;
                 gettimeofday(&picture_start, 0);
                 if (!bufferSourceInput.get()) {
                     bufferSourceInput = new BufferSourceInput(false, 1234, camera);
@@ -1220,15 +1232,17 @@ int execute_functional_script(char *script) {
                 if (bufferSourceOutputThread.get() &&
                     bufferSourceOutputThread->hasBuffer())
                 {
-                    CameraParameters temp = params;
-                    // Set pipeline to capture 2592x1944 JPEG
-                    temp.setPictureFormat(CameraParameters::PIXEL_FORMAT_JPEG);
-                    temp.setPictureSize(2592, 1944);
-                    if (hardwareActive) camera->setParameters(temp.flatten());
+                    bool isJPEG = false;
+                    if (hardwareActive) camera->setParameters(params.flatten());
+
+                    if (params.getPictureFormat()) {
+                        isJPEG = !strcmp(params.getPictureFormat(),
+                                          CameraParameters::PIXEL_FORMAT_JPEG);
+                    }
 
                     if (bufferSourceInput.get()) {
                         buffer_info_t info = bufferSourceOutputThread->popBuffer();
-                        bufferSourceInput->setInput(info, params.getPictureFormat());
+                        bufferSourceInput->setInput(info, params.getPictureFormat(), !isJPEG);
                         if (hardwareActive) camera->reprocess(msgType, String8());
                     }
                 }
@@ -1476,6 +1490,17 @@ int checkSupportedParamScriptLayout(char **array, int size, char *param, int *in
 int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num) {
     for (int i=0; i<size; i++) {
         if (strcmp((param + 1), array[i]->name) == 0) {
+            *num = i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int checkSupportedParamScriptResol(param_Array **array, int size,
+                                   int width, int height, int *num) {
+    for (int i=0; i<size; i++) {
+        if ((width == array[i]->width) && (height == array[i]->height)) {
             *num = i;
             return 0;
         }

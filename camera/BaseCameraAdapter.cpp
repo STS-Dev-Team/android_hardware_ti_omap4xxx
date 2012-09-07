@@ -18,7 +18,8 @@
 
 const int EVENT_MASK = 0xffff;
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const LUT cameraCommandsUserToHAL[] = {
     { "CAMERA_START_PREVIEW",                   CameraAdapter::CAMERA_START_PREVIEW },
@@ -87,6 +88,8 @@ BaseCameraAdapter::BaseCameraAdapter()
 
     mAdapterState = INTIALIZED_STATE;
 
+    mSharedAllocator = NULL;
+
 #if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
     mStartFocus.tv_sec = 0;
     mStartFocus.tv_usec = 0;
@@ -100,7 +103,7 @@ BaseCameraAdapter::~BaseCameraAdapter()
 {
      LOG_FUNCTION_NAME;
 
-     Mutex::Autolock lock(mSubscriberLock);
+     android::AutoMutex lock(mSubscriberLock);
 
      mFrameSubscribers.clear();
      mImageSubscribers.clear();
@@ -168,7 +171,7 @@ status_t BaseCameraAdapter::setErrorHandler(ErrorNotifier *errorNotifier)
 
 void BaseCameraAdapter::enableMsgType(int32_t msgs, frame_callback callback, event_callback eventCb, void* cookie)
 {
-    Mutex::Autolock lock(mSubscriberLock);
+    android::AutoMutex lock(mSubscriberLock);
 
     LOG_FUNCTION_NAME;
 
@@ -228,7 +231,7 @@ void BaseCameraAdapter::enableMsgType(int32_t msgs, frame_callback callback, eve
 
 void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
 {
-    Mutex::Autolock lock(mSubscriberLock);
+    android::AutoMutex lock(mSubscriberLock);
 
     LOG_FUNCTION_NAME;
 
@@ -299,7 +302,7 @@ void BaseCameraAdapter::disableMsgType(int32_t msgs, void* cookie)
 void BaseCameraAdapter::addFramePointers(CameraBuffer *frameBuf, void *buf)
 {
   unsigned int *pBuf = (unsigned int *)buf;
-  Mutex::Autolock lock(mSubscriberLock);
+  android::AutoMutex lock(mSubscriberLock);
 
   if ((frameBuf != NULL) && ( pBuf != NULL) )
     {
@@ -315,7 +318,7 @@ void BaseCameraAdapter::addFramePointers(CameraBuffer *frameBuf, void *buf)
 
 void BaseCameraAdapter::removeFramePointers()
 {
-  Mutex::Autolock lock(mSubscriberLock);
+  android::AutoMutex lock(mSubscriberLock);
 
   int size = mFrameQueue.size();
   CAMHAL_LOGVB("Removing %d Frames = ", size);
@@ -342,7 +345,7 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
 
     if ( NO_ERROR == res)
         {
-        Mutex::Autolock lock(mReturnFrameLock);
+        android::AutoMutex lock(mReturnFrameLock);
 
         refCount = getFrameRefCount(frameBuf,  frameType);
 
@@ -391,8 +394,8 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
                ((CameraFrame::PREVIEW_FRAME_SYNC == frameType) ||
                  (CameraFrame::SNAPSHOT_FRAME == frameType)))
                 {
-                LOGE("Buffer already with Ducati!! 0x%x", frameBuf);
-                for(int i=0;i<mBuffersWithDucati.size();i++) LOGE("0x%x", mBuffersWithDucati.keyAt(i));
+                CAMHAL_LOGE("Buffer already with Ducati!! 0x%x", frameBuf);
+                for(int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGE("0x%x", mBuffersWithDucati.keyAt(i));
                 }
             mBuffersWithDucati.add((int)camera_buffer_get_omx_ptr(frameBuf),1);
 #endif
@@ -428,7 +431,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
                 if ( ret == NO_ERROR )
                     {
-                    Mutex::Autolock lock(mPreviewBufferLock);
+                    android::AutoMutex lock(mPreviewBufferLock);
                     mPreviewBuffers = desc->mBuffers;
                     mPreviewBuffersLength = desc->mLength;
                     mPreviewBuffersAvailable.clear();
@@ -482,7 +485,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
                     if ( ret == NO_ERROR )
                         {
-                        Mutex::Autolock lock(mPreviewDataBufferLock);
+                        android::AutoMutex lock(mPreviewDataBufferLock);
                         mPreviewDataBuffers = desc->mBuffers;
                         mPreviewDataBuffersLength = desc->mLength;
                         mPreviewDataBuffersAvailable.clear();
@@ -535,7 +538,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
                 if ( ret == NO_ERROR )
                     {
-                    Mutex::Autolock lock(mCaptureBufferLock);
+                    android::AutoMutex lock(mCaptureBufferLock);
                     mCaptureBuffers = desc->mBuffers;
                     mCaptureBuffersLength = desc->mLength;
                     mCaptureBuffersAvailable.clear();
@@ -586,7 +589,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
             }
 
             if (ret == NO_ERROR) {
-                Mutex::Autolock lock(mVideoInBufferLock);
+                android::AutoMutex lock(mVideoInBufferLock);
                 mVideoInBuffers = desc->mBuffers;
                 mVideoInBuffersAvailable.clear();
                 for (uint32_t i = 0 ; i < desc->mMaxQueueable ; i++) {
@@ -1002,7 +1005,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
                  if ( NULL != frame )
                      {
-                     ret = getPictureBufferSize(frame->mLength, value2);
+                     ret = getPictureBufferSize(*frame, value2);
                      }
                  else
                      {
@@ -1080,7 +1083,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
              }
 
              if ( ret == NO_ERROR ) {
-                 Mutex::Autolock lock(mVideoBufferLock);
+                 android::AutoMutex lock(mVideoBufferLock);
                  mVideoBuffers = desc->mBuffers;
                  mVideoBuffersLength = desc->mLength;
                  mVideoBuffersAvailable.clear();
@@ -1090,7 +1093,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
                  // initial ref count for undeqeueued buffers is 1 since buffer provider
                  // is still holding on to it
                  for ( uint32_t i = desc->mMaxQueueable ; i < desc->mCount ; i++ ) {
-                     mVideoBuffersAvailable.add(&mPreviewBuffers[i], 1);
+                     mVideoBuffersAvailable.add(&mVideoBuffers[i], 1);
                  }
              }
 
@@ -1255,7 +1258,7 @@ status_t BaseCameraAdapter::notifyZoomSubscribers(int zoomIdx, bool targetReache
     return ret;
 }
 
-status_t BaseCameraAdapter::notifyMetadataSubscribers(sp<CameraMetadataResult> &meta)
+status_t BaseCameraAdapter::notifyMetadataSubscribers(android::sp<CameraMetadataResult> &meta)
 {
     event_callback eventCb;
     CameraHalEvent metaEvent;
@@ -1360,7 +1363,7 @@ status_t BaseCameraAdapter::sendFrameToSubscribers(CameraFrame *frame)
 }
 
 status_t BaseCameraAdapter::__sendFrameToSubscribers(CameraFrame* frame,
-                                                     KeyedVector<int, frame_callback> *subscribers,
+                                                     android::KeyedVector<int, frame_callback> *subscribers,
                                                      CameraFrame::FrameType frameType)
 {
     size_t refCount = 0;
@@ -1493,36 +1496,36 @@ int BaseCameraAdapter::getFrameRefCount(CameraBuffer * frameBuf, CameraFrame::Fr
         case CameraFrame::IMAGE_FRAME:
         case CameraFrame::RAW_FRAME:
                 {
-                Mutex::Autolock lock(mCaptureBufferLock);
+                android::AutoMutex lock(mCaptureBufferLock);
                 res = mCaptureBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::SNAPSHOT_FRAME:
                 {
-                Mutex::Autolock lock(mSnapshotBufferLock);
+                android::AutoMutex lock(mSnapshotBufferLock);
                 res = mSnapshotBuffersAvailable.valueFor( ( unsigned int ) frameBuf );
                 }
             break;
         case CameraFrame::PREVIEW_FRAME_SYNC:
                 {
-                Mutex::Autolock lock(mPreviewBufferLock);
+                android::AutoMutex lock(mPreviewBufferLock);
                 res = mPreviewBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::FRAME_DATA_SYNC:
                 {
-                Mutex::Autolock lock(mPreviewDataBufferLock);
+                android::AutoMutex lock(mPreviewDataBufferLock);
                 res = mPreviewDataBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::VIDEO_FRAME_SYNC:
                 {
-                Mutex::Autolock lock(mVideoBufferLock);
+                android::AutoMutex lock(mVideoBufferLock);
                 res = mVideoBuffersAvailable.valueFor(frameBuf );
                 }
             break;
         case CameraFrame::REPROCESS_INPUT_FRAME: {
-            Mutex::Autolock lock(mVideoInBufferLock);
+            android::AutoMutex lock(mVideoInBufferLock);
             res = mVideoInBuffersAvailable.valueFor(frameBuf );
         }
             break;
@@ -1545,36 +1548,36 @@ void BaseCameraAdapter::setFrameRefCount(CameraBuffer * frameBuf, CameraFrame::F
         case CameraFrame::IMAGE_FRAME:
         case CameraFrame::RAW_FRAME:
                 {
-                Mutex::Autolock lock(mCaptureBufferLock);
+                android::AutoMutex lock(mCaptureBufferLock);
                 mCaptureBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::SNAPSHOT_FRAME:
                 {
-                Mutex::Autolock lock(mSnapshotBufferLock);
+                android::AutoMutex lock(mSnapshotBufferLock);
                 mSnapshotBuffersAvailable.replaceValueFor(  ( unsigned int ) frameBuf, refCount);
                 }
             break;
         case CameraFrame::PREVIEW_FRAME_SYNC:
                 {
-                Mutex::Autolock lock(mPreviewBufferLock);
+                android::AutoMutex lock(mPreviewBufferLock);
                 mPreviewBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::FRAME_DATA_SYNC:
                 {
-                Mutex::Autolock lock(mPreviewDataBufferLock);
+                android::AutoMutex lock(mPreviewDataBufferLock);
                 mPreviewDataBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::VIDEO_FRAME_SYNC:
                 {
-                Mutex::Autolock lock(mVideoBufferLock);
+                android::AutoMutex lock(mVideoBufferLock);
                 mVideoBuffersAvailable.replaceValueFor(frameBuf, refCount);
                 }
             break;
         case CameraFrame::REPROCESS_INPUT_FRAME: {
-            Mutex::Autolock lock(mVideoInBufferLock);
+            android::AutoMutex lock(mVideoInBufferLock);
             mVideoInBuffersAvailable.replaceValueFor(frameBuf, refCount);
         }
             break;
@@ -1592,7 +1595,7 @@ status_t BaseCameraAdapter::startVideoCapture()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mVideoBufferLock);
+    android::AutoMutex lock(mVideoBufferLock);
 
     //If the capture is already ongoing, return from here.
     if ( mRecording )
@@ -1807,7 +1810,7 @@ status_t BaseCameraAdapter::getFrameDataSize(size_t &dataFrameSize, size_t buffe
     return ret;
 }
 
-status_t BaseCameraAdapter::getPictureBufferSize(size_t &length, size_t bufferCount)
+status_t BaseCameraAdapter::getPictureBufferSize(CameraFrame &frame, size_t bufferCount)
 {
     status_t ret = NO_ERROR;
 
@@ -2079,6 +2082,14 @@ status_t BaseCameraAdapter::setState(CameraCommands operation)
                     CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->BRACKETING_STATE event = %s",
                             printState);
                     mNextState = BRACKETING_STATE;
+                    break;
+
+                case CAMERA_USE_BUFFERS_VIDEO_CAPTURE:
+                    //Hadnle this state for raw capture path.
+                    //Just need to keep the same state.
+                    //The next CAMERA_START_IMAGE_CAPTURE command will assign the mNextState.
+                    CAMHAL_LOGDB("Adapter state switch LOADED_CAPTURE_STATE->LOADED_CAPTURE_STATE event = %s",
+                            printState);
                     break;
 
                 default:
@@ -2564,7 +2575,7 @@ CameraAdapter::AdapterState BaseCameraAdapter::getState()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -2577,7 +2588,7 @@ CameraAdapter::AdapterState BaseCameraAdapter::getNextState()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -2669,7 +2680,8 @@ extern "C" status_t CameraAdapter_Capabilities(
 
 //-----------------------------------------------------------------------------
 
-};
+} // namespace Camera
+} // namespace Ti
 
 /*--------------------Camera Adapter Class ENDS here-----------------------------*/
 

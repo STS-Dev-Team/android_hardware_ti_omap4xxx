@@ -21,25 +21,26 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 static int getANWFormat(const char* parameters_format)
 {
     int format = HAL_PIXEL_FORMAT_TI_NV12;
 
     if (parameters_format != NULL) {
-        if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             CAMHAL_LOGDA("CbYCrY format selected");
             // TODO(XXX): not defined yet
             format = -1;
-        } else if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+        } else if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             format = HAL_PIXEL_FORMAT_TI_NV12;
-        } else if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+        } else if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             CAMHAL_LOGDA("RGB565 format selected");
             // TODO(XXX): not defined yet
             format = -1;
-        } else if (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
+        } else if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
             format = HAL_PIXEL_FORMAT_TI_Y16;
         } else {
             CAMHAL_LOGDA("Invalid format, NV12 format selected as default");
@@ -74,13 +75,13 @@ static const char* getFormatFromANW(int format)
     switch (format) {
         case HAL_PIXEL_FORMAT_TI_NV12:
             // Assuming NV12 1D is RAW or Image frame
-            return CameraParameters::PIXEL_FORMAT_YUV420SP;
+            return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
         case HAL_PIXEL_FORMAT_TI_Y16:
-            return CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
+            return android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
         default:
             break;
     }
-    return CameraParameters::PIXEL_FORMAT_YUV420SP;
+    return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
 }
 
 static CameraFrame::FrameType formatToOutputFrameType(const char* format) {
@@ -121,6 +122,8 @@ BufferSourceAdapter::BufferSourceAdapter() : mBufferCount(0)
 BufferSourceAdapter::~BufferSourceAdapter()
 {
     LOG_FUNCTION_NAME;
+
+    android::AutoMutex lock(mLock);
 
     destroy();
 
@@ -299,7 +302,7 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
     int i = -1;
     const int lnumBufs = numBufs;
     int undequeued = 0;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
 
     mBuffers = new CameraBuffer [lnumBufs];
     memset (mBuffers, 0, sizeof(CameraBuffer) * lnumBufs);
@@ -310,6 +313,7 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
 
     int pixFormat = getANWFormat(format);
     int usage = getUsageFromANW(pixFormat);
+    mPixelFormat = CameraHal::getPixelFormatConstant(format);
 
     // Set gralloc usage bits for window.
     err = mBufferSource->set_usage(mBufferSource, usage);
@@ -382,14 +386,15 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
         CAMHAL_LOGDB("got handle %p", handle);
         mBuffers[i].opaque = (void *)handle;
         mBuffers[i].type = CAMERA_BUFFER_ANW;
+        mBuffers[i].format = mPixelFormat;
         mFramesWithCameraAdapterMap.add(handle, i);
 
-        bytes = getBufSize(format, width, height);
+        bytes = CameraHal::calculateBufferSize(format, width, height);
     }
 
     for( i = 0;  i < mBufferCount-undequeued; i++ ) {
         void *y_uv[2];
-        Rect bounds(width, height);
+        android::Rect bounds(width, height);
 
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
         mBufferSource->lock_buffer(mBufferSource, handle);
@@ -401,7 +406,7 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
     for(i = (mBufferCount-undequeued); i >= 0 && i < mBufferCount; i++) {
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
         void *y_uv[2];
-        Rect bounds(width, height);
+        android::Rect bounds(width, height);
 
         mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
         mBuffers[i].mapped = y_uv[0];
@@ -419,7 +424,6 @@ CameraBuffer* BufferSourceAdapter::allocateBufferList(int width, int height, con
         mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) mBuffers[i].opaque);
     }
 
-    mPixelFormat = getPixFormatConstant(format);
     mFrameWidth = width;
     mFrameHeight = height;
     mBufferSourceDirection = BUFFER_SOURCE_TAP_OUT;
@@ -456,7 +460,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     status_t err;
     const int lnumBufs = 1;
     int formatSource;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
     buffer_handle_t *handle;
 
     // TODO(XXX): Only supporting one input buffer at a time right now
@@ -489,7 +493,7 @@ CameraBuffer* BufferSourceAdapter::getBufferList(int *num) {
     // lock buffer
     {
         void *y_uv[2];
-        Rect bounds(mBuffers[0].width, mBuffers[0].height);
+        android::Rect bounds(mBuffers[0].width, mBuffers[0].height);
         mapper.lock(*handle, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
         mBuffers[0].mapped = y_uv[0];
     }
@@ -586,7 +590,7 @@ int BufferSourceAdapter::getFd()
 status_t BufferSourceAdapter::returnBuffersToWindow()
 {
     status_t ret = NO_ERROR;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
 
     //Give the buffers back to display here -  sort of free it
     if (mBufferSource) {
@@ -632,7 +636,7 @@ int BufferSourceAdapter::freeBufferList(CameraBuffer * buflist)
 
     status_t ret = NO_ERROR;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     if (mBufferSourceDirection == BUFFER_SOURCE_TAP_OUT) returnBuffersToWindow();
 
@@ -669,14 +673,14 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
     status_t ret = NO_ERROR;
     buffer_handle_t *handle = NULL;
     int i;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+
+    android::AutoMutex lock(mLock);
 
     if (!mBuffers || !frame->mBuffer) {
         CAMHAL_LOGEA("Adapter sent BufferSourceAdapter a NULL frame?");
         return;
     }
-
-    Mutex::Autolock lock(mLock);
 
     for ( i = 0; i < mBufferCount; i++ ) {
         if (frame->mBuffer == &mBuffers[i]) {
@@ -695,10 +699,16 @@ void BufferSourceAdapter::handleFrameCallback(CameraFrame* frame)
         return;
     }
 
-    frame->mMetaData.setTime(CameraMetadata::KEY_TIMESTAMP, frame->mTimestamp);
-    ret = mBufferSource->set_metadata(mBufferSource, frame->mMetaData.flatten().string());
-    if (ret != 0) {
-        CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+    if ( NULL != frame->mMetaData.get() ) {
+        camera_memory_t *extMeta = frame->mMetaData->getExtendedMetadata();
+        if ( NULL != extMeta ) {
+            camera_metadata_t *metaData = static_cast<camera_metadata_t *> (extMeta->data);
+            metaData->timestamp = frame->mTimestamp;
+            ret = mBufferSource->set_metadata(mBufferSource, extMeta);
+            if (ret != 0) {
+                CAMHAL_LOGE("Surface::set_metadata returned error %d", ret);
+            }
+        }
     }
 
     // unlock buffer before enqueueing
@@ -723,11 +733,13 @@ bool BufferSourceAdapter::handleFrameReturn()
     int i = 0;
     int stride;  // dummy variable to get stride
     CameraFrame::FrameType type;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
     void *y_uv[2];
-    Rect bounds(mFrameWidth, mFrameHeight);
+    android::Rect bounds(mFrameWidth, mFrameHeight);
 
-    if ( NULL == mBufferSource ) {
+    android::AutoMutex lock(mLock);
+
+    if ( (NULL == mBufferSource) || (NULL == mBuffers) ) {
         return false;
     }
 
@@ -787,6 +799,7 @@ void BufferSourceAdapter::frameCallback(CameraFrame* caFrame)
 
 /*--------------------BufferSourceAdapter Class ENDS here-----------------------------*/
 
-};
+} // namespace Camera
+} // namespace Ti
 
 #endif

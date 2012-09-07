@@ -600,6 +600,43 @@ static int rgz_in_valid_hwc_layer(hwc_layer_t *layer)
     return 1;
 }
 
+/* Reset dirty region data and state */
+static void rgz_delete_region_data(rgz_t *rgz){
+    if (!rgz)
+        return;
+    if (rgz->hregions)
+        free(rgz->hregions);
+    rgz->hregions = NULL;
+    rgz->nhregions = 0;
+    rgz->state &= ~RGZ_REGION_DATA;
+}
+
+static void rgz_handle_dirty_region(rgz_t *rgz, int reset_counters)
+{
+    unsigned int i;
+    for (i = 0; i < rgz->rgz_layerno; i++) {
+        rgz_layer_t *rgz_layer = &rgz->rgz_layers[i];
+        void *new_handle;
+
+        /*
+         * We don't care about the handle for background and layers with the
+         * clear fb hint, but we want to maintain a layer state for dirty
+         * region handling.
+         */
+        if (i == 0 || rgz_layer->buffidx == -1)
+            new_handle = (void*)0x1;
+        else
+            new_handle = (void*)rgz_layer->hwc_layer->handle;
+
+        if (reset_counters || new_handle != rgz_layer->dirty_hndl) {
+            rgz_layer->dirty_count = RGZ_NUM_FB;
+            rgz_layer->dirty_hndl = new_handle;
+        } else
+            rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
+
+    }
+}
+
 static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
 {
     hwc_layer_t *layers = p->data.hwc.layers;
@@ -619,6 +656,15 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
      */
     int l, memidx = 0;
     for (l = 0; l < layerno; l++) {
+        /*
+         * Workaround: If a NV12 layer is present in the list, don't even try
+         * to blit. There is a performance degradation while playing video and
+         * using GC at the same time.
+         */
+        IMG_native_handle_t *handle = (IMG_native_handle_t *)layers[l].handle;
+        if (!(layers[l].flags & HWC_SKIP_LAYER) && handle && is_NV12(handle->iFormat))
+            return -1;
+
         if (layers[l].compositionType == HWC_OVERLAY)
             memidx++;
     }
@@ -631,11 +677,6 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
      */
     rgz_layer_t *rgz_layer = &rgz->rgz_layers[0];
     rgz_layer->hwc_layer = &bg_layer;
-    if (!rgz_layer->dirty_hndl) {
-        rgz_layer->dirty_hndl = (void*)0x1;
-        rgz_layer->dirty_count = RGZ_NUM_FB;
-    } else
-        rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
 
     for (l = 0; l < layerno; l++) {
         if (layers[l].compositionType == HWC_FRAMEBUFFER) {
@@ -645,12 +686,6 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                 rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
                 rgz_layer->hwc_layer = &layers[l];
                 rgz_layer->buffidx = memidx++;
-                if (rgz_layer->hwc_layer->handle != rgz_layer->dirty_hndl) {
-                    rgz_layer->dirty_count = RGZ_NUM_FB;
-                    rgz_layer->dirty_hndl = (void*)rgz_layer->hwc_layer->handle;
-                } else
-                     rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
-
                 possible_blit++;
             }
             continue;
@@ -666,15 +701,6 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
                 rgz_layer_t *rgz_layer = &rgz->rgz_layers[possible_blit+1];
                 rgz_layer->buffidx = -1;
                 rgz_layer->hwc_layer = &layers[l];
-                /*
-                 * We don't care about the handle but we want to maintain a layer state for
-                 * dirty region handling
-                 */
-                if (!rgz_layer->dirty_hndl) {
-                    rgz_layer->dirty_hndl = (void*)0x1;
-                    rgz_layer->dirty_count = RGZ_NUM_FB;
-                } else
-                    rgz_layer->dirty_count -= rgz_layer->dirty_count ? 1 : 0;
                 possible_blit++;
             }
         }
@@ -684,8 +710,19 @@ static int rgz_in_hwccheck(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
+    unsigned int blit_layers = possible_blit + 1; /* Account for background layer */
+    int reset_dirty_counters = rgz->rgz_layerno != blit_layers ? 1 : 0;
+    /*
+     * The layers we are going to blit differ in number from the previous frame,
+     * we can't trust anymore the region data, calculate it again
+     */
+    if (reset_dirty_counters)
+        rgz_delete_region_data(rgz);
+
     rgz->state |= RGZ_STATE_INIT;
-    rgz->rgz_layerno = possible_blit + 1; /* Account for background layer */
+    rgz->rgz_layerno = blit_layers;
+
+    rgz_handle_dirty_region(rgz, reset_dirty_counters);
 
     return RGZ_ALL;
 }
@@ -702,12 +739,10 @@ static int rgz_in_hwc(rgz_in_params_t *p, rgz_t *rgz)
         return -1;
     }
 
-#if 0
     /* If there is already region data avoid parsing it again */
     if (rgz->state & RGZ_REGION_DATA) {
         return 0;
     }
-#endif
 
     int layerno = rgz->rgz_layerno;
 
@@ -1636,23 +1671,11 @@ int rgz_get_screengeometry(int fd, struct bvsurfgeom *geom, int fmt)
     return 0;
 }
 
-/* Reset the values needed for every frame, except the dirty region handles */
-static void rgz_reset(rgz_t *rgz){
-    if (!rgz)
-        return;
-    if (rgz->hregions)
-        free(rgz->hregions);
-    rgz->hregions = NULL;
-    rgz->nhregions = 0;
-    rgz->state = 0;
-}
-
 int rgz_in(rgz_in_params_t *p, rgz_t *rgz)
 {
     int rv = -1;
     switch (p->op) {
     case RGZ_IN_HWC:
-        rgz_reset(rgz);
         rv = rgz_in_hwccheck(p, rgz);
         if (rv == RGZ_ALL)
             rv = rgz_in_hwc(p, rgz) ? 0 : RGZ_ALL;

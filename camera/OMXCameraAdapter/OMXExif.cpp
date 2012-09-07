@@ -25,9 +25,10 @@
 #include "OMXCameraAdapter.h"
 #include <math.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
-status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersEXIF(const android::CameraParameters &params,
                                              BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -36,7 +37,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
 
     LOG_FUNCTION_NAME;
 
-    if( ( valstr = params.get(CameraParameters::KEY_GPS_LATITUDE) ) != NULL )
+    if( ( valstr = params.get(android::CameraParameters::KEY_GPS_LATITUDE) ) != NULL )
         {
         gpsPos = strtod(valstr, NULL);
 
@@ -68,7 +69,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
         mEXIFData.mGPSData.mLatValid = false;
         }
 
-    if( ( valstr = params.get(CameraParameters::KEY_GPS_LONGITUDE) ) != NULL )
+    if( ( valstr = params.get(android::CameraParameters::KEY_GPS_LONGITUDE) ) != NULL )
         {
         gpsPos = strtod(valstr, NULL);
 
@@ -100,7 +101,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
         mEXIFData.mGPSData.mLongValid = false;
         }
 
-    if( ( valstr = params.get(CameraParameters::KEY_GPS_ALTITUDE) ) != NULL )
+    if( ( valstr = params.get(android::CameraParameters::KEY_GPS_ALTITUDE) ) != NULL )
         {
         gpsPos = strtod(valstr, NULL);
         mEXIFData.mGPSData.mAltitude = floor(fabs(gpsPos));
@@ -116,7 +117,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
         mEXIFData.mGPSData.mAltitudeValid= false;
         }
 
-    if( (valstr = params.get(CameraParameters::KEY_GPS_TIMESTAMP)) != NULL )
+    if( (valstr = params.get(android::CameraParameters::KEY_GPS_TIMESTAMP)) != NULL )
         {
         long gpsTimestamp = strtol(valstr, NULL, 10);
         struct tm *timeinfo = gmtime( ( time_t * ) & (gpsTimestamp) );
@@ -137,7 +138,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
         mEXIFData.mGPSData.mTimeStampValid = false;
         }
 
-    if( ( valstr = params.get(CameraParameters::KEY_GPS_TIMESTAMP) ) != NULL )
+    if( ( valstr = params.get(android::CameraParameters::KEY_GPS_TIMESTAMP) ) != NULL )
         {
         long gpsDatestamp = strtol(valstr, NULL, 10);
         struct tm *timeinfo = gmtime( ( time_t * ) & (gpsDatestamp) );
@@ -156,7 +157,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
         mEXIFData.mGPSData.mDatestampValid = false;
         }
 
-    if( ( valstr = params.get(CameraParameters::KEY_GPS_PROCESSING_METHOD) ) != NULL )
+    if( ( valstr = params.get(android::CameraParameters::KEY_GPS_PROCESSING_METHOD) ) != NULL )
         {
         strncpy(mEXIFData.mGPSData.mProcMethod, valstr, GPS_PROCESSING_SIZE-1);
         mEXIFData.mGPSData.mProcMethodValid = true;
@@ -209,7 +210,7 @@ status_t OMXCameraAdapter::setParametersEXIF(const CameraParameters &params,
         }
 
 
-    if( ( valstr = params.get(CameraParameters::KEY_FOCAL_LENGTH) ) != NULL ) {
+    if( ( valstr = params.get(android::CameraParameters::KEY_FOCAL_LENGTH) ) != NULL ) {
         CAMHAL_LOGVB("EXIF Focal length: %s", valstr);
         ExifElementsTable::stringToRational(valstr,
                                             &mEXIFData.mFocalNum,
@@ -236,17 +237,10 @@ status_t OMXCameraAdapter::setupEXIF()
     struct timeval sTv;
     struct tm *pTime;
     OMXCameraPortParameters * capData = NULL;
-    MemoryManager memMgr;
     CameraBuffer *memmgr_buf_array;
     int buf_size = 0;
 
     LOG_FUNCTION_NAME;
-
-    ret = memMgr.initialize();
-    if ( ret != OK ) {
-        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
-        return ret;
-    }
 
     sharedBuffer.pSharedBuff = NULL;
     capData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
@@ -275,7 +269,7 @@ status_t OMXCameraAdapter::setupEXIF()
         buf_size = ((buf_size+4095)/4096)*4096;
         sharedBuffer.nSharedBuffSize = buf_size;
 
-        memmgr_buf_array = memMgr.allocateBufferList(0, 0, NULL, buf_size, 1);
+        memmgr_buf_array = mMemMgr.allocateBufferList(0, 0, NULL, buf_size, 1);
         sharedBuffer.pSharedBuff = (OMX_U8*)camera_buffer_get_omx_ptr(&memmgr_buf_array[0]);
         startPtr =  ( OMX_U8 * ) memmgr_buf_array[0].opaque;
 
@@ -504,7 +498,7 @@ status_t OMXCameraAdapter::setupEXIF()
 
     if ( NULL != memmgr_buf_array )
         {
-        memMgr.freeBufferList(memmgr_buf_array);
+        mMemMgr.freeBufferList(memmgr_buf_array);
         }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -813,7 +807,7 @@ status_t OMXCameraAdapter::convertGPSCoord(double coord,
 
     if ( coord == 0 ) {
 
-        LOGE("Invalid GPS coordinate");
+        CAMHAL_LOGE("Invalid GPS coordinate");
 
         return -EINVAL;
     }
@@ -840,4 +834,5 @@ status_t OMXCameraAdapter::convertGPSCoord(double coord,
     return NO_ERROR;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

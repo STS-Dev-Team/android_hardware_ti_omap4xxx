@@ -1,6 +1,9 @@
 #ifndef CAMERA_TEST_H
 #define CAMERA_TEST_H
 
+#define CAMHAL_LOGV LOGV
+#define CAMHAL_LOGE LOGE
+
 #define PRINTOVER(arg...)     LOGD(#arg)
 #define LOG_FUNCTION_NAME         LOGD("%d: %s() ENTER", __LINE__, __FUNCTION__);
 #define LOG_FUNCTION_NAME_EXIT    LOGD("%d: %s() EXIT", __LINE__, __FUNCTION__);
@@ -58,6 +61,8 @@
 #define BRACKETING_STREAM_BUFFERS       9
 
 #define SDCARD_PATH "/sdcard/"
+#define SECONDARY_SENSOR "_SEC"
+#define S3D_SENSOR "_S3D"
 
 #define MAX_BURST   15
 #define BURST_INC     5
@@ -241,6 +246,7 @@ int getSupportedParametersNames(int width, int height, param_Array array[], int 
 int checkSupportedParamScript(char **array, int size, char *param);
 int checkSupportedParamScriptLayout(char **array, int size, char *param,int *index);
 int checkSupportedParamScriptResol(param_Array **array, int size, char *param, int *num);
+int checkSupportedParamScriptResol(param_Array **array, int size, int w, int h, int *num);
 int getSupportedParametersfps(char* parameters, int *optionsCount);
 int checkSupportedParamScriptfpsConst(int *array, int size, char *param, int *num);
 int checkSupportedParamScriptfpsRange(char **array, int size, char *param, int *num);
@@ -416,7 +422,9 @@ public:
                     printf ("=== handling buffer %d\n", defer.count);
                     mBST->handleBuffer(defer.graphicBuffer, defer.mappedBuffer, defer.count);
                     defer.graphicBuffer->unlock();
+                    mBST->releaseBuffer(defer.graphicBuffer);
                     mDeferQueue.removeAt(0);
+                    printf(" handle buffer done\n");
                     return true;
                 }
                 return false;
@@ -474,7 +482,7 @@ public:
             printf("=== Metadata for buffer %d ===\n", mCounter);
             showMetadata(mSurfaceTexture->getMetadata());
             printf("\n");
-            graphic_buffer = mSurfaceTexture->getCurrentBuffer();
+            graphic_buffer = mSurfaceTexture->takeCurrentBuffer();
             mDeferThread->add(graphic_buffer, mCounter++);
             Mutex::Autolock lock(mToggleStateMutex);
             if (mRestartCapture) {
@@ -506,6 +514,10 @@ public:
         return mRestartCapture;
     }
 
+    void releaseBuffer(sp<GraphicBuffer> &graphic_buffer) {
+        mSurfaceTexture->releaseBuffer(graphic_buffer);
+    }
+
     buffer_info_t popBuffer() {
         buffer_info_t buffer;
         Mutex::Autolock lock(mReturnedBuffersMutex);
@@ -523,8 +535,12 @@ public:
         return !mReturnedBuffers.isEmpty();
     }
 
+    sp<SurfaceTexture> getST() {
+        return mSurfaceTexture;
+    }
+
     void handleBuffer(sp<GraphicBuffer> &, uint8_t *, unsigned int);
-    void showMetadata(const String8&);
+    void showMetadata(sp<IMemory> data);
 
 private:
     SurfaceTextureBase *mSurfaceTextureBase;
@@ -551,9 +567,13 @@ public:
     BufferSourceInput(bool display, int tex_id, sp<Camera> camera) :
                  mDisplayable(display), mTexId(tex_id), mCamera(camera) {
         mSurfaceTexture = new SurfaceTextureBase();
+        mTapOut = new BufferSourceThread(false, 321, camera);
+        mTapOut->run();
     }
     virtual ~BufferSourceInput() {
         delete mSurfaceTexture;
+        mTapOut->requestExit();
+        mTapOut.clear();
     }
 
     void init() {
@@ -563,10 +583,12 @@ public:
         surface_texture->setSynchronousMode(true);
     }
 
-    void setInput(buffer_info_t, const char *format);
+    void setInput(buffer_info_t, const char *format, bool useTapOut);
 
 private:
     SurfaceTextureBase *mSurfaceTexture;
+    sp<BufferSourceThread> mTapOut;
+
     bool mDisplayable;
     int mTexId;
     sp<Camera> mCamera;

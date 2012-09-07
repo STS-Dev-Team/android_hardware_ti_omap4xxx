@@ -37,9 +37,29 @@ ifdef TI_CAMERAHAL_PROFILING
     CAMERAHAL_CFLAGS += -DCAMERAHAL_OMX_PROFILING
 endif
 
+ifeq ($(findstring omap5, $(TARGET_BOARD_PLATFORM)),omap5)
+    CAMERAHAL_CFLAGS += -DCAMERAHAL_OMAP5_CAPTURE_MODES
+endif
+
+ifeq ($(ENHANCED_DOMX),true)
+    CAMERAHAL_CFLAGS += -DENHANCED_DOMX
+endif
+
 CAMERAHAL_CFLAGS += -DLOG_TAG=\"CameraHal\"
 
-OMAP4_CAMERA_HAL_SRC := \
+TI_CAMERAHAL_COMMON_INCLUDES := \
+    hardware/ti/omap4xxx/tiler \
+    hardware/ti/omap4xxx/hwc \
+    external/jpeg \
+    external/jhead \
+    $(LOCAL_PATH)/../libtiutils \
+    $(LOCAL_PATH)/inc
+
+TI_CAMERAHAL_COMMON_INCLUDES += \
+    frameworks/base/include/media/stagefright \
+    hardware/ti/omap4xxx/include
+
+TI_CAMERAHAL_COMMON_SRC := \
     CameraHal_Module.cpp \
     CameraHal.cpp \
     CameraHalUtilClasses.cpp \
@@ -51,14 +71,12 @@ OMAP4_CAMERA_HAL_SRC := \
     MemoryManager.cpp \
     Encoder_libjpeg.cpp \
     SensorListener.cpp  \
-    NV12_resize.c
-
-OMAP4_CAMERA_COMMON_SRC:= \
+    NV12_resize.cpp \
     CameraParameters.cpp \
     TICameraParameters.cpp \
     CameraHalCommon.cpp
 
-OMAP4_CAMERA_OMX_SRC:= \
+TI_CAMERAHAL_OMX_SRC := \
     OMXCameraAdapter/OMX3A.cpp \
     OMXCameraAdapter/OMXAlgo.cpp \
     OMXCameraAdapter/OMXCameraAdapter.cpp \
@@ -73,56 +91,49 @@ OMAP4_CAMERA_OMX_SRC:= \
     OMXCameraAdapter/OMXZoom.cpp \
     OMXCameraAdapter/OMXDccDataSave.cpp
 
-OMAP4_CAMERA_USB_SRC:= \
+TI_CAMERAHAL_USB_SRC := \
     V4LCameraAdapter/V4LCameraAdapter.cpp \
-    V4LCameraAdapter/V4LCapabilities.cpp \
+    V4LCameraAdapter/V4LCapabilities.cpp
 
-#
-# OMX Camera HAL
-#
-
-ifeq ($(OMAP4_CAMERA_HAL_USES),OMX)
-
-include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES:= \
-    $(OMAP4_CAMERA_HAL_SRC) \
-    $(OMAP4_CAMERA_OMX_SRC) \
-    $(OMAP4_CAMERA_COMMON_SRC)
-
-LOCAL_C_INCLUDES += \
-    $(LOCAL_PATH)/inc/ \
-    $(LOCAL_PATH)/../hwc \
-    $(LOCAL_PATH)/../include \
-    $(LOCAL_PATH)/inc/OMXCameraAdapter \
-    $(LOCAL_PATH)/../libtiutils \
-    hardware/ti/omap4xxx/tiler \
-    hardware/ti/omap4xxx/ion \
-    frameworks/base/include/ui \
-    frameworks/base/include/utils \
-    $(DOMX_PATH)/omx_core/inc \
-    $(DOMX_PATH)/mm_osal/inc \
-    frameworks/base/include/media/stagefright \
-    frameworks/base/include/media/stagefright/openmax \
-    external/jpeg \
-    external/jhead
-
-LOCAL_SHARED_LIBRARIES:= \
+TI_CAMERAHAL_COMMON_SHARED_LIBRARIES := \
     libui \
     libbinder \
     libutils \
     libcutils \
     libtiutils \
-    libmm_osal \
-    libOMX_Core \
     libcamera_client \
     libgui \
-    libdomx \
     libion \
     libjpeg \
     libexif
 
+
+# ====================
+#  OMX Camera Adapter
+# --------------------
+
+ifeq ($(OMAP4_CAMERA_HAL_USES),OMX)
+
+include $(CLEAR_VARS)
+
 CAMERAHAL_CFLAGS += -DOMX_CAMERA_ADAPTER
+
+LOCAL_SRC_FILES:= \
+    $(TI_CAMERAHAL_COMMON_SRC) \
+    $(TI_CAMERAHAL_OMX_SRC)
+
+LOCAL_C_INCLUDES += \
+    $(TI_CAMERAHAL_COMMON_INCLUDES) \
+    $(DOMX_PATH)/omx_core/inc \
+    $(DOMX_PATH)/mm_osal/inc \
+    $(LOCAL_PATH)/inc/OMXCameraAdapter
+
+LOCAL_SHARED_LIBRARIES:= \
+    $(TI_CAMERAHAL_COMMON_SHARED_LIBRARIES) \
+    libmm_osal \
+    libOMX_Core \
+    libdomx
+
 LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
@@ -134,45 +145,25 @@ include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 else
 ifeq ($(OMAP4_CAMERA_HAL_USES),USB)
 
-#
-# USB Camera Adapter
-#
+
+# ====================
+#  USB Camera Adapter
+# --------------------
 
 include $(CLEAR_VARS)
 
 CAMERAHAL_CFLAGS += -DV4L_CAMERA_ADAPTER
 
 LOCAL_SRC_FILES:= \
-    $(OMAP4_CAMERA_HAL_SRC) \
-    $(OMAP4_CAMERA_USB_SRC) \
-    $(OMAP4_CAMERA_COMMON_SRC)
+    $(TI_CAMERAHAL_COMMON_SRC) \
+    $(TI_CAMERAHAL_USB_SRC)
 
 LOCAL_C_INCLUDES += \
-    $(LOCAL_PATH)/inc/ \
-    $(LOCAL_PATH)/../hwc \
-    $(LOCAL_PATH)/../include \
-    $(LOCAL_PATH)/inc/V4LCameraAdapter \
-    $(LOCAL_PATH)/../libtiutils \
-    hardware/ti/omap4xxx/tiler \
-    hardware/ti/omap4xxx/ion \
-    frameworks/base/include/ui \
-    frameworks/base/include/utils \
-    frameworks/base/include/media/stagefright \
-    frameworks/base/include/media/stagefright/openmax \
-    external/jpeg \
-    external/jhead
+    $(TI_CAMERAHAL_COMMON_INCLUDES) \
+    $(LOCAL_PATH)/inc/V4LCameraAdapter
 
 LOCAL_SHARED_LIBRARIES:= \
-    libui \
-    libbinder \
-    libutils \
-    libcutils \
-    libtiutils \
-    libcamera_client \
-    libgui \
-    libion \
-    libjpeg \
-    libexif
+    $(TI_CAMERAHAL_COMMON_SHARED_LIBRARIES)
 
 LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
 
@@ -185,48 +176,33 @@ include $(BUILD_HEAPTRACKED_SHARED_LIBRARY)
 else
 ifeq ($(OMAP4_CAMERA_HAL_USES),ALL)
 
+
+# =====================
+#  ALL Camera Adapters
+# ---------------------
+
 include $(CLEAR_VARS)
 
+CAMERAHAL_CFLAGS += -DOMX_CAMERA_ADAPTER -DV4L_CAMERA_ADAPTER
+
 LOCAL_SRC_FILES:= \
-    $(OMAP4_CAMERA_HAL_SRC) \
-    $(OMAP4_CAMERA_OMX_SRC) \
-    $(OMAP4_CAMERA_USB_SRC) \
-    $(OMAP4_CAMERA_COMMON_SRC)
+    $(TI_CAMERAHAL_COMMON_SRC) \
+    $(TI_CAMERAHAL_OMX_SRC) \
+    $(TI_CAMERAHAL_USB_SRC)
 
 LOCAL_C_INCLUDES += \
-    $(LOCAL_PATH)/inc/ \
-    $(LOCAL_PATH)/../hwc \
-    $(LOCAL_PATH)/../include \
-    $(LOCAL_PATH)/inc/OMXCameraAdapter \
-    $(LOCAL_PATH)/inc/V4LCameraAdapter \
-    $(LOCAL_PATH)/../libtiutils \
-    hardware/ti/omap4xxx/tiler \
-    hardware/ti/omap4xxx/ion \
-    frameworks/base/include/ui \
-    frameworks/base/include/utils \
+    $(TI_CAMERAHAL_COMMON_INCLUDES) \
     $(DOMX_PATH)/omx_core/inc \
     $(DOMX_PATH)/mm_osal/inc \
-    frameworks/base/include/media/stagefright \
-    frameworks/base/include/media/stagefright/openmax \
-    external/jpeg \
-    external/jhead
+    $(LOCAL_PATH)/inc/OMXCameraAdapter \
+    $(LOCAL_PATH)/inc/V4LCameraAdapter
 
 LOCAL_SHARED_LIBRARIES:= \
-    libui \
-    libbinder \
-    libutils \
-    libcutils \
-    libtiutils \
+    $(TI_CAMERAHAL_COMMON_SHARED_LIBRARIES) \
     libmm_osal \
     libOMX_Core \
-    libcamera_client \
-    libgui \
-    libdomx \
-    libion \
-    libjpeg \
-    libexif
+    libdomx
 
-CAMERAHAL_CFLAGS += -DOMX_CAMERA_ADAPTER -DV4L_CAMERA_ADAPTER
 LOCAL_CFLAGS := -fno-short-enums -DCOPY_IMAGE_BUFFER $(CAMERAHAL_CFLAGS)
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw

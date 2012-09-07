@@ -20,7 +20,8 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 ///Constant declarations
 ///@todo Check the time units
@@ -36,17 +37,17 @@ OMX_COLOR_FORMATTYPE toOMXPixFormat(const char* parameters_format)
 
     if ( parameters_format != NULL )
     {
-        if (strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
+        if (strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
             {
             CAMHAL_LOGDA("CbYCrY format selected");
             pixFormat = OMX_COLOR_FormatCbYCrY;
             }
-        else if(strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0)
+        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0)
             {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
             }
-        else if(strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
+        else if(strcmp(parameters_format, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0)
             {
             CAMHAL_LOGDA("RGB565 format selected");
             pixFormat = OMX_COLOR_Format16bitRGB565;
@@ -65,80 +66,6 @@ OMX_COLOR_FORMATTYPE toOMXPixFormat(const char* parameters_format)
     return pixFormat;
 }
 
-const char* DisplayAdapter::getPixFormatConstant(const char* parameters_format) const
-{
-    const char* pixFormat;
-
-    if ( parameters_format != NULL )
-    {
-        if (strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-        {
-            CAMHAL_LOGVA("CbYCrY format selected");
-            pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_YUV422I;
-        }
-        else if(strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-                strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
-        {
-            // TODO(XXX): We are treating YV12 the same as YUV420SP
-            CAMHAL_LOGVA("YUV420SP format selected");
-            pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-        else if(strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-        {
-            CAMHAL_LOGVA("RGB565 format selected");
-            pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_RGB565;
-        }
-        else if(strcmp(parameters_format, (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0)
-        {
-            CAMHAL_LOGVA("BAYER format selected");
-            pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB;
-        }
-        else
-        {
-            CAMHAL_LOGEA("Invalid format, NV12 format selected as default");
-            pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-    }
-    else
-    {
-        CAMHAL_LOGEA("Preview format is NULL, defaulting to NV12");
-        pixFormat = (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP;
-    }
-
-    return pixFormat;
-}
-
-size_t DisplayAdapter::getBufSize(const char* parameters_format, int width, int height) const
-{
-    int buf_size;
-
-    if ( parameters_format != NULL ) {
-        if (strcmp(parameters_format,
-                  (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
-            buf_size = width * height * 2;
-        }
-        else if((strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) ||
-                (strcmp(parameters_format, CameraParameters::PIXEL_FORMAT_YUV420P) == 0)) {
-            buf_size = width * height * 3 / 2;
-        }
-        else if(strcmp(parameters_format,
-                      (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
-            buf_size = width * height * 2;
-        }
-        else if (strcmp(parameters_format,
-                  (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
-            buf_size = width * height * 2;
-        } else {
-            CAMHAL_LOGEA("Invalid format");
-            buf_size = 0;
-        }
-    } else {
-        CAMHAL_LOGEA("Preview format is NULL");
-        buf_size = 0;
-    }
-
-    return buf_size;
-}
 /*--------------------ANativeWindowDisplayAdapter Class STARTS here-----------------------------*/
 
 
@@ -191,8 +118,8 @@ ANativeWindowDisplayAdapter::ANativeWindowDisplayAdapter():mDisplayThread(NULL),
 
 ANativeWindowDisplayAdapter::~ANativeWindowDisplayAdapter()
 {
-    Semaphore sem;
-    TIUTILS::Message msg;
+    Utils::Semaphore sem;
+    Utils::Message msg;
 
     LOG_FUNCTION_NAME;
 
@@ -248,7 +175,7 @@ status_t ANativeWindowDisplayAdapter::initialize()
     }
 
     ///Start the display thread
-    status_t ret = mDisplayThread->run("DisplayThread", PRIORITY_URGENT_DISPLAY);
+    status_t ret = mDisplayThread->run("DisplayThread", android::PRIORITY_URGENT_DISPLAY);
     if ( ret != NO_ERROR )
         {
         CAMHAL_LOGEA("Couldn't run display thread");
@@ -344,7 +271,7 @@ status_t ANativeWindowDisplayAdapter::setSnapshotTimeRef(struct timeval *refTime
 
     if ( NULL != refTime )
         {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
         memcpy(&mStartCapture, refTime, sizeof(struct timeval));
     }
 
@@ -358,8 +285,8 @@ status_t ANativeWindowDisplayAdapter::setSnapshotTimeRef(struct timeval *refTime
 
 int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct timeval *refTime)
 {
-    Semaphore sem;
-    TIUTILS::Message msg;
+    Utils::Semaphore sem;
+    Utils::Message msg;
 
     LOG_FUNCTION_NAME;
 
@@ -375,7 +302,7 @@ int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct tim
 
     if ( NULL != refTime )
         {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
         memcpy(&mStandbyToShot, refTime, sizeof(struct timeval));
         mMeasureStandby = true;
     }
@@ -413,7 +340,7 @@ int ANativeWindowDisplayAdapter::enableDisplay(int width, int height, struct tim
 int ANativeWindowDisplayAdapter::disableDisplay(bool cancel_buffer)
 {
     status_t ret = NO_ERROR;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
 
     LOG_FUNCTION_NAME;
 
@@ -433,9 +360,9 @@ int ANativeWindowDisplayAdapter::disableDisplay(bool cancel_buffer)
         {
         //Send STOP_DISPLAY COMMAND to display thread. Display thread will stop and dequeue all messages
         // and then wait for message
-        Semaphore sem;
+        Utils::Semaphore sem;
         sem.Create();
-        TIUTILS::Message msg;
+        Utils::Message msg;
         msg.command = DisplayThread::DISPLAY_STOP;
 
         // Send the semaphore to signal once the command is completed
@@ -450,7 +377,7 @@ int ANativeWindowDisplayAdapter::disableDisplay(bool cancel_buffer)
 
     }
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
     {
         ///Reset the display enabled flag
         mDisplayEnabled = false;
@@ -494,7 +421,7 @@ status_t ANativeWindowDisplayAdapter::pauseDisplay(bool pause)
     LOG_FUNCTION_NAME;
 
     {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
         mPaused = pause;
     }
 
@@ -528,8 +455,8 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     int i = -1;
     const int lnumBufs = numBufs;
     int undequeued = 0;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
-    Rect bounds;
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+    android::Rect bounds;
 
     mBuffers = new CameraBuffer [lnumBufs];
     memset (mBuffers, 0, sizeof(CameraBuffer) * lnumBufs);
@@ -578,7 +505,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
             /*toOMXPixFormat(format)*/HAL_PIXEL_FORMAT_TI_NV12);  // Gralloc only supports NV12 alloc!
 
     if ( NO_ERROR != err ) {
-        LOGE("native_window_set_buffers_geometry failed: %s (%d)", strerror(-err), -err);
+        CAMHAL_LOGE("native_window_set_buffers_geometry failed: %s (%d)", strerror(-err), -err);
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
@@ -599,6 +526,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mANativeWindow->get_min_undequeued_buffer_count(mANativeWindow, &undequeued);
+    mPixelFormat = CameraHal::getPixelFormatConstant(format);
 
     for ( i=0; i < mBufferCount; i++ )
     {
@@ -622,6 +550,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
         CAMHAL_LOGDB("got handle %p", handle);
         mBuffers[i].opaque = (void *)handle;
         mBuffers[i].type = CAMERA_BUFFER_ANW;
+        mBuffers[i].format = mPixelFormat;
         mFramesWithCameraAdapterMap.add(handle, i);
 
         // Tag remaining preview buffers as preview frames
@@ -630,7 +559,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
                             CameraFrame::PREVIEW_FRAME_SYNC);
         }
 
-        bytes =  getBufSize(format, width, height);
+        bytes = CameraHal::calculateBufferSize(format, width, height);
 
     }
 
@@ -677,7 +606,6 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
     }
 
     mFirstInit = true;
-    mPixelFormat = getPixFormatConstant(format);
     mFrameWidth = width;
     mFrameHeight = height;
 
@@ -840,7 +768,7 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
 {
     status_t ret = NO_ERROR;
 
-     GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+     android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
     //Give the buffers back to display here -  sort of free it
      if (mANativeWindow)
          for(unsigned int i = 0; i < mFramesWithCameraAdapterMap.size(); i++) {
@@ -869,7 +797,7 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
              }
          }
      else
-         LOGE("mANativeWindow is NULL");
+         CAMHAL_LOGE("mANativeWindow is NULL");
 
      ///Clear the frames with camera adapter map
      mFramesWithCameraAdapterMap.clear();
@@ -884,7 +812,7 @@ int ANativeWindowDisplayAdapter::freeBufferList(CameraBuffer * buflist)
 
     status_t ret = NO_ERROR;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     if(mBuffers != buflist)
     {
@@ -942,7 +870,7 @@ void ANativeWindowDisplayAdapter::displayThread()
 
     while(shouldLive)
         {
-        ret = TIUTILS::MessageQueue::waitForMsg(&mDisplayThread->msgQ()
+        ret = Utils::MessageQueue::waitForMsg(&mDisplayThread->msgQ()
                                                                 ,  &mDisplayQ
                                                                 , NULL
                                                                 , ANativeWindowDisplayAdapter::DISPLAY_TIMEOUT);
@@ -964,7 +892,7 @@ void ANativeWindowDisplayAdapter::displayThread()
                 }
             else
                 {
-                TIUTILS::Message msg;
+                Utils::Message msg;
                 ///Get the dummy msg from the displayQ
                 if(mDisplayQ.get(&msg)!=NO_ERROR)
                     {
@@ -995,7 +923,7 @@ void ANativeWindowDisplayAdapter::displayThread()
 
 bool ANativeWindowDisplayAdapter::processHalMsg()
 {
-    TIUTILS::Message msg;
+    Utils::Message msg;
 
     LOG_FUNCTION_NAME;
 
@@ -1024,7 +952,7 @@ bool ANativeWindowDisplayAdapter::processHalMsg()
 
             // flush frame message queue
             while ( !mDisplayQ.isEmpty() ) {
-                TIUTILS::Message message;
+                Utils::Message message;
                 mDisplayQ.get(&message);
             }
 
@@ -1054,7 +982,7 @@ bool ANativeWindowDisplayAdapter::processHalMsg()
         {
 
         CAMHAL_LOGDA("+Signalling display semaphore");
-        Semaphore &sem = *((Semaphore*)msg.arg1);
+        Utils::Semaphore &sem = *((Utils::Semaphore*)msg.arg1);
 
         sem.Signal();
 
@@ -1072,7 +1000,7 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     status_t ret = NO_ERROR;
     uint32_t actualFramesWithDisplay = 0;
     android_native_buffer_t *buffer = NULL;
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
     int i;
 
     ///@todo Do cropping based on the stabilized frame coordinates
@@ -1090,13 +1018,27 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
     }
 
     for ( i = 0; i < mBufferCount; i++ )
-        {
+    {
         if ( dispFrame.mBuffer == &mBuffers[i] )
-            {
+        {
             break;
         }
     }
 
+#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
+
+    if ( mMeasureStandby ) {
+        CameraHal::PPM("Standby to first shot: Sensor Change completed - ", &mStandbyToShot);
+        mMeasureStandby = false;
+    } else if (CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) {
+        CameraHal::PPM("Shot to snapshot: ", &mStartCapture);
+        mShotToShot = true;
+    } else if ( mShotToShot ) {
+        CameraHal::PPM("Shot to shot: ", &mStartCapture);
+        mShotToShot = false;
+    }
+
+#endif
 
     mFramesType.add( (int)mBuffers[i].opaque ,dispFrame.mType );
 
@@ -1104,41 +1046,24 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
                 (!mPaused ||  CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType) &&
                 !mSuspend)
     {
-        Mutex::Autolock lock(mLock);
-        uint32_t xOff = (dispFrame.mOffset% PAGE_SIZE);
-        uint32_t yOff = (dispFrame.mOffset / PAGE_SIZE);
+        uint32_t xOff, yOff;
+
+        android::AutoMutex lock(mLock);
+
+        CameraHal::getXYFromOffset(&xOff, &yOff, dispFrame.mOffset, PAGE_SIZE, mPixelFormat);
 
         // Set crop only if current x and y offsets do not match with frame offsets
-        if((mXOff!=xOff) || (mYOff!=yOff))
-        {
-            CAMHAL_LOGDB("Offset %d xOff = %d, yOff = %d", dispFrame.mOffset, xOff, yOff);
-            uint8_t bytesPerPixel;
-            ///Calculate bytes per pixel based on the pixel format
-            if(strcmp(mPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-                {
-                bytesPerPixel = 2;
-                }
-            else if(strcmp(mPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-                {
-                bytesPerPixel = 2;
-                }
-            else if(strcmp(mPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0)
-                {
-                bytesPerPixel = 1;
-                }
-            else
-                {
-                bytesPerPixel = 1;
-            }
+        if ((mXOff != xOff) || (mYOff != yOff)) {
+            CAMHAL_LOGDB("offset = %u left = %d top = %d right = %d bottom = %d",
+                          dispFrame.mOffset, xOff, yOff ,
+                          xOff + mPreviewWidth, yOff + mPreviewHeight);
 
-            CAMHAL_LOGVB(" crop.left = %d crop.top = %d crop.right = %d crop.bottom = %d",
-                          xOff/bytesPerPixel, yOff , (xOff/bytesPerPixel)+mPreviewWidth, yOff+mPreviewHeight);
             // We'll ignore any errors here, if the surface is
             // already invalid, we'll know soon enough.
-            mANativeWindow->set_crop(mANativeWindow, xOff/bytesPerPixel, yOff,
-                                     (xOff/bytesPerPixel)+mPreviewWidth, yOff+mPreviewHeight);
+            mANativeWindow->set_crop(mANativeWindow, xOff, yOff,
+                                     xOff + mPreviewWidth, yOff + mPreviewHeight);
 
-            ///Update the current x and y offsets
+            // Update the current x and y offsets
             mXOff = xOff;
             mYOff = yOff;
         }
@@ -1158,33 +1083,13 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
 
         // HWComposer has not minimum buffer requirement. We should be able to dequeue
         // the buffer immediately
-        TIUTILS::Message msg;
+        Utils::Message msg;
         mDisplayQ.put(&msg);
-
-
-#if PPM_INSTRUMENTATION || PPM_INSTRUMENTATION_ABS
-
-        if ( mMeasureStandby )
-            {
-            CameraHal::PPM("Standby to first shot: Sensor Change completed - ", &mStandbyToShot);
-            mMeasureStandby = false;
-            }
-        else if (CameraFrame::CameraFrame::SNAPSHOT_FRAME == dispFrame.mType)
-            {
-            CameraHal::PPM("Shot to snapshot: ", &mStartCapture);
-            mShotToShot = true;
-            }
-        else if ( mShotToShot )
-            {
-            CameraHal::PPM("Shot to shot: ", &mStartCapture);
-            mShotToShot = false;
-        }
-#endif
 
     }
     else
     {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
         buffer_handle_t *handle = (buffer_handle_t *) mBuffers[i].opaque;
 
         // unlock buffer before giving it up
@@ -1198,7 +1103,7 @@ status_t ANativeWindowDisplayAdapter::PostFrame(ANativeWindowDisplayAdapter::Dis
 
         mFramesWithCameraAdapterMap.removeItem((buffer_handle_t *) dispFrame.mBuffer->opaque);
 
-        TIUTILS::Message msg;
+        Utils::Message msg;
         mDisplayQ.put(&msg);
         ret = NO_ERROR;
     }
@@ -1214,8 +1119,8 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     int i = 0;
     unsigned int k;
     int stride;  // dummy variable to get stride
-    GraphicBufferMapper &mapper = GraphicBufferMapper::get();
-    Rect bounds;
+    android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+    android::Rect bounds;
     void *y_uv[2];
 
     // TODO(XXX): Do we need to keep stride information in camera hal?
@@ -1276,7 +1181,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
     }
 
     {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
         mFramesWithCameraAdapterMap.add((buffer_handle_t *) mBuffers[i].opaque, i);
     }
 
@@ -1323,6 +1228,7 @@ void ANativeWindowDisplayAdapter::frameCallbackRelay(CameraFrame* caFrame)
 void ANativeWindowDisplayAdapter::frameCallback(CameraFrame* caFrame)
 {
     ///Call queueBuffer of overlay in the context of the callback thread
+
     DisplayFrame df;
     df.mBuffer = caFrame->mBuffer;
     df.mType = (CameraFrame::FrameType) caFrame->mFrameType;
@@ -1337,5 +1243,5 @@ void ANativeWindowDisplayAdapter::frameCallback(CameraFrame* caFrame)
 
 /*--------------------ANativeWindowDisplayAdapter Class ENDS here-----------------------------*/
 
-};
-
+} // namespace Camera
+} // namespace Ti

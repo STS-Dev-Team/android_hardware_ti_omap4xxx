@@ -26,9 +26,10 @@
 #include "ErrorUtils.h"
 
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
-status_t OMXCameraAdapter::setParametersReprocess(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersReprocess(const android::CameraParameters &params,
                                                 CameraBuffer* buffers,
                                                 BaseCameraAdapter::AdapterState state)
 {
@@ -53,10 +54,10 @@ status_t OMXCameraAdapter::setParametersReprocess(const CameraParameters &params
 
     valstr = buffers[0].format;
     if (valstr != NULL) {
-        if(strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+        if(strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
             CAMHAL_LOGDA("YUV420SP format selected");
             pixFormat = OMX_COLOR_FormatYUV420SemiPlanar;
-        } else if (strcmp(valstr, (const char *) CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
+        } else if (strcmp(valstr, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB) == 0) {
             CAMHAL_LOGDA("RAW Picture format selected");
             pixFormat = OMX_COLOR_FormatRawBayer10bit;
         } else {
@@ -110,7 +111,7 @@ status_t OMXCameraAdapter::startReprocess()
 
     CAMHAL_LOGD ("mReprocConfigured = %d", mBurstFramesQueued);
     if (NO_ERROR == ret) {
-        Mutex::Autolock lock(mBurstLock);
+        android::AutoMutex lock(mBurstLock);
 
         for ( int index = 0 ; index < portData->mMaxQueueable ; index++ ) {
             CAMHAL_LOGDB("Queuing buffer on video input port - %p",
@@ -122,13 +123,13 @@ status_t OMXCameraAdapter::startReprocess()
         }
     }
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::stopReprocess()
@@ -191,7 +192,7 @@ status_t OMXCameraAdapter::stopReprocess()
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
     LOG_FUNCTION_NAME_EXIT;
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::disableReprocess(){
@@ -201,7 +202,7 @@ status_t OMXCameraAdapter::disableReprocess(){
     // no-op..for now
 
 EXIT:
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 }
 
 status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
@@ -321,7 +322,7 @@ status_t OMXCameraAdapter::UseBuffersReprocess(CameraBuffer *bufArr, int num)
 
     mReprocConfigured = true;
 
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 EXIT:
     CAMHAL_LOGEB("Exiting function %s because of ret %d eError=%x", __FUNCTION__, ret, eError);
@@ -331,8 +332,9 @@ EXIT:
     }
     performCleanupAfterError();
     LOG_FUNCTION_NAME_EXIT;
-    return (ret | ErrorUtils::omxToAndroidError(eError));
+    return (ret | Utils::ErrorUtils::omxToAndroidError(eError));
 
 }
 
-};
+} // namespace Camera
+} // namespace Ti

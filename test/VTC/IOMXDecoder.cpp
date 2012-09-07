@@ -75,11 +75,11 @@ static void PrintVTCLatency(nsecs_t ts) {
 
 bool OMXDecoder::SourceHandler::Handler() {
     MY_LOGV("\n SourceHandler::Handler \n");
-    TIUTILS::Message msg;
+    Ti::Utils::Message msg;
     volatile int forever = 1;
 
     while(forever) {
-        TIUTILS::MessageQueue::waitForMsg(&mCommandMsgQ, NULL, NULL, -1);
+        Ti::Utils::MessageQueue::waitForMsg(&mCommandMsgQ, NULL, NULL, -1);
         {
             Mutex::Autolock lock(mLock);
             mCommandMsgQ.get(&msg);
@@ -104,11 +104,11 @@ bool OMXDecoder::SourceHandler::Handler() {
 
 bool OMXDecoder::OMXCallbackHandler::Handler() {
     MY_LOGV("\n OMXCallbackHandler::Handler \n");
-    TIUTILS::Message msg;
+    Ti::Utils::Message msg;
     volatile int forever = 1;
 
     while(forever) {
-        TIUTILS::MessageQueue::waitForMsg(&mCommandMsgQ, NULL, NULL, -1);
+        Ti::Utils::MessageQueue::waitForMsg(&mCommandMsgQ, NULL, NULL, -1);
         {
             Mutex::Autolock lock(mLock);
             mCommandMsgQ.get(&msg);
@@ -528,7 +528,7 @@ status_t OMXDecoder::stop() {
 
     //Exit and free ref to callback handling thread
     if ( NULL != mOMXCallbackHandler.get() ) {
-        TIUTILS::Message msg;
+        Ti::Utils::Message msg;
         msg.command = OMXCallbackHandler::COMMAND_EXIT;
         //Clear all messages pending first
         mOMXCallbackHandler->clearCommandQ();
@@ -539,7 +539,7 @@ status_t OMXDecoder::stop() {
 
     //Exit and free ref to source handling thread
     if ( NULL != mSourceHandler.get() ) {
-        TIUTILS::Message msg;
+        Ti::Utils::Message msg;
         msg.command = SourceHandler::COMMAND_EXIT;
         //Clear all messages pending first
         mSourceHandler->clearCommandQ();
@@ -587,7 +587,7 @@ void OMXDecoder::AcceptEncodedBuffer(void *pBuffer, OMX_U32 nFilledLen, OMX_TICK
     info->nTimeStamp = nTimeStamp;
     memcpy((void*)info->mem->pointer(), pBuffer, nFilledLen);
 
-    TIUTILS::Message msg;
+    Ti::Utils::Message msg;
     msg.command = SourceHandler::COMMAND_PROCESS_MSG;
     msg.arg1 = (void*)info;
     mSourceHandler->put(&msg);

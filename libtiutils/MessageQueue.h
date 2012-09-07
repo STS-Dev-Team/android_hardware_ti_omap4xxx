@@ -33,7 +33,8 @@
 #define MSGQ_LOGEA DBGUTILS_LOGEA
 #define MSGQ_LOGEB DBGUTILS_LOGEB
 
-namespace TIUTILS {
+namespace Ti {
+namespace Utils {
 
 ///Message type
 struct Message
@@ -88,6 +89,10 @@ private:
     bool mHasMsg;
 };
 
-};
+} // namespace Utils
+} // namespace Ti
+
+
+
 
 #endif
