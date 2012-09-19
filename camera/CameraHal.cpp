@@ -512,9 +512,9 @@ int CameraHal::setParameters(const CameraParameters& params)
         valstr = params.get(CameraParameters::KEY_PREVIEW_FPS_RANGE);
         CAMHAL_LOGDB("FRAMERATE %d", framerate);
 
-        CAMHAL_LOGVB("Passed FRR: %s, Supported FRR %s", valstr
+        CAMHAL_LOGDB("Passed FRR: %s, Supported FRR %s", valstr
                         , mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
-        CAMHAL_LOGVB("Passed FR: %d, Supported FR %s", framerate
+        CAMHAL_LOGDB("Passed FR: %d, Supported FR %s", framerate
                         , mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
 
 
@@ -554,7 +554,7 @@ int CameraHal::setParameters(const CameraParameters& params)
               {
 
                 selectFPSRange(framerate, &minFPS, &maxFPS);
-                CAMHAL_LOGDB("Select FPS Range %d %d", minFPS, maxFPS);
+                CAMHAL_LOGDB("Select FPS Range %d %d (%d)", minFPS, maxFPS);
               }
               else
                 {
@@ -3514,13 +3514,16 @@ void CameraHal::selectFPSRange(int framerate, int *min_fps, int *max_fps)
   size_t size = strlen(mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED))+1;
   strncpy(supported, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED), size);
 
+  CAMHAL_LOGDB("selectFPSRange::READ prop-framerate-range-values: %s", supported);
   ptr = strtok (supported," (,)");
 
   while (ptr != NULL)
     {
       fpsrangeArray[i]= atoi(ptr)/CameraHal::VFR_SCALE;
+      CAMHAL_LOGDB("selectFPSRange::SET fpsrangeArray[%d]=%d", i, fpsrangeArray[i]);
       if (i == 1)
         {
+          CAMHAL_LOGDB("selectFPSRange::CHECK framerate(%d) == fpsrangeArray[%d](%d)", framerate, i, fpsrangeArray[i]);
           if (framerate == fpsrangeArray[i])
             {
               CAMHAL_LOGDB("SETTING FPS RANGE min = %d max = %d \n", fpsrangeArray[0], fpsrangeArray[1]);

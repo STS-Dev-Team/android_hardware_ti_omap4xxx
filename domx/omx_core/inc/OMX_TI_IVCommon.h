@@ -67,7 +67,8 @@ extern "C" {
  /* ======================================================================= */
 typedef enum OMX_JPEG_COMPRESSEDMODETYPE {
     OMX_JPEG_ModeChunk = 0,
-    OMX_JPEG_ModeNonChunk
+    OMX_JPEG_ModeNonChunk,
+    OMX_JPEG_CompressedmodeMax = 0x7fffffff
 }OMX_JPEG_COMPRESSEDMODETYPE ;
 
 
@@ -85,7 +86,8 @@ typedef enum OMX_JPEG_UNCOMPRESSEDMODETYPE {
     OMX_JPEG_UncompressedModeFrame = 0,
     OMX_JPEG_UncompressedModeSlice,
     OMX_JPEG_UncompressedModeStitch,
-    OMX_JPEG_UncompressedModeBurst
+    OMX_JPEG_UncompressedModeBurst,
+    OMX_JPEG_UncompressedModeMax = 0x7fffffff
 }OMX_JPEG_UNCOMPRESSEDMODETYPE;
 
 
@@ -469,6 +471,7 @@ typedef struct OMX_CONFIG_BRACKETINGTYPE {
     OMX_BRACKETMODETYPE eBracketMode;
     OMX_U32 nNbrBracketingValues;
     OMX_S32 nBracketValues[10]; /**< 10 can be assumed */
+    OMX_S32 nBracketValues2[10];     /**< 10 can be assumed */
 } OMX_CONFIG_BRACKETINGTYPE;
 
 
@@ -2232,14 +2235,30 @@ typedef struct OMX_TI_CONFIG_EXIF_TAGS {
 } OMX_TI_CONFIG_EXIF_TAGS;
 
 /**
+ * The OMX_TI_SENFACING_TYPE enumeration is used to define the
+ * sensor facing.
+ */
+typedef enum OMX_TI_SENFACING_TYPE {
+    OMX_TI_SENFACING_FRONT,
+    OMX_TI_SENFACING_BACK,
+    OMX_TI_SENFACING_MAX = 0x7FFFFFFF
+}OMX_TI_SENFACING_TYPE;
+
+/**
  * Structure used to configure current OMX_TI_SENMOUNT_TYPE
  *
  * @param nSenId
  * @param nRotation
+ * @param bMirror
+ * @param bFlip
+ * @param eFacing
  */
 typedef struct OMX_TI_SENMOUNT_TYPE {
     OMX_U32             nSenId;
     OMX_U32             nRotation;
+    OMX_BOOL                bMirror;
+    OMX_BOOL                bFlip;
+    OMX_TI_SENFACING_TYPE   eFacing;
 }OMX_TI_SENMOUNT_TYPE;
 
 /**
@@ -2282,6 +2301,7 @@ typedef struct OMX_TI_CONFIG_SHAREDBUFFER {
  * nHeightMin       : Number of the smallest height supported
  * nWidthMax        : Number of the biggest width supported
  * nHeightMax       : Number of the biggest height supported
+ * nMaxResInPixels  : Max resolution in pixels. Used for description of 3d resolutions.
  */
 typedef struct OMX_TI_CAPRESTYPE {
 	OMX_U32         nSize;
@@ -2291,6 +2311,7 @@ typedef struct OMX_TI_CAPRESTYPE {
 	OMX_U32         nHeightMin; // smallest height supported
 	OMX_U32         nWidthMax;  // biggest width supported
 	OMX_U32         nHeightMax; // biggest height supported
+	OMX_U32         nMaxResInPixels;// max resolution in pixels
 } OMX_TI_CAPRESTYPE;
 
 /**
@@ -2305,6 +2326,7 @@ typedef struct OMX_TI_CAPRESTYPE {
  * ulImageFormatCount                   : Number of the supported image pixelformat count
  * eImageFormats                        : Array containing the supported image pixelformat count
  * tPreviewResRange                     : Supported preview resolution range
+ * tRotatedPreviewResRange              : Supported rotated preview resolution range
  * tImageResRange                       : Supported image resolution range
  * tThumbResRange                       : Supported thumbnail resolution range
  * ulWhiteBalanceCount                  : Supported whitebalance mode count
@@ -2340,53 +2362,130 @@ typedef struct OMX_TI_CAPRESTYPE {
  * ulCapVarFPSModesCount                : Number of capture FPS modes
  * tCapVarFPSModes                      : Capture FPS modes
  * tSenMounting                         : Sensor mount information
+ * ulAutoConvModesCount                 : Supported auto convergence modes count
+ * eAutoConvModes                       : Array containing the auto convergence modes
+ * ulBracketingModesCount               : Supported bracketing modes count
+ * eBracketingModes                     : Array containing the bracketing modes
+ * bGbceSupported                       : Flag showing if the Gbce is supported
+ * bRawJpegSupported                    : Flag showing if the Raw + Jpeg is supported
+ * ulImageCodingFormatCount             : Supported image coding formats count
+ * eImageCodingFormat                   : Array containing the image coding formats
+ * uSenNativeResWidth                   : Sensor native resolution width
+ * uSenNativeResHeight                  : Sensor native resolution height
+ * ulAlgoAreasFocusCount                : Supported number of AlgoAreas for focus areas
+ * ulAlgoAreasExposureCount             : Supported number of AlgoAreas for exposure areas
+ * bAELockSupported                     : Flag showing if the AE Lock is supported
+ * bAWBLockSupported                    : Flag showing if the AWB Lock is supported
+ * bAFLockSupported                     : Flag showing if the Af Lock is supported
+ * nFocalLength                         : Focal length defined in terms of 0.01mm
+ * ulPrvFrameLayoutCount                : supported frame layout count for preview
+ * ePrvFrameLayout                      : Array containing the frame layouts for preview
+ * ulCapFrameLayoutCount                : supported frame layout count for capture
+ * eCapFrameLayout                      : Array containing the frame layouts for capture
+ * bVideoNoiseFilterSupported           : Flag showing if the video noise filter is supported
+ * bVideoStabilizationSupported         : Flag showing if the video stabilization is supported
+ * bStillCapDuringVideoSupported        : Flag showing if the still capture is supported during video
+ * bMechanicalMisalignmentSupported     : Flag showing if the mechanical misalignment is supported
+ * bFacePrioritySupported               : Flag showing if the face priority is supported
+ * bRegionPrioritySupported             : Flag showing if the region priority is supported
+ * bGlbceSupported                      : Flag showing if the GLBCE is supported
+ * nManualConvMin                       : Manual convergence min value
+ * nManualConvMax                       : Manual convergence max value
+ * nManualExpMin                        : Manual exposure time min value
+ * nManualExpMax                        : Manual exposure time max value
+ * nBrightnessMin                       : Brightness min value
+ * nBrightnessMax                       : Brightness max value
+ * nContrastMin                         : Contrast min value
+ * nContrastMax                         : Contrast max value
+ * nSharpnessMin                        : Sharpness min value
+ * nSharpnessMax                        : Sharpness max value
+ * nSaturationMin                       : Saturation min value
+ * nSaturationMax                       : Saturation max value
  */
 typedef struct OMX_TI_CAPTYPE {
-	OMX_U32                 nSize;
-	OMX_VERSIONTYPE         nVersion;
-	OMX_U32                 nPortIndex;
-	OMX_U16                 ulPreviewFormatCount;   // supported preview pixelformat count
-	OMX_COLOR_FORMATTYPE    ePreviewFormats[100];
-	OMX_U16                 ulImageFormatCount;     // supported image pixelformat count
-	OMX_COLOR_FORMATTYPE    eImageFormats[100];
-	OMX_TI_CAPRESTYPE       tPreviewResRange;       // supported preview resolution range
-	OMX_TI_CAPRESTYPE       tImageResRange;         // supported image resolution range
-	OMX_TI_CAPRESTYPE       tThumbResRange;         // supported thumbnail resolution range
-	OMX_U16                 ulWhiteBalanceCount;    // supported whitebalance mode count
-	OMX_WHITEBALCONTROLTYPE eWhiteBalanceModes[100];
-	OMX_U16                 ulColorEffectCount;     // supported effects count
-	OMX_IMAGEFILTERTYPE     eColorEffects[100];
-	OMX_S32                 xMaxWidthZoom;          // Fixed point value stored as Q16
-	OMX_S32                 xMaxHeightZoom;         // Fixed point value stored as Q16
-	OMX_U16                 ulFlickerCount;         // supported anti-flicker mode count
-	OMX_COMMONFLICKERCANCELTYPE     eFlicker[100];
-	OMX_U16                 ulExposureModeCount;    // supported exposure mode count
-	OMX_EXPOSURECONTROLTYPE eExposureModes[100];
-	OMX_BOOL                bLensDistortionCorrectionSupported;
-	OMX_BOOL                bISONoiseFilterSupported;
-	OMX_S32                 xEVCompensationMin;     // Fixed point value stored as Q16
-	OMX_S32                 xEVCompensationMax;     // Fixed point value stored as Q16
-	OMX_U32                 nSensitivityMax;        // nSensitivityMax = 100 implies maximum supported equal to "ISO 100"
-	OMX_U16                 ulFocusModeCount;       // supported focus mode count
-	OMX_IMAGE_FOCUSCONTROLTYPE      eFocusModes[100];
-	OMX_U16                 ulSceneCount;           // supported scene count
-	OMX_SCENEMODETYPE       eSceneModes[100];
-	OMX_U16                 ulFlashCount;           // supported flash modes count
-	OMX_IMAGE_FLASHCONTROLTYPE      eFlashModes[100];
-	OMX_U32                 xFramerateMin;          // Fixed point value stored as Q16
-	OMX_U32                 xFramerateMax;          // Fixed point value stored as Q16
-	OMX_BOOL                bContrastSupported;
-	OMX_BOOL                bSaturationSupported;
-	OMX_BOOL                bBrightnessSupported;
-	OMX_BOOL                bProcessingLevelSupported;
-	OMX_BOOL                bQFactorSupported;
-	OMX_U16                 ulPrvVarFPSModesCount;  // supported variable FPS preview modes count
-	OMX_TI_VARFPSTYPE       tPrvVarFPSModes[10];
-	OMX_U16                 ulCapVarFPSModesCount;  // supported variable FPS capture modes count
-	OMX_TI_VARFPSTYPE       tCapVarFPSModes[10];
-	OMX_TI_SENMOUNT_TYPE    tSenMounting;
-        OMX_U16                 ulAlgoAreasFocusCount;    // supported number of AlgoAreas for focus areas
-       OMX_U16                  ulAlgoAreasExposureCount; // supported number of AlgoAreas for exposure areas
+	OMX_U32                         nSize;
+	OMX_VERSIONTYPE                 nVersion;
+	OMX_U32                         nPortIndex;
+	OMX_U16                         ulPreviewFormatCount;   // supported preview pixelformat count
+	OMX_COLOR_FORMATTYPE            ePreviewFormats[32];
+	OMX_U16                         ulImageFormatCount;     // supported image pixelformat count
+	OMX_COLOR_FORMATTYPE            eImageFormats[32];
+	OMX_TI_CAPRESTYPE               tPreviewResRange;       // supported preview resolution range
+	OMX_TI_CAPRESTYPE               tRotatedPreviewResRange;     // supported rotated preview resolution range
+	OMX_TI_CAPRESTYPE               tImageResRange;         // supported image resolution range
+	OMX_TI_CAPRESTYPE               tThumbResRange;         // supported thumbnail resolution range
+	OMX_U16                         ulWhiteBalanceCount;    // supported whitebalance mode count
+	OMX_WHITEBALCONTROLTYPE         eWhiteBalanceModes[32];
+	OMX_U16                         ulColorEffectCount;     // supported effects count
+	OMX_IMAGEFILTERTYPE             eColorEffects[32];
+	OMX_S32                         xMaxWidthZoom;          // Fixed point value stored as Q16
+	OMX_S32                         xMaxHeightZoom;         // Fixed point value stored as Q16
+	OMX_U16                         ulFlickerCount;         // supported anti-flicker mode count
+	OMX_COMMONFLICKERCANCELTYPE     eFlicker[32];
+	OMX_U16                         ulExposureModeCount;    // supported exposure mode count
+	OMX_EXPOSURECONTROLTYPE         eExposureModes[32];
+	OMX_BOOL                        bLensDistortionCorrectionSupported;
+	OMX_BOOL                        bISONoiseFilterSupported;
+	OMX_S32                         xEVCompensationMin;     // Fixed point value stored as Q16
+	OMX_S32                         xEVCompensationMax;     // Fixed point value stored as Q16
+	OMX_U32                         nSensitivityMax;        // nSensitivityMax = 100 implies maximum supported equal to "ISO 100"
+	OMX_U16                         ulFocusModeCount;       // supported focus mode count
+	OMX_IMAGE_FOCUSCONTROLTYPE      eFocusModes[32];
+	OMX_U16                         ulSceneCount;           // supported scene count
+	OMX_SCENEMODETYPE               eSceneModes[64];
+	OMX_U16                         ulFlashCount;           // supported flash modes count
+	OMX_IMAGE_FLASHCONTROLTYPE      eFlashModes[32];
+	OMX_U32                         xFramerateMin;          // Fixed point value stored as Q16
+	OMX_U32                         xFramerateMax;          // Fixed point value stored as Q16
+	OMX_BOOL                        bContrastSupported;
+	OMX_BOOL                        bSaturationSupported;
+	OMX_BOOL                        bBrightnessSupported;
+	OMX_BOOL                        bProcessingLevelSupported;
+	OMX_BOOL                        bQFactorSupported;
+	OMX_U16                         ulPrvVarFPSModesCount;  // supported variable FPS preview modes count
+	OMX_TI_VARFPSTYPE               tPrvVarFPSModes[10];
+	OMX_U16                         ulCapVarFPSModesCount;  // supported variable FPS capture modes count
+	OMX_TI_VARFPSTYPE               tCapVarFPSModes[10];
+	OMX_TI_SENMOUNT_TYPE            tSenMounting;
+	OMX_U16                         ulAutoConvModesCount;   // supported auto convergence modes count
+	OMX_TI_AUTOCONVERGENCEMODETYPE  eAutoConvModes[32];
+	OMX_U16                         ulBracketingModesCount; // supported bracketing modes count
+	OMX_BRACKETMODETYPE             eBracketingModes[32];
+	OMX_BOOL                        bGbceSupported;         // Flag showing if the Gbce is supported
+	OMX_BOOL                        bRawJpegSupported;      // Flag showing if the Raw + Jpeg issupported
+	OMX_U16                         ulImageCodingFormatCount;
+	OMX_IMAGE_CODINGTYPE            eImageCodingFormat[32];
+	OMX_U16                         uSenNativeResWidth;
+	OMX_U16                         uSenNativeResHeight;
+        OMX_U16                        ulAlgoAreasFocusCount;
+        OMX_U16                        ulAlgoAreasExposureCount;
+    OMX_BOOL                       bAELockSupported;
+    OMX_BOOL                       bAWBLockSupported;
+    OMX_BOOL                       bAFLockSupported;
+    OMX_U16                        nFocalLength;
+    OMX_U16                        ulPrvFrameLayoutCount;       // supported frame layout count
+    OMX_TI_STEREOFRAMELAYOUTTYPE   ePrvFrameLayout[16];
+    OMX_U16                        ulCapFrameLayoutCount;       // supported frame layout count
+    OMX_TI_STEREOFRAMELAYOUTTYPE   eCapFrameLayout[16];
+    OMX_BOOL                       bVideoNoiseFilterSupported;
+    OMX_BOOL                       bVideoStabilizationSupported;
+    OMX_BOOL                       bStillCapDuringVideoSupported;
+    OMX_BOOL                       bMechanicalMisalignmentSupported;
+    OMX_BOOL                       bFacePrioritySupported;
+    OMX_BOOL                       bRegionPrioritySupported;
+    OMX_BOOL                       bGlbceSupported;
+    OMX_S16                        nManualConvMin;
+    OMX_S16                        nManualConvMax;
+    OMX_U16                        nManualExpMin;
+    OMX_U16                        nManualExpMax;
+    OMX_S16                        nBrightnessMin;
+    OMX_S16                        nBrightnessMax;
+    OMX_S16                        nContrastMin;
+    OMX_S16                        nContrastMax;
+    OMX_S16                        nSharpnessMin;
+    OMX_S16                        nSharpnessMax;
+    OMX_S16                        nSaturationMin;
+    OMX_S16                        nSaturationMax;
 } OMX_TI_CAPTYPE;
 
 

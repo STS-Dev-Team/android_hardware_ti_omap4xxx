@@ -369,6 +369,8 @@ public:
     virtual status_t setFormat(OMX_U32 port, OMXCameraPortParameters &cap);
 
     // Function to get and populate caps from handle
+    static void dumpOMXCapsCAPRESTYPE(OMX_TI_CAPRESTYPE &captype);
+    static void dumpOMXCaps(OMX_TI_CAPTYPE &caps);
     static status_t getCaps(CameraProperties::Properties* props, OMX_HANDLETYPE handle);
     static const char* getLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT);
     static int getLUTvalue_HALtoOMX(const char * HalValue, LUTtype LUT);

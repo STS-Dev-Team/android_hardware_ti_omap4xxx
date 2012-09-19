@@ -80,7 +80,7 @@
 #define CAMHAL_LOGI ALOGI
 
 //Uncomment to enable more verbose/debug logs
-//#define DEBUG_LOG
+#define DEBUG_LOG
 
 ///Camera HAL Logging Functions
 #ifndef DEBUG_LOG

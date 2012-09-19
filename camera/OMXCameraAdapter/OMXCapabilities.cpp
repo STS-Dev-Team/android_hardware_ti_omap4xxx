@@ -104,6 +104,7 @@ const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
 };
 
 const CapFramerate OMXCameraAdapter::mFramerates [] = {
+    { 60, "60" },
     { 30, "30" },
     { 15, "15" },
 };
@@ -195,13 +196,15 @@ const CapU32 OMXCameraAdapter::mSensorNames [] = {
 // values for supported variable framerates sorted in ascending order
 // CapU32Pair = (max fps, min fps, string representation)
 const CapU32Pair OMXCameraAdapter::mVarFramerates [] = {
+    { 10, 10, "(10000,10000)"},
+    { 15, 5, "(5000,15000)"},
     { 15, 15, "(15000,15000)"},
+    { 20, 20, "(20000,20000)"},
+    { 24, 24, "(24000,24000)" },
+    { 30, 5, "(5000,30000)" },
     { 30, 15, "(15000,30000)" },
-    { 30, 24, "(24000,30000)" },
-// TODO(XXX): Removing 30,30 range to limit 1080p at 24fps. Will put back soon.
-#if 0
     { 30, 30, "(30000,30000)" },
-#endif
+    { 60, 15, "(15000,60000)" },
 };
 /************************************
  * static helper functions
@@ -440,7 +443,9 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
         return -EINVAL;
     }
 
+    CAMHAL_LOGDB("Res settings: %d x %d (min) and %d x %d (max)", res.nWidthMin, res.nHeightMin, res.nWidthMax, res.nHeightMax);
     for ( unsigned int i = 0 ; i < capCount ; i++ ) {
+        CAMHAL_LOGDB("encodeSizeCap found: %d, %d, %s", cap[i].width, cap[i].height, cap[i].param);
         if ( (cap[i].width <= res.nWidthMax) &&
              (cap[i].height <= res.nHeightMax) &&
              (cap[i].width >= res.nWidthMin) &&
@@ -474,6 +479,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
     } else {
         remove_last_sep(supported);
         params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, supported);
+        CAMHAL_LOGDB("supported picture sizes: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -500,6 +506,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
     } else {
         remove_last_sep(supported);
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
+        CAMHAL_LOGDB("supported previews sizes: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -526,6 +533,7 @@ status_t OMXCameraAdapter::insertVideoSizes(CameraProperties::Properties* params
     } else {
       remove_last_sep(supported);
       params->set(CameraProperties::SUPPORTED_VIDEO_SIZES, supported);
+        CAMHAL_LOGDB("supported video sizes: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -553,6 +561,7 @@ status_t OMXCameraAdapter::insertThumbSizes(CameraProperties::Properties* params
         //CTS Requirement: 0x0 should always be supported
         strncat(supported, "0x0", MAX_PROP_NAME_LENGTH);
         params->set(CameraProperties::SUPPORTED_THUMBNAIL_SIZES, supported);
+        CAMHAL_LOGDB("supported thumbnail sizes: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -616,6 +625,7 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
         //jpeg is not supported in OMX capabilies yet
         strncat(supported, CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
+        CAMHAL_LOGDB("supported picture formats: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -648,6 +658,7 @@ status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
         // We will program preview port with NV21 when we see application set YV12
         strncat(supported, CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
         params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
+        CAMHAL_LOGDB("supported preview formats: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -674,6 +685,7 @@ status_t OMXCameraAdapter::insertFramerates(CameraProperties::Properties* params
         CAMHAL_LOGEB("Error inserting supported preview framerates 0x%x", ret);
     } else {
         params->set(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES, supported);
+        CAMHAL_LOGDB("supported preview frame rates: %s", supported);
     }
 
     LOG_FUNCTION_NAME;
@@ -1214,6 +1226,70 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
     return ret;
 }
 
+void OMXCameraAdapter::dumpOMXCapsCAPRESTYPE(OMX_TI_CAPRESTYPE &captype) {
+    CAMHAL_LOGDB("       nWidthMin: %d", captype.nWidthMin);
+    CAMHAL_LOGDB("       nHeightMin: %d", captype.nHeightMin);
+    CAMHAL_LOGDB("       nWidthMax: %d", captype.nWidthMax);
+    CAMHAL_LOGDB("       nHeightMax: %d", captype.nHeightMax);
+}
+
+void OMXCameraAdapter::dumpOMXCaps(OMX_TI_CAPTYPE &caps) {
+    LOG_FUNCTION_NAME;
+
+    CAMHAL_LOGDA("OMX_TI_CAPTYPE dump:");
+    CAMHAL_LOGDB("   nSize: %d", caps.nSize);
+    CAMHAL_LOGDB("   nVersion: %d", caps.nVersion.nVersion);
+    CAMHAL_LOGDB("   nPortIndex: %d", caps.nPortIndex);
+    CAMHAL_LOGDB("   ulPreviewFormatCount: %d", caps.ulPreviewFormatCount);
+//  OMX_COLOR_FORMATTYPE    ePreviewFormats[100];
+    CAMHAL_LOGDB("   ulImageFormatCount: %d", caps.ulImageFormatCount);
+//  OMX_COLOR_FORMATTYPE    eImageFormats[100];
+    CAMHAL_LOGDA("   tPreviewResRange -> [OMX_TI_CAPRESTYPE]");
+    dumpOMXCapsCAPRESTYPE(caps.tPreviewResRange);
+    CAMHAL_LOGDA("   tImageResRange -> [OMX_TI_CAPRESTYPE]");
+    dumpOMXCapsCAPRESTYPE(caps.tImageResRange);
+    CAMHAL_LOGDA("   tThumbResRange -> [OMX_TI_CAPRESTYPE]");
+    dumpOMXCapsCAPRESTYPE(caps.tThumbResRange);
+#if 0
+	OMX_U16                 ulWhiteBalanceCount;    // supported whitebalance mode count
+	OMX_WHITEBALCONTROLTYPE eWhiteBalanceModes[100];
+	OMX_U16                 ulColorEffectCount;     // supported effects count
+	OMX_IMAGEFILTERTYPE     eColorEffects[100];
+	OMX_S32                 xMaxWidthZoom;          // Fixed point value stored as Q16
+	OMX_S32                 xMaxHeightZoom;         // Fixed point value stored as Q16
+	OMX_U16                 ulFlickerCount;         // supported anti-flicker mode count
+	OMX_COMMONFLICKERCANCELTYPE     eFlicker[100];
+	OMX_U16                 ulExposureModeCount;    // supported exposure mode count
+	OMX_EXPOSURECONTROLTYPE eExposureModes[100];
+	OMX_BOOL                bLensDistortionCorrectionSupported;
+	OMX_BOOL                bISONoiseFilterSupported;
+	OMX_S32                 xEVCompensationMin;     // Fixed point value stored as Q16
+	OMX_S32                 xEVCompensationMax;     // Fixed point value stored as Q16
+	OMX_U32                 nSensitivityMax;        // nSensitivityMax = 100 implies maximum supported equal to "ISO 100"
+	OMX_U16                 ulFocusModeCount;       // supported focus mode count
+	OMX_IMAGE_FOCUSCONTROLTYPE      eFocusModes[100];
+	OMX_U16                 ulSceneCount;           // supported scene count
+	OMX_SCENEMODETYPE       eSceneModes[100];
+	OMX_U16                 ulFlashCount;           // supported flash modes count
+	OMX_IMAGE_FLASHCONTROLTYPE      eFlashModes[100];
+	OMX_U32                 xFramerateMin;          // Fixed point value stored as Q16
+	OMX_U32                 xFramerateMax;          // Fixed point value stored as Q16
+	OMX_BOOL                bContrastSupported;
+	OMX_BOOL                bSaturationSupported;
+	OMX_BOOL                bBrightnessSupported;
+	OMX_BOOL                bProcessingLevelSupported;
+	OMX_BOOL                bQFactorSupported;
+	OMX_U16                 ulPrvVarFPSModesCount;  // supported variable FPS preview modes count
+	OMX_TI_VARFPSTYPE       tPrvVarFPSModes[10];
+	OMX_U16                 ulCapVarFPSModesCount;  // supported variable FPS capture modes count
+	OMX_TI_VARFPSTYPE       tCapVarFPSModes[10];
+	OMX_TI_SENMOUNT_TYPE    tSenMounting;
+        OMX_U16                 ulAlgoAreasFocusCount;    // supported number of AlgoAreas for focus areas
+       OMX_U16                  ulAlgoAreasExposureCount; // supported number of AlgoAreas for exposure areas
+#endif
+    LOG_FUNCTION_NAME_EXIT;
+}
+
 /*****************************************
  * public exposed function declarations
  *****************************************/
@@ -1255,6 +1331,7 @@ status_t OMXCameraAdapter::getCaps(CameraProperties::Properties* params, OMX_HAN
         goto EXIT;
     } else {
         CAMHAL_LOGDA("OMX capability query success");
+	dumpOMXCaps(*caps[0]);
     }
 
     // Translate and insert Ducati capabilities to CameraProperties
