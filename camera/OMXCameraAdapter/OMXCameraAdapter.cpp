@@ -1766,6 +1766,7 @@ status_t OMXCameraAdapter::startPreview()
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMXCameraPortParameters *mPreviewData = NULL;
     OMXCameraPortParameters *measurementData = NULL;
+    OMX_CONFIG_EXTRADATATYPE extraDataControl;
 
     LOG_FUNCTION_NAME;
 
@@ -1840,6 +1841,7 @@ status_t OMXCameraAdapter::startPreview()
 
     apply3Asettings(mParameters3A);
     //Queue all the buffers on preview port
+    CAMHAL_LOGDB("# of buffers to queue: %d", mPreviewData->mMaxQueueable);
     for(int index=0;index< mPreviewData->mMaxQueueable;index++)
         {
         CAMHAL_LOGDB("Queuing buffer on Preview port - 0x%x", (uint32_t)mPreviewData->mBufferHeader[index]->pBuffer);
@@ -1856,6 +1858,7 @@ status_t OMXCameraAdapter::startPreview()
         GOTO_EXIT_IF((eError!=OMX_ErrorNone), eError);
         }
 
+    CAMHAL_LOGDA("CHECK mMeasurementEnabled");
     if ( mMeasurementEnabled )
         {
 
@@ -1875,17 +1878,19 @@ status_t OMXCameraAdapter::startPreview()
 
     // Enable Ancillary data. The nDCCStatus field is used to signify
     // whether the preview frame is a snapshot
+    CAMHAL_LOGDA("CHECK setExtraData");
     if ( OMX_ErrorNone == eError)
         {
         ret =  setExtraData(true, OMX_ALL, OMX_AncillaryData);
         }
 
-
+    CAMHAL_LOGDA("CHECK mPending3Asettings");
     if ( mPending3Asettings )
         apply3Asettings(mParameters3A);
 
     // enable focus callbacks just once here
     // fixes an issue with slow callback registration in Ducati
+    CAMHAL_LOGDA("CHECK setFocusCallback");
     if ( NO_ERROR == ret ) {
         ret = setFocusCallback(true);
     }
@@ -3439,10 +3444,12 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     }
 
     OMX_INIT_STRUCT_PTR (&extraDataControl, OMX_CONFIG_EXTRADATATYPE);
-
     extraDataControl.nPortIndex = nPortIndex;
     extraDataControl.eExtraDataType = eType;
+
+#if 0
     extraDataControl.eCameraView = OMX_2D;
+#endif
 
     if (enable) {
         extraDataControl.bEnable = OMX_TRUE;
@@ -3451,14 +3458,13 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     }
 
     eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
-                           (OMX_INDEXTYPE) OMX_IndexConfigOtherExtraDataControl,
-                            &extraDataControl);
+                           ( OMX_INDEXTYPE ) OMX_IndexConfigOtherExtraDataControl,
+                           &extraDataControl);
 
     LOG_FUNCTION_NAME_EXIT;
 
     return (ret | ErrorUtils::omxToAndroidError(eError));
 }
-
 
 OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(OMX_OTHER_EXTRADATATYPE *extraData, OMX_EXTRADATATYPE type)
 {

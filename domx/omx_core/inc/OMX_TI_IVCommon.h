@@ -1429,25 +1429,24 @@ typedef struct OMX_TI_MTISTYPE {
  * The OMX_EXTRADATATYPE enumeration is used to define the
  * possible extra data payload types.
  */
-typedef enum OMX_EXT_EXTRADATATYPE
-{
-   OMX_ExifAttributes = 0x7F000001, /**< Reserved region for introducing Vendor Extensions */
+typedef enum OMX_EXT_EXTRADATATYPE {
+    OMX_ExifAttributes = 0x7F000001,     /**< 0x7F000001 Reserved region for introducing Vendor Extensions */
    OMX_AncillaryData,                   /**< 0x7F000002 ancillary data */
    OMX_WhiteBalance,                    /**< 0x7F000003 white balance resultant data */
    OMX_UnsaturatedRegions,              /**< 0x7F000004 unsaturated regions data */
-   OMX_FaceDetection, /**< face detect data */
-   OMX_BarcodeDetection, /**< bar-code detct data */
-   OMX_FrontObjectDetection, /**< Front object detection data */
-   OMX_MotionEstimation, /**< motion Estimation data */
-   OMX_TI_MTISType,                     /**< 0x7F000009 MTIS motion Estimation data */
-   OMX_DistanceEstimation, /**< disctance estimation */
-   OMX_Histogram, /**< histogram */
-   OMX_FocusRegion, /**< focus region data */
+    OMX_FaceDetection,              /**< 0x7F000005 face detect data */
+    OMX_BarcodeDetection,           /**< 0x7F000006 bar-code detct data */
+    OMX_FrontObjectDetection,       /**< 0x7F000007 Front object detection data */
+    OMX_MotionEstimation,           /**< 0x7F000008 motion Estimation data */
+    OMX_MTISType,                   /**< 0x7F000009 MTIS motion Estimation data */
+    OMX_DistanceEstimation,         /**< 0x7F00000A disctancedistance estimation */
+    OMX_Histogram,                  /**< 0x7F00000B histogram */
+    OMX_FocusRegion,                /**< 0x7F00000C focus region data */
    OMX_ExtraDataPanAndScan,             /**< 0x7F00000D pan and scan data */
-   OMX_RawFormat, /**< custom RAW data format */
-   OMX_SensorType, /**< vendor & model of the sensor being used */
-   OMX_SensorCustomDataLength, /**< vendor specific custom data length */
-   OMX_SensorCustomData, /**< vendor specific data */
+    OMX_RawFormat,                  /**< 0x7F00000E custom RAW data format */
+    OMX_SensorType,                 /**< 0x7F00000F vendor & model of the sensor being used */
+    OMX_SensorCustomDataLength,     /**< 0x7F000010 vendor specific custom data length */
+    OMX_SensorCustomData,           /**< 0x7F000011 vendor specific data */
    OMX_TI_FrameLayout,                  /**< 0x7F000012 vendor specific data */
    OMX_TI_SEIinfo2004Frame1,    /**< 0x7F000013 Used for 2004 SEI message to be provided by video decoders */
    OMX_TI_SEIinfo2004Frame2,    /**< 0x7F000014 Used for 2004 SEI message to be provided by video decoders */
@@ -1456,8 +1455,13 @@ typedef enum OMX_EXT_EXTRADATATYPE
    OMX_TI_RangeMappingInfo,     /**< 0x7F000017 Used for Range mapping info provided by Video Decoders */
    OMX_TI_RescalingInfo,        /**< 0x7F000018 Used for width/height rescaling info provided by Video Decoders */
    OMX_TI_WhiteBalanceOverWrite,        /**< 0x7F000019 Used for manual AWB settings */
+    OMX_TI_CPCamData,               /**< 0x7F00001A Used for cp cam data */
+    OMX_TI_H264ESliceDataInfo,      /**< 0x7F00001B */
+    OMX_TI_DccData,                 /**< 0x7F00001C Used for dcc data overwrite in the file system */
+    OMX_TI_ProfilerData,            /**< 0x7F00001D Used for profiling data */
    OMX_TI_ExtraData_Count,
    OMX_TI_ExtraData_Max = OMX_TI_ExtraData_Count - 1,
+   OMX_TI_ExtraData_32Bit_Patch = 0x7fffffff
 } OMX_EXT_EXTRADATATYPE;
 
 
@@ -1475,11 +1479,12 @@ typedef enum OMX_EXT_EXTRADATATYPE
  *
  */
 typedef struct OMX_CONFIG_EXTRADATATYPE {
-    OMX_U32 nSize;
+    OMX_U32 nSize;                              /**< The size of the structure including data bytes
+                                                     and any padding necessary to ensure 32bit alignment
+                                                     of the next OMX_OTHER_EXTRADATATYPE structure */
     OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_EXT_EXTRADATATYPE eExtraDataType;
-    OMX_TI_CAMERAVIEWTYPE eCameraView;
+    OMX_U32               nPortIndex;           /**< The read-only value containing the index of the port */
+    OMX_EXT_EXTRADATATYPE eExtraDataType;       /**< Identifies the extra data payload type */
     OMX_BOOL bEnable;
 } OMX_CONFIG_EXTRADATATYPE;
 
