@@ -341,6 +341,8 @@ status_t OMXCameraAdapter::setupEXIF()
             }
         }
 
+/* FIXME-HASH: This was crashing -- removed */
+#if 0
          if ( OMX_TI_TagReadWrite == exifTags->eStatusDateTime )
              {
              int status = gettimeofday (&sTv, NULL);
@@ -362,6 +364,7 @@ status_t OMXCameraAdapter::setupEXIF()
              exifTags->ulDateTimeBuffSizeBytes = EXIF_DATE_TIME_SIZE;
              exifTags->eStatusDateTime = OMX_TI_TagUpdated;
              }
+#endif
 
          if ( OMX_TI_TagReadWrite == exifTags->eStatusImageWidth )
              {

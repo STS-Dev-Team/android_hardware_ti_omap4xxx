@@ -108,6 +108,9 @@
 #define CAMHAL_LOGEA DBGUTILS_LOGEA
 #define CAMHAL_LOGEB DBGUTILS_LOGEB
 
+#define LOG_FUNCTION_NAME         ALOGD("%d: %s() ENTER", __LINE__, __FUNCTION__);
+#define LOG_FUNCTION_NAME_EXIT    ALOGD("%d: %s() EXIT", __LINE__, __FUNCTION__);
+
 #endif
 
 
