@@ -362,7 +362,8 @@ typedef struct OMX_CONFIG_SCALEQUALITYTYPE {
 typedef enum OMX_SMOOTHZOOMMODE{
     OMX_Off=0, /**< default OFF */
     OMX_Increase,
-    OMX_Decrease
+    OMX_Decrease,
+    OMX_SmoothZoomModeMax = 0x7fffffff
 }OMX_SMOOTHZOOMMODE;
 
 
@@ -408,7 +409,8 @@ typedef enum OMX_EXTIMAGEFILTERTYPE {
     OMX_TI_ImageFilterWhiteBoard,
     OMX_TI_ImageFilterBlackBoard,
     OMX_TI_ImageFilterAqua,
-    OMX_TI_ImageFilterPosterize
+    OMX_TI_ImageFilterPosterize,
+    OMX_ImageFilterTypeMax = 0x7fffffff
 } OMX_EXTIMAGEFILTERTYPE;
 
 
@@ -459,6 +461,7 @@ typedef enum OMX_BRACKETMODETYPE {
     OMX_BracketFlashPower,
     OMX_BracketAperture,
     OMX_BracketTemporal,
+    OMX_BracketExposureGainAbsolute,
     OMX_BrackerTypeKhronosExtensions = 0x6f000000,
     OMX_BrackerTypeVendorStartUnused = 0x7f000000,
     OMX_BracketTypeMax = 0x7FFFFFFF
@@ -469,9 +472,9 @@ typedef struct OMX_CONFIG_BRACKETINGTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_BRACKETMODETYPE eBracketMode;
-    OMX_U32 nNbrBracketingValues;
-    OMX_S32 nBracketValues[10]; /**< 10 can be assumed */
-    OMX_S32 nBracketValues2[10];     /**< 10 can be assumed */
+    OMX_U32             nNbrBracketingValues;
+    OMX_S32             nBracketValues[10];     /**< 10 can be assumed */
+    OMX_S32             nBracketValues2[10];     /**< 10 can be assumed */
 } OMX_CONFIG_BRACKETINGTYPE;
 
 
@@ -511,7 +514,7 @@ typedef enum OMX_CAMOPERATINGMODETYPE {
         OMX_CaptureImageProfileOpticalCorr1,
         OMX_CaptureImageProfileOpticalCorr2,
         OMX_CaptureImageProfileExtended1,
-	OMX_CaptureStereoImageCapture,
+        OMX_CaptureStereoImageCapture,
         OMX_CaptureImageMemoryInput,
         OMX_CaptureVideo,
         OMX_CaptureHighSpeedVideo,
@@ -519,7 +522,10 @@ typedef enum OMX_CAMOPERATINGMODETYPE {
         OMX_TI_CaptureDummy,
         OMX_TI_CaptureGestureRecognition,
         OMX_TI_CaptureImageProfileZeroShutterLag,
-        OMX_CamOperatingModeMax = 0x7fffffff
+        OMX_TI_SinglePreview,
+        OMX_TI_StereoGestureRecognition,
+        OMX_CamOperatingModeMax = OMX_TI_StereoGestureRecognition,
+        OMX_CamOperatingMode = 0x7fffffff
 } OMX_CAMOPERATINGMODETYPE;
 /**
  * Capture mode setting: applicable to multi shot capture also including bracketing.
@@ -671,7 +677,11 @@ typedef enum OMX_IMAGE_EXTFOCUSCONTROLTYPE {
     OMX_IMAGE_FocusControlPortrait, /**< from Xena */
     OMX_IMAGE_FocusControlExtended, /**< from Xena */
     OMX_IMAGE_FocusControlContinousNormal, /**< from Xena */
-    OMX_IMAGE_FocusControlContinousExtended /**< from Xena */
+    OMX_IMAGE_FocusControlContinousExtended,     /**< from Xena */
+    OMX_IMAGE_FocusControlContinousFacePriority,
+    OMX_IMAGE_FocusControlContinousRegionPriority,
+    OMX_IMAGE_FocusControlContinousPicture,
+    OMX_IMAGE_FocusControlTypeMax = 0x7fffffff
 } OMX_IMAGE_EXTFOCUSCONTROLTYPE;
 
 
@@ -837,7 +847,8 @@ typedef enum OMX_EXTWHITEBALCONTROLTYPE {
     OMX_TI_WhiteBalControlSunset,
     OMX_TI_WhiteBalControlShade,
     OMX_TI_WhiteBalControlTwilight,
-    OMX_TI_WhiteBalControlWarmFluorescent
+    OMX_TI_WhiteBalControlWarmFluorescent,
+    OMX_TI_WhiteBalControlMax = 0x7fffffff
 } OMX_EXTWHITEBALCONTROLTYPE;
 
 /**
@@ -937,7 +948,8 @@ OMX_PROCESSINGTYPE eProc;
 typedef enum OMX_HISTTYPE{
         OMX_HistControlLuminance = 0, /**< Luminance histogram is calculated (Y)*/
         OMX_HistControlColorComponents, /**< A histogram per color component (R, G, B) is calculated*/
-        OMX_HistControlChrominanceComponents /**< A histogram per chrominance component (Cb, Cr) is calculated.*/
+    OMX_HistControlChrominanceComponents,     /**< A histogram per chrominance component (Cb, Cr) is calculated.*/
+    OMX_HistControl_32BIT_PATCH = 0x7FFFFFFF
 }OMX_HISTTYPE;
 
 /**
@@ -974,7 +986,7 @@ typedef struct OMX_CONFIG_HISTOGRAMTYPE {
 } OMX_CONFIG_HISTOGRAMTYPE;
 
 /**
- * Enums for HIST component type.
+ * OMX_HISTCOMPONENTTYPE Enumerated Value
  */
 typedef enum OMX_HISTCOMPONENTTYPE{
         OMX_HISTCOMP_Y = 0, /**<    Luminance histogram (Y) */
@@ -983,21 +995,31 @@ typedef enum OMX_HISTCOMPONENTTYPE{
         OMX_HISTCOMP_G, /**< Green histogram component (G)*/
         OMX_HISTCOMP_B, /**< Blue histogram component (B)*/
         OMX_HISTCOMP_Cb,    /**< Chroma blue histogram component (Cb)*/
-        OMX_HISTCOMP_Cr /**< Chroma red histogram component (Cr) */
+    OMX_HISTCOMP_Cr,     /**< Chroma red histogram component (Cr) */
+    OMX_HISTCOMP_32BIT_PATCH = 0x7FFFFFFF
 }OMX_HISTCOMPONENTTYPE;
 
- /**
+/**
  * The OMX_TI_CAMERAVIEWTYPE enumeration is used to identify the
- * particular camera view that the rest of the data in the structure is
- * associated with.
+ * particular camera view and frame type that the rest of
+ * the data in the structure is associated with.
  */
-typedef enum OMX_TI_CAMERAVIEWTYPE
-{
-    OMX_2D,     /**< Camera view in 2D sensor configuration */
-    OMX_Left,   /**< Left camera view in stereo sensor configuration */
-    OMX_Right,  /**< Right camera view in stereo sensor configuration */
+typedef enum OMX_TI_CAMERAVIEWTYPE {
+    OMX_2D_Prv,         /**< Camera view in 2D for preview */
+    OMX_2D_Snap,        /**< Camera view in 2D for snapshot */
+    OMX_2D_Cap,         /**< Camera view in 2D for capture */
+    OMX_3D_Left_Prv,    /**< Left camera view in 3D for preview */
+    OMX_3D_Left_Snap,   /**< Left camera view in 3D for snapshot */
+    OMX_3D_Left_Cap,    /**< Left camera view in 3D for capture */
+    OMX_3D_Right_Prv,   /**< Right camera view in 3D for preview */
+    OMX_3D_Right_Snap,  /**< Right camera view in 3D for snapshot */
+    OMX_3D_Right_Cap,   /**< Right camera view in 3D for capture */
     OMX_TI_CAMERAVIEWTYPE_32BIT_PATCH = 0x7FFFFFFF
 } OMX_TI_CAMERAVIEWTYPE;
+
+#define OMX_OTHER_EXTRADATATYPE_SIZE ((OMX_U32)(((OMX_OTHER_EXTRADATATYPE *)0x0)->data))  /**< Size of OMX_OTHER_EXTRADATATYPE
+                                                                                without Data[1] and without padding */
+
 /**
  *  nSize is the size of the structure including the length of data field containing
  *  the histogram data.
@@ -1017,7 +1039,6 @@ typedef struct OMX_HISTOGRAMTYPE {
     OMX_U8  data[1];
 } OMX_HISTOGRAMTYPE;
 
-#define OMX_OTHER_EXTRADATATYPE_SIZE ( (OMX_U32)(((OMX_OTHER_EXTRADATATYPE*)0x0)->data) ) /**< Size of OMX_OTHER_EXTRADATATYPE**/
 /**
  * The extra data having ancillary data is described with the following structure.
  * This data contains single flags and values
@@ -1063,6 +1084,11 @@ typedef  struct OMX_TI_ANCILLARYDATATYPE {
     OMX_U8              nDCCStatus;
 } OMX_TI_ANCILLARYDATATYPE;
 
+/**
+ * White Balance Results data
+ *  The extra data having white balance results data is
+ *  described with the following structure..
+ */
 typedef struct OMX_TI_WHITEBALANCERESULTTYPE {
     OMX_U32             nSize;          /**< Size */
     OMX_VERSIONTYPE     nVersion;       /**< Version */
@@ -1090,15 +1116,17 @@ typedef struct OMX_TI_UNSATURATEDREGIONSTYPE {
     OMX_U32             nPortIndex;     /**< Port Index */
     OMX_U16             nPaxelsX;       /**< The number of paxels in the horizontal direction */
     OMX_U16             nPaxelsY;       /**< The number of paxels in the vertical direction */
-    OMX_U16             data[1];        /**< the first value of an array of values that represent */
+    OMX_U16         data[1];     /**< the first value of an array of values that represent
+                                     the percentage of unsaturated pixels within the associated paxel */
 } OMX_TI_UNSATURATEDREGIONSTYPE;
 
 /**
  * OMX_BARCODETYPE
  */
-typedef enum OMX_BARCODETYPE{
+typedef enum OMX_BARCODETYPE {
         OMX_BARCODE1D = 0,      /**< 1D barcode */
         OMX_BARCODE2D,          /**< 2D barcode */
+    OMX_BarcodeMax = 0x7fffffff
 }OMX_BARCODETYPE;
 /**
  * Brcode detection data
@@ -1114,12 +1142,13 @@ typedef struct OMX_BARCODEDETECTIONTYPE {
 	OMX_VERSIONTYPE nVersion;
 	OMX_U32 nPortIndex;
 	OMX_TI_CAMERAVIEWTYPE eCameraView;
-	OMX_S32 nLeft;
-	OMX_S32 nTop;
-	OMX_U32 nWidth;
-	OMX_U32 nHeight;
-	OMX_S32 nOrientation;
-	OMX_BARCODETYPE eBarcodetype;
+    OMX_S32               nLeft;     /**< The leftmost coordinate of the detected area rectangle */
+    OMX_S32               nTop;     /**< Topmost coordinate of the detected area rectangle */
+    OMX_U32               nWidth;     /**< The width of the detected area rectangle in pixels */
+    OMX_U32               nHeight;     /**< The height of the detected area rectangle in pixels */
+    OMX_S32               nOrientation;     /**< The orientation of the axis of the detected object.
+                                         This refers to the angle between the vertical axis of barcode and the horizontal axis */
+    OMX_BARCODETYPE eBarcodetype;     /**< An enumeration specifying the barcode type, as listed in the given table */
  } OMX_BARCODEDETECTIONTYPE;
 
 /**
@@ -1134,10 +1163,10 @@ typedef struct OMX_FRONTOBJDETECTIONTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_TI_CAMERAVIEWTYPE eCameraView;
-    OMX_S32 nLeft;
-    OMX_S32 nTop;
-    OMX_U32 nWidth;
-    OMX_U32 nHeight;
+    OMX_S32               nLeft;     /**< The leftmost coordinate of the detected area rectangle */
+    OMX_S32               nTop;     /**< The topmost coordinate of the detected area rectangle */
+    OMX_U32               nWidth;     /**< The width of the detected area rectangle in pixels */
+    OMX_U32               nHeight;     /**< The height of the detected area rectangle in pixels */
 } OMX_FRONTOBJDETECTIONTYPE;
 
 /**
@@ -1150,8 +1179,9 @@ typedef struct OMX_DISTANCEESTIMATIONTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_TI_CAMERAVIEWTYPE eCameraView;
-    OMX_U32 nDistance;
-    OMX_U32 nLargestDiscrepancy;
+    OMX_U32               nDistance;        /**< Estimated distance to the object in millimeters */
+    OMX_U32               nLargestDiscrepancy;     /**< the estimated largest discrepancy of the distance to the object in millimeters.
+                                                 When equal to MAX_INT the discrepancy is unknown */
 } OMX_DISTANCEESTIMATIONTYPE;
 
 /**
@@ -1165,8 +1195,10 @@ typedef struct OMX_MOTIONESTIMATIONTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_TI_CAMERAVIEWTYPE eCameraView;
-    OMX_S32 nPanX;
-    OMX_S32 nPanY;
+    OMX_S32               nPanX;     /**< The detected translation in horizontal direction.
+                                     The value is represented as pixels in Q16-format */
+    OMX_S32 nPanY;              /**< The detected translation in vertical direction.
+                                     The value is represented as pixels in Q16-format */
 } OMX_MOTIONESTIMATIONTYPE;
 
 
@@ -1184,11 +1216,12 @@ typedef struct OMX_FOCUSREGIONTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_TI_CAMERAVIEWTYPE eCameraView;
-    OMX_U32 nRefPortIndex;
-    OMX_S32 nLeft;
-    OMX_S32 nTop;
-    OMX_U32 nWidth;
-    OMX_U32 nHeight;
+    OMX_U32               nRefPortIndex;     /**< The port the image frame size is defined on.
+                                     This image frame size is used as reference for the focus region rectangle */
+    OMX_S32 nLeft;              /**< The leftmost coordinate of the focus region rectangle */
+    OMX_S32 nTop;               /**< The topmost coordinate of the focus region rectangle */
+    OMX_U32 nWidth;             /**< The width of the focus region rectangle in pixels */
+    OMX_U32 nHeight;            /**< The height of the focus region rectangle in pixels */
 } OMX_FOCUSREGIONTYPE;
 
 /**
@@ -1197,7 +1230,8 @@ typedef struct OMX_FOCUSREGIONTYPE {
  */
 typedef enum OMX_ISOSETTINGTYPE{
         OMX_Auto = 0, /**<	*/
-        OMX_IsoManual	/**< */
+    OMX_IsoManual,      /**< */
+    OMX_IsoSettingMax = 0x7fffffff
 }OMX_ISOSETTINGTYPE;
 
 /**
@@ -1259,7 +1293,8 @@ typedef enum OMX_OBJDETECTQUALITY{
         OMX_Default,    /**< The default detection, should be used when no control of the detection quality is given.*/
         OMX_BetterDetection,    /**< A detection that levels correct detection with speed*/
         OMX_BestDtection,   /**< A detection that prioritizes correct detection*/
-        OMX_AUTODETECTION   /**< Automatically decide which object detection quality is best.*/
+    OMX_AUTODETECTION,       /**< Automatically decide which object detection quality is best.*/
+    OMX_ObjDetectQualityMax = 0x7fffffff
 }OMX_OBJDETECTQUALITY;
 
 /**
@@ -1302,7 +1337,8 @@ typedef struct OMX_CONFIG_OBJDETECTIONTYPE {
  */
 typedef enum OMX_DISTTYPE{
         OMX_DistanceControlFocus = 0, /**< focus objects distance type*/
-        OMX_DISTANCECONTROL_RECT	/**< Evaluated distance to the object found in the rectangelar area indicated as input region.  */
+    OMX_DISTANCECONTROL_RECT,       /**< Evaluated distance to the object found in the rectangelar area indicated as input region.  */
+    OMX_DistTypeMax = 0x7fffffff
 }OMX_DISTTYPE;
 
 
@@ -1348,12 +1384,25 @@ typedef struct OMX_CONFIG_DISTANCETYPE {
  *
  */
 typedef struct OMX_FACEATTRIBUTE {
-        OMX_U32 nARGBEyeColor;
-    OMX_U32 nARGBSkinColor;
-    OMX_U32 nARGBHairColor;
-    OMX_U32 nSmileScore;
-    OMX_U32 nBlinkScore;
-    OMX_U32 xIdentity[4];
+    OMX_U32 nARGBEyeColor;      /**< The indicates a 32-bit eye color of the person,
+                                     where bits 0-7 are blue, bits 15-8 are green, bits 24-16 are red,
+                                     and bits 31-24 are for alpha. */
+    OMX_U32 nARGBSkinColor;     /**< The indicates a 32-bit skin color of the person,
+                                     where bits 0-7 are blue, bits 15-8 are green, bits 24-16 are red,
+                                     and bits 31-24 are for alpha */
+    OMX_U32 nARGBHairColor;     /**< the indicates a 32-bit hair color of the person,
+                                     where bits 0-7 are blue, bits 15-8 are green, bits 24-16 are red,
+                                    and bits 31-24 are for alpha */
+    OMX_U32 nSmileScore;        /**< Smile detection score between 0 and 100, where 0 means not detecting,
+                                     1 means least certain and 100 means most certain a smile is detected */
+    OMX_U32 nBlinkScore;        /**< Eye-blink detection score between 0 and 100, where 0 means not detecting,
+                                     1 means least certain and 100 means most certain an eye-blink is detected */
+    OMX_U32 xIdentity[4];       /**< represents the identity of the face. With identity equal to zero this is not supported.
+                                     This can be used by a face recognition application.
+                                     The component shall not reuse an identity value unless the same face.
+                                     Can be used to track detected faces when it moves between frames.
+                                     Specific usage of this field is implementation dependent.
+                                     It can be some kind of ID */
 } OMX_FACEATTRIBUTE;
 
 /**
@@ -1379,16 +1428,22 @@ typedef struct OMX_TI_FACERESULT {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_TI_CAMERAVIEWTYPE eCameraView;
-    OMX_U32 nScore;
-    OMX_S32 nLeft;
-    OMX_S32 nTop;
-OMX_U32 nWidth;
-OMX_U32 nHeight;
+    OMX_U32               nScore;     /**< Detection score between 0 and 100, where 0 means unknown score,
+                                         1 means least certain and 100 means most certain the detection is correct */
+    OMX_S32 nLeft;                  /**< The leftmost coordinate of the detected area rectangle */
+    OMX_S32 nTop;                   /**< The topmost coordinate of the detected area rectangle */
+    OMX_U32 nWidth;                 /**< The width of the detected area rectangle in pixels */
+    OMX_U32 nHeight;                /**< The height of the detected area rectangle in pixels */
+    // The orientation of the axis of the detected object.
+    // Here roll angle is defined as the angle between the vertical axis of face and the horizontal axis.
+    // All angles can have the value of -180 to 180 degree in Q16 format.
+    // Some face detection algorithm may not be able to fill in the angles, this is denoted by the use of MAX_INT value.
 OMX_S32 nOrientationRoll;
 OMX_S32 nOrientationYaw;
 OMX_S32 nOrientationPitch;
-OMX_U32 nPriority;
-OMX_FACEATTRIBUTE nFaceAttr;
+    //
+    OMX_U32           nPriority;     /**< Represents priority of each object when there are multiple objects detected */
+    OMX_FACEATTRIBUTE nFaceAttr;     /**< Describe the attributes of the detected face object with the following structure */
 } OMX_TI_FACERESULT;
 
 
@@ -1403,7 +1458,7 @@ typedef struct OMX_FACEDETECTIONTYPE {
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
     OMX_TI_CAMERAVIEWTYPE    eCameraView;
-    OMX_U16 ulFaceCount;
+    OMX_U16               ulFaceCount;     // faces detected
     OMX_TI_FACERESULT tFacePosition[35];// 35 is max faces supported by FDIF
 } OMX_FACEDETECTIONTYPE;
 
@@ -1495,7 +1550,8 @@ typedef struct OMX_CONFIG_EXTRADATATYPE {
 typedef enum OMX_JPEGHEADERTYPE{
 	OMX_NoHeader = 0,
 	OMX_JFIF,
-	OMX_EXIF
+    OMX_EXIF,
+    OMX_JpegHeaderTypeMax = 0x7fffffff
 }OMX_JPEGHEADERTYPE;
 /**
  * Re-start marker configuration
@@ -1561,7 +1617,8 @@ typedef struct OMX_IMAGE_JPEGMAXSIZE {
 
 typedef enum OMX_IMAGESTAMPOPERATION{
     OMX_NewImageStamp = 0,
-    OMX_Continuation
+    OMX_Continuation,
+    OMX_ImageStapOperationMax = 0x7fffffff
 }OMX_IMAGESTAMPOPERATION;
 
 
@@ -1802,10 +1859,10 @@ typedef struct OMX_TI_CONFIG_WHITEBALANCECOLORTEMPTYPE {
  */
 typedef enum OMX_TI_CONFIG_FOCUSSPOTMODETYPE {
     OMX_FocusSpotDefault = 0,                           /** Makes CommonFocusRegion to be used. */
-    OMX_FocusSpotSinglecenter,
-    OMX_FocusSpotMultiNormal,
-    OMX_FocusSpotMultiAverage,
-    OMX_FocusSpotMultiCenter,
+    OMX_FocusSpotSinglecenter,                          /** Only central part of the image is used for focus. */
+    OMX_FocusSpotMultiNormal,                           /** Middle part of the image is used with 100% weight, upper and lower parts are with 50%. */
+    OMX_FocusSpotMultiAverage,                          /** All the image is used with 100% weight. */
+    OMX_FocusSpotMultiCenter,                           /** Central part of the image is used with 100% weight, the rest is used with 50%. */
     OMX_FocusSpotExtensions = 0x6F000000,               /** Reserved region for introducing Khronos Standard Extensions */
     OMX_FocusSpotModeStartUnused = 0x7F000000,          /** Reserved region for introducing Vendor Extensions */
     OMX_FocusSpotModeMax = 0x7FFFFFFF
@@ -1831,7 +1888,9 @@ typedef struct OMX_TI_CONFIG_FOCUSSPOTWEIGHTINGTYPE {
  * Enumeration of possible Exposure control types for OMX_EXPOSURECONTROLTYPE
  */
 typedef enum OMX_TI_EXTEXPOSURECONTROLTYPE {
-    OMX_TI_ExposureControlVeryLong = OMX_ExposureControlVendorStartUnused + 1
+    OMX_TI_ExposureControlVeryLong = OMX_ExposureControlVendorStartUnused + 1,
+    OMX_TI_ExposureControlFacePriority,
+    OMX_TI_ExposureControlMax = 0x7fffffff
 } OMX_TI_EXTEXPOSURECONTROLTYPE;
 
 /**
@@ -1927,6 +1986,8 @@ typedef enum OMX_TI_STEREOFRAMELAYOUTTYPE {
 	OMX_TI_StereoFrameLayout2D,
 	OMX_TI_StereoFrameLayoutTopBottom,
 	OMX_TI_StereoFrameLayoutLeftRight,
+    OMX_TI_StereoFrameLayoutTopBottomSubsample,
+    OMX_TI_StereoFrameLayoutLeftRightSubsample,
 	OMX_TI_StereoFrameLayoutMax = 0x7FFFFFFF
 } OMX_TI_STEREOFRAMELAYOUTTYPE;
 
@@ -1956,8 +2017,7 @@ typedef enum OMX_TI_COLOR_FORMATTYPE {
 	    OMX_COLOR_FormatVendorStartUnused + 2, /**< 10 bit raw for stereo */
 	OMX_TI_COLOR_FormatYUV420PackedSemiPlanar =
             (OMX_COLOR_FORMATTYPE) OMX_COLOR_FormatVendorStartUnused  + 0x100, /* 0x100 is used since it is the corresponding HAL pixel fromat */
-        OMX_COLOR_FormatAndroidOpaque =
-	    (OMX_COLOR_FORMATTYPE) OMX_COLOR_FormatVendorStartUnused  + 0x789 /**< Platform specified opaque format set to unique value 0x789*/
+    OMX_TI_ColorFormatTypeMax = 0x7fffffff
 } OMX_TI_COLOR_FORMATTYPE;
 
 /**
@@ -2309,7 +2369,7 @@ typedef struct OMX_TI_CONFIG_SHAREDBUFFER {
  * nMaxResInPixels  : Max resolution in pixels. Used for description of 3d resolutions.
  */
 typedef struct OMX_TI_CAPRESTYPE {
-	OMX_U32         nSize;
+    OMX_U32         nSize;          //- OMX struct header not required as this struct wont be queried on its own?
 	OMX_VERSIONTYPE nVersion;
 	OMX_U32         nPortIndex;
 	OMX_U32         nWidthMin;  // smallest width supported
@@ -2635,6 +2695,92 @@ typedef struct OMX_TI_CONFIG_VARFRMRANGETYPE {
     OMX_U32 xMax;
 } OMX_TI_CONFIG_VARFRMRANGETYPE;
 
+
+/**
+* Define the frames queue len for ZSL
+*
+* STRUCT MEMBERS:
+* nSize: Size of the structure in bytes
+* nVersion: OMX specification version information
+* nHistoryLen: History len in number of frames
+*/
+    typedef struct OMX_TI_PARAM_ZSLHISTORYLENTYPE {
+        OMX_U32         nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_U32         nHistoryLen;
+    } OMX_TI_PARAM_ZSLHISTORYLENTYPE;
+
+/**
+* Define the frame delay in ms for ZSL
+*
+* STRUCT MEMBERS:
+* nSize: Size of the structure in bytes
+* nVersion: OMX specification version information
+* nDelay: Capture frame delay in ms
+*/
+    typedef struct OMX_TI_CONFIG_ZSLDELAYTYPE {
+        OMX_U32         nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_S32         nDelay;
+    } OMX_TI_CONFIG_ZSLDELAYTYPE;
+
+/**
+* AlogAreas purpose
+* This type specifies the purpose of areas specified in OMX_ALGOAREASTYPE.
+* */
+    typedef enum OMX_ALGOAREAPURPOSE{
+        OMX_AlgoAreaFocus = 0, // Multi region focus
+        OMX_AlgoAreaExposure,
+    }OMX_ALGOAREAPURPOSE;
+
+    typedef  struct OMX_ALGOAREA {
+        OMX_S32 nLeft;                      /**< The leftmost coordinate of the area rectangle */
+        OMX_S32 nTop;                       /**< The topmost coordinate of the area rectangle */
+        OMX_U32 nWidth;                     /**< The width of the area rectangle in pixels */
+        OMX_U32 nHeight;                    /**< The height of the area rectangle in pixels */
+        OMX_U32 nPriority;                  /**< Priority - ranges from 1 to 1000 */
+    }OMX_ALGOAREA;
+
+/**
+* Algorythm areas type
+* This type defines areas for Multi Region Focus,
+* or another algorithm region parameters,
+* such as Multi Region Auto Exposure.
+*
+* STRUCT MEMBERS:
+*  nSize            : Size of the structure in bytes
+*  nVersion         : OMX specification version information
+*  nPortIndex       : Port index
+*  tAreaPosition    : Area definition - coordinates and purpose - Multi Region Focus, Auto Exposure, etc.
+*  nNumAreas        : Number of areas defined in the array
+*  nAlgoAreaPurpose : Algo area purpose - eg. Multi Region Focus is OMX_AlgoAreaFocus
+*/
+    typedef  struct OMX_ALGOAREASTYPE {
+        OMX_U32 nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_U32 nPortIndex;
+
+        OMX_U32 nNumAreas;
+        OMX_ALGOAREA tAlgoAreas[MAX_ALGOAREAS];
+        OMX_ALGOAREAPURPOSE nAlgoAreaPurpose;
+    } OMX_ALGOAREASTYPE;
+
+/*==========================================================================*/
+/*!
+@brief OMX_TI_PARAM_ENHANCEDPORTRECONFIG : Suport added to new port reconfig usage
+@param bUsePortReconfigForCrop       Enables port reconfig for crop.
+@param bUsePortReconfigForPadding    Enables port reconfig for padding
+*/
+/*==========================================================================*/
+
+typedef struct OMX_TI_PARAM_ENHANCEDPORTRECONFIG {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bUsePortReconfigForCrop;
+    OMX_BOOL bUsePortReconfigForPadding;
+} OMX_TI_PARAM_ENHANCEDPORTRECONFIG;
+
 /**
 * A pointer to this struct is passed to the OMX_SetParameter when the extension
 * index for the 'OMX.google.android.index.enableAndroidNativeBuffers' extension
@@ -2664,93 +2810,6 @@ typedef struct OMX_TI_PARAMNATIVEBUFFERUSAGE {
     OMX_U32 nPortIndex;
     OMX_U32 nUsage;
 } OMX_TI_PARAMNATIVEBUFFERUSAGE;
-
-/*==========================================================================*/
-/*!
-@brief OMX_TI_PARAM_ENHANCEDPORTRECONFIG : Suport added to new port reconfig usage
-@param bUsePortReconfigForCrop       Enables port reconfig for crop.
-@param bUsePortReconfigForPadding    Enables port reconfig for padding
-*/
-/*==========================================================================*/
-
-typedef struct OMX_TI_PARAM_ENHANCEDPORTRECONFIG {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_BOOL bUsePortReconfigForCrop;
-    OMX_BOOL bUsePortReconfigForPadding;
-} OMX_TI_PARAM_ENHANCEDPORTRECONFIG;
-
-/**
-* Define the frames queue len for ZSL
-*
-* STRUCT MEMBERS:
-* nSize: Size of the structure in bytes
-* nVersion: OMX specification version information
-* nHistoryLen: History len in number of frames
-*/
-typedef struct OMX_TI_PARAM_ZSLHISTORYLENTYPE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nHistoryLen;
-} OMX_TI_PARAM_ZSLHISTORYLENTYPE;
-
-/**
-* Define the frame delay in ms for ZSL
-*
-* STRUCT MEMBERS:
-* nSize: Size of the structure in bytes
-* nVersion: OMX specification version information
-* nDelay: Capture frame delay in ms
-*/
-typedef struct OMX_TI_CONFIG_ZSLDELAYTYPE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_S32 nDelay;
-} OMX_TI_CONFIG_ZSLDELAYTYPE;
-
-/**
- * AlogAreas purpose
- * This type specifies the purpose of areas specified in OMX_ALGOAREASTYPE.
- * */
-typedef enum OMX_ALGOAREAPURPOSE{
-    OMX_AlgoAreaFocus = 0, // Multi region focus
-    OMX_AlgoAreaExposure,
-}OMX_ALGOAREAPURPOSE;
-
-typedef  struct OMX_ALGOAREA {
-    OMX_S32 nLeft;                      /**< The leftmost coordinate of the area rectangle */
-    OMX_S32 nTop;                       /**< The topmost coordinate of the area rectangle */
-    OMX_U32 nWidth;                     /**< The width of the area rectangle in pixels */
-    OMX_U32 nHeight;                    /**< The height of the area rectangle in pixels */
-    OMX_U32 nPriority;                  /**< Priority - ranges from 1 to 1000 */
-}OMX_ALGOAREA;
-
-/**
- * Algorythm areas type
- * This type defines areas for Multi Region Focus,
- * or another algorithm region parameters,
- * such as Multi Region Auto Exposure.
- *
- * STRUCT MEMBERS:
- *  nSize            : Size of the structure in bytes
- *  nVersion         : OMX specification version information
- *  nPortIndex       : Port index
- *  tAreaPosition    : Area definition - coordinates and purpose - Multi Region Focus, Auto Exposure, etc.
- *  nNumAreas        : Number of areas defined in the array
- *  nAlgoAreaPurpose : Algo area purpose - eg. Multi Region Focus is OMX_AlgoAreaFocus
- */
-typedef  struct OMX_ALGOAREASTYPE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-
-    OMX_U32 nNumAreas;
-    OMX_ALGOAREA tAlgoAreas[MAX_ALGOAREAS];
-    OMX_ALGOAREAPURPOSE nAlgoAreaPurpose;
-} OMX_ALGOAREASTYPE;
-
-
 
 #ifdef __cplusplus
 }

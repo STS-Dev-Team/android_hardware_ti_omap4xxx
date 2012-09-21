@@ -3448,7 +3448,7 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     extraDataControl.eExtraDataType = eType;
 
 #if 0
-    extraDataControl.eCameraView = OMX_2D;
+    extraDataControl.eCameraView = OMX_2D_Prv;
 #endif
 
     if (enable) {
