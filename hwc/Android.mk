@@ -15,6 +15,11 @@ LOCAL_MODULE_TAGS := optional
 
 LOCAL_MODULE := hwcomposer.omap4
 LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\"
+
+ifdef BOARD_USES_HWC_POST2FINDFB
+LOCAL_CFLAGS += -DUSES_HWC_POST2FINDFB
+endif
+
 LOCAL_C_INCLUDES += external/libpng external/zlib
 # LOG_NDEBUG=0 means verbose logging enabled
 # LOCAL_CFLAGS += -DLOG_NDEBUG=0

@@ -105,6 +105,12 @@ typedef struct
 	/* The HWC was loaded. post() is no longer responsible for presents */
 	int bBypassPost;
 
+#ifdef USES_HWC_POST2FINDFB
+	/* If Post2 is called and a previous call to post() was not made,
+	 * try to find a suitable framebuffer handle to flip
+	 */
+	int bPost2FindFramebuffer;
+#endif
 	/* HWC path for present posts */
 	int (*Post2)(framebuffer_device_t *fb, buffer_handle_t *buffers,
 				 int num_buffers, void *data, int data_length);
