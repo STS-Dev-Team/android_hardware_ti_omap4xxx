@@ -69,7 +69,7 @@ status_t OMXCameraAdapter::setParametersAlgo(const CameraParameters &params,
         }
     else
         {
-        capMode = OMXCameraAdapter::HIGH_QUALITY_ZSL;
+        capMode = OMXCameraAdapter::HIGH_QUALITY;
 
         }
 
@@ -657,6 +657,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
             return BAD_VALUE;
             }
 
+#if 0
         if( NO_ERROR == ret )
             {
             eError =  OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
@@ -675,7 +676,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                 CAMHAL_LOGDA("ZSL History len configured successfully");
                 }
             }
-
+#endif
         if( NO_ERROR == ret )
             {
             eError =  OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
