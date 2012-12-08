@@ -1512,11 +1512,12 @@ typedef enum OMX_EXT_EXTRADATATYPE
  *
  */
 typedef struct OMX_CONFIG_EXTRADATATYPE {
-    OMX_U32 nSize;
+    OMX_U32 nSize;                              /**< The size of the structure including data bytes
+                                                     and any padding necessary to ensure 32bit alignment
+                                                     of the next OMX_OTHER_EXTRADATATYPE structure */
     OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_EXT_EXTRADATATYPE eExtraDataType;
-    OMX_TI_CAMERAVIEWTYPE eCameraView;
+    OMX_U32               nPortIndex;           /**< The read-only value containing the index of the port */
+    OMX_EXT_EXTRADATATYPE eExtraDataType;       /**< Identifies the extra data payload type */
     OMX_BOOL bEnable;
 } OMX_CONFIG_EXTRADATATYPE;
 

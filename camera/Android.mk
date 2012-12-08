@@ -52,16 +52,19 @@ LOCAL_SRC_FILES:= \
 	$(OMAP4_CAMERA_OMX_SRC) \
 	$(OMAP4_CAMERA_COMMON_SRC)
 
+ifeq ($(ENHANCED_DOMX),true)
+    CAMERAHAL_CFLAGS += -DENHANCED_DOMX
+endif
+
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/inc/ \
     $(LOCAL_PATH)/../hwc \
     $(LOCAL_PATH)/../include \
     $(LOCAL_PATH)/inc/OMXCameraAdapter \
     $(LOCAL_PATH)/../libtiutils \
-    hardware/ti/omap4xxx/tiler \
     hardware/ti/omap4xxx/ion \
-    hardware/ti/omap4xxx/domx/omx_core/inc \
-    hardware/ti/omap4xxx/domx/mm_osal/inc \
+    $(DOMX_PATH)/omx_core/inc \
+    $(DOMX_PATH)/mm_osal/inc \
     frameworks/base/include/media/stagefright \
     frameworks/native/include/media/hardware \
     frameworks/native/include/media/openmax \
