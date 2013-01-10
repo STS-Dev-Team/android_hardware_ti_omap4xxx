@@ -1,4 +1,4 @@
-ifndef TARGET_HAS_CUSTOM_LIBION
+ifndef BOARD_USE_CUSTOM_LIBION
 # only include if running on an omap4 platform
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
 
