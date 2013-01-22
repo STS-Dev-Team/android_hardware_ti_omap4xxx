@@ -1,3 +1,3 @@
-ifneq ($(BOARD_USE_TI_ENHANCED_DOMX),true)
+ifeq ($(TI_CUSTOM_DOMX_PATH),)
     include $(all-subdir-makefiles)
 endif

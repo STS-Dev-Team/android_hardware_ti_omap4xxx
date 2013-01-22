@@ -21,7 +21,7 @@ LOCAL_SHARED_LIBRARIES:= \
 LOCAL_C_INCLUDES += \
 	bionic/libc/include \
 
-ifdef ENHANCED_DOMX
+ifneq ($(TI_CUSTOM_DOMX_PATH),)
 LOCAL_C_INCLUDES += \
     $(DOMX_PATH)/omx_core/inc \
     $(DOMX_PATH)/mm_osal/inc
