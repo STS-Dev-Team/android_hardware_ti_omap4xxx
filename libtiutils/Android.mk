@@ -23,8 +23,8 @@ LOCAL_C_INCLUDES += \
 
 ifneq ($(TI_CUSTOM_DOMX_PATH),)
 LOCAL_C_INCLUDES += \
-    $(DOMX_PATH)/omx_core/inc \
-    $(DOMX_PATH)/mm_osal/inc
+    $(TI_CUSTOM_DOMX_PATH)/omx_core/inc \
+    $(TI_CUSTOM_DOMX_PATH)/mm_osal/inc
 else
 LOCAL_C_INCLUDES += \
     hardware/ti/omap4xxx/domx/omx_core/inc \
